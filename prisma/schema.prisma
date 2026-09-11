@@ -17,6 +17,7 @@ model User {
   phone        String?
   role         Role          @default(USER)
   isVIP        Boolean       @default(false)
+  isLocked     Boolean       @default(false)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   userCredit   UserCredit?
@@ -48,10 +49,12 @@ model Lesson {
   videoUrl    String?
   order       Int
   isVIP       Boolean    @default(false)
+  moduleName  String     @default("Phần 1")
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
   progress    Progress[]
 }
+
 
 model Progress {
   id        String   @id @default(cuid())

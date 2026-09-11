@@ -1,0 +1,42 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { LayoutDashboard, Users, BookOpen, Settings } from "lucide-react";
+
+export function AdminNav() {
+  const pathname = usePathname();
+
+  const links = [
+    { href: "/admin", label: "Tổng quan", icon: LayoutDashboard, exact: true },
+    { href: "/admin/users", label: "Quản lý Users", icon: Users },
+    { href: "/admin/lessons", label: "Nội dung Khóa học", icon: BookOpen },
+    { href: "#", label: "Cài đặt hệ thống", icon: Settings },
+  ];
+
+  return (
+    <nav className="flex-1 p-4 space-y-1.5">
+      {links.map((link) => {
+        const Icon = link.icon;
+        const isActive = link.exact
+          ? pathname === link.href
+          : pathname.startsWith(link.href) && link.href !== "#";
+
+        return (
+          <Link
+            key={link.label}
+            href={link.href}
+            className={`flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium transition-all text-sm ${
+              isActive
+                ? "bg-blue-600 text-white font-bold shadow-md shadow-blue-600/30"
+                : "text-slate-400 hover:text-white hover:bg-slate-800/80"
+            }`}
+          >
+            <Icon size={18} />
+            <span>{link.label}</span>
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}

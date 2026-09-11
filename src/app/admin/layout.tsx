@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { LayoutDashboard, Users, BookOpen, Settings, LogOut, ShieldAlert } from "lucide-react";
+import { ShieldAlert, LogOut } from "lucide-react";
+import { AdminNav } from "@/components/admin/AdminNav";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -14,20 +15,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <p className="text-xs text-slate-500 mt-1">AIChoShop Management</p>
         </div>
         
-        <nav className="flex-1 p-4 space-y-2">
-          <Link href="/admin" className="flex items-center gap-3 px-4 py-3 rounded-lg text-white bg-blue-600/20 text-blue-400 font-medium hover:bg-blue-600/30 transition-colors">
-            <LayoutDashboard size={20} /> Tổng quan
-          </Link>
-          <Link href="/admin/users" className="flex items-center gap-3 px-4 py-3 rounded-lg font-medium hover:bg-slate-800 hover:text-white transition-colors">
-            <Users size={20} /> Quản lý Users
-          </Link>
-          <Link href="/admin/lessons" className="flex items-center gap-3 px-4 py-3 rounded-lg font-medium hover:bg-slate-800 hover:text-white transition-colors">
-            <BookOpen size={20} /> Nội dung Khóa học
-          </Link>
-          <Link href="#" className="flex items-center gap-3 px-4 py-3 rounded-lg font-medium hover:bg-slate-800 hover:text-white transition-colors">
-            <Settings size={20} /> Cài đặt hệ thống
-          </Link>
-        </nav>
+        <AdminNav />
 
         <div className="p-4 border-t border-slate-800">
           <Link href="/dashboard" className="flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
