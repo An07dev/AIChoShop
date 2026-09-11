@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 export default async function DashboardPage() {
   const cookieStore = await cookies();
   const token = cookieStore.get("user_token")?.value;
-  
+
   if (!token) {
     redirect("/login");
   }
@@ -30,7 +30,7 @@ export default async function DashboardPage() {
 
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-12">
-      
+
       {/* 1. WELCOME & BANNER */}
       <div className="flex flex-col md:flex-row gap-6">
         <div className="flex-1 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden">
@@ -44,7 +44,7 @@ export default async function DashboardPage() {
 
           <div className="flex flex-wrap gap-4 relative z-10">
             <Link href="/learn" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-blue-500/30 flex items-center gap-2">
-              <BookOpen size={18} /> Học tiếp bài 3
+              <BookOpen size={18} /> Học tiếp
             </Link>
             <Link href="/tools" className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 py-3 rounded-xl font-bold transition-all flex items-center gap-2">
               <Sparkles size={18} /> Mở kho công cụ AI
@@ -61,11 +61,11 @@ export default async function DashboardPage() {
               </div>
               <h2 className="font-bold text-slate-300">Gói tài khoản</h2>
             </div>
-            
+
             <h3 className="text-3xl font-black mb-1">
               {user.isVIP ? <span className="text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-yellow-200">VIP Pro</span> : 'Free Plan'}
             </h3>
-            
+
             {user.isVIP ? (
               <p className="text-sm text-slate-400 mt-2">Mở khóa toàn bộ tính năng và khóa học. Chúc bạn bùng nổ doanh số!</p>
             ) : (
@@ -94,7 +94,7 @@ export default async function DashboardPage() {
             </div>
           </div>
         </div>
-        
+
         <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
           <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center shrink-0">
             <TrendingUp size={24} />
@@ -126,7 +126,7 @@ export default async function DashboardPage() {
 
       {/* 3. RECENT ACTIVITY & RECOMMENDED TOOLS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
+
         <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
           <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
             <h3 className="font-bold text-slate-900 flex items-center gap-2">
@@ -164,7 +164,7 @@ export default async function DashboardPage() {
               </div>
               <p className="text-xs text-slate-500">Giật Top 1 tìm kiếm với bộ tiêu đề và hashtag chuẩn thuật toán.</p>
             </Link>
-            
+
             <Link href="/tools/script-writer" className="block group p-4 border border-slate-100 rounded-2xl hover:border-purple-200 hover:shadow-md transition-all">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">

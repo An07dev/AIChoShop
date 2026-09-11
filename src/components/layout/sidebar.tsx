@@ -1,14 +1,55 @@
 "use client";
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import { Home, BookOpen, Wrench, UserCircle, Settings, Crown, ChevronDown, LogOut } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { logoutUser } from '@/app/actions/auth';
 
-export function Sidebar({ user }: { user: any }) {
+export interface SidebarCourseItem {
+  id: string;
+  title: string;
+  lessonsCount: number;
+  firstLessonId?: string;
+}
+
+export function Sidebar({
+  user,
+  dynamicModules,
+  courses = [],
+}: {
+  user: any;
+  dynamicModules?: { name: string; count: number }[];
+  courses?: SidebarCourseItem[];
+}) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const currentCourseId = searchParams.get('courseId');
+  const currentLessonId = searchParams.get('lessonId');
   const [expandedId, setExpandedId] = useState<number | null>(null);
+
+  const totalLessonsCount = dynamicModules?.reduce((a, b) => a + b.count, 0) || 26;
+
+  // Danh sách các khóa học thực tế: đầu tiên là "Tất cả bài học & Video", tiếp theo là các khóa học đang có
+  const displayCourses = courses.length > 0 
+    ? courses 
+    : [{ id: '1', title: 'Masterclass Ứng Dụng AI Vào Bán Hàng', lessonsCount: totalLessonsCount, firstLessonId: '' }];
+
+  const courseSubItems = [
+    { name: '📺 Tất cả bài học & Video', href: '/courses' },
+    ...displayCourses.map((c) => {
+      const learnHref = c.firstLessonId
+        ? `/learn?lessonId=${c.firstLessonId}`
+        : `/learn?courseId=${c.id}`;
+      return {
+        name: `🎓 ${c.title}`,
+        href: learnHref,
+        courseId: c.id,
+        lessonId: c.firstLessonId,
+        badge: c.lessonsCount > 0 ? `${c.lessonsCount} bài` : undefined,
+      };
+    }),
+  ];
 
   const journeySteps = [
     { 
@@ -20,16 +61,13 @@ export function Sidebar({ user }: { user: any }) {
     },
     { 
       id: 2, 
-      name: 'Khóa học Masterclass', 
-      desc: '27 Bài học thực chiến',
-      href: '/learn', 
+      name: 'Khóa học', 
+      desc: displayCourses.length > 0 
+        ? `${displayCourses.length} Khóa học thực chiến` 
+        : `${totalLessonsCount} Bài học thực chiến`,
+      href: '/courses', 
       icon: BookOpen,
-      subItems: [
-        { name: 'P.1: Tư duy & Cài đặt', href: '/learn#part-1' },
-        { name: 'P.2: Tối ưu Listing & Doanh số', href: '/learn#part-2' },
-        { name: 'P.3: Tiktok Shop & Live', href: '/learn#part-3' },
-        { name: 'P.4: Xử lý khủng hoảng', href: '/learn#part-4' },
-      ]
+      subItems: courseSubItems,
     },
     { 
       id: 3, 
@@ -37,6 +75,7 @@ export function Sidebar({ user }: { user: any }) {
       desc: '8 Tools bứt phá doanh số',
       href: '/tools', 
       icon: Wrench,
+      viewAllHref: '/tools',
       subItems: [
         { name: '1. Tính Giá Bán', href: '/tools/pricing-calculator' },
         { name: '2. Tính Thuế TMĐT', href: '/tools/tax-calculator' },
@@ -59,7 +98,12 @@ export function Sidebar({ user }: { user: any }) {
 
   // Auto-expand the menu that matches the current route
   useEffect(() => {
-    const currentStep = journeySteps.find(step => pathname?.startsWith(step.href) && step.href !== '/');
+    const currentStep = journeySteps.find(step => {
+      if (step.id === 2) {
+        return pathname?.startsWith('/courses') || pathname?.startsWith('/learn');
+      }
+      return pathname?.startsWith(step.href) && step.href !== '/';
+    });
     if (currentStep && currentStep.subItems) {
       setExpandedId(currentStep.id);
     }
@@ -90,7 +134,9 @@ export function Sidebar({ user }: { user: any }) {
           <div className="space-y-6">
             {journeySteps.map((step, index) => {
               const Icon = step.icon;
-              const isActive = pathname?.startsWith(step.href);
+              const isActive =
+                pathname?.startsWith(step.href) ||
+                (step.id === 2 && (pathname?.startsWith('/courses') || pathname?.startsWith('/learn')));
               const isExpanded = expandedId === step.id;
               const hasSub = !!step.subItems;
               
@@ -131,21 +177,47 @@ export function Sidebar({ user }: { user: any }) {
 
                   {/* SubMenu (Accordion) */}
                   {hasSub && (
-                    <div className={`overflow-hidden transition-all duration-300 ${isExpanded ? 'max-h-96 mt-3 opacity-100' : 'max-h-0 opacity-0'}`}>
+                    <div className={`overflow-hidden transition-all duration-300 ${isExpanded ? 'max-h-[600px] mt-3 opacity-100' : 'max-h-0 opacity-0'}`}>
                       <div className="pl-14 pr-2 space-y-1.5 pb-2">
-                        {step.subItems?.map((sub, i) => (
-                          <Link 
-                            key={i} 
-                            href={sub.href}
-                            className={`block text-xs py-2 px-3 rounded-lg transition-colors ${pathname === sub.href ? 'bg-blue-600/10 text-blue-400 font-bold' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}
-                          >
-                            {sub.name}
-                          </Link>
-                        ))}
+                        {step.subItems?.map((sub: any, i) => {
+                          const isSubActive =
+                            sub.href === '/courses'
+                              ? pathname === '/courses' && !currentCourseId
+                              : sub.lessonId
+                              ? pathname === '/learn' && (currentLessonId === sub.lessonId || currentCourseId === sub.courseId)
+                              : sub.courseId
+                              ? (pathname === '/learn' || pathname === '/courses') && currentCourseId === sub.courseId
+                              : pathname === sub.href;
+
+                          return (
+                            <Link 
+                              key={i} 
+                              href={sub.href}
+                              title={sub.name}
+                              className={`flex items-center justify-between text-xs py-2 px-3 rounded-lg transition-colors group ${
+                                isSubActive
+                                  ? 'bg-blue-600/15 text-blue-400 font-bold border-l-2 border-blue-500 pl-2.5'
+                                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                              }`}
+                            >
+                              <span className="truncate">{sub.name}</span>
+                              {sub.badge && (
+                                <span className="text-[10px] text-slate-500 group-hover:text-slate-400 font-mono shrink-0 ml-1.5 font-normal">
+                                  {sub.badge}
+                                </span>
+                              )}
+                            </Link>
+                          );
+                        })}
                         {/* A link to go to the main page if they want to view all */}
-                        <Link href={step.href} className="block text-[11px] py-1 px-3 text-slate-500 hover:text-blue-400 transition-colors italic mt-1">
-                          Xem toàn bộ trang &rarr;
-                        </Link>
+                        {step.viewAllHref && (
+                          <Link
+                            href={step.viewAllHref}
+                            className="block text-[11px] py-1.5 px-3 text-slate-400 hover:text-blue-400 hover:bg-slate-800/60 rounded-lg transition-colors italic mt-1 font-semibold"
+                          >
+                            Xem toàn bộ trang &rarr;
+                          </Link>
+                        )}
                       </div>
                     </div>
                   )}

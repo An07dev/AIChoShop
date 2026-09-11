@@ -10,10 +10,10 @@ export async function getUserPlan() {
 
   const user = await prisma.user.findUnique({
     where: { id: token },
-    select: { isVIP: true }
+    select: { isVIP: true, isLocked: true }
   });
 
-  if (!user) return { isLogged: false, isVIP: false };
+  if (!user || user.isLocked) return { isLogged: false, isVIP: false, isLocked: !!user?.isLocked };
 
-  return { isLogged: true, isVIP: user.isVIP };
+  return { isLogged: true, isVIP: user.isVIP, isLocked: false };
 }
