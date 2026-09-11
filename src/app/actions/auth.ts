@@ -78,6 +78,10 @@ export async function loginUser(formData: FormData) {
       return { success: false, error: "Email hoặc mật khẩu không đúng" };
     }
 
+    if (user.isLocked) {
+      return { success: false, error: "Tài khoản của bạn đã bị tạm khóa bởi Quản trị viên. Vui lòng liên hệ hỗ trợ." };
+    }
+
     // Set cookie
     const cookieStore = await cookies();
     cookieStore.set("user_token", user.id, {

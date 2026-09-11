@@ -1,128 +1,533 @@
 "use client";
 
-import { useState } from "react";
-import { PlayCircle, Star, Lock, CheckCircle2, Crown } from "lucide-react";
+import { useState, useTransition, useMemo, useEffect } from "react";
+import {
+  PlayCircle,
+  Lock,
+  CheckCircle2,
+  Crown,
+  Sparkles,
+  ChevronRight,
+  ChevronLeft,
+  BookOpen,
+  FileText,
+  Flame,
+  ShieldCheck,
+  Check,
+  Video,
+} from "lucide-react";
 import Link from "next/link";
-import type { Lesson } from "@prisma/client";
+import { parseVideoUrl } from "@/lib/video";
+import { toggleLessonProgress } from "@/app/actions/learn";
 
-// Grouping lessons by modules logically based on titles
-type Module = {
+export interface ClientLesson {
+  id: string;
+  title: string;
+  fullTitle?: string;
+  moduleName?: string;
+  content: string | null;
+  videoUrl: string | null;
+  order: number;
+  isVIP: boolean;
+}
+
+
+export interface Module {
   moduleTitle: string;
-  lessons: Lesson[];
-};
+  lessons: ClientLesson[];
+}
 
-export default function LearnClient({ modules, isUserVIP }: { modules: Module[], isUserVIP: boolean }) {
-  const [activeLesson, setActiveLesson] = useState<Lesson>(modules[0]?.lessons[0]);
+export interface LearnCourseItem {
+  id: string;
+  title: string;
+  lessonsCount: number;
+  firstLessonId?: string;
+}
 
-  if (!activeLesson) return <div>Không có bài học nào.</div>;
+interface LearnClientProps {
+  modules: Module[];
+  isUserVIP: boolean;
+  isLogged: boolean;
+  initialCompletedLessonIds: string[];
+  courseTitle: string;
+  currentCourseId?: string;
+  courses?: LearnCourseItem[];
+  initialLessonId?: string;
+}
+
+export default function LearnClient({
+  modules,
+  isUserVIP,
+  isLogged,
+  initialCompletedLessonIds,
+  courseTitle,
+  currentCourseId,
+  courses,
+  initialLessonId,
+}: LearnClientProps) {
+  // Tìm bài học đầu tiên
+  const allLessons = useMemo(() => {
+    return modules.flatMap((m) => m.lessons);
+  }, [modules]);
+
+  const [activeLesson, setActiveLesson] = useState<ClientLesson>(() => {
+    if (initialLessonId) {
+      const target = allLessons.find((l) => l.id === initialLessonId);
+      if (target) return target;
+    }
+    return allLessons[0] || null;
+  });
+
+  // Tự động chuyển bài nếu initialLessonId hoặc allLessons thay đổi
+  useEffect(() => {
+    if (initialLessonId) {
+      const target = allLessons.find((l) => l.id === initialLessonId);
+      if (target) {
+        setActiveLesson(target);
+        return;
+      }
+    }
+    // Nếu activeLesson hiện tại không thuộc allLessons của khóa học mới, chuyển sang bài đầu tiên
+    if (allLessons.length > 0 && (!activeLesson || !allLessons.some((l) => l.id === activeLesson.id))) {
+      setActiveLesson(allLessons[0]);
+    }
+  }, [initialLessonId, allLessons]);
+
+  const handleSelectLesson = (lesson: ClientLesson) => {
+    setActiveLesson(lesson);
+    if (typeof window !== "undefined") {
+      window.history.replaceState(null, "", `/learn?lessonId=${lesson.id}`);
+    }
+  };
+
+  const [completedIds, setCompletedIds] = useState<string[]>(initialCompletedLessonIds);
+  const [isPending, startTransition] = useTransition();
+
+  // Log dữ liệu nhận được từ Server ra Browser Console (F12)
+  useEffect(() => {
+    console.group("🎓 [AIChoShop] DỮ LIỆU KHÓA HỌC & BÀI HỌC TỪ DATABASE:");
+    console.log("📌 Tên Khóa Học:", courseTitle);
+    console.log("👑 Quyền Hạn User:", {
+      isLogged,
+      isUserVIP,
+      userTier: isUserVIP ? "VIP PRO (Mở khóa toàn bộ)" : "Tài khoản FREE",
+    });
+    console.log("📊 Thống Kê:", {
+      tongSoPhan: modules.length,
+      tongSoBaiHoc: allLessons.length,
+      daHoanThanh: `${initialCompletedLessonIds.length}/${allLessons.length}`,
+    });
+    console.log("📚 Danh Sách Học Phần & Bài Học (Phân Quyền VIP/FREE):");
+    console.table(
+      allLessons.map((l) => ({
+        STT: l.order,
+        "Tiêu Đề": l.fullTitle || l.title,
+        "Phân Quyền": l.isVIP ? "👑 VIP PRO" : "✨ FREE",
+        "Quyền Xem": !l.isVIP || isUserVIP ? "✅ Được xem" : "🔒 Bị khóa (Cần VIP)",
+        "Link Video": l.videoUrl ? l.videoUrl.slice(0, 40) + "..." : "(Chưa có)",
+      }))
+    );
+    console.groupEnd();
+  }, [courseTitle, isUserVIP, isLogged, modules, allLessons, initialCompletedLessonIds]);
+
+
+  if (!activeLesson) {
+    return (
+      <div className="p-12 text-center text-slate-500 bg-white rounded-2xl border border-slate-200 max-w-lg mx-auto my-12">
+        <BookOpen size={48} className="mx-auto mb-3 text-slate-300" />
+        <h3 className="text-lg font-bold text-slate-800">Chưa có bài học nào trong khóa học này</h3>
+        <p className="text-sm text-slate-400 mt-1">Quản trị viên vui lòng thêm bài học tại trang Admin.</p>
+      </div>
+    );
+  }
+
+  // Quyền xem bài học: Nếu bài FREE -> xem được. Nếu bài VIP -> phải là VIP
+  const canWatch = !activeLesson.isVIP || isUserVIP;
+
+  // Video info
+  const videoInfo = parseVideoUrl(activeLesson.videoUrl);
+
+  // Trạng thái hoàn thành của bài hiện tại
+  const isCurrentCompleted = completedIds.includes(activeLesson.id);
+
+  // Vị trí bài học trong toàn bộ danh sách để hỗ trợ nút Bài Trước / Bài Kế Tiếp
+  const currentIndex = allLessons.findIndex((l) => l.id === activeLesson.id);
+  const prevLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null;
+  const nextLesson = currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null;
+
+  // Tính % tiến độ hoàn thành khóa học
+  const totalLessonsCount = allLessons.length;
+  const completedCount = completedIds.length;
+  const progressPercent =
+    totalLessonsCount > 0 ? Math.round((completedCount / totalLessonsCount) * 100) : 0;
+
+  // Xử lý đánh dấu hoàn thành bài học
+  const handleToggleComplete = () => {
+    if (!isLogged) {
+      alert("Vui lòng đăng nhập để lưu tiến độ học tập!");
+      return;
+    }
+
+    const nextCompleted = !isCurrentCompleted;
+
+    // Optimistic UI update
+    setCompletedIds((prev) =>
+      nextCompleted ? [...prev, activeLesson.id] : prev.filter((id) => id !== activeLesson.id)
+    );
+
+    startTransition(async () => {
+      const res = await toggleLessonProgress(activeLesson.id);
+      if (!res.success) {
+        // Rollback nếu lỗi
+        setCompletedIds((prev) =>
+          isCurrentCompleted ? [...prev, activeLesson.id] : prev.filter((id) => id !== activeLesson.id)
+        );
+        alert(res.error || "Không thể lưu tiến độ học");
+      }
+    });
+  };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 max-w-[1600px] mx-auto">
-      
-      {/* Left Area: Video Player & Info */}
-      <div className="flex-1 space-y-6">
-        
-        {/* Video Player Container */}
-        <div className="bg-slate-900 rounded-2xl aspect-video overflow-hidden relative shadow-lg border border-slate-200">
-          {activeLesson.isVIP && !isUserVIP ? (
-            // Paywall Overlay
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-slate-900/95 text-center p-6 z-10 backdrop-blur-sm">
-              <div className="w-16 h-16 bg-gradient-to-br from-amber-400 to-amber-600 rounded-full flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(245,158,11,0.5)]">
-                <Crown size={32} className="text-white" />
-              </div>
-              <h2 className="text-2xl font-black text-white mb-3">Nội dung dành riêng cho thành viên VIP</h2>
-              <p className="text-slate-400 mb-8 max-w-md">Bài học "<span className="text-white font-medium">{activeLesson.title}</span>" chứa kiến thức nâng cao giúp bạn x3 doanh thu. Nâng cấp ngay để mở khóa toàn bộ lộ trình!</p>
-              <Link href="/pricing" className="bg-gradient-to-r from-amber-500 to-yellow-500 text-white px-8 py-3.5 rounded-xl font-bold text-lg hover:from-amber-400 hover:to-yellow-400 transition-all shadow-lg shadow-amber-500/20">
-                Nâng cấp VIP ngay
-              </Link>
-            </div>
-          ) : (
-            // Fake Video Player (Free or Unlocked)
-            <div className="absolute inset-0 bg-slate-800 flex flex-col items-center justify-center group cursor-pointer">
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30 pointer-events-none"></div>
-              <PlayCircle size={72} className="text-white opacity-80 group-hover:scale-110 group-hover:opacity-100 transition-all z-10" />
-              <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-white z-10">
-                <div className="flex items-center gap-4">
-                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                  <span className="text-sm font-medium">00:00 / 15:00</span>
+    <div className="flex flex-col lg:flex-row gap-6 max-w-[1600px] mx-auto pb-12">
+      {/* VÙNG BÊN TRÁI: KHUNG PHÁT VIDEO & NỘI DUNG BÀI HỌC */}
+      <div className="flex-1 min-w-0 space-y-6">
+        {/* Khung Trình Phát Video */}
+        <div className="bg-slate-950 rounded-2xl aspect-video overflow-hidden relative shadow-xl border border-slate-800">
+          {!canWatch ? (
+            /* =================== PAYWALL OVERLAY KHI LÀ BÀI VIP VÀ CHƯA NÂNG CẤP =================== */
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-center p-6 sm:p-10 z-20 overflow-y-auto">
+              {/* Vòng hào quang vương miện */}
+              <div className="relative mb-4">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-amber-400 via-yellow-500 to-amber-600 rounded-3xl flex items-center justify-center shadow-[0_0_40px_rgba(245,158,11,0.5)] animate-pulse">
+                  <Crown size={36} className="text-white fill-white" />
                 </div>
-                <div className="bg-black/50 px-2 py-1 rounded text-xs font-mono">1080p HD</div>
+                <div className="absolute -inset-2 bg-amber-500/20 rounded-full blur-xl -z-10"></div>
               </div>
+
+              {/* Huy hiệu VIP */}
+              <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full text-xs font-black bg-amber-500/20 text-amber-400 border border-amber-500/30 uppercase tracking-widest mb-3">
+                <Lock size={12} /> Nội Dung Dành Riêng Cho Khách VIP
+              </span>
+
+              {/* Tiêu đề & Thông điệp chuyển đổi */}
+              <h2 className="text-xl sm:text-2xl lg:text-3xl font-black text-white max-w-xl leading-tight mb-2">
+                Mở Khóa Toàn Bộ Lộ Trình & Video Chuyên Sâu
+              </h2>
+              <p className="text-slate-300 text-xs sm:text-sm max-w-lg mb-6 leading-relaxed">
+                Bài học &ldquo;<span className="text-amber-400 font-bold">{activeLesson.fullTitle || activeLesson.title}</span>&rdquo; thuộc hệ thống kiến thức nâng cao. Nâng cấp tài khoản VIP ngay hôm nay để làm chủ toàn bộ bài giảng và các siêu công cụ AI!
+              </p>
+
+              {/* Danh sách quyền lợi VIP vắn tắt */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-w-md w-full mb-6 text-left">
+                <div className="flex items-center gap-2 text-xs text-slate-300 bg-slate-800/80 px-3 py-2 rounded-xl border border-slate-700">
+                  <ShieldCheck size={16} className="text-amber-400 shrink-0" />
+                  <span>Xem 100% video VIP không giới hạn</span>
+                </div>
+                <div className="flex items-center gap-2 text-xs text-slate-300 bg-slate-800/80 px-3 py-2 rounded-xl border border-slate-700">
+                  <Sparkles size={16} className="text-amber-400 shrink-0" />
+                  <span>Tặng 1.000 Credits sử dụng AI</span>
+                </div>
+              </div>
+
+              {/* Nút Kêu Gọi Nâng Cấp VIP */}
+              <div className="flex flex-col sm:flex-row items-center gap-3">
+                <Link
+                  href="/pricing"
+                  className="w-full sm:w-auto bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black px-8 py-3.5 rounded-xl text-sm sm:text-base transition-all shadow-xl shadow-amber-500/25 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
+                >
+                  <Crown size={18} className="fill-slate-950" />
+                  Nâng Cấp VIP Ngay
+                </Link>
+
+                {!isLogged && (
+                  <Link
+                    href="/login"
+                    className="w-full sm:w-auto px-5 py-3 rounded-xl text-xs sm:text-sm font-bold text-slate-300 hover:text-white bg-slate-800 hover:bg-slate-700 transition-colors"
+                  >
+                    Đã có tài khoản VIP? Đăng nhập
+                  </Link>
+                )}
+              </div>
+            </div>
+          ) : videoInfo.embedUrl ? (
+            /* =================== VIDEO PLAYER THỰC TẾ (KHI ĐỦ QUYỀN) =================== */
+            videoInfo.type === "direct" ? (
+              <video
+                key={activeLesson.id}
+                src={videoInfo.embedUrl}
+                controls
+                autoPlay
+                className="w-full h-full object-contain"
+              />
+            ) : (
+              <iframe
+                key={activeLesson.id}
+                src={videoInfo.embedUrl}
+                title={activeLesson.fullTitle || activeLesson.title}
+                className="w-full h-full border-0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+              />
+            )
+          ) : (
+            /* Khung thông báo khi bài học chưa gắn link video */
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 p-6 text-center">
+              <Video size={56} className="mb-3 opacity-40 text-slate-500" />
+              <h3 className="text-lg font-bold text-white mb-1">Video đang được cập nhật</h3>
+              <p className="text-xs text-slate-400 max-w-sm">
+                Quản trị viên đang chuẩn bị nội dung video chất lượng cao cho bài học này. Bạn có thể xem phần tóm tắt và tài liệu bên dưới!
+              </p>
             </div>
           )}
         </div>
 
-        {/* Lesson Details */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-          <div className="flex items-start justify-between gap-4 mb-4">
-            <h1 className="text-2xl font-black text-slate-900">{activeLesson.title}</h1>
-            <button className="shrink-0 bg-blue-50 text-blue-600 px-4 py-2 rounded-lg font-bold text-sm hover:bg-blue-100 transition-colors flex items-center gap-2">
-              <CheckCircle2 size={16} /> Đánh dấu hoàn thành
+        {/* Thông Tin Chi Tiết & Nút Thao Tác Bài Học */}
+        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+          {/* Header Bài Học */}
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-5 border-b border-slate-100">
+            <div>
+              <div className="flex items-center gap-2 mb-2 flex-wrap">
+                <span className="bg-slate-100 text-slate-700 text-xs font-black px-2.5 py-1 rounded-lg">
+                  Bài #{activeLesson.order}
+                </span>
+
+                {activeLesson.isVIP ? (
+                  <span className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-500 to-yellow-500 text-white text-xs font-black px-3 py-1 rounded-lg shadow-sm shadow-amber-500/20">
+                    <Crown size={13} className="fill-white" /> VIP PRO
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 text-xs font-bold px-2.5 py-1 rounded-lg border border-emerald-200">
+                    <Sparkles size={12} /> BÀI HỌC FREE
+                  </span>
+                )}
+
+                {isCurrentCompleted && (
+                  <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 text-xs font-bold px-2.5 py-1 rounded-lg">
+                    <CheckCircle2 size={13} /> Đã hoàn thành
+                  </span>
+                )}
+              </div>
+
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 leading-tight">
+                {activeLesson.fullTitle || activeLesson.title}
+              </h1>
+            </div>
+
+            {/* Nút Đánh dấu Hoàn thành */}
+            <button
+              onClick={handleToggleComplete}
+              disabled={isPending}
+              className={`shrink-0 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer active:scale-95 ${
+                isCurrentCompleted
+                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
+                  : "bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20"
+              }`}
+            >
+              {isCurrentCompleted ? (
+                <>
+                  <Check size={16} /> Đã Hoàn Thành
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 size={16} /> Đánh Dấu Hoàn Thành
+                </>
+              )}
             </button>
           </div>
-          <p className="text-slate-600 mb-6 leading-relaxed">
-            {activeLesson.content || "Nội dung bài học đang được cập nhật..."}
-          </p>
+
+          {/* Nội Dung Tóm Tắt / Tài Liệu Bài Giảng */}
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
+              <FileText size={14} /> Ghi Chú & Tóm Tắt Bài Học
+            </h3>
+            <div className="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap bg-slate-50/80 p-4 rounded-xl border border-slate-100">
+              {activeLesson.content || "Nội dung bài học đang được hoàn thiện. Vui lòng theo dõi video bài giảng."}
+            </div>
+          </div>
+
+          {/* Điều Hướng Bài Trước / Bài Kế Tiếp */}
+          <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+            {prevLesson ? (
+              <button
+                onClick={() => handleSelectLesson(prevLesson)}
+                className="flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-blue-600 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                <ChevronLeft size={16} />
+                <span className="truncate max-w-[150px] sm:max-w-[200px]">
+                  Bài trước: #{prevLesson.order}
+                </span>
+              </button>
+            ) : (
+              <div></div>
+            )}
+
+            {nextLesson ? (
+              <button
+                onClick={() => handleSelectLesson(nextLesson)}
+                className="flex items-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer ml-auto"
+              >
+                <span className="truncate max-w-[150px] sm:max-w-[200px]">
+                  Bài kế: #{nextLesson.order}
+                </span>
+                <ChevronRight size={16} />
+              </button>
+            ) : (
+              <div></div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* Right Area: Playlist/Curriculum */}
-      <div className="lg:w-[400px] xl:w-[450px] shrink-0">
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col h-[calc(100vh-120px)] sticky top-6">
-          <div className="p-4 border-b border-slate-200 bg-slate-50">
-            <h2 className="font-black text-lg text-slate-900 mb-1">Học Viện Seller Thực Chiến</h2>
-            <div className="w-full bg-slate-200 rounded-full h-2 mt-3">
-              <div className="bg-green-500 h-2 rounded-full" style={{ width: "20%" }}></div>
+      {/* VÙNG BÊN PHẢI: PLAYLIST / DANH SÁCH BÀI HỌC CỦA KHÓA HỌC */}
+      <div className="lg:w-[380px] xl:w-[430px] shrink-0">
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col lg:h-[calc(100vh-100px)] lg:sticky lg:top-6">
+          {/* Header Playlist & Thanh Tiến Độ Học */}
+          <div className="p-4 border-b border-slate-200 bg-slate-50/80">
+            {courses && courses.length > 1 ? (
+              <div className="mb-2.5">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                    Khóa học hiện tại:
+                  </span>
+                  {isUserVIP ? (
+                    <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-[10px] font-black px-2 py-0.5 rounded-full border border-amber-200">
+                      <Crown size={10} className="fill-amber-600 text-amber-600" /> VIP PRO
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 bg-slate-200 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                      FREE
+                    </span>
+                  )}
+                </div>
+                <select
+                  value={currentCourseId}
+                  onChange={(e) => {
+                    const selected = courses.find((c) => c.id === e.target.value);
+                    if (selected?.firstLessonId) {
+                      window.location.href = `/learn?lessonId=${selected.firstLessonId}`;
+                    } else if (selected?.id) {
+                      window.location.href = `/learn?courseId=${selected.id}`;
+                    }
+                  }}
+                  className="w-full bg-white border border-indigo-200 text-indigo-950 text-xs font-bold rounded-xl px-2.5 py-2 focus:ring-2 focus:ring-blue-500/20 cursor-pointer truncate shadow-2xs hover:border-indigo-300 transition-colors"
+                >
+                  {courses.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      🎓 {c.title} ({c.lessonsCount} bài)
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between mb-1">
+                <h2 className="font-black text-base text-slate-900 line-clamp-1">{courseTitle}</h2>
+                {isUserVIP ? (
+                  <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-[10px] font-black px-2 py-0.5 rounded-full border border-amber-200">
+                    <Crown size={10} className="fill-amber-600 text-amber-600" /> VIP
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 bg-slate-200 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    FREE
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Progress bar */}
+            <div className="w-full bg-slate-200 rounded-full h-2 mt-2.5 overflow-hidden">
+              <div
+                className="bg-gradient-to-r from-emerald-500 to-teal-500 h-2 rounded-full transition-all duration-500"
+                style={{ width: `${progressPercent}%` }}
+              ></div>
             </div>
-            <p className="text-xs text-slate-500 mt-2 font-medium">Đã hoàn thành 1/15 bài học (20%)</p>
+
+            <div className="flex items-center justify-between text-xs text-slate-500 mt-2 font-medium">
+              <span>
+                Đã học: <strong>{completedCount}</strong>/{totalLessonsCount} bài
+              </span>
+              <span className="font-bold text-emerald-600">{progressPercent}% Hoàn thành</span>
+            </div>
           </div>
-          
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-2 space-y-4">
+
+          {/* Danh Sách Các Module và Bài Học */}
+          <div className="flex-1 overflow-y-auto p-3 space-y-4">
             {modules.map((module, mIdx) => (
               <div key={mIdx}>
-                <h3 className="font-bold text-sm text-slate-500 uppercase tracking-wider mb-2 px-2 pt-2">{module.moduleTitle}</h3>
+                <div className="flex items-center justify-between px-2 py-1.5 mb-1 bg-slate-100/60 rounded-lg">
+                  <span className="font-black text-xs text-slate-600 uppercase tracking-wider">
+                    {module.moduleTitle}
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-semibold">
+                    {module.lessons.length} bài
+                  </span>
+                </div>
+
                 <ul className="space-y-1">
                   {module.lessons.map((lesson) => {
                     const isActive = activeLesson.id === lesson.id;
-                    const isCompleted = false; // Mock for now
+                    const isLessonCompleted = completedIds.includes(lesson.id);
+                    const canAccessThis = !lesson.isVIP || isUserVIP;
+
                     return (
                       <li key={lesson.id}>
-                        <button 
-                          onClick={() => setActiveLesson(lesson)}
-                          className={`w-full text-left flex items-start gap-3 p-3 rounded-xl transition-all ${
-                            isActive 
-                              ? "bg-blue-50 border border-blue-200 shadow-sm" 
+                        <button
+                          onClick={() => handleSelectLesson(lesson)}
+                          className={`w-full text-left flex items-start gap-2.5 p-2.5 rounded-xl transition-all cursor-pointer ${
+                            isActive
+                              ? "bg-blue-50/80 border border-blue-200 shadow-sm"
                               : "hover:bg-slate-50 border border-transparent"
                           }`}
                         >
-                          {/* Thumbnail / Status */}
-                          <div className="relative shrink-0">
-                            {isCompleted ? (
-                              <div className="w-24 aspect-video bg-green-100 rounded-md flex items-center justify-center text-green-600 border border-green-200">
-                                <CheckCircle2 size={20} />
+                          {/* STT hoặc Trạng thái hoàn thành */}
+                          <div className="relative shrink-0 mt-0.5">
+                            {isLessonCompleted ? (
+                              <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center font-bold text-xs border border-emerald-200">
+                                <Check size={14} />
                               </div>
                             ) : (
-                              <div className={`w-24 aspect-video rounded-md flex items-center justify-center relative overflow-hidden ${lesson.isVIP ? "bg-slate-900" : "bg-slate-800"}`}>
-                                <div className={`absolute inset-0 opacity-50 ${lesson.isVIP ? "bg-gradient-to-br from-amber-600 to-orange-800" : "bg-gradient-to-br from-blue-600 to-purple-600"}`}></div>
-                                {lesson.isVIP ? (
-                                  <Lock size={16} className="text-yellow-400 relative z-10 opacity-80" />
-                                ) : (
-                                  <PlayCircle size={16} className="text-white relative z-10 opacity-80" />
-                                )}
+                              <div
+                                className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs ${
+                                  isActive
+                                    ? "bg-blue-600 text-white shadow-sm"
+                                    : "bg-slate-100 text-slate-500"
+                                }`}
+                              >
+                                #{lesson.order}
                               </div>
                             )}
                           </div>
-                          
-                          {/* Title & Badge */}
-                          <div className="flex-1 flex flex-col pt-0.5">
-                            <span className={`text-sm font-bold line-clamp-2 leading-tight mb-1 ${isActive ? "text-blue-700" : "text-slate-700"}`}>
+
+                          {/* Tiêu đề & Badges */}
+                          <div className="flex-1 min-w-0">
+                            <p
+                              className={`text-xs font-bold leading-snug line-clamp-2 ${
+                                isActive ? "text-blue-700" : "text-slate-800"
+                              }`}
+                            >
                               {lesson.title}
-                            </span>
-                            <div className="mt-auto">
+                            </p>
+
+                            <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
                               {lesson.isVIP ? (
-                                <span className="inline-block bg-gradient-to-r from-amber-400 to-amber-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm">VIP</span>
+                                canAccessThis ? (
+                                  <span className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-400 to-amber-600 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-xs">
+                                    <Crown size={9} className="fill-white" /> VIP (Đã mở)
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 bg-slate-900 text-amber-400 text-[9px] font-black px-1.5 py-0.5 rounded border border-amber-500/30">
+                                    <Lock size={9} /> VIP (Khóa)
+                                  </span>
+                                )
                               ) : (
-                                <span className="inline-block bg-green-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded shadow-sm">FREE</span>
+                                <span className="inline-block bg-emerald-100 text-emerald-700 text-[9px] font-black px-1.5 py-0.5 rounded border border-emerald-200">
+                                  FREE
+                                </span>
+                              )}
+
+                              {lesson.videoUrl && (
+                                <span className="text-[10px] text-slate-400 flex items-center gap-0.5">
+                                  <PlayCircle size={10} /> Video
+                                </span>
                               )}
                             </div>
                           </div>

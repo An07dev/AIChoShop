@@ -20,9 +20,50 @@ export default async function AppLayout({
     });
   }
 
+  // Lấy danh sách các học phần thực tế và số lượng bài học từ Database
+  const [rawLessons, rawCourses] = await Promise.all([
+    prisma.lesson.findMany({
+      select: { moduleName: true, order: true },
+      orderBy: { order: "asc" },
+    }),
+    prisma.course.findMany({
+      select: {
+        id: true,
+        title: true,
+        _count: {
+          select: { lessons: true },
+        },
+        lessons: {
+          select: { id: true },
+          orderBy: { order: "asc" },
+          take: 1,
+        },
+      },
+      orderBy: { createdAt: "asc" },
+    }),
+  ]);
+
+  const moduleCountsMap = new Map<string, number>();
+  rawLessons.forEach((l) => {
+    const mod = l.moduleName?.trim() || "Phần 1";
+    moduleCountsMap.set(mod, (moduleCountsMap.get(mod) || 0) + 1);
+  });
+
+  const dynamicModules = Array.from(moduleCountsMap.entries()).map(([name, count]) => ({
+    name,
+    count,
+  }));
+
+  const coursesList = rawCourses.map((c) => ({
+    id: c.id,
+    title: c.title,
+    lessonsCount: c._count.lessons,
+    firstLessonId: c.lessons[0]?.id || "",
+  }));
+
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden text-slate-900">
-      <Sidebar user={currentUser} />
+      <Sidebar user={currentUser} dynamicModules={dynamicModules} courses={coursesList} />
       <div className="flex-1 flex flex-col min-w-0">
         <Header user={currentUser} />
         <main className="flex-1 overflow-y-auto p-6 flex flex-col">
