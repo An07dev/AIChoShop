@@ -96,3 +96,23 @@ model Transaction {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+model PricingFeeOverride {
+  id                 String    @id @default(cuid())
+  platform           String
+  shopType           String
+  categoryId         String
+  commissionRate     Float?
+  transactionRate    Float?
+  orderProcessingFee Int?
+  effectiveFrom      DateTime
+  effectiveTo        DateTime?
+  sourceName         String
+  sourceUrl          String?
+  note               String?   @db.Text
+  active             Boolean   @default(true)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([platform, shopType, categoryId, active])
+}

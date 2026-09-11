@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { LayoutDashboard, Users, BookOpen, Settings, LogOut, ShieldAlert } from "lucide-react";
+import { LayoutDashboard, Users, BookOpen, Database, LogOut, ShieldAlert } from "lucide-react";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -24,8 +24,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           <Link href="/admin/lessons" className="flex items-center gap-3 px-4 py-3 rounded-lg font-medium hover:bg-slate-800 hover:text-white transition-colors">
             <BookOpen size={20} /> Nội dung Khóa học
           </Link>
-          <Link href="#" className="flex items-center gap-3 px-4 py-3 rounded-lg font-medium hover:bg-slate-800 hover:text-white transition-colors">
-            <Settings size={20} /> Cài đặt hệ thống
+          <Link href="/admin/pricing-fees" className="flex items-center gap-3 px-4 py-3 rounded-lg font-medium hover:bg-slate-800 hover:text-white transition-colors">
+            <Database size={20} /> Biểu phí bán hàng
           </Link>
         </nav>
 
