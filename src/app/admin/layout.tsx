@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { LayoutDashboard, Users, BookOpen, Database, LogOut, ShieldAlert } from "lucide-react";
-import { ShieldAlert, LogOut } from "lucide-react";
 import { AdminNav } from "@/components/admin/AdminNav";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
