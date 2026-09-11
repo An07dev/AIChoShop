@@ -1,15 +1,31 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 
-// Cấu hình OpenAI
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY || "dummy", // Sẽ báo lỗi nếu chưa cấu hình thật, nhưng ta sẽ để form để chạy
-});
-
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { tool, inputs } = body;
+
+    // Kiểm tra trạng thái từ biến môi trường: OpenAIStatus = "true" -> dùng OpenAI, ngược lại -> dùng Ollama
+    const isOpenAI = process.env.OpenAIStatus?.trim().toLowerCase() === "true";
+    const isOllama = !isOpenAI;
+
+    const baseURL = isOllama
+      ? (process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434/v1")
+      : undefined;
+
+    const apiKey = isOllama
+      ? "ollama"
+      : (process.env.OPENAI_API_KEY?.trim().replace(/^["']|["']$/g, "") || "dummy");
+
+    const model = isOllama
+      ? (process.env.OLLAMA_MODEL || "qwen2.5:7b")
+      : (process.env.OPENAI_MODEL || "gpt-4o-mini");
+
+    const openai = new OpenAI({
+      baseURL,
+      apiKey,
+    });
 
     let systemPrompt = "Bạn là một chuyên gia thương mại điện tử xuất sắc tại Việt Nam, am hiểu thuật toán Shopee và TikTok Shop. Hãy trả về kết quả bằng tiếng Việt, định dạng Markdown rõ ràng, chuyên nghiệp.";
     let userPrompt = "";
@@ -93,42 +109,43 @@ Hãy tạo 10 biến thể tiêu đề (Spin content). Yêu cầu:
 
     let userMessageContent: any = userPrompt;
 
+    // Xử lý ảnh nếu có
     if (tool === "appeal-generator" && inputs.imageBase64) {
-      userMessageContent = [
-        { type: "text", text: userPrompt },
-        { 
-          type: "image_url", 
-          image_url: { 
-            url: inputs.imageBase64 
-          } 
-        }
-      ];
+      const isVisionModel = model.includes("vision") || model.includes("vl") || model.includes("llava") || model.includes("gpt-4");
+      if (isVisionModel) {
+        userMessageContent = [
+          { type: "text", text: userPrompt },
+          { 
+            type: "image_url", 
+            image_url: { 
+              url: inputs.imageBase64 
+            } 
+          }
+        ];
+      } else {
+        userMessageContent = userPrompt + "\n\n(Lưu ý: Đang sử dụng model văn bản. Vui lòng phân tích dựa trên mô tả chi tiết của Seller).";
+      }
     }
 
-    // Nếu có API Key thật thì gọi OpenAI, nếu không (như bản demo này chưa cấu hình) thì trả về dữ liệu mẫu hoặc báo lỗi.
-    if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.startsWith("sk-")) {
-      const completion = await openai.chat.completions.create({
-        model: "gpt-4o-mini", // Dùng model nhỏ để tiết kiệm chi phí và phản hồi cực nhanh, và gpt-4o-mini CÓ hỗ trợ vision
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userMessageContent }
-        ],
-        temperature: 0.7,
-        max_tokens: 1500,
-      });
+    const completion = await openai.chat.completions.create({
+      model,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userMessageContent }
+      ],
+      temperature: 0.7,
+      max_tokens: 1500,
+    });
 
-      return NextResponse.json({ success: true, data: completion.choices[0].message.content });
-    } else {
-      // Giả lập API khi chưa có key thật để test UI
-      await new Promise(r => setTimeout(r, 2000));
-      return NextResponse.json({ 
-        success: true, 
-        data: `⚠️ **CHÚ Ý**: Bạn chưa cấu hình OPENAI_API_KEY trong file .env. \n\nDưới đây là kết quả mẫu từ AI cho lệnh:\n> *${userPrompt.split('\n')[0]}*\n\n---\n\n(Chỗ này sẽ là nội dung AI sinh ra thật khi bạn nhập Key ChatGPT hợp lệ)` 
-      });
-    }
+    return NextResponse.json({ success: true, data: completion.choices[0].message.content });
 
   } catch (error: any) {
     console.error("AI Error:", error);
-    return NextResponse.json({ success: false, error: error.message || "Đã xảy ra lỗi kết nối OpenAI." }, { status: 500 });
+    const isConnectionError = error.code === "ECONNREFUSED" || error.message?.includes("fetch failed");
+    const errorMessage = isConnectionError
+      ? "Không thể kết nối đến Ollama. Vui lòng đảm bảo Ollama đang chạy (lệnh: ollama serve hoặc mở ứng dụng Ollama)."
+      : (error.message || "Đã xảy ra lỗi khi gọi AI.");
+
+    return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
   }
 }
