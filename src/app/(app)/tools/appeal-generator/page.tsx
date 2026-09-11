@@ -1,19 +1,52 @@
 "use client";
 
 import { useState } from "react";
-import { ArrowLeft, ShieldAlert, CheckCircle2, Copy, Sparkles, AlertCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  ShieldAlert,
+  Sparkles,
+  RotateCcw,
+  Upload,
+  X,
+  FileText,
+  Sparkle,
+  CheckCircle2,
+  AlertCircle,
+  Building2,
+  Tag,
+} from "lucide-react";
 import Link from "next/link";
 import { useToolGate } from "@/hooks/useToolGate";
+import { AppealGeneratorOutput } from "@/components/tools/AppealGeneratorOutput";
+import { TextDots } from "@/components/ui/text-dots";
+
+const VIOLATION_OPTIONS = [
+  "Hàng giả / Hàng nhái (Nghi ngờ hàng Fake)",
+  "Vi phạm quyền sở hữu trí tuệ (Bản quyền thương hiệu/Logo)",
+  "Vi phạm bản quyền hình ảnh / Video sao chép",
+  "Spam từ khóa, giật tít, mô tả sản phẩm sai lệch",
+  "Giao dịch ảo / Búp đơn / Đánh giá ảo (Buff đơn)",
+  "Tỷ lệ đơn hàng không thành công / Tỷ lệ hủy đơn quá cao",
+  "Giao hàng trễ hạn / Thời gian chuẩn bị hàng quá lâu",
+  "Gửi hàng sai / Gửi hộp rỗng / Tráo đổi hàng",
+  "Điều hướng khách hàng ra ngoài sàn (Zalo/SĐT/Website ngoài)",
+  "Sản phẩm cấm hoặc hạn chế kinh doanh (Y tế, TPCN, chất cấm,...)",
+  "Nội dung phản cảm, khiêu dâm, bạo lực hoặc không an toàn",
+  "Quảng cáo quá mức công dụng (Cam kết 100%, trị dứt điểm...)",
+  "Trùng lặp sản phẩm / Nhân bản gian hàng spam",
+  "Hành vi lừa đảo hoặc vi phạm tiêu chuẩn cộng đồng",
+  "Khác (Tự nhập lý do vi phạm...)",
+];
 
 export default function AppealGenerator() {
   const { checkAccess, GateModals } = useToolGate();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState("");
-  const [copied, setCopied] = useState(false);
 
-  // Form states
+  // Form states (giữ nguyên toàn bộ logic cũ)
   const [platform, setPlatform] = useState("Shopee");
-  const [violationType, setViolationType] = useState("Hàng giả / Hàng nhái (Nghi ngờ)");
+  const [violationType, setViolationType] = useState(VIOLATION_OPTIONS[0]);
+  const [customViolationType, setCustomViolationType] = useState("");
   const [shopName, setShopName] = useState("");
   const [details, setDetails] = useState("");
   const [imageBase64, setImageBase64] = useState<string | null>(null);
@@ -29,33 +62,63 @@ export default function AppealGenerator() {
     }
   };
 
+  const handleRemoveImage = () => {
+    setImageBase64(null);
+  };
+
+  const handleResetForm = () => {
+    setPlatform("Shopee");
+    setViolationType(VIOLATION_OPTIONS[0]);
+    setCustomViolationType("");
+    setShopName("");
+    setDetails("");
+    setImageBase64(null);
+  };
+
+  const handleUseSample = () => {
+    setPlatform("Shopee");
+    setViolationType(VIOLATION_OPTIONS[0]);
+    setCustomViolationType("");
+    setShopName("TuKi Store Official");
+    setDetails("Sản phẩm kem dưỡng da của shop bị AI quét khóa với lý do nghi ngờ hàng nhái. Shop có hóa đơn VAT nhập khẩu chính ngạch từ công ty phân phối và tem phụ tiếng Việt đầy đủ.");
+  };
+
   const handleGenerate = async () => {
     const hasAccess = await checkAccess("appeal-generator", true); // VIP Only
     if (!hasAccess) return;
 
-    if (!shopName || (!details && !imageBase64)) {
+    const finalViolationType = violationType.startsWith("Khác")
+      ? customViolationType.trim()
+      : violationType;
+
+    if (violationType.startsWith("Khác") && !customViolationType.trim()) {
+      alert("Vui lòng nhập lý do vi phạm cụ thể của bạn!");
+      return;
+    }
+
+    if (!shopName.trim() || (!details.trim() && !imageBase64)) {
       alert("Vui lòng cung cấp Tên Shop và Mô tả chi tiết hoặc Ảnh chụp màn hình!");
       return;
     }
 
     setLoading(true);
     setResult("");
-    
+
     try {
       const response = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tool: "appeal-generator",
-          inputs: { platform, violationType, shopName, details, imageBase64 }
+          inputs: { platform, violationType: finalViolationType, shopName: shopName.trim(), details: details.trim(), imageBase64 },
         }),
       });
-      
+
       const data = await response.json();
       if (data.success) {
         setResult(data.data);
       } else {
-        alert("Có lỗi xảy ra: " + data.error);
+        alert("Có lỗi xảy ra: " + (data.error || "Vui lòng thử lại"));
       }
     } catch (error) {
       alert("Không thể kết nối đến máy chủ AI.");
@@ -64,176 +127,245 @@ export default function AppealGenerator() {
     }
   };
 
-  const copyToClipboard = () => {
-    navigator.clipboard.writeText(result);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
-
   return (
-    <div className="max-w-7xl mx-auto pb-12">
+    <div className="max-w-7xl mx-auto h-[calc(100vh-100px)] flex flex-col min-h-0">
       <GateModals />
-      <div className="mb-6">
-        <Link href="/tools" className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-rose-600 mb-4 transition-colors">
-          <ArrowLeft size={16} className="mr-1" /> Quay lại kho công cụ
-        </Link>
+
+      {/* Thanh tiêu đề thu gọn trên 1 dòng */}
+      <div className="flex items-center justify-between gap-3 mb-3 shrink-0">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-rose-100 rounded-xl">
-            <ShieldAlert size={28} className="text-rose-600" />
-          </div>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-black text-slate-900">AI Kháng Nghị Vi Phạm</h1>
-              <span className="bg-gradient-to-r from-amber-400 to-amber-600 text-white text-[10px] font-black px-2 py-1 rounded shadow-sm">VIP ONLY</span>
+          <Link
+            href="/tools"
+            className="w-9 h-9 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-rose-600 hover:border-rose-300 flex items-center justify-center transition-colors shadow-sm"
+            title="Quay lại kho công cụ"
+          >
+            <ArrowLeft size={17} />
+          </Link>
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 bg-rose-100 rounded-xl flex items-center justify-center text-rose-600 shrink-0">
+              <ShieldAlert size={20} />
             </div>
-            <p className="text-slate-500 text-sm mt-1">Tự động viết đơn xin mở khóa shop/sản phẩm với văn phong thuyết phục nhất.</p>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg font-black text-slate-900 tracking-tight">
+                  AI Kháng Nghị Vi Phạm
+                </h1>
+                <span className="bg-gradient-to-r from-amber-400 to-amber-600 text-white text-[10px] font-black px-2 py-0.5 rounded shadow-sm">
+                  VIP ONLY
+                </span>
+              </div>
+              <p className="text-slate-400 text-xs hidden sm:block">
+                Tự động viết đơn xin mở khóa shop/sản phẩm với văn phong thuyết phục nhất.
+              </p>
+            </div>
           </div>
         </div>
+
+        {/* Nút thử nội dung mẫu */}
+        <button
+          onClick={handleUseSample}
+          className="text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
+        >
+          <Sparkle size={13} className="text-rose-500 fill-rose-500" />
+          <span>Thử mẫu vi phạm</span>
+        </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Input Form */}
-        <div className="lg:col-span-5 space-y-6">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <div className="flex items-center gap-2">
-                <AlertCircle size={18} className="text-slate-600" />
-                <h2 className="font-bold text-slate-800">Cung cấp thông tin</h2>
-              </div>
+      {/* Khu vực thao tác chính 2 cột chiếm trọn chiều cao còn lại */}
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* Cột trái: Form nhập thông tin vi phạm */}
+        <div className="lg:col-span-5 flex flex-col h-full min-h-0 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          {/* Header Form */}
+          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/70 shrink-0">
+            <div className="flex items-center gap-2">
+              <AlertCircle size={16} className="text-rose-500" />
+              <h2 className="font-bold text-slate-800 text-sm">Thông tin vi phạm & Shop</h2>
             </div>
-            
-            <div className="p-5 space-y-5">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Sàn TMĐT</label>
-                  <select 
-                    value={platform}
-                    onChange={e => setPlatform(e.target.value)}
-                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all font-medium"
-                  >
-                    <option>Shopee</option>
-                    <option>TikTok Shop</option>
-                    <option>Facebook</option>
-                    <option>Lazada</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-700 mb-1.5">Tên Shop của bạn</label>
-                  <input 
-                    type="text" 
-                    value={shopName}
-                    onChange={e => setShopName(e.target.value)}
-                    placeholder="VD: TuKi Store" 
-                    className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all font-medium" 
-                  />
-                </div>
-              </div>
+            {(shopName || details || imageBase64 || customViolationType) && (
+              <button
+                onClick={handleResetForm}
+                className="text-xs font-medium text-slate-400 hover:text-rose-500 flex items-center gap-1 transition-colors cursor-pointer"
+                title="Làm mới form"
+              >
+                <RotateCcw size={12} /> Làm mới
+              </button>
+            )}
+          </div>
 
+          {/* Form scrollable content */}
+          <div className="p-4 flex-1 overflow-y-auto custom-scrollbar space-y-3.5">
+            {/* Sàn TMĐT & Tên Shop */}
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">Loại Vi Phạm (Lý do bị khóa)</label>
-                <select 
-                  value={violationType}
-                  onChange={e => setViolationType(e.target.value)}
-                  className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all font-medium"
+                <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                  Sàn TMĐT
+                </label>
+                <select
+                  value={platform}
+                  onChange={(e) => setPlatform(e.target.value)}
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all font-semibold text-slate-800"
                 >
-                  <option>Hàng giả / Hàng nhái (Nghi ngờ)</option>
-                  <option>Tỷ lệ hoàn hàng/hủy đơn quá cao</option>
-                  <option>Spam từ khóa, mô tả sản phẩm</option>
-                  <option>Giao dịch ảo / Đánh giá ảo</option>
-                  <option>Vi phạm bản quyền hình ảnh</option>
-                  <option>Khác...</option>
+                  <option>Shopee</option>
+                  <option>TikTok Shop</option>
+                  <option>Facebook</option>
+                  <option>Lazada</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">Giải trình chi tiết của bạn</label>
-                <textarea 
-                  value={details}
-                  onChange={e => setDetails(e.target.value)}
-                  rows={4}
-                  placeholder="Kể ngắn gọn sự việc và các bằng chứng bạn có..."
-                  className="w-full px-3 py-3 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all resize-none"
-                ></textarea>
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1.5">Ảnh chụp thông báo vi phạm (Tùy chọn)</label>
-                <input 
-                  type="file" 
-                  accept="image/*"
-                  onChange={handleImageUpload}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all font-medium file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-rose-50 file:text-rose-700 hover:file:bg-rose-100" 
+                <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1">
+                  <Building2 size={12} className="text-slate-400" />
+                  Tên Shop <span className="text-rose-500">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={shopName}
+                  onChange={(e) => setShopName(e.target.value)}
+                  placeholder="VD: TuKi Store"
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all font-medium text-slate-800 placeholder:text-slate-400"
                 />
-                {imageBase64 && (
-                  <div className="mt-2 text-xs text-emerald-600 font-medium flex items-center gap-1">
-                    <CheckCircle2 size={14} /> Đã tải ảnh lên thành công
-                  </div>
-                )}
               </div>
+            </div>
 
-              <button 
-                onClick={handleGenerate}
-                disabled={loading}
-                className={`w-full text-white font-bold py-3.5 rounded-xl transition-all shadow-lg flex items-center justify-center gap-2 ${loading ? 'bg-slate-400 cursor-not-allowed' : 'bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 shadow-rose-500/30'}`}
+            {/* Loại Vi Phạm */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1">
+                <Tag size={12} className="text-slate-400" />
+                Loại Vi Phạm (Lý do bị khóa)
+              </label>
+              <select
+                value={violationType}
+                onChange={(e) => setViolationType(e.target.value)}
+                className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all font-semibold text-slate-800 cursor-pointer"
               >
-                {loading ? (
-                  <>Đang phân tích chính sách và tạo đơn...</>
-                ) : (
-                  <><Sparkles size={18} /> Viết Đơn Kháng Nghị Bằng AI</>
-                )}
-              </button>
-            </div>
-          </div>
-        </div>
+                {VIOLATION_OPTIONS.map((opt) => (
+                  <option key={opt} value={opt}>
+                    {opt}
+                  </option>
+                ))}
+              </select>
 
-        {/* Output View */}
-        <div className="lg:col-span-7">
-          <div className="bg-slate-900 rounded-2xl shadow-xl h-full flex flex-col relative overflow-hidden border border-slate-800">
-            {/* BG Effects */}
-            <div className="absolute top-0 right-0 p-32 bg-rose-500 rounded-full blur-[100px] opacity-10 pointer-events-none"></div>
-            
-            <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between relative z-10">
-              <div className="flex items-center gap-2">
-                <Sparkles size={18} className="text-rose-400" />
-                <h2 className="font-bold text-white">Kết quả từ AIChoShop</h2>
+              {/* Ô nhập tuỳ chỉnh khi chọn mục Khác */}
+              {violationType.startsWith("Khác") && (
+                <div className="mt-2">
+                  <input
+                    type="text"
+                    value={customViolationType}
+                    onChange={(e) => setCustomViolationType(e.target.value)}
+                    placeholder="Nhập lý do hoặc lỗi vi phạm cụ thể của bạn (VD: Trùng CCCD, đổi tài khoản ngân hàng...)"
+                    className="w-full px-3 py-2 bg-rose-50/40 border border-rose-300 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500 transition-all font-semibold text-rose-950 placeholder:text-slate-400"
+                    autoFocus
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Giải trình chi tiết */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                  <FileText size={12} className="text-slate-400" />
+                  Giải trình chi tiết của bạn <span className="text-rose-500">*</span>
+                </label>
+                <span className="text-[11px] font-mono text-slate-400">
+                  {details.length} ký tự
+                </span>
               </div>
-              {result && (
-                <button 
-                  onClick={copyToClipboard}
-                  className="text-sm font-medium flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors bg-white/10 hover:bg-white/20 text-white"
-                >
-                  {copied ? <CheckCircle2 size={16} className="text-emerald-400" /> : <Copy size={16} />}
-                  {copied ? "Đã chép" : "Copy nội dung"}
-                </button>
-              )}
+              <textarea
+                value={details}
+                onChange={(e) => setDetails(e.target.value)}
+                rows={4}
+                placeholder="Kể ngắn gọn sự việc, lý do khách quan và các bằng chứng bạn có (hóa đơn, tem mác, giấy ủy quyền, clip đóng gói)..."
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all resize-none placeholder:text-slate-400 leading-relaxed"
+              ></textarea>
             </div>
-            
-            <div className="p-6 flex-1 relative z-10">
-              {!result && !loading && (
-                <div className="h-full flex flex-col items-center justify-center text-slate-500">
-                  <ShieldAlert size={48} className="mb-4 opacity-20" />
-                  <p>Nhập thông tin bên trái và bấm nút để AI tạo đơn kháng nghị.</p>
-                </div>
-              )}
 
-              {loading && (
-                <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-4">
-                  <div className="w-10 h-10 border-4 border-slate-700 border-t-rose-500 rounded-full animate-spin"></div>
-                  <p className="animate-pulse">Đang rà soát chính sách {platform}...</p>
-                </div>
-              )}
+            {/* Ảnh chụp thông báo vi phạm (Tùy chọn) */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5">
+                Ảnh chụp thông báo vi phạm (Tùy chọn)
+              </label>
 
-              {result && (
-                <div className="bg-slate-800/50 border border-slate-700 p-5 rounded-xl h-full overflow-y-auto custom-scrollbar">
-                  <pre className="text-slate-300 font-sans text-[15px] leading-relaxed whitespace-pre-wrap">
-                    {result}
-                  </pre>
+              {!imageBase64 ? (
+                <label className="border-2 border-dashed border-slate-200 hover:border-rose-400 bg-slate-50/60 hover:bg-rose-50/30 rounded-xl p-3 flex flex-col items-center justify-center cursor-pointer transition-all group">
+                  <Upload size={18} className="text-slate-400 group-hover:text-rose-500 mb-1" />
+                  <span className="text-xs font-semibold text-slate-600 group-hover:text-rose-600">
+                    Bấm để tải ảnh lên (PNG, JPG)
+                  </span>
+                  <span className="text-[10px] text-slate-400 mt-0.5">
+                    AI sẽ đọc thông báo phạt và tìm lỗi quét của sàn
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    className="hidden"
+                  />
+                </label>
+              ) : (
+                <div className="relative rounded-xl border border-slate-200 p-2.5 bg-slate-50 flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <img
+                      src={imageBase64}
+                      alt="Ảnh vi phạm"
+                      className="w-12 h-12 object-cover rounded-lg border border-slate-200 shadow-sm"
+                    />
+                    <div>
+                      <span className="text-xs font-bold text-emerald-600 flex items-center gap-1">
+                        <CheckCircle2 size={13} /> Đã tải ảnh lên
+                      </span>
+                      <span className="text-[10px] text-slate-400 block">
+                        AI sẽ phân tích hình ảnh này
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleRemoveImage}
+                    className="p-1 rounded-lg hover:bg-slate-200 text-slate-400 hover:text-rose-500 transition-colors cursor-pointer"
+                    title="Xóa ảnh"
+                  >
+                    <X size={16} />
+                  </button>
                 </div>
               )}
             </div>
           </div>
+
+          {/* Footer nút Tạo đơn */}
+          <div className="p-4 border-t border-slate-100 bg-slate-50/50 shrink-0">
+            <button
+              onClick={handleGenerate}
+              disabled={loading || !shopName.trim() || (!details.trim() && !imageBase64)}
+              className={`w-full text-white font-bold py-3 px-4 rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer ${loading || !shopName.trim() || (!details.trim() && !imageBase64)
+                ? "bg-slate-300 text-slate-500 cursor-not-allowed shadow-none"
+                : "bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 shadow-rose-500/25 active:scale-[0.99]"
+                }`}
+            >
+              {loading ? (
+                <TextDots dots={3} className="text-white text-sm font-semibold">
+                  Đang phân tích chính sách & tạo đơn
+                </TextDots>
+              ) : (
+                <>
+                  <Sparkles size={16} />
+                  <span>Viết Đơn Kháng Nghị Bằng AI</span>
+                </>
+              )}
+            </button>
+          </div>
         </div>
 
+        {/* Cột phải: Bảng kết quả hồ sơ kháng nghị */}
+        <div className="lg:col-span-7 h-full min-h-0">
+          <AppealGeneratorOutput
+            result={result}
+            loading={loading}
+            platform={platform}
+            shopName={shopName}
+            violationType={violationType.startsWith("Khác") ? (customViolationType || "Vi phạm khác") : violationType}
+          />
+        </div>
       </div>
     </div>
   );
