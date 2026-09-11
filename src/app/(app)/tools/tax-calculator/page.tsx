@@ -1,21 +1,32 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { ArrowLeft, Calculator, AlertTriangle, Info } from "lucide-react";
+import {
+  ArrowLeft,
+  Calculator,
+  AlertTriangle,
+  Info,
+  RotateCcw,
+  Sparkles,
+  Building2,
+  DollarSign,
+  Percent,
+} from "lucide-react";
 import Link from "next/link";
+import { TaxCalculatorOutput } from "@/components/tools/TaxCalculatorOutput";
 
 export default function TaxCalculator() {
-  const [revenue, setRevenue] = useState("");
+  const [revenue, setRevenue] = useState("500000000");
   const [businessType, setBusinessType] = useState("ho-kinh-doanh");
-  const [platformFees, setPlatformFees] = useState("");
+  const [platformFees, setPlatformFees] = useState("70000000"); // Mặc định ~14% phí sàn
 
   const results = useMemo(() => {
     const rev = Number(revenue) || 0;
     const fees = Number(platformFees) || 0;
-    
+
     // Thuế suất thương mại điện tử (phân phối, cung cấp hàng hóa)
     // Hộ kinh doanh / Cá nhân kinh doanh: 1.5% (1% GTGT + 0.5% TNCN)
-    // Nếu doanh thu < 100tr/năm -> Miễn thuế
+    // Nếu doanh thu <= 100tr/năm -> Miễn thuế
     let gtgt = 0;
     let tncn = 0;
     let isExempt = false;
@@ -31,148 +42,265 @@ export default function TaxCalculator() {
       // Đơn giản hóa cho Công ty (thực tế phức tạp hơn dựa trên lợi nhuận)
       // GTGT đóng theo phương pháp khấu trừ, TNDN 20% trên lợi nhuận
       gtgt = rev * 0.1; // Khách trả, công ty nộp thay (tạm tính)
-      const estimatedProfit = rev - fees - (rev * 0.7); // Tạm tính giá vốn 70%
+      const estimatedProfit = rev - fees - rev * 0.7; // Tạm tính giá vốn 70%
       tncn = Math.max(0, estimatedProfit * 0.2); // Thuế TNDN 20%
     }
 
-    const totalTax = gtgt + tncn;
+    const totalTax = isExempt ? 0 : gtgt + tncn;
     const netRevenue = rev - fees - totalTax;
+
+    const effectiveTaxRate = rev > 0 ? (totalTax / rev) * 100 : 0;
+    const platformFeeRate = rev > 0 ? (fees / rev) * 100 : 0;
+    const netRate = rev > 0 ? (netRevenue / rev) * 100 : 0;
 
     return {
       gtgt,
       tncn,
       totalTax,
       netRevenue,
-      isExempt
+      isExempt,
+      effectiveTaxRate,
+      platformFeeRate,
+      netRate,
     };
   }, [revenue, businessType, platformFees]);
 
-  const formatVND = (num: number) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(num);
+  const handleResetForm = () => {
+    setRevenue("");
+    setPlatformFees("");
+    setBusinessType("ho-kinh-doanh");
+  };
+
+  // Các nút nhanh cho doanh thu
+  const handleAddRevenue = (amount: number) => {
+    const current = Number(revenue) || 0;
+    const updated = current + amount;
+    setRevenue(String(updated));
+    // Tự động tính 14% phí sàn mẫu
+    setPlatformFees(String(Math.round(updated * 0.14)));
+  };
+
+  // Nút nhanh cho phí sàn theo tỷ lệ %
+  const handleSetFeePercent = (pct: number) => {
+    const rev = Number(revenue) || 0;
+    if (rev > 0) {
+      setPlatformFees(String(Math.round((rev * pct) / 100)));
+    }
+  };
+
+  // Kịch bản mẫu
+  const handleLoadScenario = (rev: number, feePct: number, type: string) => {
+    setBusinessType(type);
+    setRevenue(String(rev));
+    setPlatformFees(String(Math.round((rev * feePct) / 100)));
   };
 
   return (
-    <div className="max-w-7xl mx-auto pb-12">
-      <div className="mb-6">
-        <Link href="/tools" className="inline-flex items-center text-sm font-medium text-slate-500 hover:text-rose-600 mb-4 transition-colors">
-          <ArrowLeft size={16} className="mr-1" /> Quay lại kho công cụ
-        </Link>
+    <div className="max-w-7xl mx-auto h-[calc(100vh-100px)] flex flex-col min-h-0">
+      {/* Thanh tiêu đề thu gọn trên 1 dòng */}
+      <div className="flex items-center justify-between gap-3 mb-3 shrink-0">
         <div className="flex items-center gap-3">
-          <div className="p-3 bg-rose-100 rounded-xl">
-            <Calculator size={28} className="text-rose-600" />
-          </div>
-          <div>
-            <div className="flex items-center gap-3">
-              <h1 className="text-2xl font-black text-slate-900">Tính Thuế TMĐT (Shopee/TikTok)</h1>
-              <span className="bg-emerald-100 text-emerald-700 text-[10px] font-black px-2 py-1 rounded shadow-sm">FREE TOOL</span>
+          <Link
+            href="/tools"
+            className="w-9 h-9 rounded-xl bg-white border border-slate-200 text-slate-500 hover:text-rose-600 hover:border-rose-300 flex items-center justify-center transition-colors shadow-sm"
+            title="Quay lại kho công cụ"
+          >
+            <ArrowLeft size={17} />
+          </Link>
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 bg-rose-100 rounded-xl flex items-center justify-center text-rose-600 shrink-0">
+              <Calculator size={20} />
             </div>
-            <p className="text-slate-500 text-sm mt-1">Tính toán chính xác thuế GTGT, TNCN phải nộp theo quy định pháp luật hiện hành.</p>
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-lg font-black text-slate-900 tracking-tight">
+                  Tính Thuế TMĐT (Shopee/TikTok)
+                </h1>
+                <span className="bg-emerald-100 text-emerald-700 text-[10px] font-black px-2 py-0.5 rounded shadow-sm">
+                  FREE TOOL
+                </span>
+              </div>
+              <p className="text-slate-400 text-xs hidden sm:block">
+                Tính toán chính xác thuế GTGT, TNCN phải nộp theo quy định pháp luật hiện hành.
+              </p>
+            </div>
           </div>
+        </div>
+
+        {/* Nút kịch bản nhanh */}
+        <div className="flex items-center gap-1.5 overflow-x-auto">
+          <button
+            onClick={() => handleLoadScenario(80000000, 14, "ho-kinh-doanh")}
+            className="text-[11px] font-semibold text-slate-600 hover:text-emerald-700 bg-white hover:bg-emerald-50 border border-slate-200 hover:border-emerald-300 px-2.5 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap active:scale-95 shadow-sm"
+          >
+            Shop &lt; 100tr (Miễn thuế)
+          </button>
+          <button
+            onClick={() => handleLoadScenario(500000000, 14, "ho-kinh-doanh")}
+            className="text-[11px] font-semibold text-slate-600 hover:text-rose-700 bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-300 px-2.5 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap active:scale-95 shadow-sm"
+          >
+            Shop 500tr
+          </button>
+          <button
+            onClick={() => handleLoadScenario(2000000000, 14, "ho-kinh-doanh")}
+            className="text-[11px] font-semibold text-slate-600 hover:text-rose-700 bg-white hover:bg-rose-50 border border-slate-200 hover:border-rose-300 px-2.5 py-1.5 rounded-lg transition-all cursor-pointer whitespace-nowrap active:scale-95 shadow-sm"
+          >
+            Shop 2 tỷ
+          </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        <div className="lg:col-span-5 space-y-6">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-6 space-y-5">
-            <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">Loại hình kinh doanh</label>
-              <select 
-                value={businessType}
-                onChange={e => setBusinessType(e.target.value)}
-                className="w-full px-3 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all font-medium"
+      {/* Khu vực thao tác chính 2 cột chiếm trọn chiều cao còn lại */}
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* Cột trái: Form nhập thông số */}
+        <div className="lg:col-span-5 flex flex-col h-full min-h-0 bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+          {/* Header Form */}
+          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/70 shrink-0">
+            <div className="flex items-center gap-2">
+              <Calculator size={16} className="text-rose-500" />
+              <h2 className="font-bold text-slate-800 text-sm">Thông số kinh doanh</h2>
+            </div>
+            {(revenue || platformFees) && (
+              <button
+                onClick={handleResetForm}
+                className="text-xs font-medium text-slate-400 hover:text-rose-500 flex items-center gap-1 transition-colors cursor-pointer"
+                title="Làm mới form"
               >
-                <option value="ho-kinh-doanh">Hộ Kinh Doanh (Khuyên dùng cho Seller)</option>
-                <option value="ca-nhan">Cá Nhân Kinh Doanh</option>
-                <option value="cong-ty">Công Ty / Doanh Nghiệp (TNDN)</option>
+                <RotateCcw size={12} /> Làm mới
+              </button>
+            )}
+          </div>
+
+          {/* Form scrollable content */}
+          <div className="p-4 flex-1 overflow-y-auto custom-scrollbar space-y-4">
+            {/* Loại hình kinh doanh */}
+            <div>
+              <label className="block text-xs font-bold text-slate-700 mb-1.5 flex items-center gap-1">
+                <Building2 size={12} className="text-slate-400" />
+                Loại hình kinh doanh
+              </label>
+              <select
+                value={businessType}
+                onChange={(e) => setBusinessType(e.target.value)}
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all font-semibold text-slate-800 cursor-pointer"
+              >
+                <option value="ho-kinh-doanh">
+                  Hộ Kinh Doanh (Khuyên dùng - Thuế 1.5%)
+                </option>
+                <option value="ca-nhan">Cá Nhân Kinh Doanh (Thuế 1.5%)</option>
+                <option value="cong-ty">
+                  Công Ty / Doanh Nghiệp (TNDN 20% + GTGT 10%)
+                </option>
               </select>
             </div>
 
+            {/* Doanh thu Sàn ghi nhận */}
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">Tổng doanh thu Sàn ghi nhận (VNĐ/Năm)</label>
-              <input 
-                type="text" 
-                value={revenue ? new Intl.NumberFormat('vi-VN').format(Number(revenue)) : ""}
-                onChange={e => setRevenue(e.target.value.replace(/[^0-9]/g, ''))}
-                placeholder="VD: 500.000.000" 
-                className="w-full px-3 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all font-mono" 
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                  <DollarSign size={12} className="text-slate-400" />
+                  Tổng doanh thu Sàn ghi nhận (VNĐ / Năm)
+                </label>
+                {revenue && (
+                  <span className="text-[11px] font-mono font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded border border-rose-100">
+                    {new Intl.NumberFormat("vi-VN").format(Number(revenue))} ₫
+                  </span>
+                )}
+              </div>
+              <input
+                type="text"
+                value={revenue ? new Intl.NumberFormat("vi-VN").format(Number(revenue)) : ""}
+                onChange={(e) => setRevenue(e.target.value.replace(/[^0-9]/g, ""))}
+                placeholder="VD: 500.000.000"
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all font-mono font-bold text-slate-800 placeholder:text-slate-400"
               />
-              <p className="text-xs text-slate-500 mt-2 flex items-start gap-1">
-                <Info size={14} className="shrink-0" />
-                Lưu ý: Doanh thu này là tổng tiền hàng bán được, chưa trừ các khoản phí sàn. Cơ quan thuế tính trên con số này.
+
+              {/* Nút cộng nhanh doanh thu */}
+              <div className="flex flex-wrap gap-1.5 mt-2">
+                {[
+                  { label: "+50tr", val: 50000000 },
+                  { label: "+100tr", val: 100000000 },
+                  { label: "+500tr", val: 500000000 },
+                  { label: "+1 tỷ", val: 1000000000 },
+                ].map((item, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => handleAddRevenue(item.val)}
+                    className="text-[11px] font-semibold px-2 py-0.5 rounded-lg border bg-slate-50 text-slate-600 border-slate-200 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 transition-all cursor-pointer active:scale-95"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+
+              <p className="text-[11px] text-slate-400 mt-2 flex items-start gap-1 leading-snug">
+                <Info size={13} className="shrink-0 mt-0.5 text-slate-400" />
+                <span>
+                  Doanh thu này là tổng tiền hàng người mua trả, chưa trừ phí sàn. Cơ quan thuế tính trên con số này.
+                </span>
               </p>
             </div>
 
+            {/* Tổng các loại phí Sàn */}
             <div>
-              <label className="block text-sm font-bold text-slate-700 mb-2">Tổng các loại phí Sàn (VNĐ/Năm)</label>
-              <input 
-                type="text" 
-                value={platformFees ? new Intl.NumberFormat('vi-VN').format(Number(platformFees)) : ""}
-                onChange={e => setPlatformFees(e.target.value.replace(/[^0-9]/g, ''))}
-                placeholder="Phí thanh toán, cố định, ads..." 
-                className="w-full px-3 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all font-mono" 
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs font-bold text-slate-700 flex items-center gap-1">
+                  <Percent size={12} className="text-slate-400" />
+                  Tổng phí Sàn (VNĐ / Năm)
+                </label>
+                {platformFees && (
+                  <span className="text-[11px] font-mono font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-100">
+                    {new Intl.NumberFormat("vi-VN").format(Number(platformFees))} ₫
+                  </span>
+                )}
+              </div>
+              <input
+                type="text"
+                value={
+                  platformFees
+                    ? new Intl.NumberFormat("vi-VN").format(Number(platformFees))
+                    : ""
+                }
+                onChange={(e) => setPlatformFees(e.target.value.replace(/[^0-9]/g, ""))}
+                placeholder="Phí thanh toán, cố định, voucher, ads..."
+                className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all font-mono font-bold text-slate-800 placeholder:text-slate-400"
               />
+
+              {/* Nút % phí sàn nhanh */}
+              <div className="flex items-center gap-1.5 mt-2">
+                <span className="text-[10px] font-semibold text-slate-400">Chọn nhanh theo %:</span>
+                {[10, 12, 14, 16].map((pct) => (
+                  <button
+                    key={pct}
+                    type="button"
+                    onClick={() => handleSetFeePercent(pct)}
+                    className="text-[11px] font-semibold px-2 py-0.5 rounded-lg border bg-slate-50 text-slate-600 border-slate-200 hover:bg-amber-50 hover:text-amber-700 hover:border-amber-300 transition-all cursor-pointer active:scale-95"
+                  >
+                    {pct}%
+                  </button>
+                ))}
+              </div>
             </div>
-            
-            <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm flex items-start gap-3">
-              <AlertTriangle size={20} className="shrink-0 text-amber-500" />
-              <p>Trốn thuế TMĐT hiện nay sẽ bị phạt rất nặng (truy thu + phạt chậm nộp). Việc khai báo Hộ kinh doanh đóng mức 1.5% là phương án an toàn nhất cho cá nhân.</p>
+
+            {/* Hộp cảnh báo pháp lý */}
+            <div className="p-3 bg-rose-50/70 border border-rose-200/80 rounded-xl text-xs text-rose-900 flex items-start gap-2.5">
+              <AlertTriangle size={16} className="shrink-0 text-rose-500 mt-0.5" />
+              <p className="leading-relaxed">
+                Trốn thuế TMĐT hiện nay sẽ bị phạt rất nặng (truy thu + phạt chậm nộp 0.03%/ngày). Khai báo <strong>Hộ kinh doanh đóng 1.5%</strong> là phương án an toàn và tối ưu nhất cho cá nhân.
+              </p>
             </div>
           </div>
         </div>
 
-        <div className="lg:col-span-7">
-          <div className="bg-slate-900 rounded-2xl shadow-xl h-full p-8 border border-slate-800 relative overflow-hidden">
-            <div className="absolute -top-24 -right-24 w-64 h-64 bg-rose-500 rounded-full blur-[120px] opacity-20 pointer-events-none"></div>
-            
-            <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-              <Calculator size={20} className="text-rose-400" />
-              Bảng Tính Nghĩa Vụ Thuế
-            </h2>
-
-            {results.isExempt ? (
-              <div className="p-6 bg-emerald-900/30 border border-emerald-500/30 rounded-xl mb-6">
-                <h3 className="text-emerald-400 font-bold text-lg mb-2">🎉 Chúc mừng! Bạn được MIỄN THUẾ</h3>
-                <p className="text-emerald-200/70 text-sm">Doanh thu năm của bạn dưới 100.000.000 VNĐ nên theo quy định pháp luật hiện hành, bạn không phải nộp Thuế GTGT và TNCN.</p>
-              </div>
-            ) : (
-              <div className="space-y-4 mb-8">
-                <div className="flex justify-between items-center p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
-                  <span className="text-slate-400">Thuế Giá Trị Gia Tăng (GTGT)</span>
-                  <span className="text-white font-mono font-bold">{formatVND(results.gtgt)}</span>
-                </div>
-                <div className="flex justify-between items-center p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
-                  <span className="text-slate-400">{businessType === 'cong-ty' ? 'Thuế Thu Nhập Doanh Nghiệp (TNDN tạm tính)' : 'Thuế Thu Nhập Cá Nhân (TNCN)'}</span>
-                  <span className="text-white font-mono font-bold">{formatVND(results.tncn)}</span>
-                </div>
-                <div className="flex justify-between items-center p-5 bg-rose-500/10 rounded-xl border border-rose-500/30 mt-2">
-                  <span className="text-rose-400 font-bold">TỔNG THUẾ PHẢI NỘP</span>
-                  <span className="text-rose-400 font-mono font-black text-2xl">{formatVND(results.totalTax)}</span>
-                </div>
-              </div>
-            )}
-
-            <div className="border-t border-slate-800 pt-6">
-              <h3 className="text-sm font-bold text-slate-500 mb-4 uppercase tracking-wider">Dòng Tiền Thực Tế</h3>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-slate-400 text-sm">Doanh thu ban đầu:</span>
-                <span className="text-slate-300 font-mono text-sm">{formatVND(Number(revenue))}</span>
-              </div>
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-slate-400 text-sm">Trừ phí sàn:</span>
-                <span className="text-slate-300 font-mono text-sm">-{formatVND(Number(platformFees))}</span>
-              </div>
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-slate-400 text-sm">Trừ thuế:</span>
-                <span className="text-rose-400 font-mono text-sm">-{formatVND(results.totalTax)}</span>
-              </div>
-              
-              <div className="flex justify-between items-center p-4 bg-emerald-500/10 rounded-xl border border-emerald-500/20">
-                <span className="text-emerald-400 font-bold">TIỀN THỰC NHẬN</span>
-                <span className="text-emerald-400 font-mono font-black text-xl">{formatVND(results.netRevenue)}</span>
-              </div>
-            </div>
-
-          </div>
+        {/* Cột phải: Dashboard bảng phân tích thuế */}
+        <div className="lg:col-span-7 h-full min-h-0">
+          <TaxCalculatorOutput
+            revenue={Number(revenue) || 0}
+            platformFees={Number(platformFees) || 0}
+            businessType={businessType}
+            results={results}
+          />
         </div>
       </div>
     </div>
