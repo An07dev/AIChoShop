@@ -1,4 +1,5 @@
-export type Platform = "shopee" | "tiktok";
+export type Platform = "shopee" | "tiktok" | "external";
+export type ExternalSalesChannel = "facebook" | "website" | "youtube" | "other";
 export type ShopType = "marketplace" | "mall";
 export type CostMode = "percent" | "fixed";
 export type TaxMode = "household_exempt" | "household_revenue" | "profit_based" | "manual";
@@ -23,7 +24,7 @@ export type PlatformFeeProfile = {
 };
 
 export type PricingInput = {
-  platform: Platform; shopType: ShopType; categoryId: string;
+  platform: Platform; externalChannel: ExternalSalesChannel; shopType: ShopType; categoryId: string;
   quantity: number; costPerUnit: number; packagingCost: number; handlingCost: number;
   overheadCost: number; sellerShippingCost: number; buyerShippingFee: number;
   platformDiscount: number; sellerDiscountRate: number; affiliateRate: number;
