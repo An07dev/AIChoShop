@@ -57,7 +57,10 @@ export function evaluatePrice(input: PricingInput, listPrice: number): PriceEval
   }
 
   const platformFees = fees.reduce((sum, fee) => sum + fee.amount, 0);
-  const affiliateCost = percentOf(productRevenue, clamp(input.affiliateRate, 0, 100));
+  // TikTok tính hoa hồng creator trên giá khách thực trả cho sản phẩm sau
+  // voucher của shop và nền tảng; phí vận chuyển không thuộc cơ sở này.
+  const affiliateBase = input.platform === "tiktok" ? customerProductPayment : productRevenue;
+  const affiliateCost = percentOf(affiliateBase, clamp(input.affiliateRate, 0, 100));
   const marketingCost = input.marketingMode === "fixed"
     ? Math.max(0, input.marketingValue)
     : percentOf(productRevenue, Math.max(0, input.marketingValue));
