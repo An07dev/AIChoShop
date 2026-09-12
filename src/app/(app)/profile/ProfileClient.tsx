@@ -28,10 +28,19 @@ import {
   MessageCircle,
   QrCode,
   CreditCard,
+  Star,
+  Gift,
+  Flame,
+  ShieldCheck,
+  Rocket,
+  Infinity,
+  Server,
+  Headphones,
 } from "lucide-react";
 import Link from "next/link";
 import { updateUserProfile, changeUserPassword, requestVipActivation } from "@/app/actions/profile";
 import { logoutUser } from "@/app/actions/auth";
+import { VipPlanItem, DEFAULT_VIP_PLANS } from "@/lib/vip-plans";
 
 interface ProfileClientProps {
   user: {
@@ -41,6 +50,8 @@ interface ProfileClientProps {
     phone: string;
     role: string;
     isVIP: boolean;
+    vipExpiresAt?: string | null;
+    vipDaysLeft?: number | null;
     createdAt: string;
     creditBalance: number;
     completedLessons: Array<{
@@ -59,10 +70,46 @@ interface ProfileClientProps {
   };
   totalCourses: number;
   totalLessons: number;
+  vipPlans?: VipPlanItem[];
+  sePayConfig?: {
+    bankName: string;
+    accountNumber: string;
+    accountHolder: string;
+    syntaxPrefix: string;
+  };
 }
 
-export default function ProfileClient({ user, totalCourses, totalLessons }: ProfileClientProps) {
+const getBankCode = (name: string) => {
+  const lower = name.toLowerCase();
+  if (lower.includes("mb")) return "MB";
+  if (lower.includes("vietcombank") || lower.includes("vcb")) return "VCB";
+  if (lower.includes("techcombank") || lower.includes("tcb")) return "TCB";
+  if (lower.includes("acb")) return "ACB";
+  if (lower.includes("vpbank") || lower.includes("vpb")) return "VPB";
+  if (lower.includes("tpbank") || lower.includes("tpb")) return "TPB";
+  if (lower.includes("bidv")) return "BIDV";
+  if (lower.includes("agribank")) return "VBA";
+  if (lower.includes("sacombank") || lower.includes("stb")) return "STB";
+  if (lower.includes("hdbank") || lower.includes("hdb")) return "HDB";
+  if (lower.includes("vib")) return "VIB";
+  if (lower.includes("shb")) return "SHB";
+  return name.replace(/\s+/g, "");
+};
+
+export default function ProfileClient({
+  user,
+  totalCourses,
+  totalLessons,
+  vipPlans = [],
+  sePayConfig,
+}: ProfileClientProps) {
   const [activeTab, setActiveTab] = useState<"vip" | "info" | "security" | "history">("vip");
+
+  // Dynamic Bank / SePay Config
+  const bankName = sePayConfig?.bankName || "MB Bank";
+  const accountNumber = sePayConfig?.accountNumber || "0358888899";
+  const accountHolder = sePayConfig?.accountHolder || "AIChoShop Official";
+  const syntaxPrefix = sePayConfig?.syntaxPrefix || "VIP";
 
   // Form State Profile
   const [name, setName] = useState(user.name);
@@ -77,54 +124,28 @@ export default function ProfileClient({ user, totalCourses, totalLessons }: Prof
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [passwordMessage, setPasswordMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  // VIP Package Selection
-  const [selectedPlan, setSelectedPlan] = useState<"month" | "year" | "lifetime">("lifetime");
+  // VIP Package Selection (Dynamic from Database)
+  const activeVipPlans: VipPlanItem[] =
+    vipPlans && vipPlans.length > 0
+      ? vipPlans.filter((p) => p.active)
+      : (DEFAULT_VIP_PLANS as unknown as VipPlanItem[]);
+
+  const defaultSelectedSlug =
+    activeVipPlans.find((p) => p.isPopular)?.slug ||
+    activeVipPlans[0]?.slug ||
+    "lifetime";
+
+  const [selectedPlan, setSelectedPlan] = useState<string>(defaultSelectedSlug);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [isRequestingVip, setIsRequestingVip] = useState(false);
   const [vipSuccessNotice, setVipSuccessNotice] = useState<string | null>(null);
 
-  interface VipPlan {
-    name: string;
-    price: number;
-    period: string;
-    originalPrice: number;
-    desc: string;
-    tag: string;
-    isPopular?: boolean;
-  }
+  const currentPlan =
+    activeVipPlans.find((p) => p.slug === selectedPlan || p.id === selectedPlan) ||
+    activeVipPlans[0] ||
+    (DEFAULT_VIP_PLANS[0] as unknown as VipPlanItem);
 
-  const vipPlans: Record<"month" | "year" | "lifetime", VipPlan> = {
-    month: {
-      name: "Gói 1 Tháng",
-      price: 299000,
-      period: "/ tháng",
-      originalPrice: 499000,
-      desc: "Trải nghiệm sức mạnh toàn bộ công cụ AI và khóa học",
-      tag: "Trải Nghiệm",
-      isPopular: false,
-    },
-    year: {
-      name: "Gói 1 Năm",
-      price: 1290000,
-      period: "/ năm",
-      originalPrice: 3588000,
-      desc: "Tiết kiệm 65%, tặng kèm bộ 100+ Prompt AI bán hàng độc quyền",
-      tag: "Tiết Kiệm 65%",
-      isPopular: false,
-    },
-    lifetime: {
-      name: "Gói Trọn Đời",
-      price: 1990000,
-      period: "vĩnh viễn",
-      originalPrice: 5990000,
-      desc: "Sở hữu vĩnh viễn, cập nhật mọi tính năng & khóa học mới trọn đời",
-      tag: "Khuyên Dùng - Phổ Biến Nhất",
-      isPopular: true,
-    },
-  };
-
-  const currentPlan = vipPlans[selectedPlan];
-  const transferContent = `VIP ${user.phone || user.email.split("@")[0]}`;
+  const transferContent = `${syntaxPrefix} ${user.phone || user.email.split("@")[0]}`;
 
   // Copy helper
   const copyToClipboard = (text: string, fieldName: string) => {
@@ -321,23 +342,21 @@ export default function ProfileClient({ user, totalCourses, totalLessons }: Prof
       <div className="flex border-b border-slate-200 overflow-x-auto custom-scrollbar gap-2">
         <button
           onClick={() => setActiveTab("vip")}
-          className={`flex items-center gap-2 py-3 px-4 font-bold text-sm border-b-2 transition-all cursor-pointer shrink-0 ${
-            activeTab === "vip"
-              ? "border-amber-500 text-amber-600 bg-amber-50/50 rounded-t-xl"
-              : "border-transparent text-slate-500 hover:text-slate-800"
-          }`}
+          className={`flex items-center gap-2 py-3 px-4 font-bold text-sm border-b-2 transition-all cursor-pointer shrink-0 ${activeTab === "vip"
+            ? "border-amber-500 text-amber-600 bg-amber-50/50 rounded-t-xl"
+            : "border-transparent text-slate-500 hover:text-slate-800"
+            }`}
         >
           <Crown size={17} className={activeTab === "vip" ? "text-amber-500" : "text-slate-400"} />
-          <span>Gói VIP & Nâng Cấp</span>
+          <span>{user.isVIP ? "Đặc Quyền VIP" : "Gói VIP & Nâng Cấp"}</span>
         </button>
 
         <button
           onClick={() => setActiveTab("info")}
-          className={`flex items-center gap-2 py-3 px-4 font-bold text-sm border-b-2 transition-all cursor-pointer shrink-0 ${
-            activeTab === "info"
-              ? "border-blue-600 text-blue-600 bg-blue-50/50 rounded-t-xl"
-              : "border-transparent text-slate-500 hover:text-slate-800"
-          }`}
+          className={`flex items-center gap-2 py-3 px-4 font-bold text-sm border-b-2 transition-all cursor-pointer shrink-0 ${activeTab === "info"
+            ? "border-blue-600 text-blue-600 bg-blue-50/50 rounded-t-xl"
+            : "border-transparent text-slate-500 hover:text-slate-800"
+            }`}
         >
           <User size={17} className={activeTab === "info" ? "text-blue-600" : "text-slate-400"} />
           <span>Thông Tin Cá Nhân</span>
@@ -345,11 +364,10 @@ export default function ProfileClient({ user, totalCourses, totalLessons }: Prof
 
         <button
           onClick={() => setActiveTab("security")}
-          className={`flex items-center gap-2 py-3 px-4 font-bold text-sm border-b-2 transition-all cursor-pointer shrink-0 ${
-            activeTab === "security"
-              ? "border-blue-600 text-blue-600 bg-blue-50/50 rounded-t-xl"
-              : "border-transparent text-slate-500 hover:text-slate-800"
-          }`}
+          className={`flex items-center gap-2 py-3 px-4 font-bold text-sm border-b-2 transition-all cursor-pointer shrink-0 ${activeTab === "security"
+            ? "border-blue-600 text-blue-600 bg-blue-50/50 rounded-t-xl"
+            : "border-transparent text-slate-500 hover:text-slate-800"
+            }`}
         >
           <Lock size={17} className={activeTab === "security" ? "text-blue-600" : "text-slate-400"} />
           <span>Đổi Mật Khẩu & Bảo Mật</span>
@@ -357,11 +375,10 @@ export default function ProfileClient({ user, totalCourses, totalLessons }: Prof
 
         <button
           onClick={() => setActiveTab("history")}
-          className={`flex items-center gap-2 py-3 px-4 font-bold text-sm border-b-2 transition-all cursor-pointer shrink-0 ${
-            activeTab === "history"
-              ? "border-blue-600 text-blue-600 bg-blue-50/50 rounded-t-xl"
-              : "border-transparent text-slate-500 hover:text-slate-800"
-          }`}
+          className={`flex items-center gap-2 py-3 px-4 font-bold text-sm border-b-2 transition-all cursor-pointer shrink-0 ${activeTab === "history"
+            ? "border-blue-600 text-blue-600 bg-blue-50/50 rounded-t-xl"
+            : "border-transparent text-slate-500 hover:text-slate-800"
+            }`}
         >
           <Clock size={17} className={activeTab === "history" ? "text-blue-600" : "text-slate-400"} />
           <span>Tiến Độ & Lịch Sử</span>
@@ -370,314 +387,822 @@ export default function ProfileClient({ user, totalCourses, totalLessons }: Prof
 
       {/* ── 3. TAB 1: VIP MEMBERSHIP & UPGRADE ───────────────────────────────────── */}
       {activeTab === "vip" && (
-        <div className="space-y-8">
-          {/* Status Alert Banner */}
+        <div className="space-y-10">
+          {/* ── A. LUXURY VIRTUAL MEMBERSHIP CARD & STATUS ────────────────────────── */}
           {user.isVIP ? (
-            <div className="p-6 rounded-2xl bg-gradient-to-r from-amber-500/10 via-yellow-500/10 to-transparent border border-amber-300/40 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-lg shadow-amber-500/20 shrink-0">
-                  <Crown size={24} />
+            /* ACTIVE VIP PRO: LUXURY BLACK & GOLD METAL CARD */
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-zinc-900 to-amber-950 p-7 sm:p-9 text-white border border-amber-500/40 shadow-2xl shadow-amber-500/10">
+              {/* Card Ambient Glows */}
+              <div className="absolute top-0 right-0 w-80 h-80 bg-amber-500/20 rounded-full blur-3xl pointer-events-none -translate-y-1/2 translate-x-1/2" />
+              <div className="absolute bottom-0 left-1/3 w-72 h-72 bg-yellow-500/15 rounded-full blur-3xl pointer-events-none" />
+
+              <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
+                {/* Left: Card Info */}
+                <div className="space-y-4 max-w-xl">
+                  <div className="flex items-center gap-3">
+                    <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-amber-500/25">
+                      <Crown size={14} className="fill-slate-950" /> AIChoShop Black Elite
+                    </span>
+                    <span className="text-xs font-bold text-amber-300/90 flex items-center gap-1.5">
+                      {user.vipExpiresAt && user.vipDaysLeft !== null ? (
+                        <>
+                          <Clock size={14} className="text-amber-400" />
+                          <span>
+                            Trạng thái: VIP PRO (Còn <strong className="text-white font-black">{user.vipDaysLeft} ngày</strong> - Đến{" "}
+                            {new Date(user.vipExpiresAt).toLocaleDateString("vi-VN")})
+                          </span>
+                        </>
+                      ) : (
+                        <>
+                          <ShieldCheck size={14} className="text-amber-400" />
+                          <span>Trạng thái: Kích hoạt vĩnh viễn (LIFETIME)</span>
+                        </>
+                      )}
+                    </span>
+                  </div>
+
+                  <div className="space-y-1">
+                    <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
+                      Chào mừng Hội Viên <span className="bg-clip-text text-transparent bg-gradient-to-r from-amber-300 via-yellow-200 to-amber-400">{user.name}</span>
+                    </h2>
+                    <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                      Bạn đang sở hữu đặc quyền tối thượng của AIChoShop: không giới hạn toàn bộ 8 công cụ AI, 100% bài giảng Masterclass và quyền truy cập nhóm kín Top Seller.
+                    </p>
+                  </div>
+
+                  {/* Card Number & EMV Chip Emulation */}
+                  <div className="flex items-center gap-4 pt-2">
+                    <div className="w-11 h-8 rounded-md bg-gradient-to-br from-amber-200 via-yellow-400 to-amber-500 shadow-inner flex items-center justify-center border border-amber-300/60">
+                      <div className="w-7 h-5 rounded border border-amber-700/40 grid grid-cols-2 gap-0.5 p-0.5">
+                        <div className="bg-amber-600/30 rounded-xs"></div>
+                        <div className="bg-amber-600/30 rounded-xs"></div>
+                      </div>
+                    </div>
+                    <div className="font-mono text-sm tracking-widest text-amber-200/90 font-bold">
+                      VIP •••• •••• {user.id.slice(-4).toUpperCase()}
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-base font-black text-slate-900">Tài Khoản Đang Kích Hoạt VIP PRO</h3>
-                  <p className="text-xs text-slate-600 mt-0.5">
-                    Bạn đang có đầy đủ mọi quyền lợi cao cấp nhất của AIChoShop: không giới hạn 8 công cụ AI và trọn bộ khóa học Masterclass.
-                  </p>
+
+                {/* Right: Quick Action Buttons */}
+                <div className="flex flex-col sm:flex-row md:flex-col gap-3 shrink-0">
+                  <Link
+                    href="/learn"
+                    className="px-5 py-3 bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 rounded-xl font-black text-xs flex items-center justify-center gap-2 transition-all shadow-lg shadow-amber-500/25 cursor-pointer"
+                  >
+                    <BookOpen size={16} className="fill-slate-950" />
+                    <span>Vào Học Masterclass</span>
+                  </Link>
+                  <Link
+                    href="/tools"
+                    className="px-5 py-3 bg-slate-800/90 hover:bg-slate-700/90 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all border border-slate-700 cursor-pointer"
+                  >
+                    <Zap size={16} className="text-amber-400" />
+                    <span>Mở Kho Công Cụ AI (8/8)</span>
+                  </Link>
+                  <a
+                    href="https://zalo.me"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-5 py-2.5 bg-blue-600/30 hover:bg-blue-600/40 text-blue-300 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all border border-blue-500/30"
+                  >
+                    <MessageCircle size={15} />
+                    <span>Nhóm Zalo VIP Support</span>
+                  </a>
                 </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <Link
-                  href="/learn"
-                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm"
-                >
-                  <BookOpen size={14} /> Vào Học Ngay
-                </Link>
-                <Link
-                  href="/tools"
-                  className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all shadow-sm shadow-amber-500/20"
-                >
-                  <Zap size={14} /> Dùng AI Tools
-                </Link>
               </div>
             </div>
           ) : (
-            <div className="p-6 rounded-2xl bg-gradient-to-r from-blue-600/10 via-indigo-600/10 to-transparent border border-blue-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-lg shadow-blue-500/20 shrink-0">
-                  <Sparkles size={24} />
+            /* FREE MEMBER: INVITATION TO VIP CLUB */
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 p-7 sm:p-9 text-white border border-indigo-500/30 shadow-2xl">
+              <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/15 rounded-full blur-3xl pointer-events-none -translate-y-1/2 translate-x-1/2" />
+              <div className="absolute bottom-0 left-1/4 w-80 h-80 bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
+
+              <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+                <div className="space-y-3 max-w-2xl">
+
+                  <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight leading-tight">
+                    Nâng Cấp <span className="bg-clip-text text-transparent bg-gradient-to-r from-amber-400 via-yellow-200 to-amber-300">VIP PRO MEMBER</span> – Bứt Phá Doanh Số TMĐT
+                  </h2>
+
+                  <p className="text-xs sm:text-sm text-slate-300 leading-relaxed">
+                    Bạn hiện đang sử dụng gói <strong>FREE</strong> với tính năng giới hạn. Gia nhập cộng đồng VIP Seller để mở khóa không giới hạn trọn bộ 8 công cụ AI bán hàng, 100% video thực chiến và nhận hỗ trợ 1-1 độc quyền.
+                  </p>
+
+                  <div className="flex flex-wrap items-center gap-4 pt-1 text-xs text-amber-200/90 font-medium">
+                    <span className="flex items-center gap-1.5"><CheckCircle2 size={15} className="text-emerald-400" /> Không giới hạn lượt AI</span>
+                    <span className="flex items-center gap-1.5"><CheckCircle2 size={15} className="text-emerald-400" /> Mở toàn bộ 27 bài giảng</span>
+                    <span className="flex items-center gap-1.5"><CheckCircle2 size={15} className="text-emerald-400" /> Hỗ trợ kỹ thuật 1-1</span>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-base font-black text-slate-900">Nâng Cấp VIP PRO Để Mở Khóa Trọn Bộ</h3>
-                  <p className="text-xs text-slate-600 mt-0.5">
-                    Mở khóa không giới hạn 8 công cụ AI bán hàng Shopee/TikTok và toàn bộ bài giảng thực chiến từ chuyên gia.
+
+                <div className="flex flex-col sm:flex-row lg:flex-col gap-3 shrink-0">
+                  <a
+                    href="#pricing-section"
+                    className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 font-black text-sm transition-all shadow-xl shadow-amber-500/25 flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    <Crown size={17} className="fill-slate-950" />
+                    <span>Xem Các Gói Nâng Cấp VIP</span>
+                  </a>
+                  <p className="text-[11px] text-center text-slate-400">
+                    ⚡ Kích hoạt tự động sau 1 - 3 phút
                   </p>
                 </div>
               </div>
             </div>
           )}
 
-          {/* Pricing Cards */}
-          <div>
-            <div className="text-center max-w-xl mx-auto mb-8 space-y-1">
-              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                Chọn Gói VIP Phù Hợp Với Bạn
-              </h2>
+          {/* ── B. SO SÁNH QUYỀN LỢI FREE VS VIP PRO (MINI STRIP) ───────────────────── */}
+          {!user.isVIP && (
+            <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm">
+              <div className="text-xs font-black uppercase tracking-wider text-slate-400 mb-4 flex items-center gap-2">
+                <Shield size={14} className="text-blue-600" /> So sánh nhanh quyền lợi tài khoản
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/60 space-y-1">
+                  <span className="text-xs font-bold text-slate-600 block">Công cụ AI Bán Hàng</span>
+                  <div className="text-xs text-slate-500 flex items-center justify-between">
+                    <span>Free: 3 lượt/ngày</span>
+                    <span className="font-bold text-emerald-600">VIP: Không giới hạn</span>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/60 space-y-1">
+                  <span className="text-xs font-bold text-slate-600 block">Video Masterclass</span>
+                  <div className="text-xs text-slate-500 flex items-center justify-between">
+                    <span>Free: 12 bài cơ bản</span>
+                    <span className="font-bold text-emerald-600">VIP: 27 bài chuyên sâu</span>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/60 space-y-1">
+                  <span className="text-xs font-bold text-slate-600 block">Kho Prompt Bán Hàng</span>
+                  <div className="text-xs text-slate-500 flex items-center justify-between">
+                    <span>Free: Giới hạn</span>
+                    <span className="font-bold text-emerald-600">VIP: Tặng 200+ mẫu</span>
+                  </div>
+                </div>
+
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/60 space-y-1">
+                  <span className="text-xs font-bold text-slate-600 block">Tốc Độ Xử Lý & Support</span>
+                  <div className="text-xs text-slate-500 flex items-center justify-between">
+                    <span>Free: Tiêu chuẩn</span>
+                    <span className="font-bold text-emerald-600">VIP: Server riêng & 1-1</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── C. LƯỚI 6 ĐẶC QUYỀN VÀNG HỘI VIÊN (THE 6 GOLDEN PERKS) ─────────────── */}
+          <div className="space-y-5">
+            <div className="text-center max-w-2xl mx-auto space-y-1.5">
+              <span
+                className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider ${user.isVIP ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
+                  }`}
+              >
+                <Crown size={12} className={user.isVIP ? "fill-emerald-800" : "fill-amber-800"} />
+                {user.isVIP ? "Đặc Quyền Đang Kích Hoạt" : "Đặc Quyền Thượng Lưu"}
+              </span>
+              <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+                {user.isVIP
+                  ? "6 Đặc Quyền Vàng Đang Mở Khóa Trên Tài Khoản Của Bạn"
+                  : "6 Đặc Quyền Vàng Khi Gia Nhập VIP Member"}
+              </h3>
               <p className="text-xs sm:text-sm text-slate-500">
-                Đầu tư 1 lần – Tăng tốc doanh số bán hàng TMĐT bền vững cùng hệ thống AI hàng đầu.
+                {user.isVIP
+                  ? "Bạn đang sở hữu trọn vẹn đặc quyền cao cấp nhất, không giới hạn lượt dùng AI và toàn bộ kho tài nguyên thực chiến của AIChoShop."
+                  : "Toàn bộ vũ khí bán hàng đỉnh cao giúp bạn tiết kiệm hàng chục giờ mỗi tuần và bứt phá doanh thu."}
               </p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {(Object.keys(vipPlans) as Array<keyof typeof vipPlans>).map((key) => {
-                const plan = vipPlans[key];
-                const isSelected = selectedPlan === key;
-
-                return (
-                  <div
-                    key={key}
-                    onClick={() => setSelectedPlan(key)}
-                    className={`relative rounded-3xl p-6 sm:p-7 transition-all cursor-pointer flex flex-col justify-between border-2 ${
-                      isSelected
-                        ? "border-amber-500 bg-white shadow-xl shadow-amber-500/10 scale-[1.02]"
-                        : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-md"
-                    }`}
-                  >
-                    {plan.isPopular && (
-                      <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black text-[11px] px-3.5 py-1 rounded-full uppercase tracking-wider shadow-md">
-                        {plan.tag}
-                      </div>
-                    )}
-
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-black text-lg text-slate-900">{plan.name}</h3>
-                        {!plan.isPopular && (
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
-                            {plan.tag}
-                          </span>
-                        )}
-                      </div>
-
-                      <p className="text-xs text-slate-500 min-h-[32px]">{plan.desc}</p>
-
-                      <div className="pt-2 border-t border-slate-100">
-                        <div className="text-xs text-slate-400 line-through">
-                          {plan.originalPrice.toLocaleString("vi-VN")} đ
-                        </div>
-                        <div className="flex items-baseline gap-1.5 mt-0.5">
-                          <span className="text-3xl font-black text-slate-900">
-                            {plan.price.toLocaleString("vi-VN")}
-                          </span>
-                          <span className="text-sm font-bold text-slate-500">đ {plan.period}</span>
-                        </div>
-                      </div>
-
-                      {/* Benefits Checklist */}
-                      <div className="space-y-2.5 pt-4 text-xs">
-                        <div className="flex items-center gap-2 text-slate-700">
-                          <Check size={15} className="text-emerald-500 shrink-0" />
-                          <span>Mở khóa toàn bộ 8 công cụ AI bán hàng</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-slate-700">
-                          <Check size={15} className="text-emerald-500 shrink-0" />
-                          <span>Xem toàn bộ video Masterclass chuyên sâu</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-slate-700">
-                          <Check size={15} className="text-emerald-500 shrink-0" />
-                          <span>Xuất file Excel tính giá & thuế nhanh chóng</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-slate-700">
-                          <Check size={15} className="text-emerald-500 shrink-0" />
-                          <span>Hỗ trợ kỹ thuật viên 1-1 qua Zalo</span>
-                        </div>
-                        {key === "lifetime" && (
-                          <div className="flex items-center gap-2 font-bold text-amber-700">
-                            <Sparkles size={15} className="text-amber-500 shrink-0" />
-                            <span>Cập nhật miễn phí tính năng trọn đời</span>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <button
-                      className={`w-full mt-6 py-2.5 rounded-xl font-black text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
-                        isSelected
-                          ? "bg-amber-500 hover:bg-amber-600 text-slate-950 shadow-md shadow-amber-500/20"
-                          : "bg-slate-100 hover:bg-slate-200 text-slate-700"
-                      }`}
-                    >
-                      {isSelected ? <Check size={15} /> : null}
-                      <span>{isSelected ? "Đang chọn gói này" : "Chọn gói này"}</span>
-                    </button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+              {/* Perk 1 */}
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-amber-400 hover:shadow-lg hover:shadow-amber-500/5 transition-all space-y-3 group">
+                <div className="flex items-center justify-between">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-400 text-slate-950 flex items-center justify-center shadow-md shadow-amber-500/20 group-hover:scale-105 transition-transform">
+                    <Zap size={22} className="fill-slate-950" />
                   </div>
-                );
-              })}
+                  {user.isVIP && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/60 shadow-xs">
+                      <CheckCircle2 size={12} className="text-emerald-500" /> Đã mở khóa
+                    </span>
+                  )}
+                </div>
+                <h4 className="font-black text-slate-900 text-base">8 Siêu Công Cụ AI Không Giới Hạn</h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Sử dụng trọn vẹn AI viết kịch bản video TikTok 15s-60s triệu view, tính giá & thuế sàn chuẩn 100%, SEO giật Top 1 Shopee, kháng nghị vi phạm tài khoản.
+                </p>
+              </div>
+
+              {/* Perk 2 */}
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-amber-400 hover:shadow-lg hover:shadow-amber-500/5 transition-all space-y-3 group">
+                <div className="flex items-center justify-between">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white flex items-center justify-center shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
+                    <BookOpen size={22} />
+                  </div>
+                  {user.isVIP && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/60 shadow-xs">
+                      <CheckCircle2 size={12} className="text-emerald-500" /> Đã mở khóa
+                    </span>
+                  )}
+                </div>
+                <h4 className="font-black text-slate-900 text-base">Trọn Bộ Video Masterclass Thực Chiến</h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Mở khóa 100% video bài giảng từ cơ bản đến chuyên sâu của Masterclass. Học trực tiếp quy trình tìm hàng win, tối ưu shop chuẩn thuật toán 2026.
+                </p>
+              </div>
+
+              {/* Perk 3 */}
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-amber-400 hover:shadow-lg hover:shadow-amber-500/5 transition-all space-y-3 group">
+                <div className="flex items-center justify-between">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-purple-600 to-violet-500 text-white flex items-center justify-center shadow-md shadow-purple-500/20 group-hover:scale-105 transition-transform">
+                    <Gift size={22} />
+                  </div>
+                  {user.isVIP && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/60 shadow-xs">
+                      <CheckCircle2 size={12} className="text-emerald-500" /> Đã mở khóa
+                    </span>
+                  )}
+                </div>
+                <h4 className="font-black text-slate-900 text-base">Kho 200+ Prompt AI Chốt Đơn</h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Tặng bộ câu lệnh AI bản quyền chuẩn chỉnh &quot;Copy & Paste&quot; chuyên dùng để viết mô tả sản phẩm, kịch bản livestream và nội dung quảng cáo đa nền tảng.
+                </p>
+              </div>
+
+              {/* Perk 4 */}
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-amber-400 hover:shadow-lg hover:shadow-amber-500/5 transition-all space-y-3 group">
+                <div className="flex items-center justify-between">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-md shadow-emerald-500/20 group-hover:scale-105 transition-transform">
+                    <Rocket size={22} />
+                  </div>
+                  {user.isVIP && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/60 shadow-xs">
+                      <CheckCircle2 size={12} className="text-emerald-500" /> Đã mở khóa
+                    </span>
+                  )}
+                </div>
+                <h4 className="font-black text-slate-900 text-base">Hạ Tầng Server Riêng Tốc Độ Cao</h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Được định tuyến qua cụm máy chủ AI riêng biệt. Tốc độ sinh nội dung dưới 1 giây, cam kết không giật lag hoặc nghẽn mạng ngay cả trong giờ Mega Sale sàn.
+                </p>
+              </div>
+
+              {/* Perk 5 */}
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-amber-400 hover:shadow-lg hover:shadow-amber-500/5 transition-all space-y-3 group">
+                <div className="flex items-center justify-between">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-rose-600 to-pink-500 text-white flex items-center justify-center shadow-md shadow-rose-500/20 group-hover:scale-105 transition-transform">
+                    <Flame size={22} />
+                  </div>
+                  {user.isVIP && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/60 shadow-xs">
+                      <CheckCircle2 size={12} className="text-emerald-500" /> Đã mở khóa
+                    </span>
+                  )}
+                </div>
+                <h4 className="font-black text-slate-900 text-base">Nhóm Kín Top Seller Thực Chiến</h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Quyền tham gia cộng đồng Zalo/Telegram VIP kín cùng hàng trăm chủ shop TMĐT doanh thu hàng trăm triệu. Giao lưu, kết nối nguồn hàng và học hỏi kinh nghiệm.
+                </p>
+              </div>
+
+              {/* Perk 6 */}
+              <div className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-amber-400 hover:shadow-lg hover:shadow-amber-500/5 transition-all space-y-3 group">
+                <div className="flex items-center justify-between">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-slate-900 to-slate-700 text-white flex items-center justify-center shadow-md shadow-slate-900/20 group-hover:scale-105 transition-transform">
+                    <ShieldCheck size={22} className="text-amber-400" />
+                  </div>
+                  {user.isVIP && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/60 shadow-xs">
+                      <CheckCircle2 size={12} className="text-emerald-500" /> Đã mở khóa
+                    </span>
+                  )}
+                </div>
+                <h4 className="font-black text-slate-900 text-base">Kỹ Thuật Viên Hỗ Trợ 1-1</h4>
+                <p className="text-xs text-slate-500 leading-relaxed">
+                  Ưu tiên nhận hỗ trợ kỹ thuật viên đồng hành qua Zalo/UltraViewer. Giải đáp mọi thắc mắc về cách dùng công cụ, biểu phí sàn và tối ưu gian hàng.
+                </p>
+              </div>
             </div>
           </div>
 
-          {/* Payment & QR Section */}
-          <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
-              <div>
-                <span className="text-xs font-black uppercase tracking-wider text-amber-600 bg-amber-50 px-2.5 py-1 rounded-md">
-                  Cổng thanh toán tự động
-                </span>
-                <h3 className="text-xl font-black text-slate-900 mt-2">
-                  Hướng Dẫn Chuyển Khoản Kích Hoạt {currentPlan.name}
-                </h3>
-                <p className="text-xs text-slate-500 mt-1">
-                  Quét mã QR bằng App Ngân Hàng bất kỳ. Hệ thống sẽ tự động điền đúng Số Tiền và Cú Pháp chuyển khoản.
-                </p>
-              </div>
+          {/* ── D-VIP. DÀNH RIÊNG CHO VIP: HẠ TẦNG DEDICATED SERVER & HỖ TRỢ CONCIERGE ── */}
+          {user.isVIP && (
+            <div className="space-y-8">
+              {/* Server Performance Card */}
+              <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-zinc-900 to-slate-900 p-6 sm:p-8 text-white border border-amber-500/30 shadow-xl">
+                <div className="absolute -top-24 -right-24 w-72 h-72 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+                <div className="relative z-10 space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-slate-800">
+                    <div>
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-500/15 text-amber-300 border border-amber-500/30 font-black text-xs uppercase tracking-wider">
+                        <Server size={13} className="text-amber-400" /> Cụm Máy Chủ Dedicated VIP Node
+                      </span>
+                      <h3 className="text-xl sm:text-2xl font-black text-white mt-2">
+                        Hạ Tầng Tốc Độ Cao & Trạng Thái Tài Nguyên VIP
+                      </h3>
+                      <p className="text-xs text-slate-400 mt-0.5">
+                        Tài khoản của bạn được cấp phân luồng ưu tiên độc quyền, tối ưu hóa tốc độ xử lý cho Seller quy mô lớn.
+                      </p>
+                    </div>
 
-              <div className="flex items-center gap-2">
-                <a
-                  href="https://zalo.me"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-4 py-2 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold text-xs flex items-center gap-1.5 transition-colors"
-                >
-                  <MessageCircle size={15} /> Hỗ trợ Zalo 24/7
-                </a>
-              </div>
-            </div>
-
-            {vipSuccessNotice && (
-              <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-3">
-                <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
-                <span>{vipSuccessNotice}</span>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-              {/* QR Code Column */}
-              <div className="lg:col-span-4 flex flex-col items-center justify-center p-6 bg-slate-50 rounded-2xl border border-slate-100">
-                <div className="bg-white p-3 rounded-2xl shadow-md border border-slate-200/80">
-                  {/* VietQR dynamic generation */}
-                  <img
-                    src={`https://img.vietqr.io/image/MB-0358888899-compact2.png?amount=${currentPlan.price}&addInfo=${encodeURIComponent(
-                      transferContent
-                    )}&accountName=AIChoShop`}
-                    alt="VietQR Chuyển khoản VIP AIChoShop"
-                    className="w-52 h-52 object-contain rounded-xl"
-                  />
-                </div>
-                <p className="text-[11px] font-bold text-slate-500 mt-3 flex items-center gap-1">
-                  <QrCode size={13} /> Quét mã để tự động điền nội dung
-                </p>
-              </div>
-
-              {/* Transfer Details Column */}
-              <div className="lg:col-span-8 space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/60">
-                    <span className="text-xs font-semibold text-slate-400 block">Ngân Hàng</span>
-                    <span className="text-sm font-black text-slate-900 mt-0.5 block">
-                      MB Bank (Ngân Hàng Quân Đội)
-                    </span>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <span className="relative flex h-3 w-3">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                      </span>
+                      <span className="text-xs font-bold text-emerald-400">100% Sẵn Sàng</span>
+                    </div>
                   </div>
 
-                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-between">
-                    <div>
-                      <span className="text-xs font-semibold text-slate-400 block">Số Tài Khoản</span>
-                      <span className="text-base font-black text-blue-600 tracking-wider mt-0.5 block">
-                        0358888899
+                  {/* 4 Infrastructure Metrics */}
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
+                      <span className="text-xs text-slate-400 font-medium block">Cụm Máy Chủ AI</span>
+                      <span className="text-sm sm:text-base font-black text-amber-300 block">
+                        SG-PRO-01 (Tier-3)
+                      </span>
+                      <span className="text-[11px] text-emerald-400 flex items-center gap-1 font-semibold">
+                        <CheckCircle2 size={12} /> Băng thông riêng
                       </span>
                     </div>
-                    <button
-                      onClick={() => copyToClipboard("0358888899", "account")}
-                      className="px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-600 text-xs font-bold border border-slate-200 transition-all cursor-pointer flex items-center gap-1"
-                    >
-                      {copiedField === "account" ? (
-                        <Check size={13} className="text-emerald-600" />
-                      ) : (
-                        <Copy size={13} />
-                      )}
-                      <span>{copiedField === "account" ? "Đã chép" : "Chép STK"}</span>
-                    </button>
-                  </div>
 
-                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/60">
-                    <span className="text-xs font-semibold text-slate-400 block">Chủ Tài Khoản</span>
-                    <span className="text-sm font-black text-slate-900 mt-0.5 block uppercase">
-                      AIChoShop Official
-                    </span>
-                  </div>
-
-                  <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/60 flex items-center justify-between">
-                    <div>
-                      <span className="text-xs font-semibold text-slate-400 block">Số Tiền</span>
-                      <span className="text-base font-black text-emerald-600 mt-0.5 block">
-                        {currentPlan.price.toLocaleString("vi-VN")} đ
+                    <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
+                      <span className="text-xs text-slate-400 font-medium block">Tốc Độ Xử Lý</span>
+                      <span className="text-sm sm:text-base font-black text-emerald-400 block">
+                        &lt; 1.2 Giây
+                      </span>
+                      <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                        <Zap size={12} className="text-amber-400" /> Luồng ưu tiên cực đại
                       </span>
                     </div>
-                    <button
-                      onClick={() => copyToClipboard(currentPlan.price.toString(), "amount")}
-                      className="px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-600 text-xs font-bold border border-slate-200 transition-all cursor-pointer flex items-center gap-1"
-                    >
-                      {copiedField === "amount" ? (
-                        <Check size={13} className="text-emerald-600" />
-                      ) : (
-                        <Copy size={13} />
-                      )}
-                      <span>{copiedField === "amount" ? "Đã chép" : "Chép"}</span>
-                    </button>
+
+                    <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
+                      <span className="text-xs text-slate-400 font-medium block">Hạn Mức AI Tokens</span>
+                      <span className="text-sm sm:text-base font-black text-white block">
+                        Không Giới Hạn
+                      </span>
+                      <span className="text-[11px] text-amber-400 flex items-center gap-1 font-semibold">
+                        <Infinity size={12} /> Unlimited Runs
+                      </span>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-slate-900/80 border border-slate-800 space-y-1">
+                      <span className="text-xs text-slate-400 font-medium block">Bảo Hành Bản Quyền</span>
+                      <span className="text-sm sm:text-base font-black text-amber-400 block">
+                        Trọn Đời (Lifetime)
+                      </span>
+                      <span className="text-[11px] text-slate-400 flex items-center gap-1">
+                        <ShieldCheck size={12} className="text-emerald-400" /> Cập nhật vĩnh viễn
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* 3 Value Commitments */}
+                  <div className="pt-2 border-t border-slate-800/80 grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs text-slate-300">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 size={16} className="text-amber-400 shrink-0" />
+                      <span>Thuật toán Shopee / TikTok 2026 cập nhật liên tục</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 size={16} className="text-amber-400 shrink-0" />
+                      <span>Miễn phí 100% tính năng AI mới phát triển trong tương lai</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 size={16} className="text-amber-400 shrink-0" />
+                      <span>Bảo mật tuyệt đối dữ liệu doanh thu & sản phẩm shop</span>
+                    </div>
                   </div>
                 </div>
+              </div>
 
-                {/* Important Transfer Content */}
-                <div className="p-4 rounded-2xl bg-amber-50 border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                  <div>
-                    <span className="text-xs font-bold text-amber-900 block">
-                      ⚠️ Nội dung chuyển khoản (Bắt buộc chính xác):
-                    </span>
-                    <span className="text-lg font-black text-amber-700 tracking-wider font-mono mt-0.5 block">
-                      {transferContent}
-                    </span>
+              {/* VIP Concierge Support & Top Seller Community */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* 1-1 Dedicated Technician */}
+                <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-7 shadow-sm space-y-4 flex flex-col justify-between hover:border-amber-400 transition-all">
+                  <div className="space-y-3">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-200">
+                      <Headphones size={24} />
+                    </div>
+                    <div>
+                      <h4 className="font-black text-lg text-slate-900">
+                        Kênh Hỗ Trợ Kỹ Thuật Viên 1-1
+                      </h4>
+                      <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                        Bạn có đặc quyền liên hệ trực tiếp với chuyên gia AIChoShop qua Zalo / UltraViewer để được hướng dẫn sử dụng công cụ, kiểm tra lỗi bài đăng hoặc tối ưu SEO sản phẩm.
+                      </p>
+                    </div>
                   </div>
-                  <button
-                    onClick={() => copyToClipboard(transferContent, "content")}
-                    className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs transition-all shadow-sm cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
-                  >
-                    {copiedField === "content" ? (
-                      <Check size={14} className="text-slate-950" />
-                    ) : (
-                      <Copy size={14} />
-                    )}
-                    <span>{copiedField === "content" ? "Đã chép cú pháp" : "Chép Cú Pháp"}</span>
-                  </button>
-                </div>
-
-                {/* Action Confirmation Button */}
-                <div className="pt-2 flex flex-col sm:flex-row gap-3">
-                  <button
-                    onClick={handleRequestVip}
-                    disabled={isRequestingVip}
-                    className="flex-1 py-3 px-5 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md"
-                  >
-                    {isRequestingVip ? (
-                      <RefreshCw size={15} className="animate-spin" />
-                    ) : (
-                      <CheckCircle2 size={15} />
-                    )}
-                    <span>Tôi Đã Chuyển Khoản Xong</span>
-                  </button>
 
                   <a
-                    href={`https://zalo.me?text=${encodeURIComponent(
-                      `Chào Admin AIChoShop, mình đã chuyển khoản nâng cấp ${currentPlan.name} với nội dung: ${transferContent}. Nhờ admin kiểm tra kích hoạt giúp mình nhé!`
-                    )}`}
+                    href="https://zalo.me"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="py-3 px-5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md shadow-blue-500/20"
+                    className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-xs flex items-center justify-center gap-2 transition-all shadow-md shadow-amber-500/20 cursor-pointer"
                   >
-                    <MessageCircle size={15} />
-                    <span>Báo Admin Duyệt Ngay Qua Zalo</span>
+                    <MessageCircle size={16} className="fill-slate-950" />
+                    <span>Nhắn Zalo Kỹ Thuật Viên Ưu Tiên</span>
+                  </a>
+                </div>
+
+                {/* VIP Seller Community */}
+                <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-7 shadow-sm space-y-4 flex flex-col justify-between hover:border-blue-400 transition-all">
+                  <div className="space-y-3">
+                    <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-200">
+                      <Flame size={24} />
+                    </div>
+                    <div>
+                      <h4 className="font-black text-lg text-slate-900">
+                        Nhóm Kín Top Seller TMĐT Doanh Thu Cao
+                      </h4>
+                      <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                        Giao lưu, chia sẻ nguồn hàng sỉ tận gốc và nắm bắt kịp thời các chiến dịch Mega Sale cùng hàng trăm chủ shop TMĐT hàng đầu trong mạng lưới VIP AIChoShop.
+                      </p>
+                    </div>
+                  </div>
+
+                  <a
+                    href="https://zalo.me"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-3.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md shadow-blue-500/20 cursor-pointer"
+                  >
+                    <ExternalLink size={16} />
+                    <span>Tham Gia Nhóm Kín VIP Seller</span>
                   </a>
                 </div>
               </div>
+
+              {/* VIP Quick Launchpad */}
+              <div className="space-y-4 pt-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                      <Rocket size={18} className="text-amber-500" /> Bệ Phóng Công Cụ & Bài Giảng VIP
+                    </h3>
+                    <p className="text-xs text-slate-500">
+                      Truy cập nhanh vào các vũ khí bán hàng đỉnh cao đã mở khóa trên tài khoản của bạn.
+                    </p>
+                  </div>
+                  <Link
+                    href="/tools"
+                    className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                  >
+                    <span>Xem tất cả 8 công cụ</span>
+                    <ArrowRight size={14} />
+                  </Link>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <Link
+                    href="/tools/tiktok-script"
+                    className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-amber-400 hover:shadow-md transition-all group block"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                      <Zap size={20} />
+                    </div>
+                    <h4 className="font-bold text-sm text-slate-900 group-hover:text-amber-600 transition-colors">
+                      Kịch Bản Video TikTok
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Tạo kịch bản video bán hàng 15s-60s chuẩn thuật toán giữ chân triệu view.
+                    </p>
+                  </Link>
+
+                  <Link
+                    href="/tools/seo-optimizer"
+                    className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-blue-400 hover:shadow-md transition-all group block"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                      <Sparkles size={20} />
+                    </div>
+                    <h4 className="font-bold text-sm text-slate-900 group-hover:text-blue-600 transition-colors">
+                      SEO Sản Phẩm Shopee
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Quét từ khóa hot search, tối ưu tiêu đề và mô tả leo Top 1 tìm kiếm.
+                    </p>
+                  </Link>
+
+                  <Link
+                    href="/tools/tax-calculator"
+                    className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-emerald-400 hover:shadow-md transition-all group block"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                      <CreditCard size={20} />
+                    </div>
+                    <h4 className="font-bold text-sm text-slate-900 group-hover:text-emerald-600 transition-colors">
+                      Tính Giá Bán & Thuế Sàn
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Tự động tính biểu phí sàn và thuế TNCN 2026, xuất file Excel chuyên nghiệp.
+                    </p>
+                  </Link>
+
+                  <Link
+                    href="/learn"
+                    className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-purple-400 hover:shadow-md transition-all group block"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                      <BookOpen size={20} />
+                    </div>
+                    <h4 className="font-bold text-sm text-slate-900 group-hover:text-purple-600 transition-colors">
+                      Khóa Học Masterclass
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Mở khóa toàn bộ 27 bài giảng thực chiến từ cơ bản tới nâng cao.
+                    </p>
+                  </Link>
+                </div>
+              </div>
             </div>
-          </div>
+          )}
+
+          {/* ── D-FREE. DÀNH RIÊNG CHO FREE: BỘ 3 GÓI NÂNG CẤP & CỔNG THANH TOÁN VIETQR ── */}
+          {!user.isVIP && (
+            <>
+              {/* ── D. BỘ 3 GÓI NÂNG CẤP VIP (PRICING SECTION) ─────────────────────────── */}
+              <div id="pricing-section" className="space-y-6 pt-4 scroll-mt-6">
+                <div className="text-center max-w-xl mx-auto space-y-1.5">
+                  <span className="text-xs font-black uppercase tracking-wider text-amber-600 bg-amber-50 px-3 py-1 rounded-md">
+                    Bảng Giá Minh Bạch
+                  </span>
+                  <h3 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                    Chọn Gói VIP Phù Hợp Với Bạn
+                  </h3>
+                  <p className="text-xs sm:text-sm text-slate-500">
+                    Đầu tư 1 lần – Nhân bản doanh số bền vững. Chọn gói bên dưới để kích hoạt ngay.
+                  </p>
+                </div>
+
+                <div className={`grid grid-cols-1 md:grid-cols-${Math.min(activeVipPlans.length, 3)} gap-6`}>
+                  {activeVipPlans.map((plan) => {
+                    const isSelected = selectedPlan === plan.slug || selectedPlan === plan.id;
+
+                    return (
+                      <div
+                        key={plan.id || plan.slug}
+                        onClick={() => setSelectedPlan(plan.slug || plan.id)}
+                        className={`relative rounded-3xl p-6 sm:p-7 transition-all cursor-pointer flex flex-col justify-between border-2 ${isSelected
+                          ? "border-amber-500 bg-white shadow-2xl shadow-amber-500/15 scale-[1.03] z-10"
+                          : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-md"
+                          }`}
+                      >
+                        {plan.isPopular && (
+                          <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 font-black text-[11px] px-4 py-1 rounded-full uppercase tracking-wider shadow-md shadow-amber-500/30 flex items-center gap-1">
+                            <Star size={12} className="fill-slate-950" /> {plan.tag || "Best-Seller"}
+                          </div>
+                        )}
+
+                        <div className="space-y-4">
+                          <div className="flex items-center justify-between">
+                            <h4 className="font-black text-lg text-slate-900">{plan.name}</h4>
+                            {!plan.isPopular && plan.tag && (
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                                {plan.tag}
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="text-xs text-slate-500 min-h-[32px] leading-relaxed">{plan.desc}</p>
+
+                          <div className="pt-3 border-t border-slate-100">
+                            {plan.originalPrice > plan.price && (
+                              <div className="text-xs text-slate-400 line-through">
+                                {plan.originalPrice.toLocaleString("vi-VN")} đ
+                              </div>
+                            )}
+                            <div className="flex items-baseline gap-1.5 mt-0.5">
+                              <span className="text-3xl font-black text-slate-900">
+                                {plan.price.toLocaleString("vi-VN")}
+                              </span>
+                              <span className="text-sm font-bold text-slate-500">đ {plan.period}</span>
+                            </div>
+                          </div>
+
+                          {/* Benefits Checklist */}
+                          <div className="space-y-2.5 pt-4 text-xs">
+                            {plan.features && plan.features.length > 0 ? (
+                              plan.features.map((feat, fIdx) => (
+                                <div key={fIdx} className="flex items-center gap-2 text-slate-700">
+                                  <Check size={15} className="text-emerald-500 shrink-0" />
+                                  <span>{feat}</span>
+                                </div>
+                              ))
+                            ) : (
+                              <>
+                                <div className="flex items-center gap-2 text-slate-700">
+                                  <Check size={15} className="text-emerald-500 shrink-0" />
+                                  <span>Không giới hạn 8 công cụ AI bán hàng</span>
+                                </div>
+                                <div className="flex items-center gap-2 text-slate-700">
+                                  <Check size={15} className="text-emerald-500 shrink-0" />
+                                  <span>Mở khóa toàn bộ 27 video Masterclass</span>
+                                </div>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        <button
+                          className={`w-full mt-6 py-3 rounded-xl font-black text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer ${isSelected
+                            ? "bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 shadow-md shadow-amber-500/25"
+                            : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                            }`}
+                        >
+                          {isSelected ? <Check size={15} className="stroke-[3]" /> : null}
+                          <span>{isSelected ? "Đang chọn gói này" : "Chọn gói này"}</span>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* ── E. MODULE THANH TOÁN TỰ ĐỘNG VIETQR 2 CỘT ───────────────────────────── */}
+              <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-6">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
+                  <div>
+                    <span className="text-xs font-black uppercase tracking-wider text-amber-600 bg-amber-50 px-2.5 py-1 rounded-md">
+                      Cổng Thanh Toán Tự Động 24/7
+                    </span>
+                    <h3 className="text-xl font-black text-slate-900 mt-2">
+                      Hướng Dẫn Chuyển Khoản Kích Hoạt {currentPlan.name}
+                    </h3>
+                    <p className="text-xs text-slate-500 mt-1">
+                      Mở App Ngân Hàng bất kỳ và quét mã QR bên dưới. Hệ thống sẽ tự động điền Số Tài Khoản, Số Tiền và Cú Pháp chính xác.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <a
+                      href="https://zalo.me"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2.5 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                    >
+                      <MessageCircle size={16} />
+                      <span>Hỗ trợ Zalo 24/7</span>
+                    </a>
+                  </div>
+                </div>
+
+                {vipSuccessNotice && (
+                  <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-3">
+                    <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
+                    <span className="font-medium">{vipSuccessNotice}</span>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                  {/* QR Code Column */}
+                  <div className="lg:col-span-4 flex flex-col items-center justify-center p-6 bg-slate-50 rounded-2xl border border-slate-200/80">
+                    <div className="bg-white p-3 rounded-2xl shadow-lg border border-slate-200">
+                      <img
+                        src={`https://img.vietqr.io/image/${getBankCode(bankName)}-${accountNumber}-compact2.png?amount=${currentPlan.price}&addInfo=${encodeURIComponent(
+                          transferContent
+                        )}&accountName=${encodeURIComponent(accountHolder)}`}
+                        alt={`VietQR ${bankName} Chuyển khoản VIP AIChoShop`}
+                        className="w-52 h-52 object-contain rounded-xl"
+                      />
+                    </div>
+                    <p className="text-[11px] font-bold text-slate-500 mt-3 flex items-center gap-1">
+                      <QrCode size={14} className="text-blue-600" /> Quét mã để tự động điền đúng nội dung
+                    </p>
+                    <span className="text-[10px] text-slate-400 mt-0.5">Hỗ trợ hơn 40+ ứng dụng ngân hàng</span>
+                  </div>
+
+                  {/* Transfer Details Column */}
+                  <div className="lg:col-span-8 space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/70">
+                        <span className="text-xs font-semibold text-slate-400 block">Ngân Hàng Nhận</span>
+                        <span className="text-sm font-black text-slate-900 mt-0.5 block">
+                          {bankName}
+                        </span>
+                      </div>
+
+                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/70 flex items-center justify-between">
+                        <div>
+                          <span className="text-xs font-semibold text-slate-400 block">Số Tài Khoản</span>
+                          <span className="text-base font-black text-blue-600 tracking-wider mt-0.5 block font-mono">
+                            {accountNumber}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => copyToClipboard(accountNumber, "account")}
+                          className="px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold border border-slate-200 transition-all cursor-pointer flex items-center gap-1"
+                        >
+                          {copiedField === "account" ? (
+                            <Check size={13} className="text-emerald-600" />
+                          ) : (
+                            <Copy size={13} />
+                          )}
+                          <span>{copiedField === "account" ? "Đã chép" : "Chép STK"}</span>
+                        </button>
+                      </div>
+
+                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/70">
+                        <span className="text-xs font-semibold text-slate-400 block">Chủ Tài Khoản</span>
+                        <span className="text-sm font-black text-slate-900 mt-0.5 block uppercase">
+                          {accountHolder}
+                        </span>
+                      </div>
+
+                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/70 flex items-center justify-between">
+                        <div>
+                          <span className="text-xs font-semibold text-slate-400 block">Số Tiền Chuyển Khoản</span>
+                          <span className="text-base font-black text-emerald-600 mt-0.5 block">
+                            {currentPlan.price.toLocaleString("vi-VN")} đ
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => copyToClipboard(currentPlan.price.toString(), "amount")}
+                          className="px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold border border-slate-200 transition-all cursor-pointer flex items-center gap-1"
+                        >
+                          {copiedField === "amount" ? (
+                            <Check size={13} className="text-emerald-600" />
+                          ) : (
+                            <Copy size={13} />
+                          )}
+                          <span>{copiedField === "amount" ? "Đã chép" : "Chép tiền"}</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Important Syntax Box */}
+                    <div className="p-4.5 rounded-2xl bg-gradient-to-r from-amber-50 via-yellow-50/60 to-white border-2 border-amber-300/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
+                      <div>
+                        <span className="text-xs font-black text-amber-900 block flex items-center gap-1">
+                          <Sparkles size={13} className="text-amber-600" /> Nội dung chuyển khoản (Bắt buộc giữ nguyên):
+                        </span>
+                        <span className="text-xl font-black text-amber-700 tracking-wider font-mono mt-0.5 block">
+                          {transferContent}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => copyToClipboard(transferContent, "content")}
+                        className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs transition-all shadow-md shadow-amber-500/20 cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+                      >
+                        {copiedField === "content" ? (
+                          <Check size={15} className="text-slate-950 stroke-[3]" />
+                        ) : (
+                          <Copy size={15} />
+                        )}
+                        <span>{copiedField === "content" ? "Đã chép cú pháp" : "Sao Chép Cú Pháp"}</span>
+                      </button>
+                    </div>
+
+                    {/* Dual Action Confirmation */}
+                    <div className="pt-2 flex flex-col sm:flex-row gap-3">
+                      <button
+                        onClick={handleRequestVip}
+                        disabled={isRequestingVip}
+                        className="flex-1 py-3.5 px-5 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md"
+                      >
+                        {isRequestingVip ? (
+                          <RefreshCw size={15} className="animate-spin" />
+                        ) : (
+                          <CheckCircle2 size={15} className="text-emerald-400" />
+                        )}
+                        <span>Tôi Đã Chuyển Khoản Xong</span>
+                      </button>
+
+                      <a
+                        href={`https://zalo.me?text=${encodeURIComponent(
+                          `Chào Admin AIChoShop, mình đã chuyển khoản nâng cấp ${currentPlan.name} với nội dung: ${transferContent}. Nhờ admin kiểm tra kích hoạt giúp mình nhé!`
+                        )}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="py-3.5 px-5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md shadow-blue-500/20"
+                      >
+                        <MessageCircle size={15} />
+                        <span>Báo Admin Duyệt Ngay Qua Zalo</span>
+                      </a>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Trust Badges */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-100 text-center">
+                  <div className="flex items-center justify-center gap-2 text-xs text-slate-600">
+                    <Zap size={15} className="text-amber-500" />
+                    <span>Kích hoạt tự động sau <strong>1 - 3 phút</strong></span>
+                  </div>
+                  <div className="flex items-center justify-center gap-2 text-xs text-slate-600">
+                    <ShieldCheck size={15} className="text-emerald-500" />
+                    <span>Cam kết đồng hành và hỗ trợ <strong>100%</strong></span>
+                  </div>
+                  <div className="flex items-center justify-center gap-2 text-xs text-slate-600">
+                    <Crown size={15} className="text-purple-500" />
+                    <span>Bảo lưu quyền lợi & cập nhật <strong>trọn đời</strong></span>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -693,11 +1218,10 @@ export default function ProfileClient({ user, totalCourses, totalLessons }: Prof
 
           {profileMessage && (
             <div
-              className={`p-4 rounded-xl text-xs flex items-center gap-2.5 ${
-                profileMessage.type === "success"
-                  ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                  : "bg-rose-50 text-rose-800 border border-rose-200"
-              }`}
+              className={`p-4 rounded-xl text-xs flex items-center gap-2.5 ${profileMessage.type === "success"
+                ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                : "bg-rose-50 text-rose-800 border border-rose-200"
+                }`}
             >
               {profileMessage.type === "success" ? (
                 <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
@@ -787,11 +1311,10 @@ export default function ProfileClient({ user, totalCourses, totalLessons }: Prof
 
           {passwordMessage && (
             <div
-              className={`p-4 rounded-xl text-xs flex items-center gap-2.5 ${
-                passwordMessage.type === "success"
-                  ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                  : "bg-rose-50 text-rose-800 border border-rose-200"
-              }`}
+              className={`p-4 rounded-xl text-xs flex items-center gap-2.5 ${passwordMessage.type === "success"
+                ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                : "bg-rose-50 text-rose-800 border border-rose-200"
+                }`}
             >
               {passwordMessage.type === "success" ? (
                 <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
@@ -976,19 +1499,18 @@ export default function ProfileClient({ user, totalCourses, totalLessons }: Prof
                         </td>
                         <td className="px-4 py-3">
                           <span
-                            className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] ${
-                              tx.status === "SUCCESS"
-                                ? "bg-emerald-100 text-emerald-700"
-                                : tx.status === "FAILED"
+                            className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] ${tx.status === "SUCCESS"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : tx.status === "FAILED"
                                 ? "bg-rose-100 text-rose-700"
                                 : "bg-amber-100 text-amber-700"
-                            }`}
+                              }`}
                           >
                             {tx.status === "SUCCESS"
                               ? "Thành công"
                               : tx.status === "FAILED"
-                              ? "Thất bại"
-                              : "Đang chờ duyệt"}
+                                ? "Thất bại"
+                                : "Đang chờ duyệt"}
                           </span>
                         </td>
                         <td className="px-4 py-3 text-slate-400">

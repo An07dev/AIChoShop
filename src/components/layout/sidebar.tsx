@@ -151,13 +151,13 @@ export function Sidebar({
                     <div className="relative z-10 flex flex-col items-center">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 border-4 border-slate-900 ${
                         isActive 
-                          ? 'bg-blue-600 text-white shadow-[0_0_15px_rgba(37,99,235,0.5)]' 
+                          ? 'bg-brand text-white shadow-[0_0_15px_var(--brand-ring)]' 
                           : 'bg-slate-800 text-slate-400 group-hover:bg-slate-700 group-hover:text-white'
                       }`}>
                         <Icon size={18} />
                       </div>
                       {isActive && index !== journeySteps.length - 1 && (
-                        <div className="absolute top-10 w-0.5 h-12 bg-blue-600/50"></div>
+                        <div className="absolute top-10 w-0.5 h-12 bg-brand/50"></div>
                       )}
                     </div>
 
@@ -168,7 +168,7 @@ export function Sidebar({
                           {step.name}
                         </h3>
                         {hasSub && (
-                          <ChevronDown size={14} className={`text-slate-500 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-blue-400' : ''}`} />
+                          <ChevronDown size={14} className={`text-slate-500 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-brand' : ''}`} />
                         )}
                       </div>
                       <p className="text-xs text-slate-500 mt-0.5">{step.desc}</p>
@@ -196,7 +196,7 @@ export function Sidebar({
                               title={sub.name}
                               className={`flex items-center justify-between text-xs py-2 px-3 rounded-lg transition-colors group ${
                                 isSubActive
-                                  ? 'bg-blue-600/15 text-blue-400 font-bold border-l-2 border-blue-500 pl-2.5'
+                                  ? 'bg-brand-light text-brand font-bold border-l-2 border-brand pl-2.5'
                                   : 'text-slate-400 hover:text-white hover:bg-slate-800'
                               }`}
                             >
@@ -213,7 +213,7 @@ export function Sidebar({
                         {step.viewAllHref && (
                           <Link
                             href={step.viewAllHref}
-                            className="block text-[11px] py-1.5 px-3 text-slate-400 hover:text-blue-400 hover:bg-slate-800/60 rounded-lg transition-colors italic mt-1 font-semibold"
+                            className="block text-[11px] py-1.5 px-3 text-slate-400 hover:text-brand hover:bg-slate-800/60 rounded-lg transition-colors italic mt-1 font-semibold"
                           >
                             Xem toàn bộ trang &rarr;
                           </Link>
@@ -231,10 +231,14 @@ export function Sidebar({
         <div className="mt-12 pt-6 border-t border-slate-800">
           <Link
             href="/settings"
-            className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-slate-800/50 transition-colors text-slate-400 hover:text-white"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
+              pathname === '/settings'
+                ? 'bg-brand text-white font-semibold shadow-md shadow-brand/20'
+                : 'hover:bg-slate-800/50 text-slate-400 hover:text-white'
+            }`}
           >
-            <Settings size={18} />
-            <span className="text-sm font-medium">Cài đặt hệ thống</span>
+            <Settings size={18} className={pathname === '/settings' ? 'text-white' : 'text-slate-400'} />
+            <span className="text-sm">Cài đặt hệ thống</span>
           </Link>
         </div>
       </div>
@@ -271,7 +275,7 @@ export function Sidebar({
             </button>
           </div>
         ) : (
-          <Link href="/login" className="relative z-10 flex items-center justify-center gap-2 text-xs bg-blue-600 hover:bg-blue-500 text-white py-2 rounded-lg font-bold transition-all shadow-lg shadow-blue-900/50">
+          <Link href="/login" className="relative z-10 flex items-center justify-center gap-2 text-xs bg-brand hover:bg-brand-hover text-white py-2 rounded-lg font-bold transition-all shadow-lg shadow-brand/30">
             Đăng nhập / Đăng ký
           </Link>
         )}

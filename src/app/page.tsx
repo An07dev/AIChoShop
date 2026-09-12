@@ -421,9 +421,9 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <div className="px-5 max-w-6xl mx-auto pb-6">
+      {/* <div className="px-5 max-w-6xl mx-auto pb-6">
         <Footer />
-      </div>
+      </div> */}
 
       {/* Mobile floating CTA */}
       <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-slate-100 p-3 z-50 md:hidden">

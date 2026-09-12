@@ -155,3 +155,393 @@
   background-color: #334155;
   border-radius: 20px;
 }
+
+/* ==========================================================================
+   GLOBAL THEME COLOR SYSTEM (Màu Chủ Đạo Giao Diện Toàn Cục)
+   ========================================================================== */
+
+:root,
+html[data-theme-color="blue"] {
+  --brand-primary: #2563eb;
+  --brand-hover: #1d4ed8;
+  --brand-light: #eff6ff;
+  --brand-dark-light: rgba(37, 99, 235, 0.15);
+  --brand-ring: rgba(37, 99, 235, 0.25);
+  --brand-gradient: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}
+
+html[data-theme-color="emerald"] {
+  --brand-primary: #059669;
+  --brand-hover: #047857;
+  --brand-light: #ecfdf5;
+  --brand-dark-light: rgba(5, 150, 105, 0.15);
+  --brand-ring: rgba(5, 150, 105, 0.25);
+  --brand-gradient: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
+
+html[data-theme-color="purple"] {
+  --brand-primary: #7c3aed;
+  --brand-hover: #6d28d9;
+  --brand-light: #f5f3ff;
+  --brand-dark-light: rgba(124, 58, 237, 0.15);
+  --brand-ring: rgba(124, 58, 237, 0.25);
+  --brand-gradient: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+}
+
+html[data-theme-color="amber"] {
+  --brand-primary: #d97706;
+  --brand-hover: #b45309;
+  --brand-light: #fffbeb;
+  --brand-dark-light: rgba(217, 119, 6, 0.15);
+  --brand-ring: rgba(217, 119, 6, 0.25);
+  --brand-gradient: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+}
+
+html[data-theme-color="rose"] {
+  --brand-primary: #e11d48;
+  --brand-hover: #be123c;
+  --brand-light: #fff1f2;
+  --brand-dark-light: rgba(225, 29, 72, 0.15);
+  --brand-ring: rgba(225, 29, 72, 0.25);
+  --brand-gradient: linear-gradient(135deg, #e11d48 0%, #be123c 100%);
+}
+
+/* Utility Classes for Brand Theme */
+.bg-brand {
+  background-color: var(--brand-primary) !important;
+}
+
+.hover\:bg-brand-hover:hover {
+  background-color: var(--brand-hover) !important;
+}
+
+.text-brand {
+  color: var(--brand-primary) !important;
+}
+
+.hover\:text-brand:hover {
+  color: var(--brand-hover) !important;
+}
+
+.border-brand {
+  border-color: var(--brand-primary) !important;
+}
+
+.hover\:border-brand:hover {
+  border-color: var(--brand-primary) !important;
+}
+
+.bg-brand-light {
+  background-color: var(--brand-light) !important;
+}
+
+.dark .bg-brand-light {
+  background-color: var(--brand-dark-light) !important;
+}
+
+.ring-brand:focus,
+.focus\:ring-brand:focus {
+  border-color: var(--brand-primary) !important;
+  --tw-ring-color: var(--brand-ring) !important;
+  box-shadow: 0 0 0 3px var(--brand-ring) !important;
+}
+
+.focus\:border-brand:focus {
+  border-color: var(--brand-primary) !important;
+}
+
+.shadow-brand {
+  box-shadow: 0 10px 15px -3px var(--brand-ring), 0 4px 6px -4px var(--brand-ring) !important;
+}
+
+.shadow-brand-sm {
+  box-shadow: 0 4px 6px -1px var(--brand-ring) !important;
+}
+
+.btn-brand-cta {
+  background-image: var(--brand-gradient) !important;
+  background-color: var(--brand-primary) !important;
+  color: #ffffff !important;
+  box-shadow: 0 10px 15px -3px var(--brand-ring), 0 4px 6px -4px var(--brand-ring) !important;
+  transition: all 0.2s ease-in-out !important;
+}
+
+.btn-brand-cta:hover:not(:disabled) {
+  filter: brightness(1.08) !important;
+}
+
+.btn-brand-cta:active:not(:disabled) {
+  transform: scale(0.99) !important;
+}
+
+/* ==========================================================================
+   THEME COLOR ADAPTATION FOR ALL BUTTONS, ICONS & ACCENTS
+   Tự động đổi màu toàn bộ nút bấm, biểu tượng, liên kết theo màu chủ đạo đã chọn
+   (Xanh dương, Xanh ngọc, Tím, Hổ phách, Đỏ ruby)
+   ========================================================================== */
+
+/* 1. Nút bấm chính (Buttons) */
+[data-theme-color] .bg-blue-600,
+[data-theme-color] .bg-blue-500 {
+  background-color: var(--brand-primary) !important;
+}
+
+[data-theme-color] .hover\:bg-blue-700:hover,
+[data-theme-color] .hover\:bg-blue-600:hover,
+[data-theme-color] .hover\:bg-blue-500:hover {
+  background-color: var(--brand-hover) !important;
+}
+
+/* Các nút dạng gradient */
+[data-theme-color] .bg-gradient-to-r.from-blue-500,
+[data-theme-color] .bg-gradient-to-r.from-blue-600,
+[data-theme-color] [class*="from-blue-600"][class*="to-cyan-"],
+[data-theme-color] [class*="from-blue-500"][class*="to-cyan-"],
+[data-theme-color] [class*="from-blue-600"][class*="to-emerald-"],
+[data-theme-color] [class*="from-blue-600"][class*="to-violet-"] {
+  background-image: var(--brand-gradient) !important;
+}
+
+/* 2. Biểu tượng & Chữ nổi bật (Icons & Text Links) */
+[data-theme-color] .text-blue-600,
+[data-theme-color] .text-blue-500 {
+  color: var(--brand-primary) !important;
+}
+
+[data-theme-color] .hover\:text-blue-600:hover,
+[data-theme-color] .hover\:text-blue-700:hover,
+[data-theme-color] .hover\:text-blue-400:hover,
+[data-theme-color] .group:hover .group-hover\:text-blue-600,
+[data-theme-color] .group:hover .group-hover\:text-blue-400 {
+  color: var(--brand-primary) !important;
+}
+
+[data-theme-color] .text-blue-700,
+[data-theme-color] .text-blue-800,
+[data-theme-color] .text-blue-900 {
+  color: var(--brand-primary) !important;
+}
+
+/* 3. Khối nền nhạt cho Icon & Badge */
+[data-theme-color] .bg-blue-50,
+[data-theme-color] .bg-blue-100 {
+  background-color: var(--brand-light) !important;
+}
+
+[data-theme-color].dark .bg-blue-50,
+[data-theme-color].dark .bg-blue-100,
+.dark[data-theme-color] .bg-blue-50,
+.dark[data-theme-color] .bg-blue-100,
+.dark [data-theme-color] .bg-blue-50,
+.dark [data-theme-color] .bg-blue-100 {
+  background-color: var(--brand-dark-light) !important;
+}
+
+/* 4. Viền (Borders) */
+[data-theme-color] .border-blue-500,
+[data-theme-color] .border-blue-600 {
+  border-color: var(--brand-primary) !important;
+}
+
+[data-theme-color] .border-blue-200,
+[data-theme-color] .border-blue-300,
+[data-theme-color] .border-blue-100 {
+  border-color: var(--brand-ring) !important;
+}
+
+[data-theme-color] .hover\:border-blue-200:hover,
+[data-theme-color] .hover\:border-blue-300:hover,
+[data-theme-color] .hover\:border-blue-400:hover,
+[data-theme-color] .hover\:border-blue-500:hover {
+  border-color: var(--brand-primary) !important;
+}
+
+/* 5. Focus Rings & Shadows */
+[data-theme-color] .focus\:ring-blue-500:focus,
+[data-theme-color] .focus\:ring-blue-500\/15:focus,
+[data-theme-color] .focus\:ring-blue-500\/20:focus,
+[data-theme-color] .focus\:ring-blue-600:focus {
+  border-color: var(--brand-primary) !important;
+  --tw-ring-color: var(--brand-ring) !important;
+  box-shadow: 0 0 0 3px var(--brand-ring) !important;
+}
+
+[data-theme-color] .focus\:border-blue-500:focus {
+  border-color: var(--brand-primary) !important;
+}
+
+[data-theme-color] [class*="shadow-blue-"] {
+  box-shadow: 0 10px 15px -3px var(--brand-ring), 0 4px 6px -4px var(--brand-ring) !important;
+}
+
+/* 6. Trạng thái active trên Sidebar & Timeline */
+[data-theme-color] .bg-blue-600\/15,
+[data-theme-color] .bg-blue-600\/30 {
+  background-color: var(--brand-dark-light) !important;
+}
+
+[data-theme-color] .text-blue-400 {
+  color: var(--brand-primary) !important;
+}
+
+[data-theme-color] .bg-blue-600\/50 {
+  background-color: var(--brand-ring) !important;
+}
+
+/* ==========================================================================
+   GLOBAL DARK MODE ADAPTATION (Đồng Bộ Nền Tối & Chữ Nổi Bật Cho Mọi Component)
+   Khi chọn Theme Tối (.dark), tất cả card, container, bảng, hộp công cụ sẽ tự động
+   chuyển sang nền tối đồng bộ (Slate-900 / Slate-800) và chữ nổi bật rõ nét (Slate-50 / 100).
+   ========================================================================== */
+
+.dark {
+  color-scheme: dark;
+}
+
+/* 1. NỀN COMPONENT & CARD: Chuyển toàn bộ nền trắng thành nền tối sang trọng */
+.dark .bg-white:not([class*="dark:bg-"]) {
+  background-color: #0f172a !important; /* slate-900 */
+}
+
+/* Các vùng phụ (card header, inner box, background phụ) */
+.dark .bg-slate-50:not([class*="dark:bg-"]),
+.dark .bg-slate-50\/50:not([class*="dark:bg-"]),
+.dark .bg-slate-50\/60:not([class*="dark:bg-"]),
+.dark .bg-slate-50\/80:not([class*="dark:bg-"]) {
+  background-color: rgba(30, 41, 59, 0.6) !important; /* slate-800 mờ */
+}
+
+.dark .bg-slate-100:not([class*="dark:bg-"]),
+.dark .bg-slate-100\/80:not([class*="dark:bg-"]) {
+  background-color: #1e293b !important; /* slate-800 */
+}
+
+.dark .bg-slate-200:not([class*="dark:bg-"]) {
+  background-color: #334155 !important; /* slate-700 */
+}
+
+/* 2. ĐƯỜNG VIỀN (BORDER & DIVIDER) */
+.dark .border-slate-100:not([class*="dark:border-"]),
+.dark .border-slate-200:not([class*="dark:border-"]),
+.dark .border-slate-300:not([class*="dark:border-"]) {
+  border-color: #1e293b !important; /* slate-800 */
+}
+
+.dark .divide-slate-100:not([class*="dark:divide-"]) > :not([hidden]) ~ :not([hidden]),
+.dark .divide-slate-200:not([class*="dark:divide-"]) > :not([hidden]) ~ :not([hidden]) {
+  border-color: #1e293b !important;
+}
+
+/* 3. CHỮ NỔI BẬT RÕ NÉT (HIGH CONTRAST & CLEAR READABILITY) */
+.dark .text-slate-950:not([class*="dark:text-"]):not([class*="bg-amber"]):not([class*="bg-yellow"]),
+.dark .text-black:not([class*="dark:text-"]):not([class*="bg-amber"]):not([class*="bg-yellow"]),
+.dark .text-slate-900:not([class*="dark:text-"]) {
+  color: #f8fafc !important; /* slate-50: Trắng tinh nổi bật tuyệt đối */
+}
+
+.dark h1:not([class*="text-"]):not([class*="dark:text-"]),
+.dark h2:not([class*="text-"]):not([class*="dark:text-"]),
+.dark h3:not([class*="text-"]):not([class*="dark:text-"]),
+.dark h4:not([class*="text-"]):not([class*="dark:text-"]) {
+  color: #f8fafc !important;
+}
+
+.dark .text-slate-800:not([class*="dark:text-"]) {
+  color: #f1f5f9 !important; /* slate-100: Chữ sáng rõ nét */
+}
+
+.dark .text-slate-700:not([class*="dark:text-"]) {
+  color: #e2e8f0 !important; /* slate-200: Chữ sáng vừa */
+}
+
+.dark .text-slate-600:not([class*="dark:text-"]) {
+  color: #cbd5e1 !important; /* slate-300: Chữ mô tả dễ đọc */
+}
+
+.dark .text-slate-500:not([class*="dark:text-"]) {
+  color: #94a3b8 !important; /* slate-400: Chữ phụ hoặc nhãn */
+}
+
+/* 4. HOVER TRÊN NỀN TỐI */
+.dark .hover\:bg-slate-50:hover:not([class*="dark:hover:bg-"]) {
+  background-color: #1e293b !important;
+}
+
+.dark .hover\:bg-slate-100:hover:not([class*="dark:hover:bg-"]) {
+  background-color: #334155 !important;
+}
+
+/* 5. CÁC HUY HIỆU & ICON CÓ NỀN MÀU NHẠT (Tự động biến thành badge tối mờ vi diệu) */
+.dark .bg-blue-50:not([class*="dark:bg-"]) {
+  background-color: rgba(37, 99, 235, 0.18) !important;
+}
+.dark .text-blue-600:not([class*="dark:text-"]) {
+  color: #60a5fa !important; /* blue-400 sáng hơn trên nền tối */
+}
+
+.dark .bg-emerald-50:not([class*="dark:bg-"]) {
+  background-color: rgba(16, 185, 129, 0.18) !important;
+}
+.dark .text-emerald-600:not([class*="dark:text-"]) {
+  color: #34d399 !important; /* emerald-400 */
+}
+
+.dark .bg-purple-50:not([class*="dark:bg-"]) {
+  background-color: rgba(168, 85, 247, 0.18) !important;
+}
+.dark .text-purple-600:not([class*="dark:text-"]) {
+  color: #c084fc !important; /* purple-400 */
+}
+
+.dark .bg-amber-50:not([class*="dark:bg-"]) {
+  background-color: rgba(245, 158, 11, 0.18) !important;
+}
+.dark .text-amber-600:not([class*="dark:text-"]) {
+  color: #fbbf24 !important; /* amber-400 */
+}
+
+.dark .bg-rose-50:not([class*="dark:bg-"]) {
+  background-color: rgba(244, 63, 94, 0.18) !important;
+}
+.dark .text-rose-600:not([class*="dark:text-"]) {
+  color: #fb7185 !important; /* rose-400 */
+}
+
+.dark .bg-indigo-50:not([class*="dark:bg-"]) {
+  background-color: rgba(99, 102, 241, 0.18) !important;
+}
+.dark .text-indigo-600:not([class*="dark:text-"]) {
+  color: #818cf8 !important; /* indigo-400 */
+}
+
+.dark .bg-teal-50:not([class*="dark:bg-"]) {
+  background-color: rgba(20, 184, 166, 0.18) !important;
+}
+.dark .text-teal-600:not([class*="dark:text-"]) {
+  color: #2dd4bf !important; /* teal-400 */
+}
+
+/* 6. FORM & INPUT CONTROLS TRONG GIAO DIỆN TỐI */
+.dark input:not([type="checkbox"]):not([type="radio"]):not([class*="dark:bg-"]),
+.dark textarea:not([class*="dark:bg-"]),
+.dark select:not([class*="dark:bg-"]) {
+  background-color: #1e293b;
+  color: #f8fafc;
+  border-color: #334155;
+}
+
+.dark input::placeholder,
+.dark textarea::placeholder {
+  color: #64748b;
+}
+
+/* 7. BÓNG MỜ (SHADOWS) PHÙ HỢP NỀN TỐI */
+.dark .shadow-sm {
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.5) !important;
+}
+.dark .shadow-md,
+.dark .shadow-lg {
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.5) !important;
+}
+
+

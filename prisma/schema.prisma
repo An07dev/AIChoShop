@@ -17,6 +17,7 @@ model User {
   phone        String?
   role         Role          @default(USER)
   isVIP        Boolean       @default(false)
+  vipExpiresAt DateTime?
   isLocked     Boolean       @default(false)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
@@ -118,4 +119,36 @@ model PricingFeeOverride {
   updatedAt          DateTime  @updatedAt
 
   @@index([platform, shopType, categoryId, active])
+}
+
+model VipPlan {
+  id            String   @id @default(cuid())
+  name          String
+  slug          String   @unique
+  price         Int
+  originalPrice Int
+  period        String
+  durationDays  Int?
+  desc          String   @db.Text
+  tag           String?
+  isPopular     Boolean  @default(false)
+  features      String[]
+  order         Int      @default(0)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([active, order])
+}
+
+model SePayConfig {
+  id            String   @id @default("default")
+  bankName      String   @default("MB Bank")
+  accountNumber String   @default("0358888899")
+  accountHolder String   @default("AIChoShop Official")
+  apiKey        String?
+  syntaxPrefix  String   @default("VIP")
+  autoActivate  Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }

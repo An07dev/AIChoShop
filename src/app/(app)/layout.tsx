@@ -62,7 +62,7 @@ export default async function AppLayout({
   }));
 
   return (
-    <div className="flex h-screen bg-slate-50 overflow-hidden text-slate-900">
+    <div className="flex h-screen bg-slate-50 dark:bg-slate-950 overflow-hidden text-slate-900 dark:text-slate-100 transition-colors duration-200">
       <Sidebar user={currentUser} dynamicModules={dynamicModules} courses={coursesList} />
       <div className="flex-1 flex flex-col min-w-0">
         <Header user={currentUser} />
@@ -70,7 +70,7 @@ export default async function AppLayout({
           <div className="flex-1">
             {children}
           </div>
-          <Footer />
+          {/* <Footer /> */}
         </main>
       </div>
     </div>

@@ -8,19 +8,100 @@ function hashPassword(password: string) {
   return crypto.createHash("sha256").update(password).digest("hex");
 }
 
-// Bật / Tắt trạng thái VIP
+import { calculateNewVipExpiration } from "@/lib/sepay-server";
+
+// Bật / Tắt trạng thái VIP nhanh
 export async function toggleUserVip(userId: string, newVipStatus: boolean) {
   try {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return { success: false, error: "Người dùng không tồn tại" };
+
+    let newExpiresAt = user.vipExpiresAt;
+    if (newVipStatus) {
+      // Nếu bật VIP và hiện tại vipExpiresAt đã quá hạn thì reset về null (hoặc gia hạn)
+      if (user.vipExpiresAt && new Date(user.vipExpiresAt).getTime() <= Date.now()) {
+        newExpiresAt = null; // Mặc định chuyển sang VIP vĩnh viễn khi Admin bấm Lên VIP
+      }
+    }
+
     const updated = await prisma.user.update({
       where: { id: userId },
-      data: { isVIP: newVipStatus },
+      data: {
+        isVIP: newVipStatus,
+        vipExpiresAt: newVipStatus ? newExpiresAt : null,
+      },
     });
+
     revalidatePath("/admin/users");
     revalidatePath("/admin");
-    return { success: true, isVIP: updated.isVIP };
+    revalidatePath("/profile");
+    return {
+      success: true,
+      isVIP: updated.isVIP,
+      vipExpiresAt: updated.vipExpiresAt ? updated.vipExpiresAt.toISOString() : null,
+    };
   } catch (error) {
     console.error("Error toggling VIP:", error);
     return { success: false, error: "Không thể cập nhật trạng thái VIP" };
+  }
+}
+
+// Điều chỉnh thời hạn VIP (Thêm ngày, Trọn đời, Hạ FREE, hoặc ngày tùy chỉnh)
+export async function updateUserVipDuration(
+  userId: string,
+  action: "add_days" | "lifetime" | "expire_now" | "custom_date",
+  days?: number,
+  customDate?: string
+) {
+  try {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return { success: false, error: "Người dùng không tồn tại" };
+
+    let newExpiresAt: Date | null = null;
+    let newIsVIP = true;
+
+    if (action === "lifetime") {
+      newExpiresAt = null;
+      newIsVIP = true;
+    } else if (action === "expire_now") {
+      newExpiresAt = new Date(Date.now() - 1000 * 60); // Quá hạn
+      newIsVIP = false;
+    } else if (action === "add_days") {
+      const addedDays = Number(days) || 30;
+      newExpiresAt = calculateNewVipExpiration(user.vipExpiresAt, user.isVIP, addedDays);
+      newIsVIP = true;
+    } else if (action === "custom_date" && customDate) {
+      const parsed = new Date(customDate);
+      if (isNaN(parsed.getTime())) {
+        return { success: false, error: "Ngày tùy chỉnh không hợp lệ" };
+      }
+      newExpiresAt = parsed;
+      newIsVIP = parsed.getTime() > Date.now();
+    }
+
+    const updated = await prisma.user.update({
+      where: { id: userId },
+      data: {
+        isVIP: newIsVIP,
+        vipExpiresAt: newExpiresAt,
+      },
+    });
+
+    revalidatePath("/admin/users");
+    revalidatePath("/admin");
+    revalidatePath("/profile");
+
+    return {
+      success: true,
+      user: {
+        id: updated.id,
+        isVIP: updated.isVIP,
+        vipExpiresAt: updated.vipExpiresAt ? updated.vipExpiresAt.toISOString() : null,
+      },
+    };
+  } catch (error: any) {
+    console.error("Error updating VIP duration:", error);
+    return { success: false, error: error?.message || "Không thể cập nhật thời hạn VIP" };
   }
 }
 

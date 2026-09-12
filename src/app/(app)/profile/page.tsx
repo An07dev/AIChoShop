@@ -3,6 +3,9 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { Metadata } from "next";
 import ProfileClient from "./ProfileClient";
+import { getActiveVipPlans } from "@/lib/vip-plans-server";
+import { getSePayConfig, syncUserVipExpiration } from "@/lib/sepay-server";
+import { computeVipDaysLeft } from "@/lib/vip-expiration";
 
 export const dynamic = "force-dynamic";
 
@@ -28,6 +31,7 @@ export default async function ProfilePage() {
       phone: true,
       role: true,
       isVIP: true,
+      vipExpiresAt: true,
       isLocked: true,
       createdAt: true,
       updatedAt: true,
@@ -65,10 +69,19 @@ export default async function ProfilePage() {
     redirect("/login");
   }
 
-  // Thống kê tổng số bài học và khóa học của hệ thống
-  const [totalCourses, totalLessons] = await Promise.all([
+  // Tự động kiểm tra và hạ cấp nếu đã hết hạn VIP
+  const syncedUser = await syncUserVipExpiration({
+    id: user.id,
+    isVIP: user.isVIP,
+    vipExpiresAt: user.vipExpiresAt,
+  });
+
+  // Thống kê tổng số bài học, khóa học, danh sách gói VIP và cấu hình SePay từ database
+  const [totalCourses, totalLessons, vipPlans, sePayConfig] = await Promise.all([
     prisma.course.count(),
     prisma.lesson.count(),
+    getActiveVipPlans(),
+    getSePayConfig(),
   ]);
 
   const serializedUser = {
@@ -77,7 +90,9 @@ export default async function ProfilePage() {
     name: user.name || "Thành viên",
     phone: user.phone || "",
     role: user.role,
-    isVIP: user.isVIP,
+    isVIP: syncedUser.isVIP,
+    vipExpiresAt: syncedUser.vipExpiresAt ? syncedUser.vipExpiresAt.toISOString() : null,
+    vipDaysLeft: computeVipDaysLeft(syncedUser.vipExpiresAt),
     createdAt: user.createdAt.toISOString(),
     creditBalance: user.userCredit?.balance || 0,
     completedLessons: user.progress.map((p) => ({
@@ -100,6 +115,13 @@ export default async function ProfilePage() {
       user={serializedUser}
       totalCourses={totalCourses}
       totalLessons={totalLessons}
+      vipPlans={JSON.parse(JSON.stringify(vipPlans))}
+      sePayConfig={{
+        bankName: sePayConfig.bankName,
+        accountNumber: sePayConfig.accountNumber,
+        accountHolder: sePayConfig.accountHolder,
+        syntaxPrefix: sePayConfig.syntaxPrefix,
+      }}
     />
   );
 }

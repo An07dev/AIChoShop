@@ -22,6 +22,10 @@ import {
   Coins,
   ArrowUpDown,
   Filter,
+  Clock,
+  CalendarClock,
+  Hourglass,
+  Check,
 } from "lucide-react";
 import {
   toggleUserVip,
@@ -29,7 +33,9 @@ import {
   createUserByAdmin,
   resetPasswordByAdmin,
   deleteUserByAdmin,
+  updateUserVipDuration,
 } from "@/app/admin/users/actions";
+import { computeVipDaysLeft, getVipStatusInfo } from "@/lib/vip-expiration";
 
 export interface AdminUserItem {
   id: string;
@@ -38,6 +44,8 @@ export interface AdminUserItem {
   phone: string | null;
   role: string;
   isVIP: boolean;
+  vipExpiresAt?: Date | string | null;
+  vipDaysLeft?: number | null;
   isLocked: boolean;
   createdAt: Date | string;
   userCredit?: { balance: number } | null;
@@ -57,6 +65,8 @@ export function UsersManager({ initialUsers }: UsersManagerProps) {
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
   const [resetPasswordUser, setResetPasswordUser] = useState<AdminUserItem | null>(null);
+  const [vipModalUser, setVipModalUser] = useState<AdminUserItem | null>(null);
+  const [customVipDate, setCustomVipDate] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [modalError, setModalError] = useState("");
   const [modalSuccess, setModalSuccess] = useState("");
@@ -139,6 +149,49 @@ export function UsersManager({ initialUsers }: UsersManagerProps) {
           prev.map((u) => (u.id === user.id ? { ...u, isVIP: user.isVIP } : u))
         );
         showToast(res.error || "Có lỗi xảy ra", "error");
+      }
+    });
+  };
+
+  // Xử lý gia hạn / điều chỉnh thời hạn VIP
+  const handleUpdateVipDuration = async (
+    userId: string,
+    action: "add_days" | "lifetime" | "expire_now" | "custom_date",
+    days?: number,
+    customDateVal?: string
+  ) => {
+    startTransition(async () => {
+      const res = await updateUserVipDuration(userId, action, days, customDateVal);
+      if (res.success && res.user) {
+        const updatedUser = res.user;
+        const daysLeft = computeVipDaysLeft(updatedUser.vipExpiresAt);
+        setUsers((prev) =>
+          prev.map((u) =>
+            u.id === userId
+              ? {
+                  ...u,
+                  isVIP: updatedUser.isVIP,
+                  vipExpiresAt: updatedUser.vipExpiresAt,
+                  vipDaysLeft: daysLeft,
+                }
+              : u
+          )
+        );
+        if (vipModalUser && vipModalUser.id === userId) {
+          setVipModalUser((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  isVIP: updatedUser.isVIP,
+                  vipExpiresAt: updatedUser.vipExpiresAt,
+                  vipDaysLeft: daysLeft,
+                }
+              : null
+          );
+        }
+        showToast("Đã cập nhật thời hạn VIP thành công! 🎉");
+      } else {
+        showToast(res.error || "Không thể cập nhật thời hạn VIP", "error");
       }
     });
   };
@@ -464,7 +517,7 @@ export function UsersManager({ initialUsers }: UsersManagerProps) {
             <thead>
               <tr className="bg-slate-50/80 border-b border-slate-200 text-xs text-slate-600 uppercase tracking-wider">
                 <th className="p-4 font-bold">Người Dùng</th>
-                <th className="p-4 font-bold text-center">Gói VIP</th>
+                <th className="p-4 font-bold text-center">Gói & Thời Hạn VIP</th>
                 <th className="p-4 font-bold text-center">Trạng Thái</th>
                 <th className="p-4 font-bold text-center">Số Dư Credit</th>
                 <th className="p-4 font-bold">Quyền & Ngày Tạo</th>
@@ -483,6 +536,7 @@ export function UsersManager({ initialUsers }: UsersManagerProps) {
               ) : (
                 filteredUsers.map((user) => {
                   const initials = (user.name || user.email).slice(0, 2).toUpperCase();
+                  const vipInfo = getVipStatusInfo(user.isVIP, user.vipExpiresAt);
 
                   return (
                     <tr
@@ -526,17 +580,62 @@ export function UsersManager({ initialUsers }: UsersManagerProps) {
                         </div>
                       </td>
 
-                      {/* Cột 2: Cấp độ VIP */}
+                      {/* Cột 2: Cấp độ VIP & Thời Hạn */}
                       <td className="p-4 text-center">
-                        {user.isVIP ? (
-                          <span className="inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-yellow-500 text-white px-3 py-1 rounded-full text-xs font-black shadow-sm shadow-amber-500/30 tracking-wide animate-pulse">
-                            <Crown size={13} className="fill-white" /> VIP PRO
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full text-xs font-semibold">
-                            Tài khoản FREE
-                          </span>
-                        )}
+                        <div
+                          onClick={() => {
+                            setVipModalUser(user);
+                            setCustomVipDate("");
+                          }}
+                          className="inline-flex flex-col items-center cursor-pointer group"
+                          title="Bấm để xem và điều chỉnh thời hạn VIP"
+                        >
+                          {vipInfo.badgeType === "lifetime" && (
+                            <>
+                              <span className="inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-yellow-500 text-white px-3 py-1 rounded-full text-xs font-black shadow-sm shadow-amber-500/30 tracking-wide group-hover:scale-105 transition-transform">
+                                <Crown size={13} className="fill-white" /> VIP Trọn Đời
+                              </span>
+                              <span className="text-[10px] text-amber-600 font-bold mt-1">Vĩnh viễn</span>
+                            </>
+                          )}
+
+                          {vipInfo.badgeType === "active" && (
+                            <>
+                              <span className="inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white px-3 py-1 rounded-full text-xs font-black shadow-sm shadow-amber-500/30 tracking-wide group-hover:scale-105 transition-transform">
+                                <Crown size={13} className="fill-white" /> Còn {vipInfo.daysLeft} ngày
+                              </span>
+                              <span className="text-[10px] text-slate-500 font-medium flex items-center gap-1 mt-1">
+                                <CalendarClock size={11} className="text-slate-400" />
+                                {user.vipExpiresAt &&
+                                  new Date(user.vipExpiresAt).toLocaleDateString("vi-VN", {
+                                    day: "2-digit",
+                                    month: "2-digit",
+                                    year: "numeric",
+                                  })}
+                              </span>
+                            </>
+                          )}
+
+                          {vipInfo.badgeType === "expired" && (
+                            <>
+                              <span className="inline-flex items-center gap-1 bg-rose-100 text-rose-700 border border-rose-200 px-2.5 py-1 rounded-full text-xs font-bold group-hover:scale-105 transition-transform">
+                                <Clock size={12} /> Hết hạn VIP
+                              </span>
+                              <span className="text-[10px] text-slate-400 mt-1">Đã hạ về Free</span>
+                            </>
+                          )}
+
+                          {vipInfo.badgeType === "free" && (
+                            <>
+                              <span className="inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-600 px-2.5 py-1 rounded-full text-xs font-semibold group-hover:scale-105 transition-transform">
+                                Tài khoản FREE
+                              </span>
+                              <span className="text-[10px] text-blue-600 font-semibold mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                                + Cấp hạn VIP
+                              </span>
+                            </>
+                          )}
+                        </div>
                       </td>
 
                       {/* Cột 3: Trạng thái tài khoản */}
@@ -578,18 +677,31 @@ export function UsersManager({ initialUsers }: UsersManagerProps) {
                       {/* Cột 6: Bộ nút Thao tác Quản trị */}
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-1.5 flex-wrap">
-                          {/* Nút Chuyển VIP / Hạ VIP */}
+                          {/* Nút Quản Lý Thời Hạn VIP */}
+                          <button
+                            onClick={() => {
+                              setVipModalUser(user);
+                              setCustomVipDate("");
+                            }}
+                            disabled={isPending}
+                            title="Quản lý và gia hạn thời hạn VIP"
+                            className="p-1.5 rounded-lg text-amber-600 hover:text-amber-700 hover:bg-amber-50 transition-colors cursor-pointer border border-amber-200 active:scale-95"
+                          >
+                            <CalendarClock size={15} />
+                          </button>
+
+                          {/* Nút Chuyển VIP / Hạ VIP Nhanh */}
                           <button
                             onClick={() => handleToggleVip(user)}
                             disabled={isPending}
-                            title={user.isVIP ? "Hạ về tài khoản FREE" : "Nâng cấp lên VIP"}
+                            title={user.isVIP ? "Hạ về tài khoản FREE" : "Nâng cấp lên VIP Trọn đời"}
                             className={`text-xs font-bold px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1 cursor-pointer active:scale-95 shadow-sm ${user.isVIP
                               ? "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200"
                               : "bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white shadow-amber-500/20"
                               }`}
                           >
                             <Crown size={13} className={user.isVIP ? "text-slate-500" : "fill-white"} />
-                            <span>{user.isVIP ? "Hạ VIP" : "Lên VIP"}</span>
+                            <span>{user.isVIP ? "Hạ FREE" : "Lên VIP"}</span>
                           </button>
 
                           {/* Nút Khóa TK / Mở TK */}
@@ -813,6 +925,179 @@ export function UsersManager({ initialUsers }: UsersManagerProps) {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Quản Lý & Gia Hạn Thời Hạn VIP */}
+      {vipModalUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg overflow-hidden border border-slate-100 animate-in fade-in zoom-in duration-150">
+            {/* Header Modal */}
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-amber-500/10 via-yellow-500/10 to-transparent">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-500 text-white shadow-md shadow-amber-500/25">
+                  <Crown size={18} className="fill-white" />
+                </div>
+                <div>
+                  <h3 className="font-black text-slate-900 text-base">Quản Lý Thời Hạn VIP</h3>
+                  <p className="text-xs text-slate-500">Gia hạn, cấp mới hoặc điều chỉnh số ngày VIP</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setVipModalUser(null)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-slate-100 transition cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-5">
+              {/* Thông tin học viên */}
+              <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center justify-between">
+                <div>
+                  <div className="font-bold text-slate-900 text-sm">{vipModalUser.name || "Chưa đặt tên"}</div>
+                  <div className="text-xs text-slate-500 font-mono mt-0.5">{vipModalUser.email}</div>
+                  {vipModalUser.phone && (
+                    <div className="text-xs text-slate-400 font-mono mt-0.5">SĐT: {vipModalUser.phone}</div>
+                  )}
+                </div>
+                <div className="text-right">
+                  {(() => {
+                    const info = getVipStatusInfo(vipModalUser.isVIP, vipModalUser.vipExpiresAt);
+                    if (info.badgeType === "lifetime") {
+                      return (
+                        <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1 rounded-full text-xs font-black">
+                          <Crown size={12} className="fill-amber-500 text-amber-500" /> VIP Trọn Đời
+                        </span>
+                      );
+                    }
+                    if (info.badgeType === "active") {
+                      return (
+                        <div>
+                          <span className="inline-flex items-center gap-1 bg-amber-500 text-white px-3 py-1 rounded-full text-xs font-bold shadow-xs">
+                            Còn {info.daysLeft} ngày
+                          </span>
+                          <span className="text-[10px] text-slate-500 block mt-1">
+                            Hạn: {vipModalUser.vipExpiresAt && new Date(vipModalUser.vipExpiresAt).toLocaleDateString("vi-VN")}
+                          </span>
+                        </div>
+                      );
+                    }
+                    if (info.badgeType === "expired") {
+                      return (
+                        <div>
+                          <span className="inline-flex items-center gap-1 bg-rose-100 text-rose-700 px-3 py-1 rounded-full text-xs font-bold">
+                            Đã Hết Hạn VIP
+                          </span>
+                          <span className="text-[10px] text-slate-400 block mt-1">Hạ về Free</span>
+                        </div>
+                      );
+                    }
+                    return (
+                      <span className="inline-flex items-center gap-1 bg-slate-200 text-slate-700 px-3 py-1 rounded-full text-xs font-semibold">
+                        Tài khoản FREE
+                      </span>
+                    );
+                  })()}
+                </div>
+              </div>
+
+              {/* Các nút gia hạn nhanh */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2.5">
+                  1. Gia Hạn Nhanh Số Ngày VIP:
+                </label>
+                <div className="grid grid-cols-3 gap-2.5">
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => handleUpdateVipDuration(vipModalUser.id, "add_days", 30)}
+                    className="p-3 rounded-2xl border border-slate-200 hover:border-blue-400 bg-white hover:bg-blue-50 text-slate-800 text-xs font-bold transition flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-xs"
+                  >
+                    <span className="text-sm font-black text-blue-600">+30 Ngày</span>
+                    <span className="text-[10px] text-slate-400 font-normal">Gói 1 Tháng</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => handleUpdateVipDuration(vipModalUser.id, "add_days", 90)}
+                    className="p-3 rounded-2xl border border-slate-200 hover:border-blue-400 bg-white hover:bg-blue-50 text-slate-800 text-xs font-bold transition flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-xs"
+                  >
+                    <span className="text-sm font-black text-blue-600">+90 Ngày</span>
+                    <span className="text-[10px] text-slate-400 font-normal">Gói 3 Tháng</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => handleUpdateVipDuration(vipModalUser.id, "add_days", 365)}
+                    className="p-3 rounded-2xl border border-slate-200 hover:border-blue-400 bg-white hover:bg-blue-50 text-slate-800 text-xs font-bold transition flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 shadow-xs"
+                  >
+                    <span className="text-sm font-black text-blue-600">+365 Ngày</span>
+                    <span className="text-[10px] text-slate-400 font-normal">Gói 1 Năm</span>
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2.5 mt-2.5">
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => handleUpdateVipDuration(vipModalUser.id, "lifetime")}
+                    className="p-3 rounded-2xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white text-xs font-bold transition flex items-center justify-center gap-2 cursor-pointer active:scale-95 shadow-md shadow-amber-500/20"
+                  >
+                    <Crown size={14} className="fill-white" />
+                    <span>VIP Trọn Đời (Vĩnh viễn)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => handleUpdateVipDuration(vipModalUser.id, "expire_now")}
+                    className="p-3 rounded-2xl bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+                  >
+                    <XCircle size={14} />
+                    <span>Hạ Về FREE Ngay</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Tùy chỉnh ngày hết hạn cụ thể */}
+              <div className="pt-3 border-t border-slate-100">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                  2. Hoặc Đặt Ngày Hết Hạn Tùy Chọn:
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="date"
+                    value={customVipDate}
+                    onChange={(e) => setCustomVipDate(e.target.value)}
+                    className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
+                  />
+                  <button
+                    type="button"
+                    disabled={!customVipDate || isPending}
+                    onClick={() =>
+                      handleUpdateVipDuration(vipModalUser.id, "custom_date", undefined, customVipDate)
+                    }
+                    className="px-4 py-2.5 bg-slate-900 hover:bg-slate-800 disabled:opacity-40 text-white rounded-xl text-xs font-bold transition cursor-pointer active:scale-95 shrink-0"
+                  >
+                    Áp Dụng Ngày
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="px-6 py-4 bg-slate-50 border-t border-slate-100 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setVipModalUser(null)}
+                className="px-5 py-2 rounded-xl text-xs font-bold text-slate-700 bg-white border border-slate-200 hover:bg-slate-100 cursor-pointer shadow-xs"
+              >
+                Đóng
+              </button>
+            </div>
           </div>
         </div>
       )}
