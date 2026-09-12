@@ -6,9 +6,11 @@ import Link from "next/link";
 import { useToolGate } from "@/hooks/useToolGate";
 import { ScriptWriterOutput } from "@/components/tools/ScriptWriterOutput";
 import { TextDots } from "@/components/ui/text-dots";
+import { useToast } from "@/context/ToastContext";
 
 export default function ScriptWriter() {
   const { checkAccess, GateModals } = useToolGate();
+  const { showAiError, showWarning } = useToast();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState("");
 
@@ -19,8 +21,8 @@ export default function ScriptWriter() {
     const hasAccess = await checkAccess("script-writer", true); // VIP Only
     if (!hasAccess) return;
 
-    if (!productName || !usp) {
-      alert("Vui lòng nhập Tên sản phẩm và Điểm nổi bật (USP)!");
+    if (!productName.trim() || !usp.trim()) {
+      showWarning("Vui lòng nhập Tên sản phẩm và Điểm nổi bật (USP)!", "Thiếu Thông Tin");
       return;
     }
 
@@ -33,7 +35,7 @@ export default function ScriptWriter() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tool: "script-writer",
-          inputs: { productName, usp }
+          inputs: { productName: productName.trim(), usp: usp.trim() }
         }),
       });
 
@@ -41,10 +43,10 @@ export default function ScriptWriter() {
       if (data.success) {
         setResult(data.data);
       } else {
-        alert("Có lỗi xảy ra: " + data.error);
+        showAiError(data, "Có lỗi xảy ra khi tạo kịch bản video");
       }
     } catch (error) {
-      alert("Không thể kết nối đến máy chủ AI.");
+      showAiError({ error: "Không thể kết nối đến máy chủ AI. Vui lòng kiểm tra lại mạng hoặc token." });
     } finally {
       setLoading(false);
     }

@@ -15,6 +15,7 @@ import Link from "next/link";
 import { useToolGate } from "@/hooks/useToolGate";
 import { ReviewReplierOutput } from "@/components/tools/ReviewReplierOutput";
 import { TextDots } from "@/components/ui/text-dots";
+import { useToast } from "@/context/ToastContext";
 
 const QUICK_TAGS = [
   { label: "Giao sai màu / kích thước", sample: "Shop làm ăn chán quá, đặt size L áo đen giao size M áo trắng. Đề nghị hoàn tiền gấp!" },
@@ -27,6 +28,7 @@ const QUICK_TAGS = [
 
 export default function ReviewReplier() {
   const { checkAccess, GateModals } = useToolGate();
+  const { showAiError, showWarning } = useToast();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState("");
 
@@ -61,7 +63,7 @@ export default function ReviewReplier() {
     if (!hasAccess) return;
 
     if (!reviewContent.trim()) {
-      alert("Vui lòng dán nội dung đánh giá của khách hàng!");
+      showWarning("Vui lòng dán nội dung đánh giá của khách hàng!", "Thiếu Đánh Giá");
       return;
     }
 
@@ -69,16 +71,6 @@ export default function ReviewReplier() {
     setResult("");
 
     try {
-      console.log("INPUTS AI :", {
-        tool: "review-replier",
-        inputs: {
-          reviewContent: reviewContent.trim(),
-          rating,
-          issueType: selectedTag,
-          note: note.trim(),
-        },
-      })
-
       const response = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -95,13 +87,12 @@ export default function ReviewReplier() {
 
       const data = await response.json();
       if (data.success) {
-        console.log("OUT PUT AI :", data)
         setResult(data.data);
       } else {
-        alert("Có lỗi xảy ra: " + (data.error || "Vui lòng thử lại"));
+        showAiError(data, "Có lỗi xảy ra khi tạo phản hồi đánh giá");
       }
     } catch (error) {
-      alert("Không thể kết nối đến máy chủ AI.");
+      showAiError({ error: "Không thể kết nối đến máy chủ AI. Vui lòng kiểm tra lại mạng hoặc token." });
     } finally {
       setLoading(false);
     }

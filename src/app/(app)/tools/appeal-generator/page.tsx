@@ -19,6 +19,7 @@ import Link from "next/link";
 import { useToolGate } from "@/hooks/useToolGate";
 import { AppealGeneratorOutput } from "@/components/tools/AppealGeneratorOutput";
 import { TextDots } from "@/components/ui/text-dots";
+import { useToast } from "@/context/ToastContext";
 
 const VIOLATION_OPTIONS = [
   "Hàng giả / Hàng nhái (Nghi ngờ hàng Fake)",
@@ -40,6 +41,7 @@ const VIOLATION_OPTIONS = [
 
 export default function AppealGenerator() {
   const { checkAccess, GateModals } = useToolGate();
+  const { showAiError, showWarning } = useToast();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState("");
 
@@ -92,12 +94,12 @@ export default function AppealGenerator() {
       : violationType;
 
     if (violationType.startsWith("Khác") && !customViolationType.trim()) {
-      alert("Vui lòng nhập lý do vi phạm cụ thể của bạn!");
+      showWarning("Vui lòng nhập lý do vi phạm cụ thể của bạn!", "Thiếu Thông Tin");
       return;
     }
 
     if (!shopName.trim() || (!details.trim() && !imageBase64)) {
-      alert("Vui lòng cung cấp Tên Shop và Mô tả chi tiết hoặc Ảnh chụp màn hình!");
+      showWarning("Vui lòng cung cấp Tên Shop và Mô tả chi tiết hoặc Ảnh chụp màn hình!", "Thiếu Dữ Liệu");
       return;
     }
 
@@ -118,10 +120,10 @@ export default function AppealGenerator() {
       if (data.success) {
         setResult(data.data);
       } else {
-        alert("Có lỗi xảy ra: " + (data.error || "Vui lòng thử lại"));
+        showAiError(data, "Có lỗi xảy ra khi tạo văn bản kháng nghị");
       }
     } catch (error) {
-      alert("Không thể kết nối đến máy chủ AI.");
+      showAiError({ error: "Không thể kết nối đến máy chủ AI. Vui lòng kiểm tra lại mạng hoặc token." });
     } finally {
       setLoading(false);
     }

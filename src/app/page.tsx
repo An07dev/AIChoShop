@@ -4,7 +4,7 @@ import {
   Bot, Zap, ShieldAlert, Cpu, BarChart, Rocket, CheckCircle2,
   Star, Crown, TrendingUp, ArrowRight, ChevronDown,
   Target, MessageSquare, PenTool, Calculator,
-  Search, Copy, Play, Shield, Users, ArrowUpRight,
+  Search, Copy, Play, Shield, Users, ArrowUpRight, FileText,
 } from "lucide-react";
 import { Footer } from "@/components/layout/footer";
 import { getActiveVipPlans } from "@/lib/vip-plans-server";
@@ -12,7 +12,7 @@ import { DEFAULT_VIP_PLANS } from "@/lib/vip-plans";
 
 export const metadata = {
   title: "AIChoShop - Công Cụ AI Miễn Phí Cho Nhà Bán Hàng TMĐT",
-  description: "8 công cụ AI miễn phí + Khóa học ứng dụng AI vào bán hàng Shopee, TikTok Shop. Viết SEO, tạo kịch bản Reels, tính thuế TMĐT. Dùng thử ngay.",
+  description: "9 công cụ AI miễn phí + Khóa học ứng dụng AI vào bán hàng Shopee, TikTok Shop. Viết SEO, mô tả sản phẩm, tạo kịch bản Reels, tính thuế TMĐT. Dùng thử ngay.",
 };
 
 export default async function LandingPage() {
@@ -179,14 +179,14 @@ export default async function LandingPage() {
           <div className="text-center mb-14">
             <p className="text-sm font-semibold text-blue-600 mb-3">Hoàn toàn miễn phí</p>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 mb-3">
-              8 công cụ AI cho nhà bán hàng
+              9 công cụ AI cho nhà bán hàng
             </h2>
             <p className="text-slate-500 max-w-lg mx-auto">
               Mỗi tool giải quyết 1 vấn đề cụ thể. Dùng ngay, không cần đăng ký.
             </p>
           </div>
 
-          {/* Bento Grid — 2 large + 6 small */}
+          {/* Bento Grid — 3 large + 6 small = 9 tools */}
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {/* Large card 1 */}
             <Link href="/tools/seo-optimizer" className="col-span-2 bg-white border border-slate-200 rounded-2xl p-6 hover:border-blue-200 hover:shadow-md transition-all group">
@@ -214,13 +214,28 @@ export default async function LandingPage() {
               <span className="text-sm font-semibold text-blue-600 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">Dùng ngay <ArrowRight size={14} /></span>
             </Link>
 
-            {/* 6 small cards */}
+            {/* Large card 3 */}
+            <Link href="/tools/product-description" className="col-span-2 bg-white border border-slate-200 rounded-2xl p-6 hover:border-blue-200 hover:shadow-md transition-all group">
+              <div className="flex items-start justify-between mb-4">
+                <div className="w-11 h-11 bg-amber-50 rounded-xl flex items-center justify-center text-amber-600">
+                  <FileText size={22} />
+                </div>
+                <span className="text-[10px] font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">HOT & MỚI</span>
+              </div>
+              <h3 className="text-lg font-bold text-slate-900 mb-1.5">AI Mô Tả Chuyển Đổi Cao</h3>
+              <p className="text-sm text-slate-500 leading-relaxed mb-3">Cấu trúc 6 khối vàng chuẩn Top Seller (Cam kết, Nỗi đau & Giải pháp, USP, Thông số kỹ thuật) giúp x3 tỷ lệ chốt đơn.</p>
+              <span className="text-sm font-semibold text-blue-600 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">Dùng ngay <ArrowRight size={14} /></span>
+            </Link>
+
+            {/* Small cards row 2 */}
+            <SmallToolCard href="/tools/pricing-calculator" icon={<TrendingUp size={20} />} iconBg="bg-teal-50 text-teal-600" title="Tính Giá Bán" desc="Không bao giờ bán lỗ" />
             <SmallToolCard href="/tools/tax-calculator" icon={<Calculator size={20} />} iconBg="bg-rose-50 text-rose-600" title="Tính Thuế TMĐT" desc="Thuế GTGT, TNCN chuẩn xác" />
+
+            {/* Small cards row 3 */}
             <SmallToolCard href="/tools/script-writer" icon={<PenTool size={20} />} iconBg="bg-amber-50 text-amber-600" title="Viết Kịch Bản" desc="Reels & TikTok viral" />
             <SmallToolCard href="/tools/review-replier" icon={<MessageSquare size={20} />} iconBg="bg-emerald-50 text-emerald-600" title="Trả Lời Đánh Giá" desc="Biến 1★ thành 5★" />
             <SmallToolCard href="/tools/appeal-generator" icon={<Shield size={20} />} iconBg="bg-indigo-50 text-indigo-600" title="Kháng Nghị Vi Phạm" desc="Tỷ lệ thành công 99%" />
             <SmallToolCard href="/tools/koc-planner" icon={<Users size={20} />} iconBg="bg-pink-50 text-pink-600" title="KOC Planner" desc="Brief & đo ROI KOC" />
-            <SmallToolCard href="/tools/pricing-calculator" icon={<TrendingUp size={20} />} iconBg="bg-teal-50 text-teal-600" title="Tính Giá Bán" desc="Không bao giờ bán lỗ" />
           </div>
 
           <div className="text-center mt-10">
@@ -244,7 +259,7 @@ export default async function LandingPage() {
               </h2>
               <p className="text-slate-500 mb-8 leading-relaxed">
                 27 bài học video HD. Học xong là làm được ngay — không cần biết lập trình,
-                không cần kinh nghiệm AI. Kết hợp lý thuyết + thực hành trực tiếp trên 8 tools.
+                không cần kinh nghiệm AI. Kết hợp lý thuyết + thực hành trực tiếp trên 9 tools.
               </p>
 
               <div className="space-y-3 mb-8">
@@ -361,7 +376,7 @@ export default async function LandingPage() {
                   Bắt đầu trải nghiệm miễn phí các công cụ AI và bài học cơ bản.
                 </p>
                 <ul className="space-y-2.5 mb-7">
-                  {["8 Tools AI không giới hạn", "6 bài học miễn phí", "Cập nhật tính năng mới", "Hỗ trợ cộng đồng Seller"].map((s, i) => (
+                  {["9 Tools AI không giới hạn", "6 bài học miễn phí", "Cập nhật tính năng mới", "Hỗ trợ cộng đồng Seller"].map((s, i) => (
                     <li key={i} className="flex items-start gap-2 text-sm text-slate-600">
                       <CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" />
                       <span>{s}</span>
@@ -509,7 +524,7 @@ export default async function LandingPage() {
         <div className="max-w-2xl mx-auto">
           <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 text-center mb-10">Câu hỏi thường gặp</h2>
           <div className="space-y-3">
-            <Faq q="Tools AI có thực sự miễn phí không?" a="Có. 8 tools AI cơ bản hoàn toàn miễn phí, không giới hạn lượt sử dụng, không cần nhập thẻ tín dụng." />
+            <Faq q="Tools AI có thực sự miễn phí không?" a="Có. 9 tools AI cơ bản hoàn toàn miễn phí, không giới hạn lượt sử dụng, không cần nhập thẻ tín dụng." />
             <Faq q="Tôi chưa biết gì về AI, có học được không?" a="Hoàn toàn được. Khóa học thiết kế cho người mới từ số 0. Chỉ cần biết dùng máy tính cơ bản, mỗi bài có video hướng dẫn từng bước." />
             <Faq q="Mua VIP rồi có được hoàn tiền không?" a="Có. Hoàn tiền 100% trong 7 ngày nếu bạn cảm thấy khóa học không phù hợp. Không hỏi lý do." />
             <Faq q="Khóa học có cập nhật không?" a="Có. Khóa học được cập nhật liên tục khi sàn có thuật toán mới. Mua 1 lần, truy cập trọn đời." />
