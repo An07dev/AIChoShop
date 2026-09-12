@@ -15,6 +15,11 @@ const rateFor = (category: OfficialFeeCategory, shopType: ShopType) =>
   shopType === "mall" ? category.mallRate : category.marketplaceRate;
 
 export function getAvailableCategories(platform: Platform, shopType: ShopType) {
+  if (platform === "external") return [{
+    id: "external-direct", platform: "external" as const, industry: "Bán hàng trực tiếp",
+    level1: "Đơn ngoài", level2: "Facebook, Website, YouTube", level3: "Bán trực tiếp",
+    marketplaceRate: 0, mallRate: 0,
+  }];
   return OFFICIAL_CATEGORIES.filter((category) =>
     category.platform === platform && rateFor(category, shopType) !== null,
   );
@@ -76,9 +81,17 @@ export const PROGRAMS: Record<Platform, FeeProgram[]> = {
     { id: "tiktok_sfp", name: "SFP/Freeship", rate: 4.5, cap: 40000, defaultEnabled: false, note: "Kiểm tra tỷ lệ theo hợp đồng của shop trước khi bật." },
     { id: "tiktok_vxp", name: "Voucher Xtra", rate: 2.5, cap: 40000, defaultEnabled: false, note: "Chỉ bật khi shop đang tham gia và sao kê có khoản phí này." },
   ],
+  external: [],
 };
 
 export function getFeeProfile(platform: Platform, shopType: ShopType, categoryId: string): PlatformFeeProfile {
+  if (platform === "external") return {
+    platform, shopType, categoryId: "external-direct", commissionRate: 0,
+    transactionRate: 0, orderProcessingFee: 0, effectiveFrom: FEE_DATA_VERSION,
+    verifiedAt: FEE_DATA_VERSION, sourceName: "Chi phí do người bán cấu hình",
+    sourceUrl: "", specificity: "exact",
+    note: "Đơn ngoài không áp dụng phí sàn; chỉ tính các khoản người bán tự nhập.",
+  };
   const selected = getOfficialCategory(categoryId);
   const category = selected?.platform === platform && rateFor(selected, shopType) !== null
     ? selected

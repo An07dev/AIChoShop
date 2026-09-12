@@ -47,9 +47,9 @@ export function evaluatePrice(input: PricingInput, listPrice: number): PriceEval
     : productRevenue + Math.max(0, input.buyerShippingFee);
 
   const fees: AppliedFee[] = [
-    { id: "commission", name: "Phí hoa hồng nền tảng", base: commissionBase, rate: commissionRate, amount: feeAmount(commissionBase, commissionRate, null), note: profile.note },
-    { id: "transaction", name: "Phí xử lý giao dịch", base: transactionBase, rate: transactionRate, amount: feeAmount(transactionBase, transactionRate, null) },
-    { id: "order", name: "Phí xử lý/hạ tầng theo đơn", base: 1, rate: null, amount: Math.max(0, fixedFee) },
+    { id: "commission", name: input.platform === "external" ? "Phí thanh toán/cổng bán" : "Phí hoa hồng nền tảng", base: commissionBase, rate: commissionRate, amount: feeAmount(commissionBase, commissionRate, null), note: profile.note },
+    { id: "transaction", name: input.platform === "external" ? "Phí COD/đối tác" : "Phí xử lý giao dịch", base: transactionBase, rate: transactionRate, amount: feeAmount(transactionBase, transactionRate, null) },
+    { id: "order", name: input.platform === "external" ? "Phí xử lý đơn" : "Phí xử lý/hạ tầng theo đơn", base: 1, rate: null, amount: Math.max(0, fixedFee) },
   ];
   for (const program of PROGRAMS[input.platform].filter((item) => input.enabledProgramIds.includes(item.id))) {
     fees.push({ id: program.id, name: program.name, base: productRevenue, rate: program.rate,
