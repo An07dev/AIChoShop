@@ -163,10 +163,10 @@ export default function TaxCalculator() {
             {(revenue || platformFees) && (
               <button
                 onClick={handleResetForm}
-                className="text-xs font-medium text-slate-400 hover:text-rose-500 flex items-center gap-1 transition-colors cursor-pointer"
+                className="text-xs font-bold text-slate-600 dark:text-slate-200 hover:text-rose-600 dark:hover:text-rose-400 bg-white dark:bg-slate-800 hover:bg-rose-50 dark:hover:bg-rose-950/40 px-2.5 py-1 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
                 title="Làm mới form"
               >
-                <RotateCcw size={12} /> Làm mới
+                <RotateCcw size={12} className="text-slate-400 dark:text-slate-300" /> Làm mới
               </button>
             )}
           </div>

@@ -1,0 +1,185 @@
+import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
+
+interface Params {
+  params: Promise<{ id: string }>;
+}
+
+// GET /api/vip-plans/[id] - Lấy chi tiết gói VIP theo ID hoặc Slug
+export async function GET(req: Request, { params }: Params) {
+  try {
+    const { id } = await params;
+    const plan = await prisma.vipPlan.findFirst({
+      where: {
+        OR: [{ id }, { slug: id }],
+      },
+    });
+
+    if (!plan) {
+      return NextResponse.json(
+        { success: false, error: "Không tìm thấy gói VIP" },
+        { status: 404 }
+      );
+    }
+
+    return NextResponse.json({ success: true, data: plan });
+  } catch (error) {
+    console.error("GET /api/vip-plans/[id] error:", error);
+    return NextResponse.json(
+      { success: false, error: "Lỗi hệ thống khi tải gói VIP" },
+      { status: 500 }
+    );
+  }
+}
+
+// PUT /api/vip-plans/[id] - Cập nhật toàn bộ thông tin gói VIP
+export async function PUT(req: Request, { params }: Params) {
+  try {
+    const { id } = await params;
+    const body = await req.json();
+    const {
+      name,
+      slug,
+      price,
+      originalPrice,
+      period,
+      durationDays,
+      desc,
+      tag,
+      isPopular,
+      features,
+      order,
+      active,
+    } = body;
+
+    const existing = await prisma.vipPlan.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json(
+        { success: false, error: "Không tìm thấy gói VIP cần cập nhật" },
+        { status: 404 }
+      );
+    }
+
+    // Nếu slug thay đổi, kiểm tra trùng lặp
+    let cleanSlug = existing.slug;
+    if (slug && slug.trim() !== existing.slug) {
+      cleanSlug = slug.trim().toLowerCase().replace(/\s+/g, "-");
+      const checkDuplicate = await prisma.vipPlan.findFirst({
+        where: { slug: cleanSlug, NOT: { id } },
+      });
+      if (checkDuplicate) {
+        return NextResponse.json(
+          { success: false, error: `Mã gói (slug) '${cleanSlug}' đã được sử dụng` },
+          { status: 400 }
+        );
+      }
+    }
+
+    const formattedFeatures = Array.isArray(features)
+      ? features.map((f) => String(f).trim()).filter(Boolean)
+      : typeof features === "string"
+      ? features
+          .split("\n")
+          .map((f) => f.trim())
+          .filter(Boolean)
+      : existing.features;
+
+    const updated = await prisma.vipPlan.update({
+      where: { id },
+      data: {
+        name: name !== undefined ? String(name).trim() : existing.name,
+        slug: cleanSlug,
+        price: price !== undefined ? Number(price) : existing.price,
+        originalPrice:
+          originalPrice !== undefined
+            ? Number(originalPrice)
+            : existing.originalPrice,
+        period: period !== undefined ? String(period).trim() : existing.period,
+        durationDays:
+          durationDays !== undefined ? Number(durationDays) : existing.durationDays,
+        desc: desc !== undefined ? String(desc).trim() : existing.desc,
+        tag: tag !== undefined ? (tag ? String(tag).trim() : null) : existing.tag,
+        isPopular: isPopular !== undefined ? Boolean(isPopular) : existing.isPopular,
+        features: formattedFeatures,
+        order: order !== undefined ? Number(order) : existing.order,
+        active: active !== undefined ? Boolean(active) : existing.active,
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "Cập nhật gói VIP thành công",
+      data: updated,
+    });
+  } catch (error) {
+    console.error("PUT /api/vip-plans/[id] error:", error);
+    return NextResponse.json(
+      { success: false, error: "Lỗi hệ thống khi cập nhật gói VIP" },
+      { status: 500 }
+    );
+  }
+}
+
+// PATCH /api/vip-plans/[id] - Cập nhật nhanh một số trường (Bật/Tắt active, isPopular)
+export async function PATCH(req: Request, { params }: Params) {
+  try {
+    const { id } = await params;
+    const body = await req.json();
+
+    const existing = await prisma.vipPlan.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json(
+        { success: false, error: "Không tìm thấy gói VIP" },
+        { status: 404 }
+      );
+    }
+
+    const updated = await prisma.vipPlan.update({
+      where: { id },
+      data: {
+        ...(body.active !== undefined && { active: Boolean(body.active) }),
+        ...(body.isPopular !== undefined && { isPopular: Boolean(body.isPopular) }),
+        ...(body.order !== undefined && { order: Number(body.order) }),
+      },
+    });
+
+    return NextResponse.json({
+      success: true,
+      message: "Cập nhật nhanh gói VIP thành công",
+      data: updated,
+    });
+  } catch (error) {
+    console.error("PATCH /api/vip-plans/[id] error:", error);
+    return NextResponse.json(
+      { success: false, error: "Lỗi hệ thống khi cập nhật gói VIP" },
+      { status: 500 }
+    );
+  }
+}
+
+// DELETE /api/vip-plans/[id] - Xóa gói VIP
+export async function DELETE(req: Request, { params }: Params) {
+  try {
+    const { id } = await params;
+    const existing = await prisma.vipPlan.findUnique({ where: { id } });
+    if (!existing) {
+      return NextResponse.json(
+        { success: false, error: "Không tìm thấy gói VIP để xóa" },
+        { status: 404 }
+      );
+    }
+
+    await prisma.vipPlan.delete({ where: { id } });
+
+    return NextResponse.json({
+      success: true,
+      message: `Đã xóa gói VIP '${existing.name}' thành công`,
+    });
+  } catch (error) {
+    console.error("DELETE /api/vip-plans/[id] error:", error);
+    return NextResponse.json(
+      { success: false, error: "Lỗi hệ thống khi xóa gói VIP" },
+      { status: 500 }
+    );
+  }
+}

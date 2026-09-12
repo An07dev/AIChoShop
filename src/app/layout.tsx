@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { ThemeProvider } from "@/context/ThemeContext";
 
 const inter = Inter({
   subsets: ["latin", "vietnamese"],
@@ -18,9 +19,31 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="vi" className={`${inter.variable} font-sans antialiased h-full`}>
-      <body className="min-h-full flex flex-col text-slate-900 bg-white">
-        {children}
+    <html lang="vi" suppressHydrationWarning className={`${inter.variable} font-sans antialiased h-full`}>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              try {
+                var m = localStorage.getItem('aicho_theme_mode');
+                var c = localStorage.getItem('aicho_theme_color');
+                if (m === 'dark' || (!m && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                  document.documentElement.classList.add('dark');
+                } else {
+                  document.documentElement.classList.remove('dark');
+                }
+                if (c) {
+                  document.documentElement.setAttribute('data-theme-color', c);
+                } else {
+                  document.documentElement.setAttribute('data-theme-color', 'blue');
+                }
+              } catch(e) {}
+            `,
+          }}
+        />
+      </head>
+      <body className="min-h-full flex flex-col text-slate-900 dark:text-slate-100 bg-white dark:bg-slate-950 transition-colors duration-200">
+        <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>
   );

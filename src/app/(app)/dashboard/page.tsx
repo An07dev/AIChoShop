@@ -33,33 +33,33 @@ export default async function DashboardPage() {
 
       {/* 1. WELCOME & BANNER */}
       <div className="flex flex-col md:flex-row gap-6">
-        <div className="flex-1 bg-white p-8 rounded-3xl border border-slate-200 shadow-sm relative overflow-hidden">
-          <div className="absolute right-0 top-0 w-64 h-64 bg-blue-500/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
-          <h1 className="text-3xl font-black text-slate-900 mb-2">
-            Chào mừng trở lại, <span className="text-blue-600">{user.name}</span>! 👋
+        <div className="flex-1 bg-white dark:bg-slate-900 p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm relative overflow-hidden transition-colors">
+          <div className="absolute right-0 top-0 w-64 h-64 bg-blue-500/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+          <h1 className="text-3xl font-black text-slate-900 dark:text-white mb-2 tracking-tight">
+            Chào mừng trở lại, <span className="text-brand">{user.name}</span>! 👋
           </h1>
-          <p className="text-slate-500 mb-8 max-w-xl">
+          <p className="text-slate-500 dark:text-slate-400 mb-8 max-w-xl text-sm leading-relaxed">
             Tiếp tục hành trình X10 doanh số của bạn với các công cụ AI và kiến thức thực chiến từ chuyên gia.
           </p>
 
           <div className="flex flex-wrap gap-4 relative z-10">
-            <Link href="/learn" className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-blue-500/30 flex items-center gap-2">
+            <Link href="/learn" className="bg-brand hover:bg-brand-hover text-white px-6 py-3 rounded-xl font-bold transition-all shadow-lg shadow-brand/25 flex items-center gap-2">
               <BookOpen size={18} /> Học tiếp
             </Link>
-            <Link href="/tools" className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-6 py-3 rounded-xl font-bold transition-all flex items-center gap-2">
+            <Link href="/tools" className="bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 px-6 py-3 rounded-xl font-bold transition-all flex items-center gap-2 border border-slate-200/50 dark:border-slate-700/50">
               <Sparkles size={18} /> Mở kho công cụ AI
             </Link>
           </div>
         </div>
 
-        <div className="w-full md:w-80 bg-slate-900 rounded-3xl p-8 text-white relative overflow-hidden shadow-xl shadow-slate-900/20 flex flex-col justify-center">
+        <div className="w-full md:w-80 bg-slate-900 dark:bg-slate-900/90 rounded-3xl p-8 text-white relative overflow-hidden shadow-xl shadow-slate-900/20 border border-slate-800 flex flex-col justify-center">
           <div className="absolute inset-0 bg-gradient-to-br from-blue-600/20 to-purple-600/20"></div>
           <div className="relative z-10">
             <div className="flex items-center gap-3 mb-2">
               <div className={`p-2 rounded-lg ${user.isVIP ? 'bg-amber-500/20' : 'bg-emerald-500/20'}`}>
                 {user.isVIP ? <Crown size={24} className="text-amber-400" /> : <CheckCircle2 size={24} className="text-emerald-400" />}
               </div>
-              <h2 className="font-bold text-slate-300">Gói tài khoản</h2>
+              <h2 className="font-bold text-slate-300 text-sm">Gói tài khoản</h2>
             </div>
 
             <h3 className="text-3xl font-black mb-1">
@@ -82,43 +82,43 @@ export default async function DashboardPage() {
 
       {/* 2. KPI / STATS */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-xl flex items-center justify-center shrink-0">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4 transition-colors">
+          <div className="w-12 h-12 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-xl flex items-center justify-center shrink-0">
             <Zap size={24} />
           </div>
           <div>
-            <p className="text-sm font-bold text-slate-500">Lượt dùng AI hôm nay</p>
-            <div className="flex items-baseline gap-2">
-              <h4 className="text-2xl font-black text-slate-900">12</h4>
-              <span className="text-sm font-medium text-slate-400">/ Không giới hạn</span>
+            <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Lượt dùng AI hôm nay</p>
+            <div className="flex items-baseline gap-2 mt-0.5">
+              <h4 className="text-2xl font-black text-slate-900 dark:text-white">12</h4>
+              <span className="text-xs font-medium text-slate-400 dark:text-slate-500">/ Không giới hạn</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-xl flex items-center justify-center shrink-0">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4 transition-colors">
+          <div className="w-12 h-12 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 rounded-xl flex items-center justify-center shrink-0">
             <TrendingUp size={24} />
           </div>
           <div>
-            <p className="text-sm font-bold text-slate-500">Nội dung đã tạo</p>
-            <div className="flex items-baseline gap-2">
-              <h4 className="text-2xl font-black text-slate-900">45</h4>
-              <span className="text-sm font-medium text-slate-400">bản ghi</span>
+            <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Nội dung đã tạo</p>
+            <div className="flex items-baseline gap-2 mt-0.5">
+              <h4 className="text-2xl font-black text-slate-900 dark:text-white">45</h4>
+              <span className="text-xs font-medium text-slate-400 dark:text-slate-500">bản ghi</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 bg-purple-50 text-purple-600 rounded-xl flex items-center justify-center shrink-0">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex items-center gap-4 transition-colors">
+          <div className="w-12 h-12 bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 rounded-xl flex items-center justify-center shrink-0">
             <BookOpen size={24} />
           </div>
           <div className="w-full">
             <div className="flex items-center justify-between mb-1">
-              <p className="text-sm font-bold text-slate-500">Tiến độ khóa học</p>
-              <span className="text-sm font-bold text-slate-900">15%</span>
+              <p className="text-xs font-bold text-slate-500 dark:text-slate-400">Tiến độ khóa học</p>
+              <span className="text-xs font-bold text-slate-900 dark:text-white">15%</span>
             </div>
-            <div className="w-full bg-slate-100 rounded-full h-2.5 mt-2">
-              <div className="bg-purple-500 h-2.5 rounded-full" style={{ width: '15%' }}></div>
+            <div className="w-full bg-slate-100 dark:bg-slate-800 rounded-full h-2 mt-2 overflow-hidden">
+              <div className="bg-purple-500 h-2 rounded-full" style={{ width: '15%' }}></div>
             </div>
           </div>
         </div>
@@ -127,53 +127,53 @@ export default async function DashboardPage() {
       {/* 3. RECENT ACTIVITY & RECOMMENDED TOOLS */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-            <h3 className="font-bold text-slate-900 flex items-center gap-2">
+        <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
+          <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/40">
+            <h3 className="font-bold text-slate-900 dark:text-white flex items-center gap-2 text-sm">
               <Clock size={18} className="text-slate-400" /> Hoạt động gần đây
             </h3>
-            <button className="text-sm font-bold text-blue-600 hover:text-blue-700">Xem tất cả</button>
+            <button className="text-xs font-bold text-brand hover:underline cursor-pointer">Xem tất cả</button>
           </div>
-          <div className="divide-y divide-slate-100">
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {recentActivities.map((activity) => (
-              <div key={activity.id} className="p-6 hover:bg-slate-50 transition-colors flex gap-4">
-                <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center shrink-0">
-                  <Sparkles size={16} className="text-slate-500" />
+              <div key={activity.id} className="p-6 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors flex gap-4">
+                <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center shrink-0">
+                  <Sparkles size={16} className="text-brand" />
                 </div>
                 <div className="flex-1">
                   <div className="flex justify-between items-start mb-1">
-                    <h4 className="font-bold text-slate-900">{activity.tool}</h4>
-                    <span className="text-xs font-medium text-slate-400">{activity.time}</span>
+                    <h4 className="font-bold text-slate-900 dark:text-white text-sm">{activity.tool}</h4>
+                    <span className="text-xs font-medium text-slate-400 dark:text-slate-500">{activity.time}</span>
                   </div>
-                  <p className="text-sm text-slate-600">{activity.action}</p>
+                  <p className="text-xs text-slate-600 dark:text-slate-400 leading-relaxed">{activity.action}</p>
                 </div>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm overflow-hidden">
-          <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50">
-            <h3 className="font-bold text-slate-900">Công cụ khuyên dùng</h3>
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden transition-colors">
+          <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40">
+            <h3 className="font-bold text-slate-900 dark:text-white text-sm">Công cụ khuyên dùng</h3>
           </div>
           <div className="p-6 space-y-4">
-            <Link href="/tools/seo-optimizer" className="block group p-4 border border-slate-100 rounded-2xl hover:border-blue-200 hover:shadow-md transition-all">
+            <Link href="/tools/seo-optimizer" className="block group p-4 border border-slate-100 dark:border-slate-800 rounded-2xl hover:border-blue-200 dark:hover:border-slate-700 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 hover:shadow-md transition-all">
               <div className="flex items-center justify-between mb-2">
-                <h4 className="font-bold text-slate-900 group-hover:text-blue-600 transition-colors">AI Tối Ưu SEO</h4>
-                <ArrowRight size={16} className="text-slate-400 group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
+                <h4 className="font-bold text-slate-900 dark:text-white group-hover:text-brand transition-colors text-sm">AI Tối Ưu SEO</h4>
+                <ArrowRight size={16} className="text-slate-400 group-hover:text-brand group-hover:translate-x-1 transition-all" />
               </div>
-              <p className="text-xs text-slate-500">Giật Top 1 tìm kiếm với bộ tiêu đề và hashtag chuẩn thuật toán.</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">Giật Top 1 tìm kiếm với bộ tiêu đề và hashtag chuẩn thuật toán.</p>
             </Link>
 
-            <Link href="/tools/script-writer" className="block group p-4 border border-slate-100 rounded-2xl hover:border-purple-200 hover:shadow-md transition-all">
+            <Link href="/tools/script-writer" className="block group p-4 border border-slate-100 dark:border-slate-800 rounded-2xl hover:border-purple-200 dark:hover:border-slate-700 hover:bg-slate-50/50 dark:hover:bg-slate-800/40 hover:shadow-md transition-all">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <h4 className="font-bold text-slate-900 group-hover:text-purple-600 transition-colors">AI Kịch Bản Video</h4>
-                  <span className="bg-amber-100 text-amber-700 text-[10px] font-black px-1.5 py-0.5 rounded">VIP</span>
+                  <h4 className="font-bold text-slate-900 dark:text-white group-hover:text-purple-400 transition-colors text-sm">AI Kịch Bản Video</h4>
+                  <span className="bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400 text-[10px] font-black px-1.5 py-0.5 rounded border border-amber-200/50 dark:border-amber-800/50">VIP</span>
                 </div>
-                <ArrowRight size={16} className="text-slate-400 group-hover:text-purple-600 group-hover:translate-x-1 transition-all" />
+                <ArrowRight size={16} className="text-slate-400 group-hover:text-purple-400 group-hover:translate-x-1 transition-all" />
               </div>
-              <p className="text-xs text-slate-500">Sáng tạo 3s đầu hook cực mạnh giữ chân khách hàng trên TikTok.</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">Sáng tạo 3s đầu hook cực mạnh giữ chân khách hàng trên TikTok.</p>
             </Link>
           </div>
         </div>
