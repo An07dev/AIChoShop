@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import Link from "next/link";
-import { Lock, UserPlus, Crown } from "lucide-react";
+import { Crown } from "lucide-react";
 import { getUserPlan } from "@/app/actions/user";
 import { AuthModal } from "@/components/auth/AuthModal";
 
@@ -10,7 +10,7 @@ export function useToolGate() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [showVIPModal, setShowVIPModal] = useState(false);
 
-  const checkAccess = async (toolId: string, isVIPOnly: boolean = false) => {
+  const checkAccess = useCallback(async (toolId: string, isVIPOnly: boolean = false) => {
     const plan = await getUserPlan();
 
     // Nếu Tool yêu cầu VIP
@@ -48,7 +48,7 @@ export function useToolGate() {
       localStorage.setItem(key, (usages + 1).toString());
       return true;
     }
-  };
+  }, []);
 
   const GateModals = () => (
     <>

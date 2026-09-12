@@ -1,12 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { AlertTriangle, ArrowLeft, Calculator, Check, ChevronDown, ChevronUp, CircleDollarSign, Copy, ExternalLink, Info, PackageCheck, ReceiptText, RotateCcw, ShieldCheck, Sparkles, TrendingDown, Truck } from "lucide-react";
+import { AlertTriangle, ArrowLeft, Calculator, Check, ChevronDown, ChevronUp, CircleDollarSign, Copy, ExternalLink, Info, PackageCheck, ReceiptText, RotateCcw, Save, ShieldCheck, Sparkles, Table2, TrendingDown, Truck } from "lucide-react";
 import { useToolGate } from "@/hooks/useToolGate";
 import { calculatePricing } from "@/lib/pricing/engine";
 import { detectCategory, FEE_DATA_VERSION, getAvailableCategories, getCategoryLabel, getDefaultCategoryId, getFeeProfile, getOfficialCategory, PROGRAMS, SOURCES } from "@/lib/pricing/registry";
+import { readPricingHistory, writePricingHistory, type PricingCalculationSnapshot } from "@/lib/pricing/storage";
 import type { CostMode, FeeOverrideRecord, OfficialFeeCategory, Platform, PricingInput, ShopType, TaxMode } from "@/lib/pricing/types";
+import BulkPricing from "./BulkPricing";
+import { CalculationSummary, CostVisuals, EmptyCalculation, SavedCalculations } from "./PricingExtras";
 
 const initialInput: PricingInput = {
   platform: "shopee", shopType: "marketplace", categoryId: "shopee-416", quantity: 1,
@@ -64,6 +67,7 @@ function Metric({ label, value, tone = "slate", subtext }: { label: string; valu
 
 export default function PricingCalculatorClient({ feeOverrides }: { feeOverrides: FeeOverrideRecord[] }) {
   const { checkAccess, GateModals } = useToolGate();
+  const [workspaceMode, setWorkspaceMode] = useState<"single" | "bulk">("single");
   const [mode, setMode] = useState<"target" | "audit">("target");
   const [advanced, setAdvanced] = useState(false);
   const [productName, setProductName] = useState("");
@@ -74,8 +78,19 @@ export default function PricingCalculatorClient({ feeOverrides }: { feeOverrides
   const [roundingStep, setRoundingStep] = useState(1_000);
   const [copied, setCopied] = useState(false);
   const [suggestedCategoryId, setSuggestedCategoryId] = useState<string | null>(null);
+  const [hasCalculated, setHasCalculated] = useState(false);
+  const [savedHistory, setSavedHistory] = useState<PricingCalculationSnapshot[]>([]);
+  const [saveNotice, setSaveNotice] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [productNameError, setProductNameError] = useState("");
+  const productNameRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { checkAccess("pricing-calculator", false); }, [checkAccess]);
+  useEffect(() => {
+    // localStorage chỉ tồn tại sau khi component đã gắn vào trình duyệt.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSavedHistory(readPricingHistory(window.localStorage));
+  }, []);
   const update = <K extends keyof PricingInput>(key: K, value: PricingInput[K]) => setInput((current) => ({ ...current, [key]: value }));
   const selectedCategory = getOfficialCategory(input.categoryId)
     ?? getOfficialCategory(getDefaultCategoryId(input.platform, input.shopType))!;
@@ -105,15 +120,59 @@ export default function PricingCalculatorClient({ feeOverrides }: { feeOverrides
     setInput((current) => ({ ...current, categoryId, commissionOverride: null }));
     setSuggestedCategoryId(null);
   };
-  const changePlatform = (platform: Platform) => setInput((current) => ({ ...current, platform,
+  const changePlatform = (platform: Platform) => { setInput((current) => ({ ...current, platform,
     categoryId: getDefaultCategoryId(platform, current.shopType), commissionOverride: null,
-    transactionOverride: null, fixedFeeOverride: null, enabledProgramIds: [] }));
-  const changeShopType = (shopType: ShopType) => setInput((current) => ({ ...current, shopType,
+    transactionOverride: null, fixedFeeOverride: null, enabledProgramIds: [] })); };
+  const changeShopType = (shopType: ShopType) => { setInput((current) => ({ ...current, shopType,
     categoryId: getDefaultCategoryId(current.platform, shopType), commissionOverride: null,
-    transactionOverride: null, fixedFeeOverride: null }));
+    transactionOverride: null, fixedFeeOverride: null })); };
   const toggleProgram = (id: string) => setInput((current) => ({ ...current, enabledProgramIds: current.enabledProgramIds.includes(id) ? current.enabledProgramIds.filter((item) => item !== id) : [...current.enabledProgramIds, id] }));
-  const handleName = (name: string) => { setProductName(name); const found = detectCategory(name, input.platform, input.shopType); setSuggestedCategoryId(found && found.id !== input.categoryId ? found.id : null); };
-  const reset = () => { setInput(initialInput); setMode("target"); setProductName(""); setAuditPrice(150_000); setTargetMode("margin"); setTargetValue(20); setRoundingStep(1_000); setSuggestedCategoryId(null); };
+  const handleName = (name: string) => { setProductName(name); setProductNameError(""); const found = detectCategory(name, input.platform, input.shopType); setSuggestedCategoryId(found && found.id !== input.categoryId ? found.id : null); };
+  const reset = () => { setInput(initialInput); setMode("target"); setProductName(""); setAuditPrice(150_000); setTargetMode("margin"); setTargetValue(20); setRoundingStep(1_000); setSuggestedCategoryId(null); setHasCalculated(false); setSaveNotice(""); setEditingId(null); setProductNameError(""); };
+  const calculate = () => {
+    if (!productName.trim()) {
+      setProductNameError("Vui lòng nhập tên sản phẩm trước khi tính giá bán.");
+      setHasCalculated(false);
+      productNameRef.current?.focus();
+      return;
+    }
+    setProductNameError("");
+    setHasCalculated(true);
+    setSaveNotice("");
+  };
+  const createSnapshot = (name = productName || "Sản phẩm chưa đặt tên"): PricingCalculationSnapshot => ({
+    id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
+    createdAt: new Date().toISOString(), productName: name, mode, input: calculationInput,
+    auditPrice, targetMode, targetValue, roundingStep, result,
+  });
+  const persistHistory = (next: PricingCalculationSnapshot[]) => {
+    setSavedHistory(next);
+    writePricingHistory(window.localStorage, next);
+  };
+  const saveCurrent = () => {
+    if (!productName.trim()) { setProductNameError("Vui lòng nhập tên sản phẩm trước khi lưu."); productNameRef.current?.focus(); return; }
+    if (!hasCalculated) { setSaveNotice("Hãy nhấn Tính toán giá bán trước khi lưu."); return; }
+    const snapshot = createSnapshot();
+    const item = editingId ? { ...snapshot, id: editingId } : snapshot;
+    persistHistory(editingId ? savedHistory.map((saved) => saved.id === editingId ? item : saved) : [item, ...savedHistory]);
+    setSaveNotice(editingId ? `Đã cập nhật “${item.productName}”.` : `Đã lưu “${item.productName}” trên trình duyệt này.`);
+  };
+  const saveMany = (items: PricingCalculationSnapshot[]) => {
+    persistHistory([...items, ...savedHistory]);
+    setSaveNotice(`Đã lưu ${items.length} sản phẩm từ file CSV.`);
+  };
+  const openSaved = (item: PricingCalculationSnapshot) => {
+    setWorkspaceMode("single"); setProductName(item.productName); setMode(item.mode); setInput(item.input);
+    setAuditPrice(item.auditPrice); setTargetMode(item.targetMode); setTargetValue(item.targetValue);
+    setRoundingStep(item.roundingStep); setSuggestedCategoryId(null); setHasCalculated(true);
+    setEditingId(item.id);
+    setSaveNotice(`Đã mở lại “${item.productName}”. Bạn có thể sửa, tính lại rồi nhấn Cập nhật.`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+  const deleteSaved = (id: string) => { if (editingId === id) setEditingId(null); persistHistory(savedHistory.filter((item) => item.id !== id)); };
+  const deleteAllSaved = () => {
+    if (window.confirm("Xóa toàn bộ lịch sử định giá đã lưu trên trình duyệt này?")) { setEditingId(null); persistHistory([]); }
+  };
   const copyResult = async () => {
     const fees = evaluation.fees.map((fee) => `- ${fee.name}: ${formatMoney(fee.amount)}`).join("\n");
     await navigator.clipboard.writeText(`PHÂN TÍCH GIÁ BÁN ${input.platform.toUpperCase()}\nSản phẩm: ${productName || "Chưa đặt tên"}\nNgành: ${getCategoryLabel(selectedCategory)}\nGiá niêm yết: ${formatMoney(evaluation.listPrice)}\nGiá hòa vốn: ${result.breakEvenPrice === null ? "Không khả thi" : formatMoney(result.breakEvenPrice)}\nTiền sàn giải ngân: ${formatMoney(evaluation.payout)}\n${fees}\nLãi đơn thành công: ${formatMoney(evaluation.profitOnSuccess)}\nLãi kỳ vọng/đơn phát sinh: ${formatMoney(evaluation.expectedProfitPerOrder)}\nBiên kỳ vọng: ${evaluation.expectedMargin.toFixed(1)}%\nDữ liệu phí: ${FEE_DATA_VERSION}`);
@@ -129,28 +188,34 @@ export default function PricingCalculatorClient({ feeOverrides }: { feeOverrides
       </div>
     </div>
 
-    <div className="grid grid-cols-1 gap-6 lg:grid-cols-12"><div className="space-y-5 lg:col-span-5">
+    <div className="mb-6 flex w-fit rounded-xl bg-slate-200/70 p-1"><button onClick={() => setWorkspaceMode("single")} className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold ${workspaceMode === "single" ? "bg-white text-blue-700 shadow-sm" : "text-slate-600"}`}><Calculator size={16} /> Định giá đơn lẻ</button><button onClick={() => setWorkspaceMode("bulk")} className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold ${workspaceMode === "bulk" ? "bg-white text-emerald-700 shadow-sm" : "text-slate-600"}`}><Table2 size={16} /> Định giá hàng loạt</button></div>
+
+    {workspaceMode === "bulk" ? <><BulkPricing baseInput={input} feeOverrides={feeOverrides} onSaveAll={saveMany} />{saveNotice && <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">{saveNotice}</div>}<SavedCalculations history={savedHistory} onOpen={openSaved} onDelete={deleteSaved} onDeleteAll={deleteAllSaved} /></> : <><div className="grid grid-cols-1 gap-6 lg:grid-cols-12"><div className="space-y-5 lg:col-span-5">
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="flex items-center justify-between border-b bg-slate-50/70 px-5 py-4"><h2 className="flex items-center gap-2 font-bold"><PackageCheck size={18} className="text-blue-600" /> Sản phẩm và sàn</h2><button onClick={reset} className="flex items-center gap-1 text-xs font-semibold text-slate-500"><RotateCcw size={13} /> Đặt lại</button></div>
-        <div className="space-y-4 p-5"><Field label="Tên sản phẩm" hint="chỉ gợi ý, không tự áp"><input value={productName} onChange={(e) => handleName(e.target.value)} placeholder="Ví dụ: Áo polo nam" className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-blue-500" /></Field>
+        <div className="space-y-4 p-5"><Field label="Tên sản phẩm" hint="bắt buộc"><input ref={productNameRef} value={productName} onChange={(e) => handleName(e.target.value)} aria-invalid={Boolean(productNameError)} aria-describedby={productNameError ? "product-name-error" : undefined} placeholder="Ví dụ: Áo polo nam" className={`w-full rounded-lg border bg-slate-50 px-3 py-2 text-sm outline-none focus:ring-2 ${productNameError ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/15" : "border-slate-200 focus:border-blue-500 focus:ring-blue-500/15"}`} />{productNameError && <p id="product-name-error" className="mt-1.5 text-xs font-semibold text-rose-600">{productNameError}</p>}</Field>
           {suggestion && <div className="flex items-center justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3 text-xs text-blue-800"><span className="flex items-center gap-1.5"><Sparkles size={14} /> Gợi ý: <strong>{getCategoryLabel(suggestion)}</strong></span><button onClick={() => applyCategory(suggestion.id)} className="rounded-md bg-blue-600 px-2.5 py-1.5 font-bold text-white">Xác nhận</button></div>}
           <div className="grid grid-cols-2 gap-3"><Field label="Sàn"><select value={input.platform} onChange={(e) => changePlatform(e.target.value as Platform)} className="w-full rounded-lg border bg-slate-50 px-3 py-2 text-sm font-bold"><option value="shopee">Shopee</option><option value="tiktok">TikTok Shop</option></select></Field><Field label="Loại shop"><select value={input.shopType} onChange={(e) => changeShopType(e.target.value as ShopType)} className="w-full rounded-lg border bg-slate-50 px-3 py-2 text-sm font-bold"><option value="marketplace">Shop thường</option><option value="mall">Mall</option></select></Field></div>
           <CategorySelector platform={input.platform} shopType={input.shopType} categoryId={selectedCategory.id} onChange={applyCategory} />
           <div className="grid grid-cols-2 gap-3"><Field label="Giá vốn / sản phẩm"><MoneyInput value={input.costPerUnit} onChange={(v) => update("costPerUnit", v)} /></Field><Field label="Số lượng / đơn"><NumberInput value={input.quantity} onChange={(v) => update("quantity", Math.max(1, Math.floor(v)))} suffix="" min={1} step={1} /></Field><Field label="Đóng gói / đơn"><MoneyInput value={input.packagingCost} onChange={(v) => update("packagingCost", v)} /></Field><Field label="Ads"><div className="flex overflow-hidden rounded-lg border"><select value={input.marketingMode} onChange={(e) => update("marketingMode", e.target.value as CostMode)} className="w-24 border-r bg-slate-100 px-2 text-xs font-bold"><option value="percent">% GMV</option><option value="fixed">đ/đơn</option></select>{input.marketingMode === "fixed" ? <MoneyInput value={input.marketingValue} onChange={(v) => update("marketingValue", v)} className="rounded-none border-0" /> : <div className="flex-1"><NumberInput value={input.marketingValue} onChange={(v) => update("marketingValue", v)} max={100} /></div>}</div></Field></div>
           {mode === "target" ? <div className="rounded-xl border border-blue-200 bg-blue-50 p-4"><Field label="Lợi nhuận kỳ vọng mong muốn"><div className="flex overflow-hidden rounded-lg border border-blue-200 bg-white"><select value={targetMode} onChange={(e) => setTargetMode(e.target.value as "margin" | "fixed")} className="w-40 border-r bg-blue-100 px-2 text-xs font-bold text-blue-900"><option value="margin">% doanh thu thực</option><option value="fixed">Tiền / đơn phát sinh</option></select>{targetMode === "fixed" ? <MoneyInput value={targetValue} onChange={setTargetValue} className="rounded-none border-0 bg-white" /> : <div className="flex-1"><NumberInput value={targetValue} onChange={setTargetValue} max={95} /></div>}</div></Field></div> : <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4"><Field label="Giá niêm yết cần thẩm định"><MoneyInput value={auditPrice} onChange={setAuditPrice} className="border-emerald-300 bg-white text-base" /></Field></div>}
+          <div className="grid grid-cols-[1fr_auto] gap-3"><button onClick={calculate} className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-emerald-600 px-4 py-3 text-sm font-black text-white shadow-lg shadow-blue-500/15"><Calculator size={17} /> Tính toán giá bán</button><button onClick={saveCurrent} className="flex items-center justify-center gap-2 rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-700"><Save size={17} /> {editingId ? "Cập nhật" : "Lưu"}</button></div>
+          {saveNotice && <p className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">{saveNotice}</p>}
         </div></section>
 
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><button onClick={() => setAdvanced((v) => !v)} className="flex w-full items-center justify-between px-5 py-4 text-left"><span><strong className="flex items-center gap-2 text-sm"><ReceiptText size={17} className="text-violet-600" /> Chi phí và rủi ro chi tiết</strong><span className="mt-0.5 block text-xs text-slate-500">Voucher, Affiliate, thuế, vận chuyển và hoàn hàng</span></span>{advanced ? <ChevronUp size={18} /> : <ChevronDown size={18} />}</button>{advanced && <AdvancedFields input={input} update={update} feeProfile={feeProfile} roundingStep={roundingStep} setRoundingStep={setRoundingStep} toggleProgram={toggleProgram} />}</section>
     </div>
 
-    <div className="space-y-5 lg:col-span-7">{result.error && <div className="flex gap-2 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-800"><AlertTriangle size={18} />{result.error}</div>}
+    <div className="space-y-5 lg:col-span-7">{!hasCalculated ? <EmptyCalculation /> : <>{result.error && <div className="flex gap-2 rounded-xl border border-rose-200 bg-rose-50 p-4 text-sm font-semibold text-rose-800"><AlertTriangle size={18} />{result.error}</div>}
       <section className={`overflow-hidden rounded-2xl border shadow-sm ${isLoss ? "border-rose-300 bg-rose-950" : "border-slate-800 bg-slate-950"}`}><div className="p-6 text-white"><div className="flex flex-col justify-between gap-4 sm:flex-row"><div><p className="text-xs font-bold uppercase tracking-widest text-slate-400">{mode === "target" ? "Giá niêm yết mục tiêu" : "Giá đang thẩm định"}</p><p className="mt-1 text-4xl font-black text-emerald-400 font-mono">{formatMoney(evaluation.listPrice)}</p><p className="mt-2 text-xs text-slate-400">Sau giảm giá của shop: {formatMoney(evaluation.productRevenue)}</p></div><button onClick={copyResult} className="flex h-fit items-center justify-center gap-1.5 rounded-lg bg-white/10 px-3 py-2 text-xs font-bold">{copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}{copied ? "Đã sao chép" : "Sao chép kết quả"}</button></div>
         <div className="mt-5 grid grid-cols-2 gap-3 border-t border-white/10 pt-5 sm:grid-cols-4"><Mini label="Sàn giải ngân" value={formatMoney(evaluation.payout)} /><Mini label="Lãi đơn thành công" value={formatMoney(evaluation.profitOnSuccess)} loss={evaluation.profitOnSuccess < 0} /><Mini label="Lãi kỳ vọng/đơn" value={formatMoney(evaluation.expectedProfitPerOrder)} loss={isLoss} /><Mini label="Biên kỳ vọng" value={`${evaluation.expectedMargin.toFixed(1)}%`} loss={isLoss} /></div></div></section>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4"><Metric label="Giá hòa vốn" value={result.breakEvenPrice === null ? "Không khả thi" : formatMoney(result.breakEvenPrice)} tone="blue" subtext="Đã gồm hoàn/hủy" /><Metric label="ROI trên giá vốn" value={`${evaluation.roiOnCogs.toFixed(1)}%`} tone={evaluation.roiOnCogs < 0 ? "red" : "green"} /><Metric label="Ads tối đa" value={formatMoney(evaluation.maximumMarketingCost)} subtext="mỗi đơn có quảng cáo" /><Metric label="ROAS hòa vốn" value={evaluation.breakEvenRoas === null ? "—" : `${evaluation.breakEvenRoas.toFixed(2)}x`} /></div>
+      <CalculationSummary evaluation={evaluation} />
+      <CostVisuals evaluation={evaluation} />
       {evaluation.warnings.map((warning) => <div key={warning} className="flex gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-900"><AlertTriangle size={15} className="shrink-0" />{warning}</div>)}
       <Breakdown evaluation={evaluation} input={input} />
       <Scenarios evaluation={evaluation} isLoss={isLoss} />
-      <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600"><div className="flex gap-2"><Info size={16} className="shrink-0 text-blue-600" /><div><strong className="text-slate-800">Nguồn và phạm vi dữ liệu</strong><p className="mt-1">Hoa hồng lấy đúng dòng ngành cấp 3 trong bảng chính thức. Hợp đồng hoặc ưu đãi riêng của shop vẫn cần ghi đè theo sao kê.</p><div className="mt-2 flex flex-wrap gap-3"><a href={feeProfile.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-bold text-blue-600">Nguồn phí <ExternalLink size={11} /></a><a href={SOURCES.tax} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-bold text-blue-600">Nghị định thuế 68/2026 <ExternalLink size={11} /></a></div></div></div></section>
-    </div></div>
+      <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600"><div className="flex gap-2"><Info size={16} className="shrink-0 text-blue-600" /><div><strong className="text-slate-800">Nguồn và phạm vi dữ liệu</strong><p className="mt-1">Hoa hồng lấy đúng dòng ngành cấp 3 trong bảng chính thức. Hợp đồng hoặc ưu đãi riêng của shop vẫn cần ghi đè theo sao kê.</p><div className="mt-2 flex flex-wrap gap-3"><a href={feeProfile.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-bold text-blue-600">Nguồn phí <ExternalLink size={11} /></a><a href={SOURCES.tax} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-bold text-blue-600">Nghị định thuế 68/2026 <ExternalLink size={11} /></a></div></div></div></section></>}
+    </div></div><SavedCalculations history={savedHistory} onOpen={openSaved} onDelete={deleteSaved} onDeleteAll={deleteAllSaved} /></>}
   </div>;
 }
 
