@@ -307,22 +307,48 @@ export function SePayConfigManager({
             </div>
 
             {/* Switch Tự Động Kích Hoạt */}
-            <div className="flex items-center justify-between p-3 bg-slate-50 border border-slate-200 rounded-xl">
+            <div
+              onClick={() => setFormData({ ...formData, autoActivate: !formData.autoActivate })}
+              className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer select-none ${
+                formData.autoActivate
+                  ? "bg-emerald-50/70 border-emerald-300 shadow-xs"
+                  : "bg-slate-50 border-slate-200 hover:border-slate-300"
+              }`}
+            >
               <div>
                 <span className="text-xs font-bold text-slate-800 block">Tự động nâng VIP khi nhận tiền</span>
-                <span className="text-[11px] text-slate-400">
-                  {formData.autoActivate ? "Đang bật" : "Đang tắt (Lưu trạng thái chờ duyệt)"}
-                </span>
+                {formData.autoActivate ? (
+                  <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-100/90 px-2 py-0.5 rounded-full mt-1 shadow-2xs">
+                    <Check size={11} className="stroke-[3] text-emerald-600" />
+                    <span>Đang bật (Tự duyệt 24/7 qua Webhook)</span>
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center text-[11px] text-slate-500 font-medium mt-1">
+                    Đang tắt (Lưu trạng thái chờ duyệt thủ công)
+                  </span>
+                )}
               </div>
-              <label className="relative inline-flex items-center cursor-pointer shrink-0">
-                <input
-                  type="checkbox"
-                  checked={formData.autoActivate}
-                  onChange={(e) => setFormData({ ...formData, autoActivate: e.target.checked })}
-                  className="sr-only peer"
+
+              <button
+                type="button"
+                role="switch"
+                aria-checked={formData.autoActivate}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setFormData({ ...formData, autoActivate: !formData.autoActivate });
+                }}
+                className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
+                  formData.autoActivate
+                    ? "bg-emerald-500 shadow-md shadow-emerald-500/35"
+                    : "bg-slate-300 hover:bg-slate-400"
+                }`}
+              >
+                <span
+                  className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
+                    formData.autoActivate ? "translate-x-5" : "translate-x-0"
+                  }`}
                 />
-                <div className="w-10 h-5 bg-slate-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600" />
-              </label>
+              </button>
             </div>
 
             <button

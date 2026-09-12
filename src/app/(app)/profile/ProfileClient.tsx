@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   User,
   Mail,
@@ -36,9 +36,15 @@ import {
   Infinity,
   Server,
   Headphones,
+  X,
 } from "lucide-react";
 import Link from "next/link";
-import { updateUserProfile, changeUserPassword, requestVipActivation } from "@/app/actions/profile";
+import {
+  updateUserProfile,
+  changeUserPassword,
+  requestVipActivation,
+  checkCurrentUserVipStatus,
+} from "@/app/actions/profile";
 import { logoutUser } from "@/app/actions/auth";
 import { VipPlanItem, DEFAULT_VIP_PLANS } from "@/lib/vip-plans";
 
@@ -136,6 +142,7 @@ export default function ProfileClient({
     "lifetime";
 
   const [selectedPlan, setSelectedPlan] = useState<string>(defaultSelectedSlug);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [isRequestingVip, setIsRequestingVip] = useState(false);
   const [vipSuccessNotice, setVipSuccessNotice] = useState<string | null>(null);
@@ -145,13 +152,97 @@ export default function ProfileClient({
     activeVipPlans[0] ||
     (DEFAULT_VIP_PLANS[0] as unknown as VipPlanItem);
 
+  const bankCode = getBankCode(bankName);
   const transferContent = `${syntaxPrefix} ${user.phone || user.email.split("@")[0]}`;
+  const qrUrl = `https://img.vietqr.io/image/${bankCode}-${accountNumber}-compact2.png?amount=${currentPlan.price}&addInfo=${encodeURIComponent(transferContent)}&accountName=${encodeURIComponent(accountHolder)}`;
+  const sepayQrUrl = `https://qr.sepay.vn/img?bank=${bankCode}&acc=${accountNumber}&template=compact&amount=${currentPlan.price}&des=${encodeURIComponent(transferContent)}`;
+  const [qrImgSrc, setQrImgSrc] = useState(qrUrl);
+
+  useEffect(() => {
+    setQrImgSrc(qrUrl);
+  }, [qrUrl]);
+
+  // Handle escape key to close modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isPaymentModalOpen) {
+        setIsPaymentModalOpen(false);
+        setVipSuccessNotice(null);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isPaymentModalOpen]);
+
+  // Lắng nghe tự động realtime webhook SePay khi người dùng đang mở Modal thanh toán
+  useEffect(() => {
+    if (!isPaymentModalOpen || user.isVIP) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await checkCurrentUserVipStatus();
+        if (res.isVIP) {
+          clearInterval(interval);
+          setVipSuccessNotice(
+            "🎉 Chúc mừng bạn! Hệ thống SePay đã ghi nhận thanh toán thành công và kích hoạt VIP. Đang làm mới hệ thống..."
+          );
+          setTimeout(() => {
+            window.location.reload();
+          }, 1800);
+        }
+      } catch {
+        // ignore polling error
+      }
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [isPaymentModalOpen, user.isVIP]);
+
+  // Handle auto-scroll to pricing section if URL contains #pricing-section
+  useEffect(() => {
+    const handleHash = () => {
+      if (typeof window !== "undefined" && window.location.hash === "#pricing-section") {
+        setActiveTab("vip");
+        setTimeout(() => {
+          const el = document.getElementById("pricing-section");
+          if (el) {
+            el.scrollIntoView({ behavior: "smooth", block: "start" });
+          }
+        }, 150);
+      }
+    };
+
+    handleHash();
+    window.addEventListener("hashchange", handleHash);
+    return () => window.removeEventListener("hashchange", handleHash);
+  }, []);
 
   // Copy helper
   const copyToClipboard = (text: string, fieldName: string) => {
     navigator.clipboard.writeText(text);
     setCopiedField(fieldName);
     setTimeout(() => setCopiedField(null), 2000);
+  };
+
+  // Handle VIP Confirmation submission
+  const handleConfirmTransfer = async () => {
+    setIsRequestingVip(true);
+    setVipSuccessNotice(null);
+    try {
+      const res = await requestVipActivation(currentPlan.slug || currentPlan.name, currentPlan.price);
+      if (res.success) {
+        setVipSuccessNotice(
+          "Yêu cầu nâng cấp VIP đã được ghi nhận! Hệ thống SePay đang tự động kiểm tra giao dịch chuyển khoản. Tài khoản của bạn sẽ được kích hoạt ngay khi nhận được thanh toán."
+        );
+      } else {
+        alert(res.error || "Có lỗi xảy ra, vui lòng liên hệ admin hỗ trợ");
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Đã xảy ra lỗi khi gửi yêu cầu. Vui lòng thử lại sau.");
+    } finally {
+      setIsRequestingVip(false);
+    }
   };
 
   // Handle Profile Update
@@ -207,6 +298,17 @@ export default function ProfileClient({
     }
   };
 
+  // Scroll to VIP Pricing section smoothly
+  const scrollToPricing = () => {
+    setActiveTab("vip");
+    setTimeout(() => {
+      const el = document.getElementById("pricing-section");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, 60);
+  };
+
   const completedCount = user.completedLessons.length;
   const progressPercent = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
   const memberSince = new Date(user.createdAt).toLocaleDateString("vi-VN", {
@@ -218,59 +320,41 @@ export default function ProfileClient({
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-16">
       {/* ── 1. HERO PROFILE CARD ────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-950 p-6 sm:p-10 text-white border border-slate-800 shadow-2xl">
-        {/* Ambient Glows */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/15 rounded-full blur-3xl pointer-events-none -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-1/4 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 p-6 sm:p-10 text-white border border-slate-800 shadow-2xl">
+        {/* Ambient Glows adapting to theme */}
+        <div
+          className="absolute top-0 right-0 w-96 h-96 rounded-full blur-3xl pointer-events-none -translate-y-1/2 translate-x-1/2 opacity-25"
+          style={{ backgroundColor: "var(--brand-primary)" }}
+        />
+        <div
+          className="absolute bottom-0 left-1/4 w-80 h-80 rounded-full blur-3xl pointer-events-none opacity-20"
+          style={{ backgroundColor: "var(--brand-primary)" }}
+        />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          {/* User Basic Info */}
           <div className="flex items-center gap-5">
-            {/* Avatar Initials */}
             <div className="relative">
-              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-gradient-to-tr from-blue-600 to-violet-600 flex items-center justify-center text-white font-black text-3xl sm:text-4xl shadow-xl shadow-blue-500/20 border-2 border-white/20">
-                {user.name.charAt(0).toUpperCase()}
+              <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-brand text-white flex items-center justify-center font-black text-2xl sm:text-3xl shadow-xl shadow-brand/25 border-2 border-white/20">
+                {user.name ? user.name.charAt(0).toUpperCase() : "U"}
               </div>
               {user.isVIP && (
-                <div className="absolute -top-2 -right-2 bg-gradient-to-r from-amber-400 to-yellow-500 p-1.5 rounded-full shadow-lg border-2 border-slate-900">
-                  <Crown size={16} className="text-slate-950 fill-slate-950" />
+                <div className="absolute -bottom-2 -right-2 bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 p-1.5 rounded-xl shadow-md border-2 border-slate-950">
+                  <Crown size={15} className="fill-slate-950" />
                 </div>
               )}
             </div>
 
-            {/* Name & Basic Info */}
             <div className="space-y-1.5">
-              <div className="flex flex-wrap items-center gap-2.5">
-                <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-                  {user.name}
-                </h1>
-                {user.isVIP ? (
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-950 font-black text-xs shadow-md shadow-amber-500/20">
-                    <Crown size={13} className="fill-slate-950" /> VIP MEMBER
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-slate-800 text-slate-300 font-bold text-xs border border-slate-700">
-                    Gói Miễn Phí (FREE)
-                  </span>
-                )}
+              <div className="flex items-center gap-2.5 flex-wrap">
+                <h1 className="text-2xl sm:text-3xl font-black text-white tracking-tight">{user.name}</h1>
                 {user.role === "ADMIN" && (
-                  <span className="px-2.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 font-bold text-[11px] border border-blue-400/30">
+                  <span className="px-2.5 py-0.5 rounded-full bg-brand-light text-brand text-[10px] font-black uppercase tracking-wider border border-brand/30">
                     Admin
                   </span>
                 )}
               </div>
-
-              <p className="text-xs sm:text-sm text-slate-300 flex items-center gap-2">
-                <Mail size={14} className="text-slate-400" />
-                <span>{user.email}</span>
-                {user.phone && (
-                  <>
-                    <span className="text-slate-600">•</span>
-                    <Phone size={14} className="text-slate-400" />
-                    <span>{user.phone}</span>
-                  </>
-                )}
-              </p>
-
+              <p className="text-xs sm:text-sm text-slate-400 font-mono">{user.email}</p>
               <p className="text-[11px] text-slate-400 flex items-center gap-1.5">
                 <Calendar size={13} />
                 <span>Tham gia ngày: {memberSince}</span>
@@ -282,7 +366,7 @@ export default function ProfileClient({
           <div className="flex items-center gap-3">
             {!user.isVIP ? (
               <button
-                onClick={() => setActiveTab("vip")}
+                onClick={scrollToPricing}
                 className="px-5 py-3 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-sm transition-all shadow-lg shadow-amber-500/25 flex items-center gap-2 cursor-pointer"
               >
                 <Crown size={16} className="fill-slate-950" />
@@ -339,12 +423,12 @@ export default function ProfileClient({
       </div>
 
       {/* ── 2. TAB NAVIGATION ───────────────────────────────────────────────────── */}
-      <div className="flex border-b border-slate-200 overflow-x-auto custom-scrollbar gap-2">
+      <div className="flex border-b border-slate-200 dark:border-slate-800 overflow-x-auto custom-scrollbar gap-2">
         <button
           onClick={() => setActiveTab("vip")}
           className={`flex items-center gap-2 py-3 px-4 font-bold text-sm border-b-2 transition-all cursor-pointer shrink-0 ${activeTab === "vip"
-            ? "border-amber-500 text-amber-600 bg-amber-50/50 rounded-t-xl"
-            : "border-transparent text-slate-500 hover:text-slate-800"
+            ? "border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-50/50 dark:bg-amber-500/10 rounded-t-xl"
+            : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
             }`}
         >
           <Crown size={17} className={activeTab === "vip" ? "text-amber-500" : "text-slate-400"} />
@@ -354,33 +438,22 @@ export default function ProfileClient({
         <button
           onClick={() => setActiveTab("info")}
           className={`flex items-center gap-2 py-3 px-4 font-bold text-sm border-b-2 transition-all cursor-pointer shrink-0 ${activeTab === "info"
-            ? "border-blue-600 text-blue-600 bg-blue-50/50 rounded-t-xl"
-            : "border-transparent text-slate-500 hover:text-slate-800"
+            ? "border-brand text-brand bg-brand-light rounded-t-xl"
+            : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
             }`}
         >
-          <User size={17} className={activeTab === "info" ? "text-blue-600" : "text-slate-400"} />
+          <User size={17} className={activeTab === "info" ? "text-brand" : "text-slate-400"} />
           <span>Thông Tin Cá Nhân</span>
-        </button>
-
-        <button
-          onClick={() => setActiveTab("security")}
-          className={`flex items-center gap-2 py-3 px-4 font-bold text-sm border-b-2 transition-all cursor-pointer shrink-0 ${activeTab === "security"
-            ? "border-blue-600 text-blue-600 bg-blue-50/50 rounded-t-xl"
-            : "border-transparent text-slate-500 hover:text-slate-800"
-            }`}
-        >
-          <Lock size={17} className={activeTab === "security" ? "text-blue-600" : "text-slate-400"} />
-          <span>Đổi Mật Khẩu & Bảo Mật</span>
         </button>
 
         <button
           onClick={() => setActiveTab("history")}
           className={`flex items-center gap-2 py-3 px-4 font-bold text-sm border-b-2 transition-all cursor-pointer shrink-0 ${activeTab === "history"
-            ? "border-blue-600 text-blue-600 bg-blue-50/50 rounded-t-xl"
-            : "border-transparent text-slate-500 hover:text-slate-800"
+            ? "border-brand text-brand bg-brand-light rounded-t-xl"
+            : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
             }`}
         >
-          <Clock size={17} className={activeTab === "history" ? "text-blue-600" : "text-slate-400"} />
+          <Clock size={17} className={activeTab === "history" ? "text-brand" : "text-slate-400"} />
           <span>Tiến Độ & Lịch Sử</span>
         </button>
       </div>
@@ -464,7 +537,7 @@ export default function ProfileClient({
                     href="https://zalo.me"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="px-5 py-2.5 bg-blue-600/30 hover:bg-blue-600/40 text-blue-300 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all border border-blue-500/30"
+                    className="px-5 py-2.5 bg-brand/20 hover:bg-brand/30 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all border border-brand/30"
                   >
                     <MessageCircle size={15} />
                     <span>Nhóm Zalo VIP Support</span>
@@ -474,8 +547,11 @@ export default function ProfileClient({
             </div>
           ) : (
             /* FREE MEMBER: INVITATION TO VIP CLUB */
-            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-indigo-950 to-slate-900 p-7 sm:p-9 text-white border border-indigo-500/30 shadow-2xl">
-              <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/15 rounded-full blur-3xl pointer-events-none -translate-y-1/2 translate-x-1/2" />
+            <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 p-7 sm:p-9 text-white border border-slate-800 shadow-2xl">
+              <div
+                className="absolute top-0 right-0 w-96 h-96 rounded-full blur-3xl pointer-events-none -translate-y-1/2 translate-x-1/2 opacity-20"
+                style={{ backgroundColor: "var(--brand-primary)" }}
+              />
               <div className="absolute bottom-0 left-1/4 w-80 h-80 bg-amber-500/15 rounded-full blur-3xl pointer-events-none" />
 
               <div className="relative z-10 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
@@ -497,13 +573,13 @@ export default function ProfileClient({
                 </div>
 
                 <div className="flex flex-col sm:flex-row lg:flex-col gap-3 shrink-0">
-                  <a
-                    href="#pricing-section"
+                  <button
+                    onClick={scrollToPricing}
                     className="px-6 py-3.5 rounded-xl bg-gradient-to-r from-amber-400 via-yellow-500 to-amber-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 font-black text-sm transition-all shadow-xl shadow-amber-500/25 flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <Crown size={17} className="fill-slate-950" />
                     <span>Xem Các Gói Nâng Cấp VIP</span>
-                  </a>
+                  </button>
                   <p className="text-[11px] text-center text-slate-400">
                     ⚡ Kích hoạt tự động sau 1 - 3 phút
                   </p>
@@ -514,41 +590,41 @@ export default function ProfileClient({
 
           {/* ── B. SO SÁNH QUYỀN LỢI FREE VS VIP PRO (MINI STRIP) ───────────────────── */}
           {!user.isVIP && (
-            <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-sm">
-              <div className="text-xs font-black uppercase tracking-wider text-slate-400 mb-4 flex items-center gap-2">
-                <Shield size={14} className="text-blue-600" /> So sánh nhanh quyền lợi tài khoản
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 sm:p-6 shadow-sm">
+              <div className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-4 flex items-center gap-2">
+                <Shield size={14} className="text-brand" /> So sánh nhanh quyền lợi tài khoản
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/60 space-y-1">
-                  <span className="text-xs font-bold text-slate-600 block">Công cụ AI Bán Hàng</span>
-                  <div className="text-xs text-slate-500 flex items-center justify-between">
+                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-800 space-y-1">
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">Công cụ AI Bán Hàng</span>
+                  <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between">
                     <span>Free: 3 lượt/ngày</span>
-                    <span className="font-bold text-emerald-600">VIP: Không giới hạn</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400">VIP: Không giới hạn</span>
                   </div>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/60 space-y-1">
-                  <span className="text-xs font-bold text-slate-600 block">Video Masterclass</span>
-                  <div className="text-xs text-slate-500 flex items-center justify-between">
+                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-800 space-y-1">
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">Video Masterclass</span>
+                  <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between">
                     <span>Free: 12 bài cơ bản</span>
-                    <span className="font-bold text-emerald-600">VIP: 27 bài chuyên sâu</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400">VIP: 27 bài chuyên sâu</span>
                   </div>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/60 space-y-1">
-                  <span className="text-xs font-bold text-slate-600 block">Kho Prompt Bán Hàng</span>
-                  <div className="text-xs text-slate-500 flex items-center justify-between">
+                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-800 space-y-1">
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">Kho Prompt Bán Hàng</span>
+                  <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between">
                     <span>Free: Giới hạn</span>
-                    <span className="font-bold text-emerald-600">VIP: Tặng 200+ mẫu</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400">VIP: Tặng 200+ mẫu</span>
                   </div>
                 </div>
 
-                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/60 space-y-1">
-                  <span className="text-xs font-bold text-slate-600 block">Tốc Độ Xử Lý & Support</span>
-                  <div className="text-xs text-slate-500 flex items-center justify-between">
+                <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-800 space-y-1">
+                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300 block">Tốc Độ Xử Lý & Support</span>
+                  <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center justify-between">
                     <span>Free: Tiêu chuẩn</span>
-                    <span className="font-bold text-emerald-600">VIP: Server riêng & 1-1</span>
+                    <span className="font-bold text-emerald-600 dark:text-emerald-400">VIP: Server riêng & 1-1</span>
                   </div>
                 </div>
               </div>
@@ -558,19 +634,12 @@ export default function ProfileClient({
           {/* ── C. LƯỚI 6 ĐẶC QUYỀN VÀNG HỘI VIÊN (THE 6 GOLDEN PERKS) ─────────────── */}
           <div className="space-y-5">
             <div className="text-center max-w-2xl mx-auto space-y-1.5">
-              <span
-                className={`inline-flex items-center gap-1.5 px-3 py-0.5 rounded-full text-[11px] font-black uppercase tracking-wider ${user.isVIP ? "bg-emerald-100 text-emerald-800" : "bg-amber-100 text-amber-800"
-                  }`}
-              >
-                <Crown size={12} className={user.isVIP ? "fill-emerald-800" : "fill-amber-800"} />
-                {user.isVIP ? "Đặc Quyền Đang Kích Hoạt" : "Đặc Quyền Thượng Lưu"}
-              </span>
-              <h3 className="text-2xl font-black text-slate-900 tracking-tight">
+              <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">
                 {user.isVIP
                   ? "6 Đặc Quyền Vàng Đang Mở Khóa Trên Tài Khoản Của Bạn"
                   : "6 Đặc Quyền Vàng Khi Gia Nhập VIP Member"}
               </h3>
-              <p className="text-xs sm:text-sm text-slate-500">
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                 {user.isVIP
                   ? "Bạn đang sở hữu trọn vẹn đặc quyền cao cấp nhất, không giới hạn lượt dùng AI và toàn bộ kho tài nguyên thực chiến của AIChoShop."
                   : "Toàn bộ vũ khí bán hàng đỉnh cao giúp bạn tiết kiệm hàng chục giờ mỗi tuần và bứt phá doanh thu."}
@@ -579,109 +648,109 @@ export default function ProfileClient({
 
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {/* Perk 1 */}
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-amber-400 hover:shadow-lg hover:shadow-amber-500/5 transition-all space-y-3 group">
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-amber-400 dark:hover:border-amber-500/50 hover:shadow-lg hover:shadow-amber-500/5 transition-all space-y-3 group">
                 <div className="flex items-center justify-between">
                   <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-400 text-slate-950 flex items-center justify-center shadow-md shadow-amber-500/20 group-hover:scale-105 transition-transform">
                     <Zap size={22} className="fill-slate-950" />
                   </div>
                   {user.isVIP && (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/60 shadow-xs">
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-200/60 dark:border-emerald-800/50 shadow-xs">
                       <CheckCircle2 size={12} className="text-emerald-500" /> Đã mở khóa
                     </span>
                   )}
                 </div>
-                <h4 className="font-black text-slate-900 text-base">8 Siêu Công Cụ AI Không Giới Hạn</h4>
-                <p className="text-xs text-slate-500 leading-relaxed">
+                <h4 className="font-black text-slate-900 dark:text-white text-base">8 Siêu Công Cụ AI Không Giới Hạn</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                   Sử dụng trọn vẹn AI viết kịch bản video TikTok 15s-60s triệu view, tính giá & thuế sàn chuẩn 100%, SEO giật Top 1 Shopee, kháng nghị vi phạm tài khoản.
                 </p>
               </div>
 
               {/* Perk 2 */}
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-amber-400 hover:shadow-lg hover:shadow-amber-500/5 transition-all space-y-3 group">
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-brand dark:hover:border-brand/70 hover:shadow-lg hover:shadow-brand/5 transition-all space-y-3 group">
                 <div className="flex items-center justify-between">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white flex items-center justify-center shadow-md shadow-blue-500/20 group-hover:scale-105 transition-transform">
+                  <div className="w-12 h-12 rounded-xl bg-brand text-white flex items-center justify-center shadow-md shadow-brand/20 group-hover:scale-105 transition-transform">
                     <BookOpen size={22} />
                   </div>
                   {user.isVIP && (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/60 shadow-xs">
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-200/60 dark:border-emerald-800/50 shadow-xs">
                       <CheckCircle2 size={12} className="text-emerald-500" /> Đã mở khóa
                     </span>
                   )}
                 </div>
-                <h4 className="font-black text-slate-900 text-base">Trọn Bộ Video Masterclass Thực Chiến</h4>
-                <p className="text-xs text-slate-500 leading-relaxed">
+                <h4 className="font-black text-slate-900 dark:text-white text-base">Trọn Bộ Video Masterclass Thực Chiến</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                   Mở khóa 100% video bài giảng từ cơ bản đến chuyên sâu của Masterclass. Học trực tiếp quy trình tìm hàng win, tối ưu shop chuẩn thuật toán 2026.
                 </p>
               </div>
 
               {/* Perk 3 */}
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-amber-400 hover:shadow-lg hover:shadow-amber-500/5 transition-all space-y-3 group">
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-amber-400 dark:hover:border-amber-500/50 hover:shadow-lg hover:shadow-amber-500/5 transition-all space-y-3 group">
                 <div className="flex items-center justify-between">
                   <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-purple-600 to-violet-500 text-white flex items-center justify-center shadow-md shadow-purple-500/20 group-hover:scale-105 transition-transform">
                     <Gift size={22} />
                   </div>
                   {user.isVIP && (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/60 shadow-xs">
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-200/60 dark:border-emerald-800/50 shadow-xs">
                       <CheckCircle2 size={12} className="text-emerald-500" /> Đã mở khóa
                     </span>
                   )}
                 </div>
-                <h4 className="font-black text-slate-900 text-base">Kho 200+ Prompt AI Chốt Đơn</h4>
-                <p className="text-xs text-slate-500 leading-relaxed">
+                <h4 className="font-black text-slate-900 dark:text-white text-base">Kho 200+ Prompt AI Chốt Đơn</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                   Tặng bộ câu lệnh AI bản quyền chuẩn chỉnh &quot;Copy & Paste&quot; chuyên dùng để viết mô tả sản phẩm, kịch bản livestream và nội dung quảng cáo đa nền tảng.
                 </p>
               </div>
 
               {/* Perk 4 */}
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-amber-400 hover:shadow-lg hover:shadow-amber-500/5 transition-all space-y-3 group">
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-amber-400 dark:hover:border-amber-500/50 hover:shadow-lg hover:shadow-amber-500/5 transition-all space-y-3 group">
                 <div className="flex items-center justify-between">
                   <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 text-white flex items-center justify-center shadow-md shadow-emerald-500/20 group-hover:scale-105 transition-transform">
                     <Rocket size={22} />
                   </div>
                   {user.isVIP && (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/60 shadow-xs">
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-200/60 dark:border-emerald-800/50 shadow-xs">
                       <CheckCircle2 size={12} className="text-emerald-500" /> Đã mở khóa
                     </span>
                   )}
                 </div>
-                <h4 className="font-black text-slate-900 text-base">Hạ Tầng Server Riêng Tốc Độ Cao</h4>
-                <p className="text-xs text-slate-500 leading-relaxed">
+                <h4 className="font-black text-slate-900 dark:text-white text-base">Hạ Tầng Server Riêng Tốc Độ Cao</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                   Được định tuyến qua cụm máy chủ AI riêng biệt. Tốc độ sinh nội dung dưới 1 giây, cam kết không giật lag hoặc nghẽn mạng ngay cả trong giờ Mega Sale sàn.
                 </p>
               </div>
 
               {/* Perk 5 */}
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-amber-400 hover:shadow-lg hover:shadow-amber-500/5 transition-all space-y-3 group">
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-amber-400 dark:hover:border-amber-500/50 hover:shadow-lg hover:shadow-amber-500/5 transition-all space-y-3 group">
                 <div className="flex items-center justify-between">
                   <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-rose-600 to-pink-500 text-white flex items-center justify-center shadow-md shadow-rose-500/20 group-hover:scale-105 transition-transform">
                     <Flame size={22} />
                   </div>
                   {user.isVIP && (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/60 shadow-xs">
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-200/60 dark:border-emerald-800/50 shadow-xs">
                       <CheckCircle2 size={12} className="text-emerald-500" /> Đã mở khóa
                     </span>
                   )}
                 </div>
-                <h4 className="font-black text-slate-900 text-base">Nhóm Kín Top Seller Thực Chiến</h4>
-                <p className="text-xs text-slate-500 leading-relaxed">
+                <h4 className="font-black text-slate-900 dark:text-white text-base">Nhóm Kín Top Seller Thực Chiến</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                   Quyền tham gia cộng đồng Zalo/Telegram VIP kín cùng hàng trăm chủ shop TMĐT doanh thu hàng trăm triệu. Giao lưu, kết nối nguồn hàng và học hỏi kinh nghiệm.
                 </p>
               </div>
 
               {/* Perk 6 */}
-              <div className="bg-white p-6 rounded-2xl border border-slate-200 hover:border-amber-400 hover:shadow-lg hover:shadow-amber-500/5 transition-all space-y-3 group">
+              <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-amber-400 dark:hover:border-amber-500/50 hover:shadow-lg hover:shadow-amber-500/5 transition-all space-y-3 group">
                 <div className="flex items-center justify-between">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-slate-900 to-slate-700 text-white flex items-center justify-center shadow-md shadow-slate-900/20 group-hover:scale-105 transition-transform">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-tr from-slate-800 to-slate-700 text-white flex items-center justify-center shadow-md shadow-slate-900/20 group-hover:scale-105 transition-transform">
                     <ShieldCheck size={22} className="text-amber-400" />
                   </div>
                   {user.isVIP && (
-                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/60 shadow-xs">
+                    <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 rounded-full border border-emerald-200/60 dark:border-emerald-800/50 shadow-xs">
                       <CheckCircle2 size={12} className="text-emerald-500" /> Đã mở khóa
                     </span>
                   )}
                 </div>
-                <h4 className="font-black text-slate-900 text-base">Kỹ Thuật Viên Hỗ Trợ 1-1</h4>
-                <p className="text-xs text-slate-500 leading-relaxed">
+                <h4 className="font-black text-slate-900 dark:text-white text-base">Kỹ Thuật Viên Hỗ Trợ 1-1</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
                   Ưu tiên nhận hỗ trợ kỹ thuật viên đồng hành qua Zalo/UltraViewer. Giải đáp mọi thắc mắc về cách dùng công cụ, biểu phí sàn và tối ưu gian hàng.
                 </p>
               </div>
@@ -781,16 +850,16 @@ export default function ProfileClient({
               {/* VIP Concierge Support & Top Seller Community */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {/* 1-1 Dedicated Technician */}
-                <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-7 shadow-sm space-y-4 flex flex-col justify-between hover:border-amber-400 transition-all">
+                <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-7 shadow-sm space-y-4 flex flex-col justify-between hover:border-amber-400 dark:hover:border-amber-500/50 transition-all">
                   <div className="space-y-3">
-                    <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center border border-amber-200">
+                    <div className="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center border border-amber-200 dark:border-amber-800/50">
                       <Headphones size={24} />
                     </div>
                     <div>
-                      <h4 className="font-black text-lg text-slate-900">
+                      <h4 className="font-black text-lg text-slate-900 dark:text-white">
                         Kênh Hỗ Trợ Kỹ Thuật Viên 1-1
                       </h4>
-                      <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
                         Bạn có đặc quyền liên hệ trực tiếp với chuyên gia AIChoShop qua Zalo / UltraViewer để được hướng dẫn sử dụng công cụ, kiểm tra lỗi bài đăng hoặc tối ưu SEO sản phẩm.
                       </p>
                     </div>
@@ -808,16 +877,16 @@ export default function ProfileClient({
                 </div>
 
                 {/* VIP Seller Community */}
-                <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-7 shadow-sm space-y-4 flex flex-col justify-between hover:border-blue-400 transition-all">
+                <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-7 shadow-sm space-y-4 flex flex-col justify-between hover:border-brand dark:hover:border-brand/70 transition-all">
                   <div className="space-y-3">
-                    <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center border border-blue-200">
+                    <div className="w-12 h-12 rounded-2xl bg-brand-light text-brand flex items-center justify-center border border-brand/20">
                       <Flame size={24} />
                     </div>
                     <div>
-                      <h4 className="font-black text-lg text-slate-900">
+                      <h4 className="font-black text-lg text-slate-900 dark:text-white">
                         Nhóm Kín Top Seller TMĐT Doanh Thu Cao
                       </h4>
-                      <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
                         Giao lưu, chia sẻ nguồn hàng sỉ tận gốc và nắm bắt kịp thời các chiến dịch Mega Sale cùng hàng trăm chủ shop TMĐT hàng đầu trong mạng lưới VIP AIChoShop.
                       </p>
                     </div>
@@ -827,7 +896,7 @@ export default function ProfileClient({
                     href="https://zalo.me"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="w-full py-3.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md shadow-blue-500/20 cursor-pointer"
+                    className="w-full py-3.5 px-4 rounded-xl bg-brand hover:bg-brand-hover text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md shadow-brand/20 cursor-pointer"
                   >
                     <ExternalLink size={16} />
                     <span>Tham Gia Nhóm Kín VIP Seller</span>
@@ -839,16 +908,16 @@ export default function ProfileClient({
               <div className="space-y-4 pt-2">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
+                    <h3 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
                       <Rocket size={18} className="text-amber-500" /> Bệ Phóng Công Cụ & Bài Giảng VIP
                     </h3>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
                       Truy cập nhanh vào các vũ khí bán hàng đỉnh cao đã mở khóa trên tài khoản của bạn.
                     </p>
                   </div>
                   <Link
                     href="/tools"
-                    className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                    className="text-xs font-bold text-brand hover:underline flex items-center gap-1"
                   >
                     <span>Xem tất cả 8 công cụ</span>
                     <ArrowRight size={14} />
@@ -858,60 +927,60 @@ export default function ProfileClient({
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                   <Link
                     href="/tools/tiktok-script"
-                    className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-amber-400 hover:shadow-md transition-all group block"
+                    className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-amber-400 dark:hover:border-amber-500/50 hover:shadow-md transition-all group block"
                   >
-                    <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                    <div className="w-10 h-10 rounded-xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
                       <Zap size={20} />
                     </div>
-                    <h4 className="font-bold text-sm text-slate-900 group-hover:text-amber-600 transition-colors">
+                    <h4 className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-amber-500 transition-colors">
                       Kịch Bản Video TikTok
                     </h4>
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                       Tạo kịch bản video bán hàng 15s-60s chuẩn thuật toán giữ chân triệu view.
                     </p>
                   </Link>
 
                   <Link
                     href="/tools/seo-optimizer"
-                    className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-blue-400 hover:shadow-md transition-all group block"
+                    className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-brand dark:hover:border-brand/70 hover:shadow-md transition-all group block"
                   >
-                    <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                    <div className="w-10 h-10 rounded-xl bg-brand-light text-brand flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
                       <Sparkles size={20} />
                     </div>
-                    <h4 className="font-bold text-sm text-slate-900 group-hover:text-blue-600 transition-colors">
+                    <h4 className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-brand transition-colors">
                       SEO Sản Phẩm Shopee
                     </h4>
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                       Quét từ khóa hot search, tối ưu tiêu đề và mô tả leo Top 1 tìm kiếm.
                     </p>
                   </Link>
 
                   <Link
                     href="/tools/tax-calculator"
-                    className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-emerald-400 hover:shadow-md transition-all group block"
+                    className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-emerald-400 dark:hover:border-emerald-500/50 hover:shadow-md transition-all group block"
                   >
-                    <div className="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
                       <CreditCard size={20} />
                     </div>
-                    <h4 className="font-bold text-sm text-slate-900 group-hover:text-emerald-600 transition-colors">
+                    <h4 className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-emerald-500 transition-colors">
                       Tính Giá Bán & Thuế Sàn
                     </h4>
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                       Tự động tính biểu phí sàn và thuế TNCN 2026, xuất file Excel chuyên nghiệp.
                     </p>
                   </Link>
 
                   <Link
                     href="/learn"
-                    className="p-5 rounded-2xl bg-white border border-slate-200 hover:border-purple-400 hover:shadow-md transition-all group block"
+                    className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-purple-400 dark:hover:border-purple-500/50 hover:shadow-md transition-all group block"
                   >
-                    <div className="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                    <div className="w-10 h-10 rounded-xl bg-purple-50 dark:bg-purple-950/40 text-purple-600 dark:text-purple-400 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
                       <BookOpen size={20} />
                     </div>
-                    <h4 className="font-bold text-sm text-slate-900 group-hover:text-purple-600 transition-colors">
+                    <h4 className="font-bold text-sm text-slate-900 dark:text-white group-hover:text-purple-500 transition-colors">
                       Khóa Học Masterclass
                     </h4>
-                    <p className="text-xs text-slate-500 mt-1">
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                       Mở khóa toàn bộ 27 bài giảng thực chiến từ cơ bản tới nâng cao.
                     </p>
                   </Link>
@@ -926,13 +995,10 @@ export default function ProfileClient({
               {/* ── D. BỘ 3 GÓI NÂNG CẤP VIP (PRICING SECTION) ─────────────────────────── */}
               <div id="pricing-section" className="space-y-6 pt-4 scroll-mt-6">
                 <div className="text-center max-w-xl mx-auto space-y-1.5">
-                  <span className="text-xs font-black uppercase tracking-wider text-amber-600 bg-amber-50 px-3 py-1 rounded-md">
-                    Bảng Giá Minh Bạch
-                  </span>
-                  <h3 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                  <h3 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight">
                     Chọn Gói VIP Phù Hợp Với Bạn
                   </h3>
-                  <p className="text-xs sm:text-sm text-slate-500">
+                  <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                     Đầu tư 1 lần – Nhân bản doanh số bền vững. Chọn gói bên dưới để kích hoạt ngay.
                   </p>
                 </div>
@@ -944,10 +1010,13 @@ export default function ProfileClient({
                     return (
                       <div
                         key={plan.id || plan.slug}
-                        onClick={() => setSelectedPlan(plan.slug || plan.id)}
+                        onClick={() => {
+                          setSelectedPlan(plan.slug || plan.id);
+                          setIsPaymentModalOpen(true);
+                        }}
                         className={`relative rounded-3xl p-6 sm:p-7 transition-all cursor-pointer flex flex-col justify-between border-2 ${isSelected
-                          ? "border-amber-500 bg-white shadow-2xl shadow-amber-500/15 scale-[1.03] z-10"
-                          : "border-slate-200 bg-white hover:border-slate-300 hover:shadow-md"
+                          ? "border-amber-500 bg-white dark:bg-slate-900 shadow-2xl shadow-amber-500/15 scale-[1.03] z-10"
+                          : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-md"
                           }`}
                       >
                         {plan.isPopular && (
@@ -958,27 +1027,27 @@ export default function ProfileClient({
 
                         <div className="space-y-4">
                           <div className="flex items-center justify-between">
-                            <h4 className="font-black text-lg text-slate-900">{plan.name}</h4>
+                            <h4 className="font-black text-lg text-slate-900 dark:text-white">{plan.name}</h4>
                             {!plan.isPopular && plan.tag && (
-                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
                                 {plan.tag}
                               </span>
                             )}
                           </div>
 
-                          <p className="text-xs text-slate-500 min-h-[32px] leading-relaxed">{plan.desc}</p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 min-h-[32px] leading-relaxed">{plan.desc}</p>
 
-                          <div className="pt-3 border-t border-slate-100">
+                          <div className="pt-3 border-t border-slate-100 dark:border-slate-800">
                             {plan.originalPrice > plan.price && (
-                              <div className="text-xs text-slate-400 line-through">
+                              <div className="text-xs text-slate-400 dark:text-slate-500 line-through">
                                 {plan.originalPrice.toLocaleString("vi-VN")} đ
                               </div>
                             )}
                             <div className="flex items-baseline gap-1.5 mt-0.5">
-                              <span className="text-3xl font-black text-slate-900">
+                              <span className="text-3xl font-black text-slate-900 dark:text-white">
                                 {plan.price.toLocaleString("vi-VN")}
                               </span>
-                              <span className="text-sm font-bold text-slate-500">đ {plan.period}</span>
+                              <span className="text-sm font-bold text-slate-500 dark:text-slate-400">đ {plan.period}</span>
                             </div>
                           </div>
 
@@ -986,18 +1055,18 @@ export default function ProfileClient({
                           <div className="space-y-2.5 pt-4 text-xs">
                             {plan.features && plan.features.length > 0 ? (
                               plan.features.map((feat, fIdx) => (
-                                <div key={fIdx} className="flex items-center gap-2 text-slate-700">
+                                <div key={fIdx} className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
                                   <Check size={15} className="text-emerald-500 shrink-0" />
                                   <span>{feat}</span>
                                 </div>
                               ))
                             ) : (
                               <>
-                                <div className="flex items-center gap-2 text-slate-700">
+                                <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
                                   <Check size={15} className="text-emerald-500 shrink-0" />
                                   <span>Không giới hạn 8 công cụ AI bán hàng</span>
                                 </div>
-                                <div className="flex items-center gap-2 text-slate-700">
+                                <div className="flex items-center gap-2 text-slate-700 dark:text-slate-300">
                                   <Check size={15} className="text-emerald-500 shrink-0" />
                                   <span>Mở khóa toàn bộ 27 video Masterclass</span>
                                 </div>
@@ -1007,13 +1076,19 @@ export default function ProfileClient({
                         </div>
 
                         <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedPlan(plan.slug || plan.id);
+                            setIsPaymentModalOpen(true);
+                          }}
                           className={`w-full mt-6 py-3 rounded-xl font-black text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer ${isSelected
                             ? "bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 shadow-md shadow-amber-500/25"
-                            : "bg-slate-100 hover:bg-slate-200 text-slate-700"
+                            : "bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300"
                             }`}
                         >
-                          {isSelected ? <Check size={15} className="stroke-[3]" /> : null}
-                          <span>{isSelected ? "Đang chọn gói này" : "Chọn gói này"}</span>
+                          <CreditCard size={15} />
+                          <span>{isSelected ? "Thanh Toán Gói Này →" : "Chọn Gói Này →"}</span>
                         </button>
                       </div>
                     );
@@ -1021,186 +1096,283 @@ export default function ProfileClient({
                 </div>
               </div>
 
-              {/* ── E. MODULE THANH TOÁN TỰ ĐỘNG VIETQR 2 CỘT ───────────────────────────── */}
-              <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-6 border-b border-slate-100">
-                  <div>
-                    <span className="text-xs font-black uppercase tracking-wider text-amber-600 bg-amber-50 px-2.5 py-1 rounded-md">
-                      Cổng Thanh Toán Tự Động 24/7
-                    </span>
-                    <h3 className="text-xl font-black text-slate-900 mt-2">
-                      Hướng Dẫn Chuyển Khoản Kích Hoạt {currentPlan.name}
-                    </h3>
-                    <p className="text-xs text-slate-500 mt-1">
-                      Mở App Ngân Hàng bất kỳ và quét mã QR bên dưới. Hệ thống sẽ tự động điền Số Tài Khoản, Số Tiền và Cú Pháp chính xác.
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <a
-                      href="https://zalo.me"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="px-4 py-2.5 rounded-xl bg-blue-50 text-blue-600 hover:bg-blue-100 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
-                    >
-                      <MessageCircle size={16} />
-                      <span>Hỗ trợ Zalo 24/7</span>
-                    </a>
-                  </div>
-                </div>
-
-                {vipSuccessNotice && (
-                  <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-3">
-                    <CheckCircle2 size={18} className="text-emerald-600 shrink-0" />
-                    <span className="font-medium">{vipSuccessNotice}</span>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
-                  {/* QR Code Column */}
-                  <div className="lg:col-span-4 flex flex-col items-center justify-center p-6 bg-slate-50 rounded-2xl border border-slate-200/80">
-                    <div className="bg-white p-3 rounded-2xl shadow-lg border border-slate-200">
-                      <img
-                        src={`https://img.vietqr.io/image/${getBankCode(bankName)}-${accountNumber}-compact2.png?amount=${currentPlan.price}&addInfo=${encodeURIComponent(
-                          transferContent
-                        )}&accountName=${encodeURIComponent(accountHolder)}`}
-                        alt={`VietQR ${bankName} Chuyển khoản VIP AIChoShop`}
-                        className="w-52 h-52 object-contain rounded-xl"
-                      />
-                    </div>
-                    <p className="text-[11px] font-bold text-slate-500 mt-3 flex items-center gap-1">
-                      <QrCode size={14} className="text-blue-600" /> Quét mã để tự động điền đúng nội dung
-                    </p>
-                    <span className="text-[10px] text-slate-400 mt-0.5">Hỗ trợ hơn 40+ ứng dụng ngân hàng</span>
-                  </div>
-
-                  {/* Transfer Details Column */}
-                  <div className="lg:col-span-8 space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/70">
-                        <span className="text-xs font-semibold text-slate-400 block">Ngân Hàng Nhận</span>
-                        <span className="text-sm font-black text-slate-900 mt-0.5 block">
-                          {bankName}
-                        </span>
-                      </div>
-
-                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/70 flex items-center justify-between">
-                        <div>
-                          <span className="text-xs font-semibold text-slate-400 block">Số Tài Khoản</span>
-                          <span className="text-base font-black text-blue-600 tracking-wider mt-0.5 block font-mono">
-                            {accountNumber}
-                          </span>
+              {/* ── MODAL THANH TOÁN VIETQR & SEPAY GATEWAY ────────────────────────────── */}
+              {isPaymentModalOpen && (
+                <div
+                  className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/75 backdrop-blur-sm animate-in fade-in duration-150 overflow-y-auto"
+                  onClick={() => {
+                    setIsPaymentModalOpen(false);
+                    setVipSuccessNotice(null);
+                  }}
+                >
+                  <div
+                    className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl my-auto overflow-hidden text-slate-900 dark:text-white"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    {/* Modal Header */}
+                    <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-400 text-slate-950 flex items-center justify-center shadow-md shadow-amber-500/20">
+                          <Crown size={20} className="fill-slate-950" />
                         </div>
-                        <button
-                          onClick={() => copyToClipboard(accountNumber, "account")}
-                          className="px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold border border-slate-200 transition-all cursor-pointer flex items-center gap-1"
-                        >
-                          {copiedField === "account" ? (
-                            <Check size={13} className="text-emerald-600" />
-                          ) : (
-                            <Copy size={13} />
-                          )}
-                          <span>{copiedField === "account" ? "Đã chép" : "Chép STK"}</span>
-                        </button>
-                      </div>
-
-                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/70">
-                        <span className="text-xs font-semibold text-slate-400 block">Chủ Tài Khoản</span>
-                        <span className="text-sm font-black text-slate-900 mt-0.5 block uppercase">
-                          {accountHolder}
-                        </span>
-                      </div>
-
-                      <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/70 flex items-center justify-between">
                         <div>
-                          <span className="text-xs font-semibold text-slate-400 block">Số Tiền Chuyển Khoản</span>
-                          <span className="text-base font-black text-emerald-600 mt-0.5 block">
-                            {currentPlan.price.toLocaleString("vi-VN")} đ
-                          </span>
+                          <h3 className="text-base sm:text-lg font-black tracking-tight">
+                            Cổng Thanh Toán Kích Hoạt VIP
+                          </h3>
+                          <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                            Hệ thống tự động kích hoạt 24/7 qua SePay Webhook
+                          </p>
                         </div>
-                        <button
-                          onClick={() => copyToClipboard(currentPlan.price.toString(), "amount")}
-                          className="px-2.5 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 text-xs font-bold border border-slate-200 transition-all cursor-pointer flex items-center gap-1"
-                        >
-                          {copiedField === "amount" ? (
-                            <Check size={13} className="text-emerald-600" />
-                          ) : (
-                            <Copy size={13} />
-                          )}
-                          <span>{copiedField === "amount" ? "Đã chép" : "Chép tiền"}</span>
-                        </button>
                       </div>
-                    </div>
 
-                    {/* Important Syntax Box */}
-                    <div className="p-4.5 rounded-2xl bg-gradient-to-r from-amber-50 via-yellow-50/60 to-white border-2 border-amber-300/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs">
-                      <div>
-                        <span className="text-xs font-black text-amber-900 block flex items-center gap-1">
-                          <Sparkles size={13} className="text-amber-600" /> Nội dung chuyển khoản (Bắt buộc giữ nguyên):
-                        </span>
-                        <span className="text-xl font-black text-amber-700 tracking-wider font-mono mt-0.5 block">
-                          {transferContent}
-                        </span>
-                      </div>
                       <button
-                        onClick={() => copyToClipboard(transferContent, "content")}
-                        className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-black text-xs transition-all shadow-md shadow-amber-500/20 cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+                        type="button"
+                        onClick={() => {
+                          setIsPaymentModalOpen(false);
+                          setVipSuccessNotice(null);
+                        }}
+                        className="w-8 h-8 rounded-full bg-slate-200/60 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-colors cursor-pointer"
+                        title="Đóng"
                       >
-                        {copiedField === "content" ? (
-                          <Check size={15} className="text-slate-950 stroke-[3]" />
-                        ) : (
-                          <Copy size={15} />
-                        )}
-                        <span>{copiedField === "content" ? "Đã chép cú pháp" : "Sao Chép Cú Pháp"}</span>
+                        <X size={18} />
                       </button>
                     </div>
 
-                    {/* Dual Action Confirmation */}
-                    <div className="pt-2 flex flex-col sm:flex-row gap-3">
-                      <button
-                        onClick={handleRequestVip}
-                        disabled={isRequestingVip}
-                        className="flex-1 py-3.5 px-5 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md"
-                      >
-                        {isRequestingVip ? (
-                          <RefreshCw size={15} className="animate-spin" />
-                        ) : (
-                          <CheckCircle2 size={15} className="text-emerald-400" />
-                        )}
-                        <span>Tôi Đã Chuyển Khoản Xong</span>
-                      </button>
+                    {/* Modal Content */}
+                    <div className="p-4 sm:p-6 space-y-5 max-h-[82vh] overflow-y-auto custom-scrollbar">
+                      {/* Gói đang chọn */}
+                      <div className="space-y-1.5">
+                        <span className="text-xs font-bold text-slate-600 dark:text-slate-400 block">
+                          Gói cước VIP đang chọn:
+                        </span>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                          {activeVipPlans.map((plan) => {
+                            const isCur = currentPlan.slug === plan.slug || currentPlan.id === plan.id;
+                            return (
+                              <button
+                                key={plan.id || plan.slug}
+                                type="button"
+                                onClick={() => {
+                                  setSelectedPlan(plan.slug || plan.id);
+                                  setVipSuccessNotice(null);
+                                }}
+                                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${isCur
+                                  ? "border-amber-500 bg-amber-50/70 dark:bg-amber-950/40 shadow-xs"
+                                  : "border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:border-slate-300 dark:hover:border-slate-700"
+                                  }`}
+                              >
+                                <div className="flex items-center justify-between gap-1 mb-1">
+                                  <span className={`text-xs font-black ${isCur ? "text-amber-800 dark:text-amber-300" : "text-slate-800 dark:text-slate-200"}`}>
+                                    {plan.name}
+                                  </span>
+                                  {plan.tag && (
+                                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-sm bg-amber-500/20 text-amber-800 dark:text-amber-200">
+                                      {plan.tag}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="text-xs font-black text-slate-900 dark:text-white">
+                                  {plan.price.toLocaleString("vi-VN")} đ <span className="text-[10px] font-medium text-slate-400">{plan.period}</span>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
 
+                      {/* Thông báo thành công */}
+                      {vipSuccessNotice ? (
+                        <div className="p-5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 space-y-3 text-center animate-in fade-in">
+                          <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
+                            <CheckCircle2 size={26} />
+                          </div>
+                          <h4 className="font-black text-emerald-900 dark:text-emerald-200 text-sm">
+                            Đã Ghi Nhận Yêu Cầu Chuyển Khoản!
+                          </h4>
+                          <p className="text-xs text-emerald-800 dark:text-emerald-300 leading-relaxed max-w-md mx-auto">
+                            {vipSuccessNotice}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setIsPaymentModalOpen(false);
+                              setVipSuccessNotice(null);
+                            }}
+                            className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors shadow-sm cursor-pointer"
+                          >
+                            Hoàn Tất & Đóng
+                          </button>
+                        </div>
+                      ) : (
+                        /* Grid QR + Info */
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-center">
+                          {/* Left: VietQR Box */}
+                          <div className="flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 space-y-2.5 text-center">
+                            <div className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                              <QrCode size={15} className="text-brand" /> Quét mã VietQR Ngân Hàng
+                            </div>
+
+                            <div className="p-2 bg-white rounded-2xl border border-slate-200 shadow-sm">
+                              <img
+                                src={qrImgSrc}
+                                alt="VietQR Chuyển Khoản"
+                                onError={() => {
+                                  if (qrImgSrc !== sepayQrUrl) {
+                                    setQrImgSrc(sepayQrUrl);
+                                  }
+                                }}
+                                className="w-48 h-48 sm:w-52 sm:h-52 object-contain rounded-lg"
+                              />
+                            </div>
+
+                            <div className="space-y-1">
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                                Mở App ngân hàng quét mã QR để tự động điền đúng Số Tiền và Nội Dung.
+                              </p>
+                              <div className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full">
+                                <Zap size={12} /> Tự động duyệt sau 1 - 3 phút
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Right: Transfer details */}
+                          <div className="space-y-2.5">
+                            {/* Ngân hàng */}
+                            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-800 flex items-center justify-between">
+                              <div>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Ngân Hàng</span>
+                                <span className="text-xs font-black text-slate-900 dark:text-white">{bankName}</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => copyToClipboard(bankName, "bankName")}
+                                className="p-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 text-xs flex items-center gap-1 cursor-pointer transition-colors"
+                              >
+                                {copiedField === "bankName" ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
+                                <span className="text-[11px]">{copiedField === "bankName" ? "Đã chép" : "Sao chép"}</span>
+                              </button>
+                            </div>
+
+                            {/* Số tài khoản */}
+                            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-800 flex items-center justify-between">
+                              <div>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Số Tài Khoản</span>
+                                <span className="text-sm font-mono font-black text-slate-900 dark:text-white">{accountNumber}</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => copyToClipboard(accountNumber, "accountNumber")}
+                                className="p-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 text-xs flex items-center gap-1 cursor-pointer transition-colors"
+                              >
+                                {copiedField === "accountNumber" ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
+                                <span className="text-[11px]">{copiedField === "accountNumber" ? "Đã chép" : "Sao chép"}</span>
+                              </button>
+                            </div>
+
+                            {/* Chủ tài khoản */}
+                            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-800 flex items-center justify-between">
+                              <div>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Chủ Tài Khoản</span>
+                                <span className="text-xs font-black text-slate-900 dark:text-white uppercase">{accountHolder}</span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => copyToClipboard(accountHolder, "accountHolder")}
+                                className="p-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 text-xs flex items-center gap-1 cursor-pointer transition-colors"
+                              >
+                                {copiedField === "accountHolder" ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
+                                <span className="text-[11px]">{copiedField === "accountHolder" ? "Đã chép" : "Sao chép"}</span>
+                              </button>
+                            </div>
+
+                            {/* Số tiền */}
+                            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-800 flex items-center justify-between">
+                              <div>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Số Tiền</span>
+                                <span className="text-sm font-black text-brand">
+                                  {currentPlan.price.toLocaleString("vi-VN")} đ
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => copyToClipboard(currentPlan.price.toString(), "amount")}
+                                className="p-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 text-xs flex items-center gap-1 cursor-pointer transition-colors"
+                              >
+                                {copiedField === "amount" ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
+                                <span className="text-[11px]">{copiedField === "amount" ? "Đã chép" : "Sao chép"}</span>
+                              </button>
+                            </div>
+
+                            {/* Nội dung chuyển khoản */}
+                            <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-400 dark:border-amber-600/60 flex items-center justify-between shadow-xs">
+                              <div>
+                                <span className="text-[10px] font-black text-amber-800 dark:text-amber-300 uppercase tracking-wider block">
+                                  Nội Dung Chuyển Khoản <span className="text-rose-500 font-bold">*</span>
+                                </span>
+                                <span className="text-sm font-mono font-black text-slate-950 dark:text-amber-200 select-all">
+                                  {transferContent}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => copyToClipboard(transferContent, "transferContent")}
+                                className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-xs shrink-0"
+                              >
+                                {copiedField === "transferContent" ? <Check size={13} className="stroke-[3]" /> : <Copy size={13} />}
+                                <span className="text-[11px]">{copiedField === "transferContent" ? "Đã chép!" : "Sao chép"}</span>
+                              </button>
+                            </div>
+
+                            <p className="text-[10px] text-amber-700 dark:text-amber-400 leading-relaxed font-medium">
+                              ⚠️ <strong>Lưu ý:</strong> Vui lòng giữ đúng nội dung chuyển khoản để hệ thống tự động đối soát và kích hoạt VIP.
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Modal Footer */}
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 sm:p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40">
                       <a
-                        href={`https://zalo.me?text=${encodeURIComponent(
-                          `Chào Admin AIChoShop, mình đã chuyển khoản nâng cấp ${currentPlan.name} với nội dung: ${transferContent}. Nhờ admin kiểm tra kích hoạt giúp mình nhé!`
-                        )}`}
+                        href="https://zalo.me"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="py-3.5 px-5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer shadow-md shadow-blue-500/20"
+                        className="text-xs text-slate-500 hover:text-brand transition-colors flex items-center gap-1.5"
                       >
                         <MessageCircle size={15} />
-                        <span>Báo Admin Duyệt Ngay Qua Zalo</span>
+                        <span>Hỗ trợ thanh toán Zalo 24/7</span>
                       </a>
+
+                      <div className="flex items-center gap-2.5 w-full sm:w-auto">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsPaymentModalOpen(false);
+                            setVipSuccessNotice(null);
+                          }}
+                          className="w-1/2 sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors cursor-pointer"
+                        >
+                          Đóng
+                        </button>
+                        <button
+                          type="button"
+                          disabled={isRequestingVip || Boolean(vipSuccessNotice)}
+                          onClick={handleConfirmTransfer}
+                          className="w-1/2 sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 font-black text-xs transition-all shadow-md shadow-amber-500/25 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
+                        >
+                          {isRequestingVip ? (
+                            <RefreshCw size={14} className="animate-spin" />
+                          ) : (
+                            <CheckCircle2 size={14} className="fill-slate-950 text-amber-400" />
+                          )}
+                          <span>{isRequestingVip ? "Đang gửi..." : "Tôi Đã Chuyển Khoản"}</span>
+                        </button>
+                      </div>
                     </div>
                   </div>
                 </div>
+              )}
 
-                {/* Trust Badges */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-slate-100 text-center">
-                  <div className="flex items-center justify-center gap-2 text-xs text-slate-600">
-                    <Zap size={15} className="text-amber-500" />
-                    <span>Kích hoạt tự động sau <strong>1 - 3 phút</strong></span>
-                  </div>
-                  <div className="flex items-center justify-center gap-2 text-xs text-slate-600">
-                    <ShieldCheck size={15} className="text-emerald-500" />
-                    <span>Cam kết đồng hành và hỗ trợ <strong>100%</strong></span>
-                  </div>
-                  <div className="flex items-center justify-center gap-2 text-xs text-slate-600">
-                    <Crown size={15} className="text-purple-500" />
-                    <span>Bảo lưu quyền lợi & cập nhật <strong>trọn đời</strong></span>
-                  </div>
-                </div>
-              </div>
             </>
           )}
         </div>
@@ -1208,10 +1380,10 @@ export default function ProfileClient({
 
       {/* ── 4. TAB 2: PERSONAL INFORMATION ──────────────────────────────────────── */}
       {activeTab === "info" && (
-        <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-6">
+        <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-sm space-y-6">
           <div className="space-y-1">
-            <h2 className="text-xl font-black text-slate-900">Thông Tin Hồ Sơ Cá Nhân</h2>
-            <p className="text-xs text-slate-500">
+            <h2 className="text-xl font-black text-slate-900 dark:text-white">Thông Tin Hồ Sơ Cá Nhân</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">
               Cập nhật họ tên và số điện thoại liên hệ để nhận hỗ trợ nhanh chóng từ đội ngũ AIChoShop.
             </p>
           </div>
@@ -1219,14 +1391,14 @@ export default function ProfileClient({
           {profileMessage && (
             <div
               className={`p-4 rounded-xl text-xs flex items-center gap-2.5 ${profileMessage.type === "success"
-                ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                : "bg-rose-50 text-rose-800 border border-rose-200"
+                ? "bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/50"
+                : "bg-rose-50 dark:bg-rose-950/40 text-rose-800 dark:text-rose-300 border border-rose-200 dark:border-rose-800/50"
                 }`}
             >
               {profileMessage.type === "success" ? (
-                <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
+                <CheckCircle2 size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
               ) : (
-                <AlertCircle size={16} className="text-rose-600 shrink-0" />
+                <AlertCircle size={16} className="text-rose-600 dark:text-rose-400 shrink-0" />
               )}
               <span>{profileMessage.text}</span>
             </div>
@@ -1235,22 +1407,22 @@ export default function ProfileClient({
           <form onSubmit={handleProfileSubmit} className="space-y-5 max-w-xl">
             {/* Email (Readonly) */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700">Email đăng nhập</label>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Email đăng nhập</label>
               <div className="relative">
                 <Mail size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
                   type="email"
                   value={user.email}
                   disabled
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-slate-100/80 text-slate-500 text-xs font-medium cursor-not-allowed"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100/80 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 text-xs font-medium cursor-not-allowed"
                 />
               </div>
-              <p className="text-[11px] text-slate-400">Email dùng làm tài khoản đăng nhập và không thể thay đổi.</p>
+              <p className="text-[11px] text-slate-400 dark:text-slate-500">Email dùng làm tài khoản đăng nhập và không thể thay đổi.</p>
             </div>
 
             {/* Name */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700">Họ và tên hiển thị</label>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Họ và tên hiển thị</label>
               <div className="relative">
                 <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
@@ -1259,14 +1431,14 @@ export default function ProfileClient({
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Nhập họ và tên..."
                   required
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-slate-900 text-xs font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors"
                 />
               </div>
             </div>
 
             {/* Phone */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700">Số điện thoại (Zalo nhận hỗ trợ)</label>
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-300">Số điện thoại (Zalo nhận hỗ trợ)</label>
               <div className="relative">
                 <Phone size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input
@@ -1274,15 +1446,15 @@ export default function ProfileClient({
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   placeholder="Ví dụ: 0988xxxxxx"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-slate-900 text-xs font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
+                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-brand/20 focus:border-brand transition-colors"
                 />
               </div>
             </div>
 
             {/* Role & VIP Information */}
-            <div className="p-4 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between text-xs">
-              <span className="text-slate-500">Vai trò tài khoản:</span>
-              <span className="font-bold text-slate-800">
+            <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-800 flex items-center justify-between text-xs">
+              <span className="text-slate-500 dark:text-slate-400">Vai trò tài khoản:</span>
+              <span className="font-bold text-slate-800 dark:text-slate-200">
                 {user.role === "ADMIN" ? "Quản trị viên (Admin)" : "Học viên (User)"}
               </span>
             </div>
@@ -1290,7 +1462,7 @@ export default function ProfileClient({
             <button
               type="submit"
               disabled={isUpdatingProfile}
-              className="px-6 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold text-xs transition-all shadow-md shadow-blue-500/20 flex items-center gap-2 cursor-pointer"
+              className="px-6 py-2.5 rounded-xl bg-brand hover:bg-brand-hover disabled:opacity-50 text-white font-bold text-xs transition-all shadow-md shadow-brand/20 flex items-center gap-2 cursor-pointer"
             >
               {isUpdatingProfile ? <RefreshCw size={14} className="animate-spin" /> : <Check size={14} />}
               <span>Lưu Thay Đổi</span>
@@ -1299,159 +1471,51 @@ export default function ProfileClient({
         </div>
       )}
 
-      {/* ── 5. TAB 3: PASSWORD & SECURITY ───────────────────────────────────────── */}
-      {activeTab === "security" && (
-        <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-6">
-          <div className="space-y-1">
-            <h2 className="text-xl font-black text-slate-900">Bảo Mật & Đổi Mật Khẩu</h2>
-            <p className="text-xs text-slate-500">
-              Hãy sử dụng mật khẩu mạnh gồm chữ hoa, chữ thường, số và ký tự đặc biệt để bảo vệ tài khoản.
-            </p>
-          </div>
-
-          {passwordMessage && (
-            <div
-              className={`p-4 rounded-xl text-xs flex items-center gap-2.5 ${passwordMessage.type === "success"
-                ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                : "bg-rose-50 text-rose-800 border border-rose-200"
-                }`}
-            >
-              {passwordMessage.type === "success" ? (
-                <CheckCircle2 size={16} className="text-emerald-600 shrink-0" />
-              ) : (
-                <AlertCircle size={16} className="text-rose-600 shrink-0" />
-              )}
-              <span>{passwordMessage.text}</span>
-            </div>
-          )}
-
-          <form onSubmit={handlePasswordSubmit} className="space-y-5 max-w-xl">
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700">Mật khẩu hiện tại</label>
-              <div className="relative">
-                <Key size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="password"
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="Nhập mật khẩu hiện tại..."
-                  required
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-slate-900 text-xs font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700">Mật khẩu mới</label>
-              <div className="relative">
-                <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Tối thiểu 6 ký tự..."
-                  required
-                  minLength={6}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-slate-900 text-xs font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-700">Xác nhận mật khẩu mới</label>
-              <div className="relative">
-                <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Nhập lại mật khẩu mới..."
-                  required
-                  minLength={6}
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 text-slate-900 text-xs font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              disabled={isChangingPassword}
-              className="px-6 py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold text-xs transition-all shadow-md flex items-center gap-2 cursor-pointer"
-            >
-              {isChangingPassword ? <RefreshCw size={14} className="animate-spin" /> : <Lock size={14} />}
-              <span>Cập Nhật Mật Khẩu</span>
-            </button>
-          </form>
-
-          {/* Danger Zone: Log out */}
-          <div className="pt-8 border-t border-slate-200/80 space-y-4">
-            <h3 className="text-sm font-black text-rose-600 uppercase tracking-wider">Khu Vực Bảo Mật & Đăng Xuất</h3>
-            <div className="p-4 rounded-2xl bg-rose-50/60 border border-rose-200/60 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <p className="text-xs font-bold text-slate-800">Đăng xuất khỏi thiết bị này</p>
-                <p className="text-[11px] text-slate-500 mt-0.5">
-                  Xóa phiên đăng nhập hiện tại và quay về màn hình đăng nhập.
-                </p>
-              </div>
-              <form action={logoutUser}>
-                <button
-                  type="submit"
-                  className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs transition-all flex items-center gap-1.5 shadow-sm shadow-rose-600/20 cursor-pointer"
-                >
-                  <LogOut size={14} />
-                  <span>Đăng Xuất</span>
-                </button>
-              </form>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* ── 6. TAB 4: LEARNING PROGRESS & TRANSACTION HISTORY ───────────────────── */}
       {activeTab === "history" && (
         <div className="space-y-6">
           {/* Learning Progress Card */}
-          <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-5">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-sm space-y-5">
             <div className="flex items-center justify-between">
               <div>
-                <h3 className="text-lg font-black text-slate-900">Bài Học Đã Hoàn Thành</h3>
-                <p className="text-xs text-slate-500 mt-0.5">
+                <h3 className="text-lg font-black text-slate-900 dark:text-white">Bài Học Đã Hoàn Thành</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                   Theo dõi danh sách các bài học video bạn đã tích lũy trong lộ trình X10 Doanh Số.
                 </p>
               </div>
-              <span className="px-3 py-1 rounded-full bg-blue-50 text-blue-600 font-bold text-xs">
+              <span className="px-3 py-1 rounded-full bg-brand-light text-brand font-bold text-xs">
                 {user.completedLessons.length} bài đã học
               </span>
             </div>
 
             {user.completedLessons.length === 0 ? (
-              <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
-                <BookOpen size={24} className="text-slate-400 mx-auto" />
-                <p className="text-xs font-bold text-slate-700">Bạn chưa hoàn thành bài học nào</p>
-                <p className="text-[11px] text-slate-400">
+              <div className="p-8 text-center bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-2">
+                <BookOpen size={24} className="text-slate-400 dark:text-slate-500 mx-auto" />
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Bạn chưa hoàn thành bài học nào</p>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500">
                   Hãy vào xem bài giảng và bấm &quot;Đánh dấu hoàn thành&quot; để lưu lại tiến độ nhé.
                 </p>
                 <Link
                   href="/courses"
-                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-xl mt-2 hover:bg-blue-700 transition-colors shadow-sm"
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-brand text-white text-xs font-bold rounded-xl mt-2 hover:bg-brand-hover transition-colors shadow-sm shadow-brand/20"
                 >
                   Xem danh sách bài học <ChevronRight size={13} />
                 </Link>
               </div>
             ) : (
-              <div className="divide-y divide-slate-100">
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
                 {user.completedLessons.map((item) => (
                   <div key={item.lessonId} className="py-3.5 flex items-center justify-between gap-4">
                     <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-7 h-7 rounded-lg bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
                         <Check size={14} />
                       </div>
                       <div className="min-w-0">
-                        <h4 className="text-xs font-bold text-slate-800 truncate">{item.lessonTitle}</h4>
-                        <p className="text-[11px] text-slate-400 truncate">{item.courseTitle}</p>
+                        <h4 className="text-xs font-bold text-slate-800 dark:text-slate-200 truncate">{item.lessonTitle}</h4>
+                        <p className="text-[11px] text-slate-400 dark:text-slate-500 truncate">{item.courseTitle}</p>
                       </div>
                     </div>
-                    <span className="text-[11px] text-slate-400 shrink-0">
+                    <span className="text-[11px] text-slate-400 dark:text-slate-500 shrink-0">
                       {new Date(item.completedAt).toLocaleDateString("vi-VN")}
                     </span>
                   </div>
@@ -1461,26 +1525,26 @@ export default function ProfileClient({
           </div>
 
           {/* Transactions History Card */}
-          <div className="bg-white rounded-3xl border border-slate-200 p-6 sm:p-8 shadow-sm space-y-5">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-8 shadow-sm space-y-5">
             <div>
-              <h3 className="text-lg font-black text-slate-900">Lịch Sử Giao Dịch & Nâng Cấp VIP</h3>
-              <p className="text-xs text-slate-500 mt-0.5">
+              <h3 className="text-lg font-black text-slate-900 dark:text-white">Lịch Sử Giao Dịch & Nâng Cấp VIP</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                 Các đơn đăng ký gói thành viên VIP của bạn trên hệ thống.
               </p>
             </div>
 
             {user.transactions.length === 0 ? (
-              <div className="p-8 text-center bg-slate-50 rounded-2xl border border-slate-100 space-y-2">
-                <CreditCard size={24} className="text-slate-400 mx-auto" />
-                <p className="text-xs font-bold text-slate-700">Chưa có giao dịch nào</p>
-                <p className="text-[11px] text-slate-400">
+              <div className="p-8 text-center bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 space-y-2">
+                <CreditCard size={24} className="text-slate-400 dark:text-slate-500 mx-auto" />
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Chưa có giao dịch nào</p>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500">
                   Khi bạn đăng ký nâng cấp gói VIP, lịch sử và trạng thái duyệt sẽ hiển thị tại đây.
                 </p>
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-xs text-left">
-                  <thead className="bg-slate-50 text-slate-500 font-bold uppercase tracking-wider text-[10px]">
+                  <thead className="bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider text-[10px]">
                     <tr>
                       <th className="px-4 py-3 rounded-l-xl">Mã GD</th>
                       <th className="px-4 py-3">Loại Giao Dịch</th>
@@ -1489,21 +1553,21 @@ export default function ProfileClient({
                       <th className="px-4 py-3 rounded-r-xl">Thời Gian</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {user.transactions.map((tx) => (
-                      <tr key={tx.id} className="hover:bg-slate-50/50">
-                        <td className="px-4 py-3 font-mono font-bold text-slate-700">{tx.id.slice(-8)}</td>
-                        <td className="px-4 py-3 font-medium text-slate-800">{tx.type}</td>
-                        <td className="px-4 py-3 font-black text-slate-900">
+                      <tr key={tx.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/50">
+                        <td className="px-4 py-3 font-mono font-bold text-slate-700 dark:text-slate-300">{tx.id.slice(-8)}</td>
+                        <td className="px-4 py-3 font-medium text-slate-800 dark:text-slate-200">{tx.type}</td>
+                        <td className="px-4 py-3 font-black text-slate-900 dark:text-white">
                           {tx.amount.toLocaleString("vi-VN")} đ
                         </td>
                         <td className="px-4 py-3">
                           <span
                             className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] ${tx.status === "SUCCESS"
-                              ? "bg-emerald-100 text-emerald-700"
+                              ? "bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-300"
                               : tx.status === "FAILED"
-                                ? "bg-rose-100 text-rose-700"
-                                : "bg-amber-100 text-amber-700"
+                                ? "bg-rose-100 dark:bg-rose-950/50 text-rose-700 dark:text-rose-300"
+                                : "bg-amber-100 dark:bg-amber-950/50 text-amber-700 dark:text-amber-300"
                               }`}
                           >
                             {tx.status === "SUCCESS"
@@ -1513,7 +1577,7 @@ export default function ProfileClient({
                                 : "Đang chờ duyệt"}
                           </span>
                         </td>
-                        <td className="px-4 py-3 text-slate-400">
+                        <td className="px-4 py-3 text-slate-400 dark:text-slate-500">
                           {new Date(tx.createdAt).toLocaleDateString("vi-VN")}
                         </td>
                       </tr>

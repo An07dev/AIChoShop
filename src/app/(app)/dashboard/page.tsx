@@ -71,8 +71,8 @@ export default async function DashboardPage() {
             ) : (
               <div className="mt-4">
                 <p className="text-sm text-slate-400 mb-4">Bạn đang bị giới hạn truy cập công cụ VIP và phần nâng cao của khóa học.</p>
-                <Link href="/pricing" className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 text-white px-4 py-2.5 rounded-xl font-bold text-sm hover:from-amber-400 hover:to-yellow-400 transition-all shadow-lg shadow-amber-500/20 flex items-center justify-center gap-2">
-                  <Crown size={16} /> Nâng cấp VIP ngay
+                <Link href="/profile#pricing-section" className="w-full bg-gradient-to-r from-amber-500 to-yellow-500 text-slate-950 px-4 py-2.5 rounded-xl font-black text-sm hover:from-amber-400 hover:to-yellow-400 transition-all shadow-lg shadow-amber-500/25 flex items-center justify-center gap-2 cursor-pointer">
+                  <Crown size={16} className="fill-slate-950" /> Nâng cấp VIP ngay
                 </Link>
               </div>
             )}

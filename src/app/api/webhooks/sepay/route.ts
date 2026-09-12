@@ -180,23 +180,65 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // E. Nếu vẫn chưa tìm ra, kiểm tra các giao dịch PENDING được tạo gần nhất (trong 60 phút qua) có số tiền khớp
+    if (!identifiedUser) {
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+      const recentPendingTxs = await prisma.transaction.findMany({
+        where: {
+          status: "PENDING",
+          amount: amountNumber,
+          createdAt: { gte: oneHourAgo },
+          user: { role: { not: "ADMIN" } },
+        },
+        include: { user: true },
+        orderBy: { createdAt: "desc" },
+      });
+
+      if (recentPendingTxs.length === 1) {
+        identifiedUser = recentPendingTxs[0].user;
+        console.log(`[SePay Webhook] User identified via unique recent PENDING transaction: ${identifiedUser.email}`);
+      } else if (recentPendingTxs.length > 1) {
+        const matched = recentPendingTxs.find((tx) => {
+          const u = tx.user;
+          const userEmailPrefix = u.email.split("@")[0].toLowerCase();
+          const cleanContent = contentStr.toLowerCase().replace(/[^a-z0-9]/g, "");
+          return (
+            cleanContent.includes(userEmailPrefix.replace(/[^a-z0-9]/g, "")) ||
+            (u.name && cleanContent.includes(u.name.toLowerCase().replace(/[^a-z0-9]/g, "")))
+          );
+        });
+        if (matched) {
+          identifiedUser = matched.user;
+          console.log(`[SePay Webhook] User identified via PENDING transaction & content match: ${identifiedUser.email}`);
+        }
+      }
+    }
+
     if (!identifiedUser) {
       console.warn(`[SePay Webhook] Cannot identify user from content: "${contentStr}"`);
-      // Vẫn lưu transaction trạng thái PENDING để admin có thể kiểm tra và gán thủ công
-      const pendingTx = await prisma.transaction.create({
-        data: {
-          userId: (await prisma.user.findFirst({ where: { role: "ADMIN" } }))?.id || "unassigned",
-          amount: amountNumber,
-          status: "PENDING",
-          type: "UPGRADE_VIP",
-          sepayId: uniqueTxId || `unidentified-${Date.now()}`,
-        },
-      });
+      // Vẫn lưu transaction trạng thái PENDING để admin có thể kiểm tra và gán thủ công nếu có user hệ thống
+      const fallbackUser =
+        (await prisma.user.findFirst({ where: { role: "ADMIN" } })) ||
+        (await prisma.user.findFirst());
+
+      let pendingTxId: string | undefined = undefined;
+      if (fallbackUser) {
+        const pendingTx = await prisma.transaction.create({
+          data: {
+            userId: fallbackUser.id,
+            amount: amountNumber,
+            status: "PENDING",
+            type: "UPGRADE_VIP_UNASSIGNED",
+            sepayId: uniqueTxId || `unidentified-${Date.now()}`,
+          },
+        });
+        pendingTxId = pendingTx.id;
+      }
 
       return NextResponse.json({
         success: false,
-        message: "User could not be identified from transaction content. Saved as PENDING.",
-        transactionId: pendingTx.id,
+        message: "User could not be identified from transaction content. Saved as PENDING for admin review.",
+        transactionId: pendingTxId,
       });
     }
 
@@ -218,7 +260,7 @@ export async function POST(req: NextRequest) {
 
     // Mặc định nếu không tìm thấy gói nào nhưng số tiền >= 99.000: mặc định gói 30 ngày
     const durationDays = matchedPlan
-      ? matchedPlan.durationDays
+      ? (matchedPlan.durationDays ?? 0)
       : amountNumber >= 990000 ? 0 : 30;
 
     // 5. Kiểm tra thiết lập AutoActivate
@@ -257,16 +299,38 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Tạo bản ghi giao dịch thành công
-    const transaction = await prisma.transaction.create({
-      data: {
+    // Cập nhật giao dịch PENDING trước đó (nếu có) hoặc tạo bản ghi mới
+    const typeLabel = matchedPlan ? `UPGRADE_VIP_${matchedPlan.slug.toUpperCase()}` : "UPGRADE_VIP";
+    const existingPending = await prisma.transaction.findFirst({
+      where: {
         userId: identifiedUser.id,
-        amount: amountNumber,
-        status: "SUCCESS",
-        type: "UPGRADE_VIP",
-        sepayId: uniqueTxId || `tx-${Date.now()}`,
+        status: "PENDING",
       },
+      orderBy: { createdAt: "desc" },
     });
+
+    let transaction;
+    if (existingPending) {
+      transaction = await prisma.transaction.update({
+        where: { id: existingPending.id },
+        data: {
+          amount: amountNumber,
+          status: "SUCCESS",
+          type: typeLabel,
+          sepayId: uniqueTxId || `tx-${Date.now()}`,
+        },
+      });
+    } else {
+      transaction = await prisma.transaction.create({
+        data: {
+          userId: identifiedUser.id,
+          amount: amountNumber,
+          status: "SUCCESS",
+          type: typeLabel,
+          sepayId: uniqueTxId || `tx-${Date.now()}`,
+        },
+      });
+    }
 
     console.log(
       `[SePay Webhook SUCCESS] User ${updatedUser.email} upgraded to VIP. Expires: ${

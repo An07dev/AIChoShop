@@ -232,7 +232,7 @@ export default function LearnClient({
               {/* Nút Kêu Gọi Nâng Cấp VIP */}
               <div className="flex flex-col sm:flex-row items-center gap-3">
                 <Link
-                  href="/pricing"
+                  href="/profile#pricing-section"
                   className="w-full sm:w-auto bg-gradient-to-r from-amber-500 via-yellow-500 to-amber-600 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black px-8 py-3.5 rounded-xl text-sm sm:text-base transition-all shadow-xl shadow-amber-500/25 flex items-center justify-center gap-2 cursor-pointer active:scale-95"
                 >
                   <Crown size={18} className="fill-slate-950" />
@@ -282,12 +282,12 @@ export default function LearnClient({
         </div>
 
         {/* Thông Tin Chi Tiết & Nút Thao Tác Bài Học */}
-        <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 space-y-6">
+        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 space-y-6">
           {/* Header Bài Học */}
-          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-5 border-b border-slate-100">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 pb-5 border-b border-slate-100 dark:border-slate-800">
             <div>
               <div className="flex items-center gap-2 mb-2 flex-wrap">
-                <span className="bg-slate-100 text-slate-700 text-xs font-black px-2.5 py-1 rounded-lg">
+                <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-xs font-black px-2.5 py-1 rounded-lg">
                   Bài #{activeLesson.order}
                 </span>
 
@@ -296,19 +296,19 @@ export default function LearnClient({
                     <Crown size={13} className="fill-white" /> VIP PRO
                   </span>
                 ) : (
-                  <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 text-xs font-bold px-2.5 py-1 rounded-lg border border-emerald-200">
+                  <span className="inline-flex items-center gap-1 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-xs font-bold px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-500/30">
                     <Sparkles size={12} /> BÀI HỌC FREE
                   </span>
                 )}
 
                 {isCurrentCompleted && (
-                  <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 text-xs font-bold px-2.5 py-1 rounded-lg">
+                  <span className="inline-flex items-center gap-1 bg-brand-light text-brand text-xs font-bold px-2.5 py-1 rounded-lg border border-brand/20">
                     <CheckCircle2 size={13} /> Đã hoàn thành
                   </span>
                 )}
               </div>
 
-              <h1 className="text-xl sm:text-2xl font-black text-slate-900 leading-tight">
+              <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
                 {activeLesson.fullTitle || activeLesson.title}
               </h1>
             </div>
@@ -319,8 +319,8 @@ export default function LearnClient({
               disabled={isPending}
               className={`shrink-0 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer active:scale-95 ${
                 isCurrentCompleted
-                  ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
-                  : "bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-500/20"
+                  ? "bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 hover:bg-emerald-100 dark:hover:bg-emerald-500/30"
+                  : "bg-brand hover:bg-brand-hover text-white shadow-md shadow-brand/20"
               }`}
             >
               {isCurrentCompleted ? (
@@ -340,17 +340,17 @@ export default function LearnClient({
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 mb-2 flex items-center gap-1.5">
               <FileText size={14} /> Ghi Chú & Tóm Tắt Bài Học
             </h3>
-            <div className="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap bg-slate-50/80 p-4 rounded-xl border border-slate-100">
+            <div className="text-slate-700 dark:text-slate-200 text-sm leading-relaxed whitespace-pre-wrap bg-slate-50/80 dark:bg-slate-800/80 p-4 rounded-xl border border-slate-100 dark:border-slate-700">
               {activeLesson.content || "Nội dung bài học đang được hoàn thiện. Vui lòng theo dõi video bài giảng."}
             </div>
           </div>
 
           {/* Điều Hướng Bài Trước / Bài Kế Tiếp */}
-          <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+          <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
             {prevLesson ? (
               <button
                 onClick={() => handleSelectLesson(prevLesson)}
-                className="flex items-center gap-2 text-xs font-bold text-slate-600 hover:text-blue-600 px-3 py-2 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+                className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-brand px-3 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 <ChevronLeft size={16} />
                 <span className="truncate max-w-[150px] sm:max-w-[200px]">
@@ -364,7 +364,7 @@ export default function LearnClient({
             {nextLesson ? (
               <button
                 onClick={() => handleSelectLesson(nextLesson)}
-                className="flex items-center gap-2 text-xs font-bold text-blue-600 hover:text-blue-700 px-3 py-2 rounded-lg hover:bg-blue-50 transition-colors cursor-pointer ml-auto"
+                className="flex items-center gap-2 text-xs font-bold text-brand hover:text-brand-hover px-3 py-2 rounded-lg hover:bg-brand-light transition-colors cursor-pointer ml-auto"
               >
                 <span className="truncate max-w-[150px] sm:max-w-[200px]">
                   Bài kế: #{nextLesson.order}
@@ -380,9 +380,9 @@ export default function LearnClient({
 
       {/* VÙNG BÊN PHẢI: PLAYLIST / DANH SÁCH BÀI HỌC CỦA KHÓA HỌC */}
       <div className="lg:w-[380px] xl:w-[430px] shrink-0">
-        <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden flex flex-col lg:h-[calc(100vh-100px)] lg:sticky lg:top-6">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col lg:h-[calc(100vh-100px)] lg:sticky lg:top-6">
           {/* Header Playlist & Thanh Tiến Độ Học */}
-          <div className="p-4 border-b border-slate-200 bg-slate-50/80">
+          <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/80">
             {courses && courses.length > 1 ? (
               <div className="mb-2.5">
                 <div className="flex items-center justify-between mb-1.5">
@@ -409,7 +409,7 @@ export default function LearnClient({
                       window.location.href = `/learn?courseId=${selected.id}`;
                     }
                   }}
-                  className="w-full bg-white border border-indigo-200 text-indigo-950 text-xs font-bold rounded-xl px-2.5 py-2 focus:ring-2 focus:ring-blue-500/20 cursor-pointer truncate shadow-2xs hover:border-indigo-300 transition-colors"
+                  className="w-full bg-brand-light border border-brand/30 text-brand text-xs font-bold rounded-xl px-2.5 py-2 focus:ring-2 focus:ring-brand/20 cursor-pointer truncate shadow-2xs hover:border-brand transition-colors"
                 >
                   {courses.map((c) => (
                     <option key={c.id} value={c.id}>
@@ -420,7 +420,7 @@ export default function LearnClient({
               </div>
             ) : (
               <div className="flex items-center justify-between mb-1">
-                <h2 className="font-black text-base text-slate-900 line-clamp-1">{courseTitle}</h2>
+                <h2 className="font-black text-base text-slate-900 dark:text-white line-clamp-1">{courseTitle}</h2>
                 {isUserVIP ? (
                   <span className="inline-flex items-center gap-1 bg-amber-100 text-amber-800 text-[10px] font-black px-2 py-0.5 rounded-full border border-amber-200">
                     <Crown size={10} className="fill-amber-600 text-amber-600" /> VIP
@@ -434,9 +434,9 @@ export default function LearnClient({
             )}
 
             {/* Progress bar */}
-            <div className="w-full bg-slate-200 rounded-full h-2 mt-2.5 overflow-hidden">
+            <div className="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 mt-2.5 overflow-hidden">
               <div
-                className="bg-gradient-to-r from-emerald-500 to-teal-500 h-2 rounded-full transition-all duration-500"
+                className="bg-brand h-2 rounded-full transition-all duration-500"
                 style={{ width: `${progressPercent}%` }}
               ></div>
             </div>
@@ -445,7 +445,7 @@ export default function LearnClient({
               <span>
                 Đã học: <strong>{completedCount}</strong>/{totalLessonsCount} bài
               </span>
-              <span className="font-bold text-emerald-600">{progressPercent}% Hoàn thành</span>
+              <span className="font-bold text-brand">{progressPercent}% Hoàn thành</span>
             </div>
           </div>
 
@@ -453,8 +453,8 @@ export default function LearnClient({
           <div className="flex-1 overflow-y-auto p-3 space-y-4">
             {modules.map((module, mIdx) => (
               <div key={mIdx}>
-                <div className="flex items-center justify-between px-2 py-1.5 mb-1 bg-slate-100/60 rounded-lg">
-                  <span className="font-black text-xs text-slate-600 uppercase tracking-wider">
+                <div className="flex items-center justify-between px-2 py-1.5 mb-1 bg-slate-100/60 dark:bg-slate-800/60 rounded-lg">
+                  <span className="font-black text-xs text-slate-600 dark:text-slate-300 uppercase tracking-wider">
                     {module.moduleTitle}
                   </span>
                   <span className="text-[10px] text-slate-400 font-semibold">
@@ -474,8 +474,8 @@ export default function LearnClient({
                           onClick={() => handleSelectLesson(lesson)}
                           className={`w-full text-left flex items-start gap-2.5 p-2.5 rounded-xl transition-all cursor-pointer ${
                             isActive
-                              ? "bg-blue-50/80 border border-blue-200 shadow-sm"
-                              : "hover:bg-slate-50 border border-transparent"
+                              ? "bg-brand-light border border-brand/30 shadow-xs"
+                              : "hover:bg-slate-50 dark:hover:bg-slate-800/70 border border-transparent"
                           }`}
                         >
                           {/* STT hoặc Trạng thái hoàn thành */}
@@ -488,8 +488,8 @@ export default function LearnClient({
                               <div
                                 className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs ${
                                   isActive
-                                    ? "bg-blue-600 text-white shadow-sm"
-                                    : "bg-slate-100 text-slate-500"
+                                    ? "bg-brand text-white shadow-xs"
+                                    : "bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400"
                                 }`}
                               >
                                 #{lesson.order}
@@ -501,7 +501,7 @@ export default function LearnClient({
                           <div className="flex-1 min-w-0">
                             <p
                               className={`text-xs font-bold leading-snug line-clamp-2 ${
-                                isActive ? "text-blue-700" : "text-slate-800"
+                                isActive ? "text-brand" : "text-slate-800 dark:text-slate-200"
                               }`}
                             >
                               {lesson.title}
@@ -519,7 +519,7 @@ export default function LearnClient({
                                   </span>
                                 )
                               ) : (
-                                <span className="inline-block bg-emerald-100 text-emerald-700 text-[9px] font-black px-1.5 py-0.5 rounded border border-emerald-200">
+                                <span className="inline-block bg-emerald-100 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 text-[9px] font-black px-1.5 py-0.5 rounded border border-emerald-200 dark:border-emerald-500/30">
                                   FREE
                                 </span>
                               )}

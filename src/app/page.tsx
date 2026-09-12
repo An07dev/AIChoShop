@@ -7,15 +7,25 @@ import {
   Search, Copy, Play, Shield, Users, ArrowUpRight,
 } from "lucide-react";
 import { Footer } from "@/components/layout/footer";
+import { getActiveVipPlans } from "@/lib/vip-plans-server";
+import { DEFAULT_VIP_PLANS } from "@/lib/vip-plans";
 
 export const metadata = {
   title: "AIChoShop - Công Cụ AI Miễn Phí Cho Nhà Bán Hàng TMĐT",
   description: "8 công cụ AI miễn phí + Khóa học ứng dụng AI vào bán hàng Shopee, TikTok Shop. Viết SEO, tạo kịch bản Reels, tính thuế TMĐT. Dùng thử ngay.",
 };
 
-export default function LandingPage() {
+export default async function LandingPage() {
+  let vipPlans = [];
+  try {
+    vipPlans = await getActiveVipPlans();
+  } catch (error) {
+    console.error("Lỗi khi tải gói VIP trên landing page:", error);
+    vipPlans = DEFAULT_VIP_PLANS;
+  }
+
   return (
-    <div className="min-h-screen bg-white font-sans overflow-x-hidden">
+    <div className="min-h-screen bg-white font-sans overflow-x-hidden landing-page-root">
 
       {/* ── NAVBAR ─────────────────────────────────────────────── */}
       <nav className="fixed top-0 w-full bg-white/95 backdrop-blur-md border-b border-slate-100 z-50">
@@ -329,7 +339,7 @@ export default function LandingPage() {
 
       {/* ── PRICING ────────────────────────────────────────────── */}
       <section id="pricing" className="py-20 px-5">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <div className="text-center mb-14">
             <p className="text-sm font-semibold text-blue-600 mb-3">Bảng giá đơn giản</p>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 mb-3">
@@ -338,49 +348,158 @@ export default function LandingPage() {
             <p className="text-slate-500">Nâng cấp VIP khi bạn muốn mở khóa toàn bộ khóa học.</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {/* Free */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-7">
-              <div className="text-sm font-semibold text-slate-400 mb-1">Cơ bản</div>
-              <div className="flex items-baseline gap-1 mb-5">
-                <span className="text-4xl font-extrabold text-slate-900">0đ</span>
-                <span className="text-slate-400 text-sm">/mãi mãi</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Gói Tĩnh: Gói Mặc Định Free 0 đ */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-7 flex flex-col justify-between hover:shadow-md transition-shadow">
+              <div>
+                <div className="text-sm font-semibold text-slate-400 mb-1">Cơ bản</div>
+                <div className="flex items-baseline gap-1 mb-2">
+                  <span className="text-3xl sm:text-4xl font-extrabold text-slate-900">0đ</span>
+                  <span className="text-slate-400 text-sm">/mãi mãi</span>
+                </div>
+                <p className="text-xs text-slate-500 mb-5 min-h-[36px]">
+                  Bắt đầu trải nghiệm miễn phí các công cụ AI và bài học cơ bản.
+                </p>
+                <ul className="space-y-2.5 mb-7">
+                  {["8 Tools AI không giới hạn", "6 bài học miễn phí", "Cập nhật tính năng mới", "Hỗ trợ cộng đồng Seller"].map((s, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-slate-600">
+                      <CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" />
+                      <span>{s}</span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-              <ul className="space-y-2.5 mb-7">
-                {["8 Tools AI không giới hạn", "6 bài học miễn phí", "Cập nhật tính năng mới", "Hỗ trợ cộng đồng"].map((s, i) => (
-                  <li key={i} className="flex items-center gap-2.5 text-sm text-slate-600">
-                    <CheckCircle2 size={16} className="text-emerald-500" /> {s}
-                  </li>
-                ))}
-              </ul>
-              <Link href="/register" className="block w-full text-center bg-slate-100 text-slate-700 py-3 rounded-full font-semibold hover:bg-slate-200 transition-colors">
+              <Link
+                href="/register"
+                className="block w-full text-center bg-slate-100 text-slate-700 py-3 rounded-full font-semibold hover:bg-slate-200 transition-colors text-sm"
+              >
                 Tạo tài khoản miễn phí
               </Link>
             </div>
 
-            {/* VIP */}
-            <div className="bg-slate-900 rounded-2xl p-7 text-white relative">
-              <div className="absolute -top-3 right-6 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full">
-                Phổ biến nhất
-              </div>
-              <div className="text-sm font-semibold text-blue-300 mb-1">VIP trọn đời</div>
-              <div className="flex items-baseline gap-2 mb-1">
-                <span className="text-4xl font-extrabold">499K</span>
-                <span className="text-slate-500 text-sm line-through">1.990K</span>
-              </div>
-              <div className="text-emerald-400 text-sm font-semibold mb-5">Tiết kiệm 75%</div>
-              <ul className="space-y-2.5 mb-7">
-                {["Toàn bộ gói Cơ Bản", "27 bài học Premium", "Tools AI Premium", "Hỗ trợ 1-1 qua Zalo 90 ngày", "Cộng đồng VIP", "Cập nhật trọn đời"].map((s, i) => (
-                  <li key={i} className="flex items-center gap-2.5 text-sm">
-                    <CheckCircle2 size={16} className="text-emerald-400" /> {s}
-                  </li>
-                ))}
-              </ul>
-              <Link href="/register" className="block w-full text-center bg-blue-600 text-white py-3 rounded-full font-semibold hover:bg-blue-700 transition-colors">
-                Nâng cấp VIP →
-              </Link>
-              <p className="text-center text-xs text-slate-500 mt-2.5">Hoàn tiền 100% trong 7 ngày</p>
-            </div>
+            {/* Danh Sách Gói Cước VIP Cấu Hình API */}
+            {vipPlans.map((plan) => {
+              const features = Array.isArray(plan.features) ? plan.features : [];
+              const isPopular = plan.isPopular;
+              const hasDiscount = plan.originalPrice && plan.originalPrice > plan.price;
+              const discountPercent = hasDiscount
+                ? Math.round((1 - plan.price / plan.originalPrice) * 100)
+                : 0;
+
+              if (isPopular) {
+                return (
+                  <div
+                    key={plan.id || plan.slug}
+                    className="bg-slate-900 rounded-2xl p-6 sm:p-7 text-white relative border-2 border-blue-500 shadow-xl shadow-blue-500/10 flex flex-col justify-between"
+                  >
+                    {/* Badge */}
+                    <div className="absolute -top-3 right-5 bg-blue-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm">
+                      {plan.tag || "Phổ biến nhất"}
+                    </div>
+
+                    <div>
+                      <div className="text-sm font-semibold text-blue-300 mb-1">{plan.name}</div>
+                      <div className="flex items-baseline gap-2 mb-1 flex-wrap">
+                        <span className="text-3xl sm:text-4xl font-extrabold text-white">
+                          {new Intl.NumberFormat("vi-VN").format(plan.price)}đ
+                        </span>
+                        {hasDiscount && (
+                          <span className="text-slate-400 text-sm line-through">
+                            {new Intl.NumberFormat("vi-VN").format(plan.originalPrice)}đ
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-slate-300 mb-2">
+                        {plan.period ? (plan.period.startsWith("/") ? plan.period : `/${plan.period}`) : ""}
+                      </div>
+                      {hasDiscount && (
+                        <div className="text-emerald-400 text-xs font-semibold mb-3">
+                          Tiết kiệm {discountPercent}%
+                        </div>
+                      )}
+                      <p className="text-xs text-slate-400 mb-5 min-h-[36px]">
+                        {plan.desc}
+                      </p>
+                      <ul className="space-y-2.5 mb-7">
+                        {features.map((s, i) => (
+                          <li key={i} className="flex items-start gap-2 text-sm text-slate-200">
+                            <CheckCircle2 size={16} className="text-emerald-400 shrink-0 mt-0.5" />
+                            <span>{s}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+
+                    <div>
+                      <Link
+                        href="/register"
+                        className="block w-full text-center bg-blue-600 text-white py-3 rounded-full font-semibold hover:bg-blue-700 transition-colors text-sm shadow-md shadow-blue-600/30"
+                      >
+                        Nâng cấp {plan.name} →
+                      </Link>
+                      <p className="text-center text-[11px] text-slate-400 mt-2.5">Hoàn tiền 100% trong 7 ngày</p>
+                    </div>
+                  </div>
+                );
+              }
+
+              return (
+                <div
+                  key={plan.id || plan.slug}
+                  className="bg-white border border-slate-200 rounded-2xl p-6 sm:p-7 relative flex flex-col justify-between hover:shadow-md hover:border-blue-200 transition-all"
+                >
+                  {/* Badge */}
+                  {plan.tag && (
+                    <div className="absolute -top-3 right-5 bg-blue-50 text-blue-700 border border-blue-200 text-xs font-bold px-3 py-1 rounded-full shadow-xs">
+                      {plan.tag}
+                    </div>
+                  )}
+
+                  <div>
+                    <div className="text-sm font-semibold text-blue-600 mb-1">{plan.name}</div>
+                    <div className="flex items-baseline gap-2 mb-1 flex-wrap">
+                      <span className="text-3xl sm:text-4xl font-extrabold text-slate-900">
+                        {new Intl.NumberFormat("vi-VN").format(plan.price)}đ
+                      </span>
+                      {hasDiscount && (
+                        <span className="text-slate-400 text-sm line-through">
+                          {new Intl.NumberFormat("vi-VN").format(plan.originalPrice)}đ
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-xs text-slate-500 mb-2">
+                      {plan.period ? (plan.period.startsWith("/") ? plan.period : `/${plan.period}`) : ""}
+                    </div>
+                    {hasDiscount && (
+                      <div className="text-emerald-600 text-xs font-semibold mb-3">
+                        Tiết kiệm {discountPercent}%
+                      </div>
+                    )}
+                    <p className="text-xs text-slate-500 mb-5 min-h-[36px]">
+                      {plan.desc}
+                    </p>
+                    <ul className="space-y-2.5 mb-7">
+                      {features.map((s, i) => (
+                        <li key={i} className="flex items-start gap-2 text-sm text-slate-600">
+                          <CheckCircle2 size={16} className="text-emerald-500 shrink-0 mt-0.5" />
+                          <span>{s}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div>
+                    <Link
+                      href="/register"
+                      className="block w-full text-center bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-full font-semibold transition-colors text-sm"
+                    >
+                      Đăng ký {plan.name} →
+                    </Link>
+                    <p className="text-center text-[11px] text-slate-400 mt-2.5">Hoàn tiền 100% trong 7 ngày</p>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>

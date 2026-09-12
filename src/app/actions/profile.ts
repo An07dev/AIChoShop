@@ -124,3 +124,29 @@ export async function requestVipActivation(packageType: string, amount: number) 
     return { success: false, error: "Không thể gửi yêu cầu nâng cấp, vui lòng liên hệ admin" };
   }
 }
+
+/**
+ * Kiểm tra trạng thái VIP theo thời gian thực (dùng cho Modal thanh toán tự động nhận biết)
+ */
+export async function checkCurrentUserVipStatus() {
+  try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get("user_token")?.value;
+    if (!token) return { isVIP: false, vipExpiresAt: null };
+
+    const user = await prisma.user.findUnique({
+      where: { id: token },
+      select: { isVIP: true, vipExpiresAt: true },
+    });
+
+    if (!user) return { isVIP: false, vipExpiresAt: null };
+
+    return {
+      isVIP: user.isVIP,
+      vipExpiresAt: user.vipExpiresAt ? user.vipExpiresAt.toISOString() : null,
+    };
+  } catch (error) {
+    console.error("Error checking VIP status:", error);
+    return { isVIP: false, vipExpiresAt: null };
+  }
+}

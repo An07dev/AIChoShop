@@ -152,6 +152,12 @@ export function calculateNewVipExpiration(
     return null;
   }
 
+  // Nếu người dùng hiện đang là VIP trọn đời (isVIP = true và vipExpiresAt = null/undefined),
+  // luôn giữ nguyên VIP trọn đời, không bị ghi đè xuống gói có thời hạn
+  if (currentIsVIP && (currentExpiresAt === null || currentExpiresAt === undefined)) {
+    return null;
+  }
+
   const now = new Date();
   let baseDate = now;
 

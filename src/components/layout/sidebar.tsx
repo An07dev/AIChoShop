@@ -116,20 +116,23 @@ export function Sidebar({
   };
 
   return (
-    <aside className="w-72 bg-slate-900 border-r border-slate-800 text-white min-h-screen flex flex-col relative z-20">
+    <aside className="w-72 sidebar-theme border-r min-h-screen flex flex-col relative z-20">
       <div className="p-6 pb-2">
-        <h1 className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-violet-400">
+        <h1 
+          className="text-2xl font-black bg-clip-text text-transparent"
+          style={{ backgroundImage: "var(--brand-gradient)" }}
+        >
           AIChoShop
         </h1>
-        <p className="text-xs text-slate-400 mt-1 font-medium">Hành trình X10 Doanh Số</p>
+        <p className="text-xs text-[var(--sidebar-text-muted)] mt-1 font-medium">Hành trình X10 Doanh Số</p>
       </div>
 
       <div className="flex-1 px-6 py-8 overflow-y-auto custom-scrollbar">
-        <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-6">Lộ trình khám phá</p>
+        <p className="text-[11px] font-bold text-[var(--sidebar-text-muted)] uppercase tracking-wider mb-6">Lộ trình khám phá</p>
         
         <div className="relative">
           {/* Vertical Timeline Line */}
-          <div className="absolute left-5 top-5 bottom-8 w-0.5 bg-slate-800"></div>
+          <div className="absolute left-5 top-5 bottom-8 w-0.5" style={{ backgroundColor: "var(--sidebar-timeline-line)" }}></div>
 
           <div className="space-y-6">
             {journeySteps.map((step, index) => {
@@ -149,11 +152,14 @@ export function Sidebar({
                   >
                     {/* Timeline Node */}
                     <div className="relative z-10 flex flex-col items-center">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 border-4 border-slate-900 ${
-                        isActive 
-                          ? 'bg-brand text-white shadow-[0_0_15px_var(--brand-ring)]' 
-                          : 'bg-slate-800 text-slate-400 group-hover:bg-slate-700 group-hover:text-white'
-                      }`}>
+                      <div 
+                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 border-4 ${
+                          isActive 
+                            ? 'bg-brand text-white shadow-[0_0_15px_var(--brand-ring)]' 
+                            : 'bg-white/80 dark:bg-slate-800/80 text-[var(--sidebar-text-muted)] group-hover:bg-brand-light group-hover:text-brand shadow-xs'
+                        }`}
+                        style={{ borderColor: "var(--sidebar-node-border)" }}
+                      >
                         <Icon size={18} />
                       </div>
                       {isActive && index !== journeySteps.length - 1 && (
@@ -164,14 +170,14 @@ export function Sidebar({
                     {/* Content */}
                     <div className={`flex-1 pt-2 pb-1 transition-all duration-300 ${isActive ? 'translate-x-1' : 'group-hover:translate-x-1'}`}>
                       <div className="flex items-center justify-between pr-2">
-                        <h3 className={`text-sm font-bold ${isActive ? 'text-white' : 'text-slate-300 group-hover:text-white'}`}>
+                        <h3 className={`text-sm font-bold transition-colors ${isActive ? 'text-[var(--sidebar-text-primary)]' : 'text-[var(--sidebar-text-secondary)] group-hover:text-[var(--sidebar-text-primary)]'}`}>
                           {step.name}
                         </h3>
                         {hasSub && (
-                          <ChevronDown size={14} className={`text-slate-500 transition-transform duration-300 ${isExpanded ? 'rotate-180 text-brand' : ''}`} />
+                          <ChevronDown size={14} className={`transition-transform duration-300 ${isExpanded ? 'rotate-180 text-brand' : 'text-[var(--sidebar-text-muted)]'}`} />
                         )}
                       </div>
-                      <p className="text-xs text-slate-500 mt-0.5">{step.desc}</p>
+                      <p className="text-xs text-[var(--sidebar-text-muted)] mt-0.5">{step.desc}</p>
                     </div>
                   </Link>
 
@@ -196,13 +202,13 @@ export function Sidebar({
                               title={sub.name}
                               className={`flex items-center justify-between text-xs py-2 px-3 rounded-lg transition-colors group ${
                                 isSubActive
-                                  ? 'bg-brand-light text-brand font-bold border-l-2 border-brand pl-2.5'
-                                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                                  ? 'bg-white/90 dark:bg-brand-light text-brand font-bold border-l-2 border-brand pl-2.5 shadow-xs'
+                                  : 'text-[var(--sidebar-text-secondary)] hover:text-[var(--sidebar-text-primary)] hover:bg-[var(--sidebar-hover-bg)]'
                               }`}
                             >
                               <span className="truncate">{sub.name}</span>
                               {sub.badge && (
-                                <span className="text-[10px] text-slate-500 group-hover:text-slate-400 font-mono shrink-0 ml-1.5 font-normal">
+                                <span className="text-[10px] text-[var(--sidebar-text-muted)] group-hover:text-[var(--sidebar-text-secondary)] font-mono shrink-0 ml-1.5 font-normal">
                                   {sub.badge}
                                 </span>
                               )}
@@ -213,7 +219,7 @@ export function Sidebar({
                         {step.viewAllHref && (
                           <Link
                             href={step.viewAllHref}
-                            className="block text-[11px] py-1.5 px-3 text-slate-400 hover:text-brand hover:bg-slate-800/60 rounded-lg transition-colors italic mt-1 font-semibold"
+                            className="block text-[11px] py-1.5 px-3 text-[var(--sidebar-text-muted)] hover:text-brand hover:bg-[var(--sidebar-hover-bg)] rounded-lg transition-colors italic mt-1 font-semibold"
                           >
                             Xem toàn bộ trang &rarr;
                           </Link>
@@ -228,34 +234,37 @@ export function Sidebar({
         </div>
 
         {/* Other static links */}
-        <div className="mt-12 pt-6 border-t border-slate-800">
+        <div className="mt-12 pt-6 border-t" style={{ borderColor: "var(--sidebar-border)" }}>
           <Link
             href="/settings"
             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
               pathname === '/settings'
                 ? 'bg-brand text-white font-semibold shadow-md shadow-brand/20'
-                : 'hover:bg-slate-800/50 text-slate-400 hover:text-white'
+                : 'hover:bg-[var(--sidebar-hover-bg)] text-[var(--sidebar-text-secondary)] hover:text-[var(--sidebar-text-primary)]'
             }`}
           >
-            <Settings size={18} className={pathname === '/settings' ? 'text-white' : 'text-slate-400'} />
+            <Settings size={18} className={pathname === '/settings' ? 'text-white' : 'text-[var(--sidebar-text-muted)]'} />
             <span className="text-sm">Cài đặt hệ thống</span>
           </Link>
         </div>
       </div>
 
-      <div className="p-4 m-4 bg-slate-800/50 border border-slate-700/50 rounded-2xl relative overflow-hidden group">
-        <div className="absolute top-0 right-0 w-24 h-24 bg-blue-500/10 rounded-full blur-xl group-hover:bg-blue-500/20 transition-all"></div>
+      <div className="p-4 m-4 sidebar-user-card border rounded-2xl relative overflow-hidden group shadow-xs">
+        <div 
+          className="absolute top-0 right-0 w-24 h-24 rounded-full blur-xl transition-all opacity-40 group-hover:opacity-70 pointer-events-none"
+          style={{ backgroundColor: "var(--brand-primary)" }}
+        ></div>
         
         <div className="flex items-center gap-3 mb-4 relative z-10">
-          <div className="w-10 h-10 bg-slate-700 rounded-xl flex items-center justify-center font-black text-white shadow-inner uppercase">
+          <div className="w-10 h-10 bg-brand text-white rounded-xl flex items-center justify-center font-black shadow-inner uppercase">
             {user ? user.name?.charAt(0) : 'U'}
           </div>
           <div>
-            <p className="text-sm font-bold text-white truncate max-w-[120px]">{user ? user.name : 'Khách Vãng Lai'}</p>
+            <p className="text-sm font-bold text-[var(--sidebar-text-primary)] truncate max-w-[120px]">{user ? user.name : 'Khách Vãng Lai'}</p>
             {user?.isVIP ? (
-              <p className="text-[11px] text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded inline-block mt-0.5 border border-amber-500/20">VIP Member</p>
+              <p className="text-[11px] text-amber-600 dark:text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded inline-block mt-0.5 border border-amber-500/20">VIP Member</p>
             ) : (
-              <p className="text-[11px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded inline-block mt-0.5">Free Plan</p>
+              <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded inline-block mt-0.5 border border-emerald-500/20">Free Plan</p>
             )}
           </div>
         </div>
@@ -263,19 +272,20 @@ export function Sidebar({
         {user ? (
           <div className="flex gap-2">
             {!user.isVIP && (
-              <Link href="/pricing" className="relative z-10 flex-1 flex items-center justify-center gap-1.5 text-xs bg-gradient-to-r from-blue-600 to-violet-600 hover:from-blue-500 hover:to-violet-500 text-white py-2 rounded-lg font-bold transition-all shadow-lg shadow-blue-900/50">
+              <Link href="/profile#pricing-section" className="relative z-10 flex-1 flex items-center justify-center gap-1.5 text-xs bg-brand hover:bg-brand-hover text-white py-2 rounded-lg font-bold transition-all shadow-md shadow-brand/30">
                 <Crown size={14} /> Lên VIP
               </Link>
             )}
             <button 
               onClick={() => logoutUser()}
-              className="relative z-10 flex items-center justify-center text-xs bg-slate-700/50 hover:bg-slate-700 text-slate-300 py-2 px-3 rounded-lg font-bold transition-all border border-slate-600/50"
+              className="relative z-10 flex items-center justify-center text-xs hover:bg-[var(--sidebar-hover-bg)] text-[var(--sidebar-text-muted)] hover:text-[var(--sidebar-text-primary)] py-2 px-3 rounded-lg font-bold transition-all border border-[var(--sidebar-card-border)] cursor-pointer"
+              title="Đăng xuất"
             >
               <LogOut size={14} />
             </button>
           </div>
         ) : (
-          <Link href="/login" className="relative z-10 flex items-center justify-center gap-2 text-xs bg-brand hover:bg-brand-hover text-white py-2 rounded-lg font-bold transition-all shadow-lg shadow-brand/30">
+          <Link href="/login" className="relative z-10 flex items-center justify-center gap-2 text-xs bg-brand hover:bg-brand-hover text-white py-2 rounded-lg font-bold transition-all shadow-md shadow-brand/30">
             Đăng nhập / Đăng ký
           </Link>
         )}

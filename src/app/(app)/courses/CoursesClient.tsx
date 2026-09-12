@@ -185,16 +185,27 @@ export default function CoursesClient({
   return (
     <div className="max-w-[1600px] mx-auto space-y-8 pb-16">
       {/* ── 1. HERO HEADER ──────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-950 p-8 sm:p-10 text-white border border-slate-800 shadow-2xl">
-        {/* Glow background effects */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-blue-500/15 rounded-full blur-3xl pointer-events-none -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-1/3 w-80 h-80 bg-purple-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 p-8 sm:p-10 text-white border border-slate-800 shadow-2xl">
+        {/* Glow background effects adapting to theme */}
+        <div 
+          className="absolute top-0 right-0 w-96 h-96 rounded-full blur-3xl pointer-events-none -translate-y-1/2 translate-x-1/2 opacity-25"
+          style={{ backgroundColor: "var(--brand-primary)" }}
+        />
+        <div 
+          className="absolute bottom-0 left-1/3 w-80 h-80 rounded-full blur-3xl pointer-events-none opacity-20"
+          style={{ backgroundColor: "var(--brand-primary)" }}
+        />
 
         <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
           <div className="max-w-2xl space-y-3">
-
             <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight">
-              Tất Cả Khóa Học & <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-400 via-sky-300 to-indigo-300">Video Bài Giảng</span>
+              Tất Cả Khóa Học &{" "}
+              <span 
+                className="bg-clip-text text-transparent font-black"
+                style={{ backgroundImage: "var(--brand-gradient)" }}
+              >
+                Video Bài Giảng
+              </span>
             </h1>
 
             <p className="text-slate-300 text-sm sm:text-base leading-relaxed">
@@ -209,12 +220,12 @@ export default function CoursesClient({
               <span className="text-xs font-bold text-slate-300">
                 {selectedCourseId === "ALL" ? "Tiến độ học tập tổng quan" : "Tiến độ khóa học đang xem"}
               </span>
-              <span className="text-xs font-black text-emerald-400">{currentProgressPercent}%</span>
+              <span className="text-xs font-black text-brand">{currentProgressPercent}%</span>
             </div>
 
             <div className="w-full bg-slate-800/80 rounded-full h-2.5 overflow-hidden">
               <div
-                className="bg-gradient-to-r from-emerald-400 to-teal-400 h-full rounded-full transition-all duration-500"
+                className="bg-brand h-full rounded-full transition-all duration-500"
                 style={{ width: `${currentProgressPercent}%` }}
               />
             </div>
@@ -236,7 +247,7 @@ export default function CoursesClient({
                   ? `/learn?lessonId=${scopeLessons[0].id}`
                   : "/learn"
               }
-              className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs font-bold py-2.5 rounded-xl transition-all shadow-md shadow-blue-500/25 flex items-center justify-center gap-2 group cursor-pointer"
+              className="w-full bg-brand hover:bg-brand-hover text-white text-xs font-bold py-2.5 rounded-xl transition-all shadow-md shadow-brand/25 flex items-center justify-center gap-2 group cursor-pointer"
             >
               <GraduationCap size={15} />
               <span>Vào Trình Phát Video Học Tập</span>
@@ -278,7 +289,7 @@ export default function CoursesClient({
       </div>
 
       {/* ── 3. SEARCH & FILTER BAR ──────────────────────────────────────────────── */}
-      <div className="bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
+      <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
         {/* Input Tìm kiếm */}
         <div className="relative flex-1 min-w-[260px]">
           <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -287,12 +298,12 @@ export default function CoursesClient({
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Tìm theo tên bài học, số thứ tự (STT), nội dung..."
-            className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl text-xs sm:text-sm font-medium focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-slate-50/50 transition-colors"
+            className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm font-medium focus:ring-2 focus:ring-brand/20 focus:border-brand bg-slate-50/50 dark:bg-slate-800/60 text-slate-900 dark:text-white placeholder-slate-400 transition-colors"
           />
           {searchQuery && (
             <button
               onClick={() => setSearchQuery("")}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 cursor-pointer"
             >
               <X size={14} />
             </button>
@@ -302,12 +313,12 @@ export default function CoursesClient({
         {/* Bộ lọc Type (ALL / FREE / VIP) & Module */}
         <div className="flex flex-wrap items-center gap-2">
           {/* Lọc VIP/FREE */}
-          <div className="inline-flex rounded-xl border border-slate-200 bg-slate-100/80 p-1 text-xs font-bold">
+          <div className="inline-flex rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100/80 dark:bg-slate-800/80 p-1 text-xs font-bold">
             <button
               onClick={() => setFilterType("ALL")}
               className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${filterType === "ALL"
-                ? "bg-white text-slate-900 shadow-xs font-black"
-                : "text-slate-600 hover:text-slate-900"
+                ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-black"
+                : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
                 }`}
             >
               Tất cả ({currentTotalLessons})
@@ -316,7 +327,7 @@ export default function CoursesClient({
               onClick={() => setFilterType("FREE")}
               className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${filterType === "FREE"
                 ? "bg-emerald-500 text-white shadow-xs font-black"
-                : "text-slate-600 hover:text-slate-900"
+                : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
                 }`}
             >
               <Sparkles size={12} /> FREE ({currentFreeLessons})
@@ -325,7 +336,7 @@ export default function CoursesClient({
               onClick={() => setFilterType("VIP")}
               className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${filterType === "VIP"
                 ? "bg-amber-500 text-white shadow-xs font-black"
-                : "text-slate-600 hover:text-slate-900"
+                : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
                 }`}
             >
               <Crown size={12} /> VIP ({currentVipLessons})
@@ -338,7 +349,7 @@ export default function CoursesClient({
               <select
                 value={selectedCourseId}
                 onChange={(e) => handleCourseChange(e.target.value)}
-                className="px-3 py-2 border border-indigo-200 rounded-xl text-xs font-bold text-indigo-900 bg-indigo-50/60 cursor-pointer hover:border-indigo-300 focus:ring-2 focus:ring-indigo-500/20 max-w-[210px] truncate"
+                className="px-3 py-2 border border-brand/30 dark:border-brand/40 rounded-xl text-xs font-bold text-brand bg-brand-light cursor-pointer hover:border-brand focus:ring-2 focus:ring-brand/20 max-w-[210px] truncate"
               >
                 <option value="ALL">🎓 Tất cả khóa học ({courses.length})</option>
                 {courses.map((c) => (
@@ -355,7 +366,7 @@ export default function CoursesClient({
             <select
               value={selectedModule}
               onChange={(e) => handleModuleChange(e.target.value)}
-              className="px-3 py-2 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 bg-white cursor-pointer hover:border-slate-300 focus:ring-2 focus:ring-blue-500/20"
+              className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 cursor-pointer hover:border-brand focus:ring-2 focus:ring-brand/20"
             >
               <option value="ALL">📁 Tất cả các phần ({uniqueModules.length} phần)</option>
               {uniqueModules.map((m) => (
@@ -371,11 +382,11 @@ export default function CoursesClient({
 
       {/* ── 4. COURSES & LESSONS LISTING ────────────────────────────────────────── */}
       {filteredCourses.every((c) => c.lessons.length === 0) ? (
-        <div className="p-16 text-center bg-white rounded-3xl border border-slate-200 shadow-sm max-w-md mx-auto space-y-3">
-          <div className="w-14 h-14 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+        <div className="p-16 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm max-w-md mx-auto space-y-3">
+          <div className="w-14 h-14 rounded-2xl bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center mx-auto">
             <BookOpen size={28} />
           </div>
-          <h3 className="font-bold text-slate-800 text-base">Không tìm thấy bài học nào phù hợp</h3>
+          <h3 className="font-bold text-slate-800 dark:text-white text-base">Không tìm thấy bài học nào phù hợp</h3>
           <p className="text-xs text-slate-400 leading-relaxed">
             Hãy thử tìm bằng từ khóa khác hoặc bấm bỏ bộ lọc để xem toàn bộ danh sách video bài giảng.
           </p>
@@ -386,7 +397,7 @@ export default function CoursesClient({
               setSelectedModule("ALL");
               setSelectedCourseId("ALL");
             }}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl cursor-pointer"
+            className="px-4 py-2 bg-brand hover:bg-brand-hover text-white text-xs font-bold rounded-xl cursor-pointer transition-colors shadow-sm"
           >
             Đặt lại bộ lọc
           </button>
@@ -409,27 +420,27 @@ export default function CoursesClient({
             return (
               <div key={course.id} id={`course-${course.id}`} className="space-y-8 scroll-mt-6">
                 {/* Course Header Banner */}
-                <div className="bg-white p-6 sm:p-7 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="bg-white dark:bg-slate-900 p-6 sm:p-7 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="px-2.5 py-0.5 rounded-md bg-blue-100 text-blue-700 text-[10px] font-black uppercase tracking-wider">
+                      <span className="px-2.5 py-0.5 rounded-md bg-brand-light text-brand text-[10px] font-black uppercase tracking-wider">
                         Khóa học Masterclass
                       </span>
                       <span className="text-xs text-slate-400 font-medium">
                         {course.lessons.length} bài giảng
                       </span>
                     </div>
-                    <h2 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
+                    <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
                       {course.title}
                     </h2>
                     {course.description && (
-                      <p className="text-xs text-slate-500 line-clamp-1 max-w-2xl">{course.description}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1 max-w-2xl">{course.description}</p>
                     )}
                   </div>
 
                   <Link
                     href={`/learn?lessonId=${course.lessons[0]?.id || ""}`}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/20 transition-all shrink-0 cursor-pointer"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-brand hover:bg-brand-hover shadow-md shadow-brand/20 transition-all shrink-0 cursor-pointer"
                   >
                     <Play size={14} className="fill-white" />
                     <span>Học theo lộ trình chuyên sâu</span>
@@ -442,13 +453,13 @@ export default function CoursesClient({
                     <div key={moduleName} className="space-y-4">
                       {/* Module Title Ribbon */}
                       <div className="flex items-center gap-2 px-1">
-                        <div className="p-1.5 rounded-lg bg-indigo-100 text-indigo-700">
+                        <div className="p-1.5 rounded-lg bg-brand-light text-brand">
                           <Layers size={16} />
                         </div>
-                        <h3 className="text-base sm:text-lg font-black text-slate-800">
+                        <h3 className="text-base sm:text-lg font-black text-slate-800 dark:text-slate-100">
                           {moduleName}
                         </h3>
-                        <span className="text-xs text-slate-400 font-semibold bg-slate-100 px-2 py-0.5 rounded-full">
+                        <span className="text-xs text-slate-400 dark:text-slate-400 font-semibold bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
                           {lessons.length} video
                         </span>
                       </div>
@@ -469,7 +480,7 @@ export default function CoursesClient({
                           return (
                             <div
                               key={lesson.id}
-                              className="bg-white rounded-2xl border border-slate-200 hover:border-blue-300 hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col group"
+                              className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 hover:border-brand hover:shadow-xl transition-all duration-300 overflow-hidden flex flex-col group"
                             >
                               {/* Video Thumbnail Box */}
                               <div
@@ -484,8 +495,8 @@ export default function CoursesClient({
                                     loading="lazy"
                                   />
                                 ) : videoInfo.type === "direct" ? (
-                                  <div className="w-full h-full bg-gradient-to-br from-slate-900 via-indigo-950 to-slate-900 flex flex-col items-center justify-center p-4 text-center">
-                                    <Video size={36} className="text-blue-400 mb-1 opacity-75" />
+                                  <div className="w-full h-full bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 flex flex-col items-center justify-center p-4 text-center">
+                                    <Video size={36} className="text-brand mb-1 opacity-75" />
                                     <span className="text-[11px] font-mono text-slate-300 font-medium truncate max-w-[200px]">
                                       {lesson.videoUrl?.split("/").pop() || "Video tải lên"}
                                     </span>
@@ -501,7 +512,7 @@ export default function CoursesClient({
 
                                 {/* Play Button in Center */}
                                 <div className="absolute inset-0 flex items-center justify-center">
-                                  <div className="w-12 h-12 rounded-2xl bg-blue-600/90 text-white flex items-center justify-center shadow-lg group-hover:scale-115 group-hover:bg-blue-500 transition-all duration-300 backdrop-blur-xs">
+                                  <div className="w-12 h-12 rounded-2xl bg-brand text-white flex items-center justify-center shadow-lg group-hover:scale-115 group-hover:bg-brand-hover transition-all duration-300 backdrop-blur-xs">
                                     <Play size={20} className="fill-white ml-0.5" />
                                   </div>
                                 </div>
@@ -536,38 +547,38 @@ export default function CoursesClient({
                               {/* Card Content */}
                               <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
                                 <div className="space-y-1.5">
-                                  <span className="inline-block text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100">
+                                  <span className="inline-block text-[10px] font-bold text-brand bg-brand-light px-2 py-0.5 rounded-md border border-brand/20">
                                     {lesson.moduleName}
                                   </span>
 
                                   <h4
                                     onClick={() => setPreviewLesson(lesson)}
-                                    className="font-bold text-slate-900 text-sm leading-snug line-clamp-2 hover:text-blue-600 transition-colors cursor-pointer"
+                                    className="font-bold text-slate-900 dark:text-white text-sm leading-snug line-clamp-2 hover:text-brand transition-colors cursor-pointer"
                                     title={lesson.title}
                                   >
                                     {lesson.title}
                                   </h4>
 
                                   {lesson.content && (
-                                    <p className="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">
+                                    <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-2 leading-relaxed">
                                       {lesson.content}
                                     </p>
                                   )}
                                 </div>
 
                                 {/* Action Buttons */}
-                                <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
+                                <div className="pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
                                   <button
                                     onClick={() => setPreviewLesson(lesson)}
-                                    className="text-xs font-semibold text-slate-600 hover:text-blue-600 hover:bg-blue-50 px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                                    className="text-xs font-semibold text-slate-600 dark:text-slate-300 hover:text-brand hover:bg-brand-light px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
                                   >
-                                    <PlayCircle size={14} className="text-blue-600" />
+                                    <PlayCircle size={14} className="text-brand" />
                                     <span>Xem nhanh</span>
                                   </button>
 
                                   <Link
                                     href={`/learn?lessonId=${lesson.id}`}
-                                    className="text-xs font-bold text-blue-600 hover:text-blue-700 hover:bg-blue-50/80 px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-0.5 cursor-pointer ml-auto"
+                                    className="text-xs font-bold text-brand hover:text-brand-hover hover:bg-brand-light px-2.5 py-1.5 rounded-lg transition-colors flex items-center gap-0.5 cursor-pointer ml-auto"
                                   >
                                     <span>Vào học</span>
                                     <ChevronRight size={14} />
@@ -594,12 +605,12 @@ export default function CoursesClient({
             {/* Modal Header */}
             <div className="px-5 py-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-950/90 shrink-0">
               <div className="flex items-center gap-2.5 min-w-0 pr-4">
-                <div className="p-1.5 rounded-lg bg-blue-600/30 text-blue-400 shrink-0">
+                <div className="p-1.5 rounded-lg bg-brand-light text-brand shrink-0">
                   <PlayCircle size={18} />
                 </div>
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-xs font-mono font-bold text-blue-400">
+                    <span className="text-xs font-mono font-bold text-brand">
                       Bài #{previewLesson.order}
                     </span>
                     <span className="text-[10px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded">
@@ -623,7 +634,7 @@ export default function CoursesClient({
 
               <button
                 onClick={() => setPreviewLesson(null)}
-                className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition-colors shrink-0"
+                className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition-colors shrink-0 cursor-pointer"
               >
                 <X size={18} />
               </button>
@@ -648,15 +659,15 @@ export default function CoursesClient({
                   </p>
                   <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
                     <Link
-                      href="/pricing"
-                      className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black px-5 py-2.5 rounded-xl text-xs shadow-lg shadow-amber-500/20 transition-all flex items-center gap-1.5"
+                      href="/profile#pricing-section"
+                      className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black px-5 py-2.5 rounded-xl text-xs shadow-lg shadow-amber-500/20 transition-all flex items-center gap-1.5 cursor-pointer"
                     >
                       <Crown size={14} className="fill-slate-950" /> Nâng Cấp VIP Ngay
                     </Link>
                     {!isLogged && (
                       <Link
                         href="/login"
-                        className="bg-slate-800 hover:bg-slate-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-colors"
+                        className="bg-slate-800 hover:bg-slate-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-colors cursor-pointer"
                       >
                         Đã có tài khoản? Đăng nhập
                       </Link>
@@ -714,14 +725,14 @@ export default function CoursesClient({
             <div className="px-5 py-3 border-t border-slate-800 flex items-center justify-between bg-slate-950/90 shrink-0">
               <button
                 onClick={() => setPreviewLesson(null)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 Đóng
               </button>
 
               <Link
                 href={`/learn?lessonId=${previewLesson.id}`}
-                className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 shadow-md shadow-blue-500/20 transition-all flex items-center gap-1.5"
+                className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-brand hover:bg-brand-hover shadow-md shadow-brand/20 transition-all flex items-center gap-1.5 cursor-pointer"
               >
                 <GraduationCap size={15} />
                 <span>Mở Trong Trình Học Chuyên Sâu</span>
