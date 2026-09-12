@@ -1,0 +1,50 @@
+export type TaxPayerType = "household" | "individual" | "company";
+export type BusinessActivity = "goods" | "services" | "production" | "digital" | "other";
+export type PersonalIncomeMethod = "revenue" | "profit";
+
+export type TaxCalculatorInput = {
+  taxYear: number;
+  payerType: TaxPayerType;
+  activity: BusinessActivity;
+  personalIncomeMethod: PersonalIncomeMethod;
+  shopeeRevenue: number;
+  tiktokRevenue: number;
+  otherPlatformRevenue: number;
+  directRevenue: number;
+  platformFees: number;
+  deductibleCosts: number;
+  otherTaxableIncome: number;
+  carriedLoss: number;
+  withheldVat: number;
+  withheldIncomeTax: number;
+  companyPreviousYearRevenue: number;
+  companyVatRate: number;
+  deductibleInputVat: number;
+  applyIncomeTaxReduction: boolean;
+};
+
+export type TaxCalculatorResult = {
+  totalRevenue: number;
+  isExempt: boolean;
+  effectivePersonalMethod: PersonalIncomeMethod;
+  vatRate: number;
+  vat: number;
+  incomeTaxRate: number;
+  taxableIncomeBase: number;
+  incomeTaxBeforeReduction: number;
+  incomeTaxReduction: number;
+  incomeTax: number;
+  totalTax: number;
+  remainingVat: number;
+  remainingIncomeTax: number;
+  remainingPayable: number;
+  overpaidVat: number;
+  overpaidIncomeTax: number;
+  potentialRefundOrOffset: number;
+  netCashAfterTaxAndPlatformFees: number;
+  effectiveTaxRate: number;
+  platformFeeRate: number;
+  netRate: number;
+  reductionEligible: boolean;
+  warnings: string[];
+};
