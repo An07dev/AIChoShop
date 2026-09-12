@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { UsersManager } from "@/components/admin/UsersManager";
 import { syncAllExpiredVipUsers } from "@/lib/sepay-server";
 import { computeVipDaysLeft } from "@/lib/vip-expiration";
+import { getActiveVipPlans } from "@/lib/vip-plans-server";
 
 export const dynamic = "force-dynamic";
 
@@ -10,23 +11,26 @@ export default async function AdminUsers() {
     // Tự động kiểm tra và hạ cấp các tài khoản đã hết hạn VIP về FREE
     await syncAllExpiredVipUsers();
 
-    const users = await prisma.user.findMany({
-      orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        phone: true,
-        role: true,
-        isVIP: true,
-        vipExpiresAt: true,
-        isLocked: true,
-        createdAt: true,
-        userCredit: {
-          select: { balance: true },
+    const [users, vipPlans] = await Promise.all([
+      prisma.user.findMany({
+        orderBy: { createdAt: "desc" },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          phone: true,
+          role: true,
+          isVIP: true,
+          vipExpiresAt: true,
+          isLocked: true,
+          createdAt: true,
+          userCredit: {
+            select: { balance: true },
+          },
         },
-      },
-    });
+      }),
+      getActiveVipPlans(),
+    ]);
 
     const serializedUsers = users.map((u) => ({
       ...u,
@@ -35,7 +39,7 @@ export default async function AdminUsers() {
       vipDaysLeft: computeVipDaysLeft(u.vipExpiresAt),
     }));
 
-    return <UsersManager initialUsers={serializedUsers} />;
+    return <UsersManager initialUsers={serializedUsers} initialPlans={vipPlans} />;
   } catch (error: any) {
     console.error("ADMIN USERS ERROR:", error);
     return (
