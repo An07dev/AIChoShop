@@ -16,6 +16,7 @@ import Link from "next/link";
 import { useToolGate } from "@/hooks/useToolGate";
 import { SeoOptimizerOutput } from "@/components/tools/SeoOptimizerOutput";
 import { TextDots } from "@/components/ui/text-dots";
+import { useToast } from "@/context/ToastContext";
 
 const QUICK_USP_TAGS = [
   "100% Cotton thoáng mát",
@@ -30,6 +31,7 @@ const QUICK_USP_TAGS = [
 
 export default function SeoOptimizer() {
   const { checkAccess, GateModals } = useToolGate();
+  const { showAiError, showWarning } = useToast();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState("");
 
@@ -56,7 +58,7 @@ export default function SeoOptimizer() {
 
   const handleGenerate = async () => {
     if (!productName.trim() || !usp.trim()) {
-      alert("Vui lòng nhập Tên cơ bản và Điểm nổi bật!");
+      showWarning("Vui lòng nhập Tên cơ bản và Điểm nổi bật (USP)!", "Thiếu Thông Tin");
       return;
     }
 
@@ -80,10 +82,10 @@ export default function SeoOptimizer() {
       if (data.success) {
         setResult(data.data);
       } else {
-        alert("Có lỗi xảy ra: " + (data.error || "Vui lòng thử lại"));
+        showAiError(data, "Có lỗi xảy ra khi tối ưu SEO");
       }
     } catch (error) {
-      alert("Không thể kết nối đến máy chủ AI.");
+      showAiError({ error: "Không thể kết nối đến máy chủ AI. Vui lòng kiểm tra lại mạng hoặc token." });
     } finally {
       setLoading(false);
     }

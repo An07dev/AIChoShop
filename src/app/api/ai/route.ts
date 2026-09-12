@@ -1,26 +1,44 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
+import { getSystemSettings } from "@/lib/system-settings";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { tool, inputs } = body;
 
-    // Kiểm tra trạng thái từ biến môi trường: OpenAIStatus = "true" -> dùng OpenAI, ngược lại -> dùng Ollama
-    const isOpenAI = process.env.OpenAIStatus?.trim().toLowerCase() === "true";
+    // Lấy cấu hình hệ thống từ Database (ưu tiên CSDL, không phụ thuộc file .env)
+    const systemConfig = await getSystemSettings();
+
+    const isOpenAI = systemConfig.isOpenAiActive ?? (process.env.OpenAIStatus?.trim().toLowerCase() === "true");
     const isOllama = !isOpenAI;
 
     const baseURL = isOllama
       ? (process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434/v1")
-      : undefined;
+      : (systemConfig.openaiBaseUrl?.trim() || undefined);
 
     const apiKey = isOllama
       ? "ollama"
-      : (process.env.OPENAI_API_KEY?.trim().replace(/^["']|["']$/g, "") || "dummy");
+      : (systemConfig.openaiApiKey?.trim() || process.env.OPENAI_API_KEY?.trim().replace(/^["']|["']$/g, "") || "");
 
     const model = isOllama
       ? (process.env.OLLAMA_MODEL || "qwen2.5:7b")
-      : (process.env.OPENAI_MODEL || "gpt-4o-mini");
+      : (systemConfig.openaiModel?.trim() || process.env.OPENAI_MODEL || "gpt-4o-mini");
+
+    if (isOpenAI && (!apiKey || apiKey === "dummy" || apiKey.trim().length === 0)) {
+      return NextResponse.json(
+        {
+          success: false,
+          code: "MISSING_TOKEN",
+          error: "Hệ thống chưa cấu hình OpenAI API Key (Token). Vui lòng vào Quản trị viên -> Cài đặt hệ thống để nhập Token.",
+          details: {
+            reason: "API key is missing or empty in database",
+            actionUrl: "/admin/settings",
+          },
+        },
+        { status: 400 }
+      );
+    }
 
     const openai = new OpenAI({
       baseURL,
@@ -36,7 +54,7 @@ export async function POST(req: Request) {
 Tên Shop: ${inputs.shopName}
 ${inputs.violationType ? `Loại vi phạm: ${inputs.violationType}` : ""}
 ${inputs.details ? `Giải trình/Nguyên nhân từ Shop: ${inputs.details}` : ""}
-${inputs.imageBase64 ? "Tôi có đính kèm một ảnh chụp màn hình thông báo vi phạm từ sàn. Hãy phân tích kỹ hình ảnh này để tìm ra LÝ DO CHÍNH XÁC và NGUYÊN NHÂN SÂU XA mà hệ thống hoặc đội ngũ duyệt bài của sàn đã đánh gậy/vi phạm." : ""}
+${inputs.imageBase64 ? "Tôi có đính kèm một ảnh chụp màn hình thông báo vi phạm từ sàn. Hãy phân tích kỹ hình ảnh này để tìm ra LÝ DO CHÍNH XAC và NGUYÊN NHÂN SÂU XA mà hệ thống hoặc đội ngũ duyệt bài của sàn đã đánh gậy/vi phạm." : ""}
 
 Hãy cung cấp kết quả theo cấu trúc sau (Định dạng Markdown rõ ràng):
 
@@ -80,108 +98,62 @@ Mỗi kịch bản BẮT BUỘC trình bày theo đúng định dạng bảng ph
 ### [00:15 - 00:30] GIẢI PHÁP: Giới thiệu USP
 - **Hình ảnh / Hành động**: [Cảnh test sản phẩm thực tế, zoom cận vào chất liệu/tính năng vượt trội]
 - **Lời thoại (Voice)**: "[Câu KOC nói làm nổi bật điểm mạnh USP giải quyết triệt để vấn đề]"
-- **Chữ trên video**: "[Text nhấn mạnh USP cốt lõi]"
+- **Chữ trên video**: "[In hoa điểm khác biệt nổi bật nhất]"
 
-### [00:30 - HẾT] CALL TO ACTION: Kêu gọi chốt đơn
-- **Hình ảnh / Hành động**: [Cười tươi chỉ tay xuống góc trái màn hình nơi có icon giỏ hàng]
-- **Lời thoại (Voice)**: "[Câu KOC kêu gọi bấm vào giỏ hàng săn voucher ưu đãi độc quyền]"
-- **Chữ trên video**: "[BẤM GIỎ HÀNG GÓC TRÁI 👇 SĂN VOUCHER]"
+### [00:30 - 00:45] CTA: Kêu gọi hành động chốt đơn
+- **Hình ảnh / Hành động**: [KOC cầm sản phẩm chỉ tay vào góc trái màn hình, nhấp nháy ưu đãi]
+- **Lời thoại (Voice)**: "[Câu KOC kêu gọi bấm vào giỏ hàng ngay vì deal hời/quà tặng có hạn]"
+- **Chữ trên video**: "[MUA NGAY TRONG GIỎ HÀNG / FREESHIP HÔM NAY]"
 
-## Gợi ý quay dựng:
-- Nhạc nền: [Gợi ý thể loại nhạc TikTok bắt trend phù hợp]
-- Âm thanh: [Hiệu ứng sound effect đề xuất như Whoosh, Pop, Ting]
-
-LƯU Ý: Trả về 100% tiếng Việt chuẩn. Không chèn tiếng Trung hoặc ngôn ngữ khác. Không đưa lời giải thích ngoài lề.`;
+LƯU Ý: Tuyệt đối không thêm lời dẫn, trả về đúng 3 kịch bản theo định dạng trên.`;
         break;
 
       case "review-replier":
-        userPrompt = `Khách hàng vừa để lại đánh giá ${inputs.rating || "1 sao"} trên sàn thương mại điện tử (Shopee/TikTok Shop/Lazada) với nội dung: "${inputs.reviewContent || inputs.review}"
-${inputs.issueType ? `Loại vấn đề gặp phải: ${inputs.issueType}` : ""}
+        userPrompt = `Bạn là chuyên viên Chăm sóc khách hàng xuất sắc của Shop "${inputs.shopName || "Aicho Official Store"}".
+Hãy viết phản hồi cho đánh giá sau của khách hàng:
+Số sao: ${inputs.rating} sao
+Nội dung đánh giá của khách: "${inputs.reviewText}"
 
-Hãy đóng vai chuyên gia xử lý khủng hoảng truyền thông & chăm sóc khách hàng hàng đầu.
-Hãy tạo 3 phương án phản hồi chuyên nghiệp, đắc nhân tâm nhất theo đúng cấu trúc Markdown chuẩn sau:
-
-# Kế hoạch xử lý đánh giá tiêu cực
-
-## 1. Phong Cách: Chân Thành & Cầu Thị (Khuyên dùng)
-- **Nội dung phản hồi công khai:**
-  > "[Nội dung phản hồi công khai ngắn gọn 3-4 câu: xin lỗi chân thành, nhận trách nhiệm, thông báo đã chủ động nhắn tin riêng đền bù/đổi mới 100%]"
-- **Hành động hậu trường:** [Gợi ý hành động thực tế shop cần làm trong inbox hoặc vận hành, ví dụ: nhắn tin gửi voucher, gửi bù hàng ngay không cần trả lại hàng cũ]
-
-## 2. Phong Cách: Khéo Léo & Khách Quan (Lỗi vận chuyển & bảo quản)
-- **Nội dung phản hồi công khai:**
-  > "[Nội dung phản hồi công khai ngắn gọn 3-4 câu: đồng cảm với sự bất tiện, khéo léo giải thích do va đập vận chuyển hoặc yếu tố khách quan, nhưng shop vẫn đứng ra chịu trách nhiệm và hỗ trợ xử lý ngay trong inbox]"
-- **Hành động hậu trường:** [Gợi ý xử lý: kiểm tra camera đóng gói, gửi clip cho khách, khiếu nại đơn vị vận chuyển]
-
-## 3. Phong Cách: Minh Bạch & Tinh Tế (Bảo vệ uy tín thương hiệu)
-- **Nội dung phản hồi công khai:**
-  > "[Nội dung phản hồi công khai ngắn gọn 3-4 câu: khẳng định chất lượng nguồn gốc sản phẩm chính hãng/đầy đủ tem mác có quy trình kiểm tra nghiêm ngặt, đồng thời vẫn cam kết bảo hành và hỗ trợ khách qua tin nhắn]"
-- **Hành động hậu trường:** [Gợi ý cách xử lý inbox, bảo vệ shop nếu khách hiểu lầm hoặc đối thủ cạnh tranh không lành mạnh]
-
-## Lời khuyên vàng khi xử lý đánh giá tiêu cực:
-- Không bao giờ đôi co hoặc cãi vã trên bình luận công khai để giữ hình ảnh chuyên nghiệp.
-- Luôn chủ động điều hướng khách vào tin nhắn riêng (Inbox) để xử lý bồi thường thỏa đáng.
-- Sau khi khách đồng ý giải pháp đền bù/đổi hàng, khéo léo nhờ khách cập nhật lại đánh giá.
-- Báo cáo sàn can thiệp nếu bình luận chứa từ ngữ thô tục hoặc có dấu hiệu phá hoại từ đối thủ.
-
-LƯU Ý: Trả về 100% tiếng Việt chuẩn. Câu từ chuẩn mực, tế nhị, tạo thiện cảm lớn với khách hàng tiềm năng đang đọc đánh giá của shop.`;
+Yêu cầu:
+- Nếu là đánh giá 1-3 sao (tiêu cực): Nhận lỗi chân thành, giữ thái độ lịch sự, cầu thị, xoa dịu khách hàng và đưa ra giải pháp xử lý (đổi trả, bảo hành, tặng voucher...).
+- Nếu là đánh giá 4-5 sao (tích cực): Cảm ơn chân thành, tạo sự gắn kết, chúc khách hàng có trải nghiệm tốt và kêu gọi khách bấm [Theo dõi Shop] để nhận ưu đãi cho lần mua sau.
+- Ngôn ngữ: Tiếng Việt, tự nhiên, ấm áp, chuyên nghiệp, không sáo rỗng.
+- Độ dài: Khoảng 3 - 5 câu ngắn gọn, súc tích. Chỉ trả về nội dung câu trả lời, không thêm lời giải thích.`;
         break;
 
       case "seo-optimizer":
-        userPrompt = `Thực hiện tối ưu hóa SEO sản phẩm cho sàn Shopee/TikTok.
-Tên sản phẩm cơ bản: ${inputs.productName}
-Đặc điểm nổi bật (USP): ${inputs.usp}
-Hãy trả về:
-1. 5 biến thể Tiêu đề chuẩn SEO (tối đa 120 ký tự, kết hợp từ khoá tìm kiếm cao và USP để tăng tỷ lệ Click).
-2. Mô tả sản phẩm (Khoảng 4-5 gạch đầu dòng nhấn mạnh lợi ích cốt lõi).
-3. 10 Hashtag chuẩn thuật toán tìm kiếm.`;
+        userPrompt = `Bạn là chuyên gia SEO E-commerce (Shopee & TikTok Shop).
+Hãy tối ưu tiêu đề và viết lại bài mô tả sản phẩm sau để lên top tìm kiếm:
+Tên sản phẩm gốc: ${inputs.productName}
+Các tính năng / USP: ${inputs.features}
+Từ khóa chính mong muốn: ${inputs.keywords || "tự động phân tích"}
+
+Yêu cầu đầu ra (Định dạng Markdown):
+### 1. GỢI Ý 3 TIÊU ĐỀ CHUẨN SEO (Dưới 120 ký tự):
+(Cấu trúc: [Loại SP] + [Thương hiệu/Điểm nổi bật] + [Tính năng/Công dụng] + [Mã SP/Kích cỡ] + [Freeship/Chính hãng])
+- Tiêu đề 1: ...
+- Tiêu đề 2: ...
+- Tiêu đề 3: ...
+
+### 2. MÔ TẢ SẢN PHẨM TỐI ƯU SEO & CHUYỂN ĐỔI:
+- Trình bày dạng bullet points ngắn gọn, chia đề mục rõ ràng (Điểm nổi bật, Thông số, Hướng dẫn sử dụng, Cam kết).
+- Lồng ghép từ khóa tự nhiên, không spam.
+- Đính kèm 8 - 10 hashtag chuẩn SEO ở cuối bài.`;
         break;
 
       case "koc-planner":
-        userPrompt = `Hãy lập kế hoạch phân bổ ngân sách thuê KOC (Key Opinion Consumer) trên TikTok cho:
-Ngành hàng: ${inputs.category}
-Ngân sách tổng: ${new Intl.NumberFormat('vi-VN').format(Number(inputs.budget))} VNĐ.
+        userPrompt = `Bạn là chuyên gia lập kế hoạch KOC (Key Opinion Consumer) cho ngành TMĐT.
+Hãy lập một bản kế hoạch hợp tác KOC ngắn gọn, hiệu quả cho chiến dịch sau:
+Sản phẩm: ${inputs.productName}
+Ngân sách dự kiến: ${inputs.budget || "5.000.000 VNĐ"}
+Mục tiêu: ${inputs.goal || "Tăng nhận diện và ra đơn hàng trên TikTok Shop"}
 
-BẮT BUỘC trả về đúng cấu trúc Markdown chuẩn mẫu sau:
-
-# Kế hoạch phân bổ ngân sách thuê KOC trên TikTok
-
-## Tóm tắt
-- **Ngành hàng**: ${inputs.category}
-- **Ngân sách tổng**: ${new Intl.NumberFormat('vi-VN').format(Number(inputs.budget))} VNĐ
-- **Chiến lược**: Nano-Micro Influencer
-- **Trường hợp sử dụng**: Chia nhỏ rủi ro
-
-## Chi tiết kế hoạch
-
-### 1. Phân bổ ngân sách
-- **Booking Influencer**: [X]% ([Số tiền tương ứng] VNĐ)
-- **Chạy Ads**: [Y]% ([Số tiền tương ứng] VNĐ)
-- **Chi phí hàng mẫu**: [Z]% ([Số tiền tương ứng] VNĐ)
-
-### 2. Chi tiết phân bổ
-- **Booking Influencer**: [Mô tả mục đích và cách làm việc với KOC]
-- **Chạy Ads**: [Chiến lược chạy quảng cáo Spark Ads đẩy video lên xu hướng]
-- **Chi phí hàng mẫu**: [Quy trình gửi hàng mẫu cho KOC test]
-
-### 3. Tiêu chí chọn KOC
-- **Trọng lượng nội dung**: [Số lượng followers và nội dung phù hợp]
-- **Chất lượng nội dung**: [Yêu cầu chất lượng hình ảnh, kịch bản]
-- **Tương tác**: [Lượt tương tác tối thiểu mỗi bài đăng]
-- **Độ trung thực**: [Uy tín và niềm tin của cộng đồng]
-- **Kết nối với khách hàng mục tiêu**: [Đặc điểm tệp khán giả phù hợp]
-
-### 4. Dự phóng chỉ số
-- **Views**: [Dự kiến số lượt views cho mỗi video hoặc tổng video]
-- **Tỷ lệ chuyển đổi ước tính**: [Tỷ lệ %] (tương đương [Số lượng đơn] đơn hàng)
-
-### 5. Lời kết
-[Đánh giá tổng quan hiệu quả và kết luận kế hoạch]
-
-## Lưu ý
-- **Tiếp cận**: [Cách thức tiếp cận KOC nhỏ tạo quan hệ trước khi booking]
-- **Tối ưu hóa**: [Cách theo dõi và điều chỉnh chiến dịch]
-- **Hợp đồng**: [Đảm bảo hợp đồng cam kết bản quyền và tiến độ]
+Yêu cầu cấu trúc:
+## 1. PHÂN BỔ NGÂN SÁCH CHIẾN DỊCH
+## 2. TIÊU CHÍ LỰA CHỌN KOC PHÙ HỢP
+## 3. THÔNG ĐIỆP CỐT LÕI & YÊU CẦU NỘI DUNG
+## 4. QUY TRÌNH HỢP TÁC & BẢO VỆ SHOP
+## 5. DỰ PHÓNG CHỈ SỐ ROI & ĐƠN HÀNG
 
 LƯU Ý: Trả về 100% tiếng Việt chuẩn. Không chèn lời chào hay giải thích ngoài lề.`;
         break;
@@ -195,6 +167,234 @@ Hãy tạo đúng 10 biến thể tiêu đề (Spin content). Yêu cầu:
 - Các tiêu đề không được giống nhau hoàn toàn nhưng vẫn phải tự nhiên, thu hút người click và dưới 120 ký tự.
 - Trình bày danh sách đánh số rõ ràng từ 1 đến 10 (mỗi dòng một tiêu đề theo định dạng: "1. [Nội dung tiêu đề]"), không thêm lời chào hay kết bài rườm rà.`;
         break;
+
+      case "product-description": {
+        const mode = inputs.mode || "seo-full";
+        const platform = inputs.platform || "shopee";
+        const tone = inputs.tone || "expert";
+        const brand = inputs.brand ? inputs.brand.trim() : "";
+        const shop = inputs.shopName ? inputs.shopName.trim() : (brand || "[TÊN SHOP]");
+        const brandDisplay = brand ? `${brand}` : shop;
+        const productName = inputs.productName || "Sản phẩm";
+        const usp = inputs.usp || "";
+        const specs = inputs.specs || "";
+        const gift = inputs.gift ? inputs.gift.trim() : (inputs.guarantee ? inputs.guarantee.trim() : "");
+        const painPoint = inputs.painPoint ? inputs.painPoint.trim() : "";
+
+        // Kiểm tra người dùng có nhập Quà tặng và Nỗi đau không
+        const hasGift = Boolean(gift && gift.length > 0);
+        const hasPainPoint = Boolean(painPoint && painPoint.length > 0);
+
+        // Định hướng sàn TMĐT
+        let platformGuide = "";
+        if (platform === "shopee") {
+          platformGuide = "Tối ưu chuẩn SEO sàn SHOPEE: Tập trung từ khóa tìm kiếm tự nhiên, tối ưu cho Shopee Mall/Shop Yêu Thích, kêu gọi áp mã Freeship Xtra và Voucher Giảm Giá Shop.";
+        } else if (platform === "tiktok") {
+          platformGuide = "Tối ưu cho TIKTOK SHOP: Phong cách trực quan, tối ưu cho người xem chuyển từ Video/Livestream sang Giỏ hàng, câu từ ngắn gọn, kêu gọi bấm vào Giỏ Hàng Góc Trái.";
+        } else if (platform === "lazada") {
+          platformGuide = "Tối ưu chuẩn sàn LAZADA: Phong cách chuẩn LazMall, nhấn mạnh Hoàn Tiền Max, Voucher Tích Lũy và chính sách giao hàng nhanh.";
+        } else {
+          platformGuide = "Tối ưu ĐA SÀN (Shopee, TikTok Shop, Lazada): Ngôn từ trung tính, linh hoạt sử dụng được trên mọi sàn thương mại điện tử.";
+        }
+
+        // Định hướng tông giọng
+        let toneGuide = "";
+        if (tone === "friendly") {
+          toneGuide = "Tông giọng: THÂN THIỆN & GẦN GŨI (Như một người bạn thân nhiệt tình review và chia sẻ bí quyết mua sắm).";
+        } else if (tone === "humorous") {
+          toneGuide = "Tông giọng: HÀI HƯỚC, BẮT TREND & DUYÊN DÁNG (Dùng từ ngữ dí dỏm, viral, giúp người đọc cảm thấy vui vẻ, thoải mái).";
+        } else if (tone === "luxury") {
+          toneGuide = "Tông giọng: SANG TRỌNG, ĐẲNG CẤP & TINH TẾ (Ngôn từ trau chuốt, tôn vinh giá trị và phong cách sống của người sở hữu).";
+        } else {
+          toneGuide = "Tông giọng: CHUYÊN GIA UY TÍN & ĐÁNG TIN CẬY (Phân tích mạch lạc, am hiểu sâu sắc, tạo niềm tin tuyệt đối về chất lượng).";
+        }
+
+        // Dữ liệu chung
+        const dataHeader = `DỮ LIỆU ĐẦU VÀO:
+- Tên sản phẩm: ${productName}
+- Thương hiệu / Brand: ${brand || "Chính hãng"}
+- Tên Shop: ${shop}
+- Điểm nổi bật (USP): ${usp}
+${hasPainPoint ? `- Nỗi đau / Tình huống khách gặp phải: ${painPoint}` : "- Nỗi đau: (Người bán KHÔNG nhập -> BỎ QUA HOÀN TOÀN KHỐI NỖI ĐAU)"}
+${hasGift ? `- Quà tặng kèm & Cam kết: ${gift}` : "- Quà tặng: (Người bán KHÔNG CÓ QUÀ TẶNG -> BỎ QUA HOÀN TOÀN MỤC QUÀ TẶNG)"}
+- Thông số kỹ thuật: ${specs || "Thông số tiêu chuẩn chất lượng cao"}
+- Nền tảng: ${platform.toUpperCase()}
+- ${platformGuide}
+- ${toneGuide}
+
+ĐIỀU KIỆN LỌC BẮT BUỘC (RẤT QUAN TRỌNG):
+${
+  !hasGift
+    ? "⚠️ LƯU Ý VỀ QUÀ TẶNG: Người bán KHÔNG nhập quà tặng. TUYỆT ĐỐI CẤM xuất hiện từ 'TẶNG KÈM', 'QUÀ TẶNG' trong toàn bài (kể cả 'Tặng kèm: không có' hay 'quà tặng: không' cũng TUYỆT ĐỐI CẤM KHÔNG ĐƯỢC XUẤT HIỆN)."
+    : `✅ QUÀ TẶNG: Đưa quà tặng "${gift}" vào đúng vị trí nổi bật.`
+}
+${
+  !hasPainPoint
+    ? "⚠️ LƯU Ý VỀ NỖI ĐAU: Người bán KHÔNG nhập nỗi đau / tình huống. TUYỆT ĐỐI CẤM viết khối '⚡ BẠN ĐANG GẶP PHẢI TÌNH TRẠNG NÀY?' hay '📖 BẠN CÓ TỪNG RƠI VÀO CẢNH NÀY?'. Không bịa chuyện tiêu cực. Sau khối Cam kết vàng, chuyển thẳng sang khối '🔥 ĐIỂM KHÁC BIỆT VƯỢT TRỘI'."
+    : `✅ NỖI ĐAU: Khai thác nỗi đau "${painPoint}" làm móc câu giữ chân khách.`
+}
+
+QUY TẮC AN TOÀN SÀN & TRÌNH BÀY:
+- Dùng icon (🌟, ⚡, 🛡️, 📦, 🔥, 🎁) ngắt dòng hợp lý, tuyệt đối không viết đoạn văn dài quá 3 dòng.
+- TUYỆT ĐỐI KHÔNG DÙNG TỪ CẤM CỦA SÀN: cấm dùng 'trị dứt điểm', 'vĩnh viễn', 'số 1', 'duy nhất', 'độc quyền', 'tốt nhất', '100% không tái phát' (tránh bị sàn quét khóa sản phẩm).
+- Dùng dấu phân cách '---' giữa các phần để bài viết thoáng mắt, dễ đọc trên điện thoại.
+- Trả về 100% tiếng Việt chuẩn, không thêm lời chào mở đầu hay giải thích kết bài ngoài lề.`;
+
+        // Kịch bản theo từng chế độ
+        if (mode === "mobile-short") {
+          // CHẾ ĐỘ 2: NGẮN GỌN MOBILE-FIRST
+          userPrompt = `Bạn là chuyên gia Copywriting Mobile-First hàng đầu. Khách hàng trên điện thoại chỉ có 3-5 giây để lướt, hãy tạo bản mô tả NGẮN GỌN - TRỰC DIỆN - TẬP TRUNG BULLET POINTS cho sản phẩm sau:
+
+${dataHeader}
+
+CẤU TRÚC BẮT BUỘC (MOBILE-FIRST):
+⚡ TOP 3 ĐIỂM ĐẮT GIÁ NHẤT:
+- [Tính năng 1 in đậm]: [Lợi ích trong 1 câu ngắn gọn]
+- [Tính năng 2 in đậm]: [Lợi ích trong 1 câu ngắn gọn]
+- [Tính năng 3 in đậm]: [Lợi ích trong 1 câu ngắn gọn]
+
+---
+🛡️ CHÍNH SÁCH BẢO HÀNH & ĐẶC QUYỀN HÔM NAY:
+${hasGift ? `- 🎁 TẶNG KÈM: ${gift}\n` : ""}- Bảo hành 1 ĐỔI 1 tận nhà trong 30 ngày nếu có lỗi từ nhà sản xuất.
+- Đóng gói bọc bóng khí chống sốc 3 lớp, giao hỏa tốc.
+
+---
+📋 THÔNG SỐ RÚT GỌN:
+${specs ? specs : "- Kích thước & Trọng lượng nhỏ gọn, tiện mang theo\n- Điện áp / Công suất tiêu chuẩn tối ưu\n- Chất liệu cao cấp bền bỉ theo thời gian"}
+
+---
+🛡️ CHÍNH SÁCH MUA HÀNG AN TÂM:
+- Kiểm tra hàng trước khi thanh toán / Quay video mở hàng để được xử lý ngay lập tức.
+- Bấm [THEO DÕI SHOP] ngay để nhận voucher giảm giá cho đơn hàng này!
+
+---
+🏷️ HASHTAG:
+[8-10 hashtag ngắn gọn bám sát từ khóa tìm kiếm của sản phẩm]`;
+        } else if (mode === "storytelling") {
+          // CHẾ ĐỘ 3: STORYTELLING CẢM XÚC
+          userPrompt = `Bạn là bậc thầy Kể chuyện Bán hàng (Storytelling Copywriting). Hãy viết bản mô tả sản phẩm chạm sâu vào cảm xúc:
+
+${dataHeader}
+
+CẤU TRÚC BẮT BUỘC (STORYTELLING):
+${
+  hasPainPoint
+    ? `📖 BẠN CÓ TỪNG RƠI VÀO CẢNH NÀY?
+[Kể một lát cắt câu chuyện ngắn 2-3 câu thật chân thực, gợi cảm giác khó chịu/mệt mỏi/bối rối mà khách thường gặp khi chưa có sản phẩm: "${painPoint}"]
+👉 Và đó chính là lý do ${productName} từ ${brandDisplay} ra đời để đồng hành cùng bạn!`
+    : `✨ KHỞI ĐẦU TRẢI NGHIỆM TIỆN NGHI CÙNG ${productName.toUpperCase()}:
+[Viết đoạn mở đầu 2-3 câu khơi gợi sự hứng khởi, nâng tầm phong cách sống tiện ích khi sở hữu sản phẩm ${productName} từ ${brandDisplay}]`
+}
+
+---
+✨ SỰ THAY ĐỔI KHI BẠN SỞ HỮU ${productName.toUpperCase()}:
+- [Khoảnh khắc trải nghiệm 1]: [Mô tả cảm giác thoải mái/tiết kiệm thời gian...]
+- [Khoảnh khắc trải nghiệm 2]: [Mô tả sự tự tin, an tâm...]
+- [Khoảnh khắc trải nghiệm 3]: [Giá trị nhận lại vượt xa số tiền bỏ ra...]
+
+---
+🔥 ĐIỂM KHÁC BIỆT MÀ BẠN SẼ YÊU THÍCH:
+- ${usp}
+
+---
+📋 THÔNG TIN KỸ THUẬT:
+${specs ? specs : "- Thông số chi tiết từ nhà sản xuất"}
+
+---
+💎 LỜI HỨA DANH DỰ TỪ ${shop.toUpperCase()}:
+- Cam kết hàng chuẩn mô tả, hỗ trợ đổi trả tận tình nếu không hài lòng.
+${hasGift ? `- 🎁 TẶNG KÈM: ${gift}\n` : ""}- Bấm theo dõi shop để cùng nhau tạo nên những trải nghiệm mua sắm tuyệt vời!
+
+---
+🏷️ BỘ HASHTAG LAN TỎA:
+[10-12 hashtag cảm xúc và từ khóa tìm kiếm sản phẩm]`;
+        } else if (mode === "flash-sale") {
+          // CHẾ ĐỘ 4: FLASH SALE & FOMO KHẨN CẤP
+          userPrompt = `Bạn là chuyên gia Săn Sale & Kích thích mua hàng cấp tốc (FOMO Copywriting). Hãy viết một bản mô tả tạo động lực hành động NGAY BÂY GIỜ, tận dụng tâm lý sợ bỏ lỡ cơ hội:
+
+${dataHeader}
+
+CẤU TRÚC BẮT BUỘC (FLASH SALE & FOMO):
+🚨 CẢNH BÁO DEAL CHỚP NHOÁNG - DUY NHẤT HÔM NAY! 🚨
+- Ưu đãi giảm sốc có hạn: Áp dụng cho 50 đơn hàng đầu tiên trong ngày!
+${hasGift ? `- 🎁 QUÀ TẶNG ĐỘC QUYỀN: ${gift} (Số lượng quà có hạn, hết quà tự động về giá gốc)` : "- Trợ giá sốc trực tiếp từ shop (Số lượng có hạn, hết suất tự động về giá gốc)"}
+
+---
+🔥 3 LÝ DO BẠN NÊN MUA NGAY ĐƠN HÀNG NÀY:
+- 1. GIẢI PHÁP ĐỘT PHÁ: ${hasPainPoint ? painPoint : usp}
+- 2. ĐỘ BỀN & CHẤT LƯỢNG: Chuẩn chính hãng từ ${brandDisplay}
+- 3. TIẾT KIỆM TỐI ĐA: Mua đúng đợt trợ giá tốt nhất của ${shop}
+
+---
+📋 THÔNG SỐ SẢN PHẨM:
+${specs ? specs : "- Thông số kỹ thuật chuẩn hãng"}
+
+---
+⚡ HƯỚNG DẪN SĂN DEAL TỐI ƯU CHI PHÍ:
+- Bước 1: Bấm [Lưu Mã Giảm Giá] của Shop & Mã Freeship của Sàn.
+- Bước 2: Chọn đúng phân loại màu sắc/kích thước mong muốn.
+- Bước 3: Bấm [Mua Ngay] trước khi hết thời gian Flash Sale!
+
+---
+🛡️ CAM KẾT CHÍNH HÃNG:
+- Dù là hàng Flash Sale trợ giá, quyền lợi bảo hành 1 ĐỔI 1 trong 30 ngày vẫn giữ nguyên 100%!
+
+---
+🏷️ HASHTAG SĂN SALE:
+[10-12 hashtag hot sale, săn deal và từ khóa sản phẩm]`;
+        } else {
+          // CHẾ ĐỘ 1: CHUẨN SEO & ĐẦY ĐỦ (MẶC ĐỊNH)
+          const blocks = [
+            `🌟 CAM KẾT VÀNG TỪ ${shop.toUpperCase()} 🌟
+- Bảo hành 1 ĐỔI 1 trong 30 ngày nếu phát sinh lỗi từ nhà sản xuất.
+- Sản phẩm được kiểm tra kỹ càng và bọc chống sốc 3 lớp trước khi giao.
+- Hỗ trợ đổi trả miễn phí tận nhà nếu không vừa ý hoặc hàng không đúng mô tả.${
+              hasGift ? `\n- 🎁 TẶNG KÈM: ${gift}` : ""
+            }`,
+
+            hasPainPoint
+              ? `---
+⚡ BẠN ĐANG GẶP PHẢI TÌNH TRẠNG NÀY?
+[Dựa trên nỗi đau: "${painPoint}", viết 2-3 câu khơi gợi đúng tình huống khó chịu, nhức nhối đời thường mà khách gặp phải]
+👉 ${productName} từ ${brandDisplay} chính là "vị cứu tinh" giúp giải quyết triệt để vấn đề ngay lập tức!`
+              : null,
+
+            `---
+🔥 ĐIỂM KHÁC BIỆT VƯỢT TRỘI:
+[Liệt kê từ 4 đến 5 tính năng kèm lợi ích thực tế dựa trên: "${usp}", định dạng: - [TÊN TÍNH NĂNG/USP]: [LỢI ÍCH CỤ THỂ, TẠI SAO KHÁCH CẦN, GIẢI QUYẾT ĐƯỢC GÌ TRONG ĐỜI SỐNG]]`,
+
+            `---
+📋 THÔNG SỐ KỸ THUẬT:
+${specs ? `[Trình bày rõ ràng, gạch đầu dòng các thông số sau: ${specs}]` : "[Thông số kỹ thuật rõ ràng: Công suất / Kích thước / Chất liệu / Dung tích / Điện áp / Xuất xứ...]"}`,
+
+            `---
+📖 HƯỚNG DẪN SỬ DỤNG & LƯU Ý ĐỂ ĐẠT HIỆU QUẢ TỐT NHẤT:
+1. [Bước 1...]
+2. [Bước 2...]
+3. [Bước 3...]
+*Lưu ý: [1 mẹo nhỏ bảo quản hoặc sử dụng để sản phẩm bền lâu nhất]*`,
+
+            `---
+🛡️ CHÍNH SÁCH ĐỔI TRẢ & LỜI KÊU GỌI:
+- Khách hàng vui lòng QUAY VIDEO MỞ HÀNG để được hỗ trợ nhanh nhất nếu có sự cố vận chuyển.
+- Bấm [THEO DÕI SHOP] ngay để nhận mã giảm giá 10k - 20k cho đơn hàng này!`,
+
+            `---
+🏷️ BỘ HASHTAG CHUẨN SEO:
+[10-12 hashtag liên quan trực tiếp đến từ khóa tìm kiếm của sản phẩm trên sàn]`,
+          ]
+            .filter(Boolean)
+            .join("\n\n");
+
+          userPrompt = `Bạn là chuyên gia Copywriting TMĐT hàng đầu. Hãy tạo một bản mô tả sản phẩm chuẩn SEO và tối ưu chuyển đổi:
+
+${dataHeader}
+
+KỊCH BẢN CẤU TRÚC BẮT BUỘC:
+${blocks}`;
+        }
+        break;
+      }
 
       default:
         return NextResponse.json({ success: false, error: "Công cụ không hợp lệ." }, { status: 400 });
@@ -234,11 +434,50 @@ Hãy tạo đúng 10 biến thể tiêu đề (Spin content). Yêu cầu:
 
   } catch (error: any) {
     console.error("AI Error:", error);
-    const isConnectionError = error.code === "ECONNREFUSED" || error.message?.includes("fetch failed");
-    const errorMessage = isConnectionError
-      ? "Không thể kết nối đến Ollama. Vui lòng đảm bảo Ollama đang chạy (lệnh: ollama serve hoặc mở ứng dụng Ollama)."
-      : (error.message || "Đã xảy ra lỗi khi gọi AI.");
 
-    return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
+    let errorCode = "UNKNOWN_ERROR";
+    let errorMessage = error?.message || "Đã xảy ra lỗi khi gọi AI.";
+    const status = error?.status;
+    const rawMsg = error?.message || "";
+
+    // 1. Token sai hoặc không hợp lệ (401 Unauthorized)
+    if (status === 401 || rawMsg.includes("Incorrect API key") || rawMsg.includes("invalid_api_key")) {
+      errorCode = "INVALID_TOKEN";
+      errorMessage = "OpenAI API Token không chính xác hoặc đã bị thu hồi (Lỗi 401 Unauthorized). Vui lòng kiểm tra lại Token tại trang Cài đặt hệ thống.";
+    }
+    // 2. Token hết hạn mức (Quota / Credits / Rate limit) (429)
+    else if (status === 429 || rawMsg.includes("insufficient_quota") || rawMsg.includes("quota") || rawMsg.includes("rate limit")) {
+      errorCode = "EXPIRED_QUOTA";
+      errorMessage = "Tài khoản OpenAI đã hết hạn ngạch (Hết Credits/tiền) hoặc bị giới hạn lượt gọi (Lỗi 429). Vui lòng nạp thêm Credits hoặc đổi Token khác.";
+    }
+    // 3. Model không tồn tại hoặc không có quyền (404)
+    else if (status === 404 || rawMsg.includes("model")) {
+      errorCode = "MODEL_NOT_FOUND";
+      errorMessage = "Model AI không tồn tại hoặc tài khoản OpenAI chưa được cấp quyền sử dụng model này (Lỗi 404).";
+    }
+    // 4. Máy chủ OpenAI lỗi hoặc quá tải (500, 502, 503)
+    else if (status === 500 || status === 502 || status === 503) {
+      errorCode = "SERVER_OVERLOAD";
+      errorMessage = "Máy chủ OpenAI hiện đang bị quá tải hoặc bảo trì (Lỗi 500/503). Vui lòng thử lại sau vài giây.";
+    }
+    // 5. Lỗi kết nối mạng
+    else if (error.code === "ECONNREFUSED" || rawMsg.includes("fetch failed")) {
+      errorCode = "NETWORK_ERROR";
+      errorMessage = "Không thể kết nối đến máy chủ AI. Vui lòng kiểm tra kết nối mạng Internet hoặc cấu hình Base URL.";
+    }
+
+    return NextResponse.json(
+      {
+        success: false,
+        code: errorCode,
+        error: errorMessage,
+        details: {
+          rawMessage: rawMsg,
+          status: status,
+          actionUrl: "/admin/settings",
+        },
+      },
+      { status: status && status >= 400 && status < 600 ? status : 500 }
+    );
   }
 }

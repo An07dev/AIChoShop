@@ -6,9 +6,11 @@ import Link from "next/link";
 import { useToolGate } from "@/hooks/useToolGate";
 import { TitleSpinnerOutput } from "@/components/tools/TitleSpinnerOutput";
 import { TextDots } from "@/components/ui/text-dots";
+import { useToast } from "@/context/ToastContext";
 
 export default function TitleSpinner() {
   const { checkAccess, GateModals } = useToolGate();
+  const { showAiError, showWarning } = useToast();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState("");
 
@@ -18,8 +20,8 @@ export default function TitleSpinner() {
     // const hasAccess = await checkAccess("title-spinner", true); // VIP Only
     // if (!hasAccess) return;
 
-    if (!originalTitle) {
-      alert("Vui lòng nhập Tiêu đề gốc!");
+    if (!originalTitle.trim()) {
+      showWarning("Vui lòng nhập Tiêu đề gốc cần nhân bản!", "Thiếu Dữ Liệu");
       return;
     }
 
@@ -32,7 +34,7 @@ export default function TitleSpinner() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           tool: "title-spinner",
-          inputs: { originalTitle }
+          inputs: { originalTitle: originalTitle.trim() }
         }),
       });
 
@@ -40,10 +42,10 @@ export default function TitleSpinner() {
       if (data.success) {
         setResult(data.data);
       } else {
-        alert("Có lỗi xảy ra: " + data.error);
+        showAiError(data, "Có lỗi xảy ra khi gọi AI");
       }
-    } catch (error) {
-      alert("Không thể kết nối đến máy chủ AI.");
+    } catch (error: any) {
+      showAiError({ error: "Không thể kết nối đến máy chủ AI. Vui lòng kiểm tra lại mạng hoặc token." });
     } finally {
       setLoading(false);
     }

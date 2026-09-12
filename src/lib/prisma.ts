@@ -11,11 +11,40 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
+function createPrismaClient(): PrismaClient {
+  return new PrismaClient({
     adapter,
     log: process.env.NODE_ENV === 'development' ? ['query', 'error', 'warn'] : ['error'],
   });
+}
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+function getPrismaInstance(): PrismaClient {
+  // Nếu instance trong globalThis bị lưu từ trước lúc prisma generate và thiếu model systemSetting
+  if (globalForPrisma.prisma && !(globalForPrisma.prisma as any).systemSetting) {
+    try {
+      globalForPrisma.prisma.$disconnect();
+    } catch {}
+    globalForPrisma.prisma = undefined;
+  }
+
+  if (!globalForPrisma.prisma) {
+    globalForPrisma.prisma = createPrismaClient();
+  }
+
+  return globalForPrisma.prisma;
+}
+
+export const prisma = new Proxy({} as PrismaClient, {
+  get(target, prop, receiver) {
+    const client = getPrismaInstance();
+    const value = (client as any)[prop];
+    if (typeof value === "function") {
+      return value.bind(client);
+    }
+    return value;
+  },
+});
+
+if (process.env.NODE_ENV !== 'production') {
+  globalForPrisma.prisma = getPrismaInstance();
+}

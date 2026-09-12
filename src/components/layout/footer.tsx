@@ -45,7 +45,10 @@ export function Footer() {
                 <Link href="/learn" className="text-sm hover:text-blue-400 transition-colors">Masterclass Bán Hàng AI</Link>
               </li>
               <li>
-                <Link href="/tools" className="text-sm hover:text-blue-400 transition-colors">Kho Mini-Tools AI</Link>
+                <Link href="/tools" className="text-sm hover:text-blue-400 transition-colors">Kho Mini-Tools AI (9 Tools)</Link>
+              </li>
+              <li>
+                <Link href="/tools/product-description" className="text-sm hover:text-blue-400 transition-colors">AI Viết Mô Tả Chuyển Đổi</Link>
               </li>
               <li>
                 <Link href="/tools/pricing-calculator" className="text-sm hover:text-blue-400 transition-colors">Tính Giá Bán Tối Ưu</Link>

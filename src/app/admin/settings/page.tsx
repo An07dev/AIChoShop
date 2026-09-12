@@ -1,0 +1,26 @@
+import { Metadata } from "next";
+import { getSystemSettings } from "@/lib/system-settings";
+import { SystemSettingsManager } from "@/components/admin/SystemSettingsManager";
+
+export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Cài Đặt Hệ Thống & OpenAI API Key | AIChoShop Admin",
+  description: "Cấu hình OpenAI API Key (Token), mô hình AI và các thiết lập toàn hệ thống lưu trữ trực tiếp trong Database.",
+};
+
+export default async function AdminSettingsPage() {
+  const settings = await getSystemSettings();
+
+  return (
+    <SystemSettingsManager
+      initialSettings={{
+        id: settings.id,
+        openaiApiKey: settings.openaiApiKey,
+        openaiModel: settings.openaiModel,
+        openaiBaseUrl: settings.openaiBaseUrl,
+        isOpenAiActive: settings.isOpenAiActive,
+      }}
+    />
+  );
+}

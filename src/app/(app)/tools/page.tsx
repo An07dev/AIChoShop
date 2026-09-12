@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Calculator, ShieldAlert, Video, MessageSquareWarning, Megaphone, Presentation, ArrowRight, Cpu, Layers } from "lucide-react";
+import { Calculator, ShieldAlert, Video, MessageSquareWarning, Megaphone, Presentation, ArrowRight, Cpu, Layers, FileText } from "lucide-react";
 
 export default function ToolsPage() {
   const toolStages = [
@@ -38,6 +38,14 @@ export default function ToolsPage() {
           icon: <Megaphone size={32} className="text-blue-500" />,
           color: "bg-blue-50 border-blue-100 hover:border-blue-300",
           isFree: true,
+        },
+        {
+          id: "product-description",
+          name: "AI Mô Tả Chuyển Đổi Cao",
+          description: "Cấu trúc 6 khối vàng chuẩn Top Seller: Cam kết, Đánh trúng nỗi đau, Điểm vượt trội USP, Thông số & Hướng dẫn sử dụng.",
+          icon: <FileText size={32} className="text-amber-500" />,
+          color: "bg-amber-50 border-amber-100 hover:border-amber-300",
+          isFree: false,
         },
         {
           id: "title-spinner",
@@ -99,7 +107,7 @@ export default function ToolsPage() {
     <div className="max-w-7xl mx-auto space-y-12 pb-12">
       <div>
         <h1 className="text-3xl font-black text-slate-900 mb-2">Hành Trình Tự Động Hóa E-commerce</h1>
-        <p className="text-slate-500 text-lg max-w-3xl">Lộ trình 8 công cụ được sắp xếp từ A-Z theo vòng đời kinh doanh của một nhà bán hàng chuyên nghiệp. Khám phá và sử dụng theo thứ tự để đạt hiệu quả cao nhất.</p>
+        <p className="text-slate-500 text-lg max-w-3xl">Lộ trình 9 công cụ được sắp xếp từ A-Z theo vòng đời kinh doanh của một nhà bán hàng chuyên nghiệp. Khám phá và sử dụng theo thứ tự để đạt hiệu quả cao nhất.</p>
       </div>
 
       <div className="space-y-12">
