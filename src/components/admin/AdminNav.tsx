@@ -2,14 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, BookOpen, Settings } from "lucide-react";
+import { LayoutDashboard, Users, BookOpen, Settings, UserCog, Database } from "lucide-react";
 
 export function AdminNav() {
   const pathname = usePathname();
 
   const links = [
     { href: "/admin", label: "Tổng quan", icon: LayoutDashboard, exact: true },
-    { href: "/admin/users", label: "Quản lý Users", icon: Users },
+    { href: "/admin/pricing-fees", label: "Biểu phí bán hàng", icon: Database, exact: true },
+    { href: "/admin/users", label: "Quản lý Users", icon: UserCog },
     { href: "/admin/lessons", label: "Nội dung Khóa học", icon: BookOpen },
     { href: "#", label: "Cài đặt hệ thống", icon: Settings },
   ];
@@ -26,11 +27,10 @@ export function AdminNav() {
           <Link
             key={link.label}
             href={link.href}
-            className={`flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium transition-all text-sm ${
-              isActive
-                ? "bg-blue-600 text-white font-bold shadow-md shadow-blue-600/30"
-                : "text-slate-400 hover:text-white hover:bg-slate-800/80"
-            }`}
+            className={`flex items-center gap-3 px-4 py-2.5 rounded-xl font-medium transition-all text-sm ${isActive
+              ? "bg-blue-600 text-white font-bold shadow-md shadow-blue-600/30"
+              : "text-slate-400 hover:text-white hover:bg-slate-800/80"
+              }`}
           >
             <Icon size={18} />
             <span>{link.label}</span>
