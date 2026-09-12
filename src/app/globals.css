@@ -168,6 +168,36 @@ html[data-theme-color="blue"] {
   --brand-dark-light: rgba(37, 99, 235, 0.15);
   --brand-ring: rgba(37, 99, 235, 0.25);
   --brand-gradient: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+
+  /* Sidebar Menu Left - Light Mode (Xanh Dương rõ nét hơn) */
+  --sidebar-bg: #dbeafe;
+  --sidebar-border: rgba(37, 99, 235, 0.28);
+  --sidebar-card-bg: rgba(255, 255, 255, 0.90);
+  --sidebar-card-border: rgba(37, 99, 235, 0.25);
+  --sidebar-text-primary: #0f172a;
+  --sidebar-text-secondary: #1e293b;
+  --sidebar-text-muted: #334155;
+  --sidebar-hover-bg: rgba(37, 99, 235, 0.15);
+  --sidebar-timeline-line: rgba(37, 99, 235, 0.30);
+  --sidebar-node-border: #dbeafe;
+}
+
+.dark:root,
+.dark[data-theme-color="blue"],
+html.dark[data-theme-color="blue"],
+html[data-theme-color="blue"].dark,
+.dark [data-theme-color="blue"] {
+  /* Sidebar Menu Left - Dark Mode (Xanh Dương nhạt trên nền tối) */
+  --sidebar-bg: #0c1a36;
+  --sidebar-border: rgba(37, 99, 235, 0.28);
+  --sidebar-card-bg: rgba(37, 99, 235, 0.15);
+  --sidebar-card-border: rgba(37, 99, 235, 0.30);
+  --sidebar-text-primary: #f8fafc;
+  --sidebar-text-secondary: #cbd5e1;
+  --sidebar-text-muted: #94a3b8;
+  --sidebar-hover-bg: rgba(37, 99, 235, 0.18);
+  --sidebar-timeline-line: rgba(37, 99, 235, 0.30);
+  --sidebar-node-border: #0c1a36;
 }
 
 html[data-theme-color="emerald"] {
@@ -177,6 +207,35 @@ html[data-theme-color="emerald"] {
   --brand-dark-light: rgba(5, 150, 105, 0.15);
   --brand-ring: rgba(5, 150, 105, 0.25);
   --brand-gradient: linear-gradient(135deg, #059669 0%, #047857 100%);
+
+  /* Sidebar Menu Left - Light Mode (Xanh Ngọc rõ nét hơn) */
+  --sidebar-bg: #d1fae5;
+  --sidebar-border: rgba(5, 150, 105, 0.28);
+  --sidebar-card-bg: rgba(255, 255, 255, 0.90);
+  --sidebar-card-border: rgba(5, 150, 105, 0.25);
+  --sidebar-text-primary: #0f172a;
+  --sidebar-text-secondary: #1e293b;
+  --sidebar-text-muted: #334155;
+  --sidebar-hover-bg: rgba(5, 150, 105, 0.15);
+  --sidebar-timeline-line: rgba(5, 150, 105, 0.30);
+  --sidebar-node-border: #d1fae5;
+}
+
+.dark[data-theme-color="emerald"],
+html.dark[data-theme-color="emerald"],
+html[data-theme-color="emerald"].dark,
+.dark [data-theme-color="emerald"] {
+  /* Sidebar Menu Left - Dark Mode (Xanh Ngọc nhạt trên nền tối) */
+  --sidebar-bg: #09261d;
+  --sidebar-border: rgba(5, 150, 105, 0.28);
+  --sidebar-card-bg: rgba(5, 150, 105, 0.15);
+  --sidebar-card-border: rgba(5, 150, 105, 0.30);
+  --sidebar-text-primary: #f8fafc;
+  --sidebar-text-secondary: #cbd5e1;
+  --sidebar-text-muted: #94a3b8;
+  --sidebar-hover-bg: rgba(5, 150, 105, 0.18);
+  --sidebar-timeline-line: rgba(5, 150, 105, 0.30);
+  --sidebar-node-border: #09261d;
 }
 
 html[data-theme-color="purple"] {
@@ -186,6 +245,35 @@ html[data-theme-color="purple"] {
   --brand-dark-light: rgba(124, 58, 237, 0.15);
   --brand-ring: rgba(124, 58, 237, 0.25);
   --brand-gradient: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+
+  /* Sidebar Menu Left - Light Mode (Tím rõ nét hơn) */
+  --sidebar-bg: #ede9fe;
+  --sidebar-border: rgba(124, 58, 237, 0.28);
+  --sidebar-card-bg: rgba(255, 255, 255, 0.90);
+  --sidebar-card-border: rgba(124, 58, 237, 0.25);
+  --sidebar-text-primary: #0f172a;
+  --sidebar-text-secondary: #1e293b;
+  --sidebar-text-muted: #334155;
+  --sidebar-hover-bg: rgba(124, 58, 237, 0.15);
+  --sidebar-timeline-line: rgba(124, 58, 237, 0.30);
+  --sidebar-node-border: #ede9fe;
+}
+
+.dark[data-theme-color="purple"],
+html.dark[data-theme-color="purple"],
+html[data-theme-color="purple"].dark,
+.dark [data-theme-color="purple"] {
+  /* Sidebar Menu Left - Dark Mode (Tím nhạt trên nền tối) */
+  --sidebar-bg: #190e32;
+  --sidebar-border: rgba(124, 58, 237, 0.28);
+  --sidebar-card-bg: rgba(124, 58, 237, 0.15);
+  --sidebar-card-border: rgba(124, 58, 237, 0.30);
+  --sidebar-text-primary: #f8fafc;
+  --sidebar-text-secondary: #cbd5e1;
+  --sidebar-text-muted: #94a3b8;
+  --sidebar-hover-bg: rgba(124, 58, 237, 0.18);
+  --sidebar-timeline-line: rgba(124, 58, 237, 0.30);
+  --sidebar-node-border: #190e32;
 }
 
 html[data-theme-color="amber"] {
@@ -195,6 +283,35 @@ html[data-theme-color="amber"] {
   --brand-dark-light: rgba(217, 119, 6, 0.15);
   --brand-ring: rgba(217, 119, 6, 0.25);
   --brand-gradient: linear-gradient(135deg, #d97706 0%, #b45309 100%);
+
+  /* Sidebar Menu Left - Light Mode (Hổ Phách rõ nét hơn) */
+  --sidebar-bg: #fef3c7;
+  --sidebar-border: rgba(217, 119, 6, 0.28);
+  --sidebar-card-bg: rgba(255, 255, 255, 0.90);
+  --sidebar-card-border: rgba(217, 119, 6, 0.25);
+  --sidebar-text-primary: #0f172a;
+  --sidebar-text-secondary: #1e293b;
+  --sidebar-text-muted: #334155;
+  --sidebar-hover-bg: rgba(217, 119, 6, 0.15);
+  --sidebar-timeline-line: rgba(217, 119, 6, 0.30);
+  --sidebar-node-border: #fef3c7;
+}
+
+.dark[data-theme-color="amber"],
+html.dark[data-theme-color="amber"],
+html[data-theme-color="amber"].dark,
+.dark [data-theme-color="amber"] {
+  /* Sidebar Menu Left - Dark Mode (Hổ Phách nhạt trên nền tối) */
+  --sidebar-bg: #231707;
+  --sidebar-border: rgba(217, 119, 6, 0.28);
+  --sidebar-card-bg: rgba(217, 119, 6, 0.15);
+  --sidebar-card-border: rgba(217, 119, 6, 0.30);
+  --sidebar-text-primary: #f8fafc;
+  --sidebar-text-secondary: #cbd5e1;
+  --sidebar-text-muted: #94a3b8;
+  --sidebar-hover-bg: rgba(217, 119, 6, 0.18);
+  --sidebar-timeline-line: rgba(217, 119, 6, 0.30);
+  --sidebar-node-border: #231707;
 }
 
 html[data-theme-color="rose"] {
@@ -204,6 +321,49 @@ html[data-theme-color="rose"] {
   --brand-dark-light: rgba(225, 29, 72, 0.15);
   --brand-ring: rgba(225, 29, 72, 0.25);
   --brand-gradient: linear-gradient(135deg, #e11d48 0%, #be123c 100%);
+
+  /* Sidebar Menu Left - Light Mode (Đỏ Ruby rõ nét hơn) */
+  --sidebar-bg: #ffe4e6;
+  --sidebar-border: rgba(225, 29, 72, 0.28);
+  --sidebar-card-bg: rgba(255, 255, 255, 0.90);
+  --sidebar-card-border: rgba(225, 29, 72, 0.25);
+  --sidebar-text-primary: #0f172a;
+  --sidebar-text-secondary: #1e293b;
+  --sidebar-text-muted: #334155;
+  --sidebar-hover-bg: rgba(225, 29, 72, 0.15);
+  --sidebar-timeline-line: rgba(225, 29, 72, 0.30);
+  --sidebar-node-border: #ffe4e6;
+}
+
+.dark[data-theme-color="rose"],
+html.dark[data-theme-color="rose"],
+html[data-theme-color="rose"].dark,
+.dark [data-theme-color="rose"] {
+  /* Sidebar Menu Left - Dark Mode (Đỏ Ruby nhạt trên nền tối) */
+  --sidebar-bg: #250b16;
+  --sidebar-border: rgba(225, 29, 72, 0.28);
+  --sidebar-card-bg: rgba(225, 29, 72, 0.15);
+  --sidebar-card-border: rgba(225, 29, 72, 0.30);
+  --sidebar-text-primary: #f8fafc;
+  --sidebar-text-secondary: #cbd5e1;
+  --sidebar-text-muted: #94a3b8;
+  --sidebar-hover-bg: rgba(225, 29, 72, 0.18);
+  --sidebar-timeline-line: rgba(225, 29, 72, 0.30);
+  --sidebar-node-border: #250b16;
+}
+
+/* Sidebar Menu Left Adaptation Classes */
+.sidebar-theme {
+  background-color: var(--sidebar-bg) !important;
+  border-color: var(--sidebar-border) !important;
+  color: var(--sidebar-text-primary);
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.sidebar-user-card {
+  background-color: var(--sidebar-card-bg) !important;
+  border-color: var(--sidebar-card-border) !important;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
 /* Utility Classes for Brand Theme */
@@ -543,5 +703,468 @@ html[data-theme-color="rose"] {
 .dark .shadow-lg {
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5), 0 2px 4px -2px rgba(0, 0, 0, 0.5) !important;
 }
+
+/* ==========================================================================
+   THEME ISOLATION FOR EXEMPT PAGES (Landing Page & Admin Pages)
+   Trang chủ (src/app/page.tsx) và Trang Quản trị Admin (src/app/admin/*, src/app/admin-login/*)
+   hoàn toàn KHÔNG áp dụng cấu hình theme (dark mode & theme color).
+   Giữ nguyên 100% thiết kế gốc mặc định.
+   ========================================================================== */
+html .landing-page-root,
+html.dark .landing-page-root,
+html[data-theme-color] .landing-page-root {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  color-scheme: light !important;
+}
+
+html .admin-root,
+html.dark .admin-root,
+html[data-theme-color] .admin-root {
+  color: #0f172a !important;
+  color-scheme: light !important;
+}
+
+html .landing-page-root nav,
+html.dark .landing-page-root nav,
+html[data-theme-color] .landing-page-root nav {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-color: #f1f5f9 !important;
+}
+
+/* Backgrounds */
+html .landing-page-root .bg-white,
+html.dark .landing-page-root .bg-white,
+html[data-theme-color] .landing-page-root .bg-white,
+html .admin-root .bg-white,
+html.dark .admin-root .bg-white,
+html[data-theme-color] .admin-root .bg-white {
+  background-color: #ffffff !important;
+}
+
+html .landing-page-root .bg-white\/95,
+html.dark .landing-page-root .bg-white\/95,
+html[data-theme-color] .landing-page-root .bg-white\/95 {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+}
+
+html .landing-page-root .bg-white\/10,
+html.dark .landing-page-root .bg-white\/10,
+html[data-theme-color] .landing-page-root .bg-white\/10 {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+}
+
+html .landing-page-root .bg-slate-50,
+html.dark .landing-page-root .bg-slate-50,
+html[data-theme-color] .landing-page-root .bg-slate-50,
+html .admin-root .bg-slate-50,
+html.dark .admin-root .bg-slate-50,
+html[data-theme-color] .admin-root .bg-slate-50 {
+  background-color: #f8fafc !important;
+}
+
+html .landing-page-root .bg-slate-100,
+html.dark .landing-page-root .bg-slate-100,
+html[data-theme-color] .landing-page-root .bg-slate-100,
+html .admin-root .bg-slate-100,
+html.dark .admin-root .bg-slate-100,
+html[data-theme-color] .admin-root .bg-slate-100 {
+  background-color: #f1f5f9 !important;
+}
+
+html .landing-page-root .bg-slate-200,
+html.dark .landing-page-root .bg-slate-200,
+html[data-theme-color] .landing-page-root .bg-slate-200,
+html .admin-root .bg-slate-200,
+html.dark .admin-root .bg-slate-200,
+html[data-theme-color] .admin-root .bg-slate-200 {
+  background-color: #e2e8f0 !important;
+}
+
+html .landing-page-root .bg-slate-900,
+html.dark .landing-page-root .bg-slate-900,
+html[data-theme-color] .landing-page-root .bg-slate-900,
+html .admin-root .bg-slate-900,
+html.dark .admin-root .bg-slate-900,
+html[data-theme-color] .admin-root .bg-slate-900 {
+  background-color: #0f172a !important;
+}
+
+html .admin-root .bg-slate-800,
+html.dark .admin-root .bg-slate-800,
+html[data-theme-color] .admin-root .bg-slate-800 {
+  background-color: #1e293b !important;
+}
+
+html .admin-root .hover\:bg-slate-800:hover,
+html.dark .admin-root .hover\:bg-slate-800:hover,
+html[data-theme-color] .admin-root .hover\:bg-slate-800:hover {
+  background-color: #1e293b !important;
+}
+
+html .admin-root .hover\:bg-slate-800\/80:hover,
+html.dark .admin-root .hover\:bg-slate-800\/80:hover,
+html[data-theme-color] .admin-root .hover\:bg-slate-800\/80:hover {
+  background-color: rgba(30, 41, 59, 0.8) !important;
+}
+
+html .landing-page-root .hover\:bg-slate-200:hover,
+html.dark .landing-page-root .hover\:bg-slate-200:hover,
+html[data-theme-color] .landing-page-root .hover\:bg-slate-200:hover,
+html .admin-root .hover\:bg-slate-200:hover,
+html.dark .admin-root .hover\:bg-slate-200:hover,
+html[data-theme-color] .admin-root .hover\:bg-slate-200:hover {
+  background-color: #e2e8f0 !important;
+}
+
+html .admin-root .hover\:bg-slate-50:hover,
+html.dark .admin-root .hover\:bg-slate-50:hover,
+html[data-theme-color] .admin-root .hover\:bg-slate-50:hover {
+  background-color: #f8fafc !important;
+}
+
+html .admin-root .hover\:bg-slate-100:hover,
+html.dark .admin-root .hover\:bg-slate-100:hover,
+html[data-theme-color] .admin-root .hover\:bg-slate-100:hover {
+  background-color: #f1f5f9 !important;
+}
+
+html .landing-page-root .hover\:bg-white\/20:hover,
+html.dark .landing-page-root .hover\:bg-white\/20:hover,
+html[data-theme-color] .landing-page-root .hover\:bg-white\/20:hover {
+  background-color: rgba(255, 255, 255, 0.2) !important;
+}
+
+/* Blue primary colors - Mặc định chuẩn Tailwind Blue */
+html .landing-page-root .bg-blue-600,
+html.dark .landing-page-root .bg-blue-600,
+html[data-theme-color] .landing-page-root .bg-blue-600,
+html .admin-root .bg-blue-600,
+html.dark .admin-root .bg-blue-600,
+html[data-theme-color] .admin-root .bg-blue-600 {
+  background-color: #2563eb !important;
+  background-image: none !important;
+}
+
+html .landing-page-root .hover\:bg-blue-700:hover,
+html.dark .landing-page-root .hover\:bg-blue-700:hover,
+html[data-theme-color] .landing-page-root .hover\:bg-blue-700:hover,
+html .admin-root .hover\:bg-blue-700:hover,
+html.dark .admin-root .hover\:bg-blue-700:hover,
+html[data-theme-color] .admin-root .hover\:bg-blue-700:hover {
+  background-color: #1d4ed8 !important;
+}
+
+html .landing-page-root .text-blue-600,
+html.dark .landing-page-root .text-blue-600,
+html[data-theme-color] .landing-page-root .text-blue-600,
+html .admin-root .text-blue-600,
+html.dark .admin-root .text-blue-600,
+html[data-theme-color] .admin-root .text-blue-600 {
+  color: #2563eb !important;
+}
+
+html .landing-page-root .text-blue-700,
+html.dark .landing-page-root .text-blue-700,
+html[data-theme-color] .landing-page-root .text-blue-700,
+html .admin-root .text-blue-700,
+html.dark .admin-root .text-blue-700,
+html[data-theme-color] .admin-root .text-blue-700 {
+  color: #1d4ed8 !important;
+}
+
+html .landing-page-root .text-blue-300,
+html.dark .landing-page-root .text-blue-300,
+html[data-theme-color] .landing-page-root .text-blue-300 {
+  color: #93c5fd !important;
+}
+
+html .admin-root .text-blue-500,
+html.dark .admin-root .text-blue-500,
+html[data-theme-color] .admin-root .text-blue-500 {
+  color: #3b82f6 !important;
+}
+
+html .landing-page-root .bg-blue-50,
+html.dark .landing-page-root .bg-blue-50,
+html[data-theme-color] .landing-page-root .bg-blue-50,
+html .admin-root .bg-blue-50,
+html.dark .admin-root .bg-blue-50,
+html[data-theme-color] .admin-root .bg-blue-50 {
+  background-color: #eff6ff !important;
+}
+
+html .admin-root .bg-blue-100,
+html.dark .admin-root .bg-blue-100,
+html[data-theme-color] .admin-root .bg-blue-100 {
+  background-color: #dbeafe !important;
+}
+
+/* Secondary Accents */
+html .landing-page-root .bg-emerald-50,
+html.dark .landing-page-root .bg-emerald-50,
+html[data-theme-color] .landing-page-root .bg-emerald-50,
+html .admin-root .bg-emerald-50,
+html.dark .admin-root .bg-emerald-50,
+html[data-theme-color] .admin-root .bg-emerald-50 {
+  background-color: #ecfdf5 !important;
+}
+
+html .admin-root .bg-emerald-100,
+html.dark .admin-root .bg-emerald-100,
+html[data-theme-color] .admin-root .bg-emerald-100 {
+  background-color: #d1fae5 !important;
+}
+
+html .landing-page-root .text-emerald-500,
+html.dark .landing-page-root .text-emerald-500,
+html[data-theme-color] .landing-page-root .text-emerald-500,
+html .admin-root .text-emerald-500,
+html.dark .admin-root .text-emerald-500,
+html[data-theme-color] .admin-root .text-emerald-500 {
+  color: #10b981 !important;
+}
+
+html .landing-page-root .text-emerald-600,
+html.dark .landing-page-root .text-emerald-600,
+html[data-theme-color] .landing-page-root .text-emerald-600,
+html .admin-root .text-emerald-600,
+html.dark .admin-root .text-emerald-600,
+html[data-theme-color] .admin-root .text-emerald-600 {
+  color: #059669 !important;
+}
+
+html .landing-page-root .text-emerald-400,
+html.dark .landing-page-root .text-emerald-400,
+html[data-theme-color] .landing-page-root .text-emerald-400,
+html .admin-root .text-emerald-400,
+html.dark .admin-root .text-emerald-400,
+html[data-theme-color] .admin-root .text-emerald-400 {
+  color: #34d399 !important;
+}
+
+html .landing-page-root .bg-violet-50,
+html.dark .landing-page-root .bg-violet-50,
+html[data-theme-color] .landing-page-root .bg-violet-50 {
+  background-color: #f5f3ff !important;
+}
+
+html .landing-page-root .text-violet-600,
+html.dark .landing-page-root .text-violet-600,
+html[data-theme-color] .landing-page-root .text-violet-600 {
+  color: #7c3aed !important;
+}
+
+html .admin-root .bg-purple-100,
+html.dark .admin-root .bg-purple-100,
+html[data-theme-color] .admin-root .bg-purple-100 {
+  background-color: #f3e8ff !important;
+}
+
+html .admin-root .text-purple-600,
+html.dark .admin-root .text-purple-600,
+html[data-theme-color] .admin-root .text-purple-600 {
+  color: #7c3aed !important;
+}
+
+html .landing-page-root .bg-rose-100,
+html.dark .landing-page-root .bg-rose-100,
+html[data-theme-color] .landing-page-root .bg-rose-100,
+html .admin-root .bg-rose-100,
+html.dark .admin-root .bg-rose-100,
+html[data-theme-color] .admin-root .bg-rose-100 {
+  background-color: #ffe4e6 !important;
+}
+
+html .landing-page-root .text-rose-600,
+html.dark .landing-page-root .text-rose-600,
+html[data-theme-color] .landing-page-root .text-rose-600,
+html .admin-root .text-rose-600,
+html.dark .admin-root .text-rose-600,
+html[data-theme-color] .admin-root .text-rose-600 {
+  color: #e11d48 !important;
+}
+
+html .landing-page-root .text-rose-700,
+html.dark .landing-page-root .text-rose-700,
+html[data-theme-color] .landing-page-root .text-rose-700,
+html .admin-root .text-rose-700,
+html.dark .admin-root .text-rose-700,
+html[data-theme-color] .admin-root .text-rose-700 {
+  color: #be123c !important;
+}
+
+html .landing-page-root .text-amber-400,
+html.dark .landing-page-root .text-amber-400,
+html[data-theme-color] .landing-page-root .text-amber-400,
+html .admin-root .text-amber-400,
+html.dark .admin-root .text-amber-400,
+html[data-theme-color] .admin-root .text-amber-400 {
+  color: #fbbf24 !important;
+}
+
+html .admin-root .bg-amber-100,
+html.dark .admin-root .bg-amber-100,
+html[data-theme-color] .admin-root .bg-amber-100 {
+  background-color: #fef3c7 !important;
+}
+
+html .admin-root .text-amber-600,
+html.dark .admin-root .text-amber-600,
+html[data-theme-color] .admin-root .text-amber-600 {
+  color: #d97706 !important;
+}
+
+/* Borders */
+html .landing-page-root .border-slate-100,
+html.dark .landing-page-root .border-slate-100,
+html[data-theme-color] .landing-page-root .border-slate-100,
+html .admin-root .border-slate-100,
+html.dark .admin-root .border-slate-100,
+html[data-theme-color] .admin-root .border-slate-100 {
+  border-color: #f1f5f9 !important;
+}
+
+html .landing-page-root .border-slate-200,
+html.dark .landing-page-root .border-slate-200,
+html[data-theme-color] .landing-page-root .border-slate-200,
+html .admin-root .border-slate-200,
+html.dark .admin-root .border-slate-200,
+html[data-theme-color] .admin-root .border-slate-200 {
+  border-color: #e2e8f0 !important;
+}
+
+html .admin-root .border-slate-800,
+html.dark .admin-root .border-slate-800,
+html[data-theme-color] .admin-root .border-slate-800 {
+  border-color: #1e293b !important;
+}
+
+html .admin-root .border-slate-700,
+html.dark .admin-root .border-slate-700,
+html[data-theme-color] .admin-root .border-slate-700 {
+  border-color: #334155 !important;
+}
+
+html .landing-page-root .border-t,
+html .landing-page-root .border-b,
+html .landing-page-root .border-y,
+html .admin-root .border-t,
+html .admin-root .border-b,
+html .admin-root .border-y {
+  border-color: #f1f5f9 !important;
+}
+
+/* Typography */
+html .landing-page-root .text-slate-900,
+html.dark .landing-page-root .text-slate-900,
+html[data-theme-color] .landing-page-root .text-slate-900,
+html .admin-root .text-slate-900,
+html.dark .admin-root .text-slate-900,
+html[data-theme-color] .admin-root .text-slate-900 {
+  color: #0f172a !important;
+}
+
+html .landing-page-root .hover\:text-slate-900:hover,
+html.dark .landing-page-root .hover\:text-slate-900:hover,
+html[data-theme-color] .landing-page-root .hover\:text-slate-900:hover,
+html .admin-root .hover\:text-slate-900:hover,
+html.dark .admin-root .hover\:text-slate-900:hover,
+html[data-theme-color] .admin-root .hover\:text-slate-900:hover {
+  color: #0f172a !important;
+}
+
+html .landing-page-root .text-slate-800,
+html.dark .landing-page-root .text-slate-800,
+html[data-theme-color] .landing-page-root .text-slate-800,
+html .admin-root .text-slate-800,
+html.dark .admin-root .text-slate-800,
+html[data-theme-color] .admin-root .text-slate-800 {
+  color: #1e293b !important;
+}
+
+html .landing-page-root .text-slate-700,
+html.dark .landing-page-root .text-slate-700,
+html[data-theme-color] .landing-page-root .text-slate-700,
+html .admin-root .text-slate-700,
+html.dark .admin-root .text-slate-700,
+html[data-theme-color] .admin-root .text-slate-700 {
+  color: #334155 !important;
+}
+
+html .landing-page-root .text-slate-600,
+html.dark .landing-page-root .text-slate-600,
+html[data-theme-color] .landing-page-root .text-slate-600,
+html .admin-root .text-slate-600,
+html.dark .admin-root .text-slate-600,
+html[data-theme-color] .admin-root .text-slate-600 {
+  color: #475569 !important;
+}
+
+html .landing-page-root .text-slate-500,
+html.dark .landing-page-root .text-slate-500,
+html[data-theme-color] .landing-page-root .text-slate-500,
+html .admin-root .text-slate-500,
+html.dark .admin-root .text-slate-500,
+html[data-theme-color] .admin-root .text-slate-500 {
+  color: #64748b !important;
+}
+
+html .landing-page-root .text-slate-400,
+html.dark .landing-page-root .text-slate-400,
+html[data-theme-color] .landing-page-root .text-slate-400,
+html .admin-root .text-slate-400,
+html.dark .admin-root .text-slate-400,
+html[data-theme-color] .admin-root .text-slate-400 {
+  color: #94a3b8 !important;
+}
+
+html .admin-root .text-slate-300,
+html.dark .admin-root .text-slate-300,
+html[data-theme-color] .admin-root .text-slate-300 {
+  color: #cbd5e1 !important;
+}
+
+html .landing-page-root .text-white,
+html.dark .landing-page-root .text-white,
+html[data-theme-color] .landing-page-root .text-white,
+html .admin-root .text-white,
+html.dark .admin-root .text-white,
+html[data-theme-color] .admin-root .text-white {
+  color: #ffffff !important;
+}
+
+html .landing-page-root h1,
+html .landing-page-root h2,
+html .landing-page-root h3,
+html .landing-page-root h4,
+html .admin-root h1,
+html .admin-root h2,
+html .admin-root h3,
+html .admin-root h4 {
+  color: inherit;
+}
+
+/* Inputs, Selects & Textareas in Admin */
+html .admin-root .admin-input,
+html.dark .admin-root .admin-input {
+  background: rgb(248 250 252) !important;
+  color: rgb(15 23 42) !important;
+  border-color: rgb(226 232 240) !important;
+}
+
+html.dark .admin-root input:not([type="checkbox"]):not([type="radio"]),
+html.dark .admin-root select,
+html.dark .admin-root textarea {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border-color: #e2e8f0 !important;
+}
+
+html.dark .admin-root input::placeholder,
+html.dark .admin-root textarea::placeholder {
+  color: #94a3b8 !important;
+}
+
 
 

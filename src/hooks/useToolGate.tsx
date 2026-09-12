@@ -68,8 +68,8 @@ export function useToolGate() {
               <p className="text-slate-600 mb-6 font-medium leading-relaxed">
                 Đây là công cụ Premium mạnh mẽ. Vui lòng nâng cấp VIP để sử dụng không giới hạn.
               </p>
-              <Link href="/pricing" className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-white py-4 rounded-xl font-bold text-lg transition-all shadow-lg shadow-amber-500/30 mb-3">
-                <Crown size={20} /> Nâng cấp VIP ngay
+              <Link href="/profile#pricing-section" className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 py-4 rounded-xl font-black text-lg transition-all shadow-lg shadow-amber-500/30 mb-3">
+                <Crown size={20} className="fill-slate-950" /> Nâng cấp VIP ngay
               </Link>
               <button onClick={() => setShowVIPModal(false)} className="text-slate-400 text-sm font-medium hover:text-slate-600">
                 Để sau

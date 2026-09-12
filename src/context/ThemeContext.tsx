@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 
 export type ThemeMode = "light" | "dark";
 export type ThemeColor = "blue" | "emerald" | "purple" | "amber" | "rose";
@@ -68,38 +69,10 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
   const [themeMode, setThemeModeState] = useState<ThemeMode>("light");
   const [themeColor, setThemeColorState] = useState<ThemeColor>("blue");
   const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    // 1. Đọc từ localStorage khi client hydrate
-    try {
-      const savedMode = localStorage.getItem("aicho_theme_mode") as ThemeMode | null;
-      const savedColor = localStorage.getItem("aicho_theme_color") as ThemeColor | null;
-
-      if (savedMode === "dark" || savedMode === "light") {
-        setThemeModeState(savedMode);
-        applyModeToDom(savedMode);
-      } else {
-        // Kiểm tra cài đặt hệ điều hành
-        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-        const initialMode = prefersDark ? "dark" : "light";
-        setThemeModeState(initialMode);
-        applyModeToDom(initialMode);
-      }
-
-      if (savedColor && THEME_COLOR_OPTIONS.some((c) => c.id === savedColor)) {
-        setThemeColorState(savedColor);
-        applyColorToDom(savedColor);
-      } else {
-        applyColorToDom("blue");
-      }
-    } catch (e) {
-      console.warn("Could not load theme from localStorage", e);
-    }
-    setMounted(true);
-  }, []);
 
   const applyModeToDom = (mode: ThemeMode) => {
     if (typeof document === "undefined") return;
@@ -116,9 +89,66 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.setAttribute("data-theme-color", color);
   };
 
+  const isExemptRoute = (p: string | null | undefined) => {
+    if (!p) return false;
+    return p === "/" || p.startsWith("/admin");
+  };
+
+  useEffect(() => {
+    // 1. Đọc từ localStorage khi client hydrate
+    let initialMode: ThemeMode = "light";
+    let initialColor: ThemeColor = "blue";
+    try {
+      const savedMode = localStorage.getItem("aicho_theme_mode") as ThemeMode | null;
+      const savedColor = localStorage.getItem("aicho_theme_color") as ThemeColor | null;
+
+      if (savedMode === "dark" || savedMode === "light") {
+        initialMode = savedMode;
+      } else {
+        // Kiểm tra cài đặt hệ điều hành
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        initialMode = prefersDark ? "dark" : "light";
+      }
+
+      if (savedColor && THEME_COLOR_OPTIONS.some((c) => c.id === savedColor)) {
+        initialColor = savedColor;
+      }
+    } catch (e) {
+      console.warn("Could not load theme from localStorage", e);
+    }
+
+    setThemeModeState(initialMode);
+    setThemeColorState(initialColor);
+
+    // Trang chủ "/" và trang Quản trị "/admin*" giữ nguyên mặc định (light + blue)
+    if (isExemptRoute(pathname)) {
+      applyModeToDom("light");
+      applyColorToDom("blue");
+    } else {
+      applyModeToDom(initialMode);
+      applyColorToDom(initialColor);
+    }
+
+    setMounted(true);
+  }, []);
+
+  // Lắng nghe thay đổi pathname: nếu là landing page "/" hoặc admin "/admin*", reset về mặc định
+  useEffect(() => {
+    if (!mounted) return;
+    if (isExemptRoute(pathname)) {
+      applyModeToDom("light");
+      applyColorToDom("blue");
+    } else {
+      applyModeToDom(themeMode);
+      applyColorToDom(themeColor);
+    }
+  }, [pathname, mounted, themeMode, themeColor]);
+
   const setThemeMode = (mode: ThemeMode) => {
     setThemeModeState(mode);
-    applyModeToDom(mode);
+    if (!isExemptRoute(pathname)) {
+      applyModeToDom(mode);
+    }
     try {
       localStorage.setItem("aicho_theme_mode", mode);
     } catch (e) {
@@ -128,7 +158,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   const setThemeColor = (color: ThemeColor) => {
     setThemeColorState(color);
-    applyColorToDom(color);
+    if (!isExemptRoute(pathname)) {
+      applyColorToDom(color);
+    }
     try {
       localStorage.setItem("aicho_theme_color", color);
     } catch (e) {
