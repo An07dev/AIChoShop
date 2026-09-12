@@ -5,7 +5,7 @@ import { detectCategory, getFeeProfile, OFFICIAL_CATEGORIES } from "./registry.t
 import type { PricingInput } from "./types.ts";
 
 const baseInput: PricingInput = {
-  platform: "shopee", shopType: "marketplace", categoryId: "shopee-416", quantity: 1,
+  platform: "shopee", externalChannel: "facebook", shopType: "marketplace", categoryId: "shopee-416", quantity: 1,
   costPerUnit: 50_000, packagingCost: 0, handlingCost: 0, overheadCost: 0,
   sellerShippingCost: 0, buyerShippingFee: 0, platformDiscount: 0, sellerDiscountRate: 0,
   affiliateRate: 0, marketingMode: "fixed", marketingValue: 0,
@@ -30,6 +30,16 @@ test("TikTok dùng hai cơ sở tính phí khác nhau", () => {
   assert.equal(evaluation.fees.find((fee) => fee.id === "commission")?.base, 90_000);
   assert.equal(evaluation.fees.find((fee) => fee.id === "transaction")?.base, 95_000);
   assert.equal(evaluation.fees.find((fee) => fee.id === "transaction")?.amount, 5_700);
+});
+
+test("đơn ngoài chỉ tính các phí thanh toán, COD và xử lý do người bán nhập", () => {
+  const evaluation = evaluatePrice({ ...baseInput, platform: "external",
+    categoryId: "external-direct", commissionOverride: 2.5,
+    transactionOverride: 1, fixedFeeOverride: 3_000 }, 100_000);
+  assert.equal(evaluation.fees.find((fee) => fee.id === "commission")?.amount, 2_500);
+  assert.equal(evaluation.fees.find((fee) => fee.id === "transaction")?.amount, 1_000);
+  assert.equal(evaluation.platformFees, 6_500);
+  assert.equal(evaluation.profitOnSuccess, 43_500);
 });
 
 test("phí chương trình không vượt mức trần", () => {

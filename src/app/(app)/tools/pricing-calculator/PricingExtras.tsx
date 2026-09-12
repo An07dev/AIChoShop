@@ -2,7 +2,7 @@
 
 import { BarChart3, Download, FileJson, FolderOpen, PackageOpen, PieChart, Trash2 } from "lucide-react";
 import { downloadTextFile, pricingHistoryToCsv, type PricingCalculationSnapshot } from "@/lib/pricing/storage";
-import type { PriceEvaluation } from "@/lib/pricing/types";
+import type { ExternalSalesChannel, PriceEvaluation } from "@/lib/pricing/types";
 
 const currency = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 });
 const money = (value: number) => currency.format(Math.round(value));
@@ -15,9 +15,9 @@ export function EmptyCalculation() {
   </section>;
 }
 
-export function CostVisuals({ evaluation }: { evaluation: PriceEvaluation }) {
+export function CostVisuals({ evaluation, isExternal = false }: { evaluation: PriceEvaluation; isExternal?: boolean }) {
   const items = [
-    { label: "Phí nền tảng", value: evaluation.platformFees, color: "#7c3aed" },
+    { label: isExternal ? "Phí thu tiền & xử lý" : "Phí nền tảng", value: evaluation.platformFees, color: "#7c3aed" },
     { label: "Giá vốn", value: evaluation.cogs, color: "#2563eb" },
     { label: "Vận hành", value: evaluation.operatingCosts, color: "#0d9488" },
     { label: "Ads", value: evaluation.marketingCost, color: "#f59e0b" },
@@ -83,8 +83,9 @@ export function SavedCalculations({ history, onOpen, onDelete, onDeleteAll }: {
     </div>
     {!history.length ? <div className="p-8 text-center text-sm text-slate-500">Chưa có sản phẩm nào được lưu trên trình duyệt này.</div> : <div className="divide-y">{history.map((item) => {
       const evaluation = item.result.evaluation;
+      const externalNames: Record<ExternalSalesChannel, string> = { facebook: "Facebook", website: "Website", youtube: "YouTube", other: "Kênh khác" };
       return <article key={item.id} className="grid gap-4 p-5 lg:grid-cols-[1fr_auto] lg:items-center">
-        <div><div className="flex flex-wrap items-center gap-2"><h3 className="font-black text-slate-900">{item.productName}</h3><span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black uppercase text-slate-600">{item.input.platform}</span><span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700">{item.input.shopType === "mall" ? "Mall" : "Shop thường"}</span></div>
+        <div><div className="flex flex-wrap items-center gap-2"><h3 className="font-black text-slate-900">{item.productName}</h3><span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black uppercase text-slate-600">{item.input.platform === "external" ? "Đơn ngoài" : item.input.platform}</span><span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700">{item.input.platform === "external" ? externalNames[item.input.externalChannel ?? "facebook"] : item.input.shopType === "mall" ? "Mall" : "Shop thường"}</span></div>
           <div className="mt-3 grid grid-cols-2 gap-x-8 gap-y-1 text-xs text-slate-600 md:grid-cols-4"><span>Giá vốn: <b>{money(item.input.costPerUnit)}</b></span><span>Giá đề xuất: <b className="text-emerald-700">{money(evaluation.listPrice)}</b></span><span>Lãi kỳ vọng: <b>{money(evaluation.expectedProfitPerOrder)}</b></span><span>Biên: <b>{evaluation.expectedMargin.toFixed(1)}%</b></span></div>
           <p className="mt-2 text-[11px] text-slate-400">Lưu lúc {new Date(item.createdAt).toLocaleString("vi-VN")}</p>
         </div>

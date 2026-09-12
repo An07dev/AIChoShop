@@ -21,7 +21,7 @@ export function readPricingHistory(storage: Pick<Storage, "getItem">): PricingCa
     if (!Array.isArray(parsed)) return [];
     return parsed.filter((item): item is PricingCalculationSnapshot => Boolean(
       item && typeof item === "object" && "id" in item && "input" in item && "result" in item,
-    ));
+    )).map((item) => ({ ...item, input: { ...item.input, externalChannel: item.input.externalChannel ?? "facebook" } }));
   } catch {
     return [];
   }
@@ -38,14 +38,14 @@ function csvCell(value: string | number | null) {
 
 export function pricingHistoryToCsv(history: PricingCalculationSnapshot[]) {
   const header = [
-    "Thời gian", "Tên sản phẩm", "Sàn", "Loại shop", "Mã ngành", "Giá vốn",
-    "Giá đề xuất", "Giá hòa vốn", "Sàn giải ngân", "Lãi đơn thành công",
+    "Thời gian", "Tên sản phẩm", "Sàn/kênh", "Kênh đơn ngoài", "Loại shop", "Mã ngành", "Giá vốn",
+    "Giá đề xuất", "Giá hòa vốn", "Thực thu", "Lãi đơn thành công",
     "Lãi kỳ vọng/đơn", "Biên lợi nhuận (%)", "ROI (%)", "Ads tối đa", "ROAS hòa vốn",
   ];
   const rows = history.map((item) => {
     const evaluation = item.result.evaluation;
     return [
-      item.createdAt, item.productName, item.input.platform, item.input.shopType,
+      item.createdAt, item.productName, item.input.platform, item.input.platform === "external" ? item.input.externalChannel : "", item.input.shopType,
       item.input.categoryId, item.input.costPerUnit, evaluation.listPrice,
       item.result.breakEvenPrice, evaluation.payout, evaluation.profitOnSuccess,
       evaluation.expectedProfitPerOrder, evaluation.expectedMargin, evaluation.roiOnCogs,
@@ -64,4 +64,3 @@ export function downloadTextFile(filename: string, content: string, type: string
   anchor.click();
   URL.revokeObjectURL(url);
 }
-
