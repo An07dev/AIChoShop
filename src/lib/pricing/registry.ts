@@ -6,6 +6,8 @@ export const SOURCES = {
   shopeeMarketplace: "https://mms.file.susercontent.com/api/v4/11195002/mms/vn-11195002-bmlg8-mo82ohg4qz2aff",
   shopeeMall: "https://mms.file.susercontent.com/api/v4/11195002/mms/vn-11195002-bmlg9-mo7yb9mp42rkab",
   tiktok: "https://seller-vn.tiktok.com/university/essay?knowledge_id=8858869405370113&lang=en",
+  tiktokTransaction: "https://seller-vn.tiktok.com/university/essay?knowledge_id=753295858337537&lang=en",
+  tiktokVxp: "https://seller-vn.tiktok.com/university/essay?knowledge_id=5776954021037841&lang=vi-VN",
   tax: "https://vanban.chinhphu.vn/?classid=1&docid=217111&orggroupid=2&pageid=27160",
 } as const;
 
@@ -79,7 +81,7 @@ export const PROGRAMS: Record<Platform, FeeProgram[]> = {
   ],
   tiktok: [
     { id: "tiktok_sfp", name: "SFP/Freeship", rate: 4.5, cap: 40000, defaultEnabled: false, note: "Kiểm tra tỷ lệ theo hợp đồng của shop trước khi bật." },
-    { id: "tiktok_vxp", name: "Voucher Xtra", rate: 2.5, cap: 40000, defaultEnabled: false, note: "Chỉ bật khi shop đang tham gia và sao kê có khoản phí này." },
+    { id: "tiktok_vxp", name: "Voucher Extra cơ bản", rate: 5, cap: 50000, defaultEnabled: false, note: "Mức VXP cơ bản công bố ngày 21/08/2026; một số ngành bị hạn chế không áp dụng." },
   ],
   external: [],
 };

@@ -32,6 +32,12 @@ test("TikTok dùng hai cơ sở tính phí khác nhau", () => {
   assert.equal(evaluation.fees.find((fee) => fee.id === "transaction")?.amount, 5_700);
 });
 
+test("hoa hồng KOC TikTok tính trên giá khách trả sau voucher", () => {
+  const evaluation = evaluatePrice({ ...baseInput, platform: "tiktok", sellerDiscountRate: 10,
+    platformDiscount: 5_000, affiliateRate: 10 }, 100_000);
+  assert.equal(evaluation.affiliateCost, 8_500);
+});
+
 test("đơn ngoài chỉ tính các phí thanh toán, COD và xử lý do người bán nhập", () => {
   const evaluation = evaluatePrice({ ...baseInput, platform: "external",
     categoryId: "external-direct", commissionOverride: 2.5,
