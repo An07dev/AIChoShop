@@ -168,231 +168,224 @@ Hãy tạo đúng 10 biến thể tiêu đề (Spin content). Yêu cầu:
 - Trình bày danh sách đánh số rõ ràng từ 1 đến 10 (mỗi dòng một tiêu đề theo định dạng: "1. [Nội dung tiêu đề]"), không thêm lời chào hay kết bài rườm rà.`;
         break;
 
-      case "product-description": {
-        const mode = inputs.mode || "seo-full";
-        const platform = inputs.platform || "shopee";
-        const tone = inputs.tone || "expert";
-        const brand = inputs.brand ? inputs.brand.trim() : "";
-        const shop = inputs.shopName ? inputs.shopName.trim() : (brand || "[TÊN SHOP]");
-        const brandDisplay = brand ? `${brand}` : shop;
-        const productName = inputs.productName || "Sản phẩm";
-        const usp = inputs.usp || "";
-        const specs = inputs.specs || "";
-        const gift = inputs.gift ? inputs.gift.trim() : (inputs.guarantee ? inputs.guarantee.trim() : "");
-        const painPoint = inputs.painPoint ? inputs.painPoint.trim() : "";
+      case "ad-copy": {
+        const platform = inputs.adPlatform || "both";
+        const isShopee = platform === "shopee" || platform === "both";
+        const isTiktok = platform === "tiktok" || platform === "both";
 
-        // Kiểm tra người dùng có nhập Quà tặng và Nỗi đau không
-        const hasGift = Boolean(gift && gift.length > 0);
-        const hasPainPoint = Boolean(painPoint && painPoint.length > 0);
+        systemPrompt = "Bạn là chuyên gia Performance Marketing hàng đầu chuyên tối ưu chuyển đổi quảng cáo trên Shopee Ads và TikTok Ads tại thị trường Việt Nam. Hãy trả về kết quả bằng tiếng Việt, định dạng Markdown rõ ràng, chuyên nghiệp.";
 
-        // Định hướng sàn TMĐT
-        let platformGuide = "";
-        if (platform === "shopee") {
-          platformGuide = "Tối ưu chuẩn SEO sàn SHOPEE: Tập trung từ khóa tìm kiếm tự nhiên, tối ưu cho Shopee Mall/Shop Yêu Thích, kêu gọi áp mã Freeship Xtra và Voucher Giảm Giá Shop.";
-        } else if (platform === "tiktok") {
-          platformGuide = "Tối ưu cho TIKTOK SHOP: Phong cách trực quan, tối ưu cho người xem chuyển từ Video/Livestream sang Giỏ hàng, câu từ ngắn gọn, kêu gọi bấm vào Giỏ Hàng Góc Trái.";
-        } else if (platform === "lazada") {
-          platformGuide = "Tối ưu chuẩn sàn LAZADA: Phong cách chuẩn LazMall, nhấn mạnh Hoàn Tiền Max, Voucher Tích Lũy và chính sách giao hàng nhanh.";
-        } else {
-          platformGuide = "Tối ưu ĐA SÀN (Shopee, TikTok Shop, Lazada): Ngôn từ trung tính, linh hoạt sử dụng được trên mọi sàn thương mại điện tử.";
-        }
+        const platformTitle = platform === "both" 
+          ? "SHOPEE ADS & TIKTOK SPARK ADS" 
+          : platform === "shopee" 
+          ? "SHOPEE ADS" 
+          : "TIKTOK SPARK ADS";
 
-        // Định hướng tông giọng
-        let toneGuide = "";
-        if (tone === "friendly") {
-          toneGuide = "Tông giọng: THÂN THIỆN & GẦN GŨI (Như một người bạn thân nhiệt tình review và chia sẻ bí quyết mua sắm).";
-        } else if (tone === "humorous") {
-          toneGuide = "Tông giọng: HÀI HƯỚC, BẮT TREND & DUYÊN DÁNG (Dùng từ ngữ dí dỏm, viral, giúp người đọc cảm thấy vui vẻ, thoải mái).";
-        } else if (tone === "luxury") {
-          toneGuide = "Tông giọng: SANG TRỌNG, ĐẲNG CẤP & TINH TẾ (Ngôn từ trau chuốt, tôn vinh giá trị và phong cách sống của người sở hữu).";
-        } else {
-          toneGuide = "Tông giọng: CHUYÊN GIA UY TÍN & ĐÁNG TIN CẬY (Phân tích mạch lạc, am hiểu sâu sắc, tạo niềm tin tuyệt đối về chất lượng).";
-        }
+        userPrompt = `Nhiệm vụ của bạn là tạo chiến dịch quảng cáo chuyển đổi cao cho sản phẩm dưới đây dựa trên nền tảng được chọn: ${platformTitle}.
 
-        // Dữ liệu chung
-        const dataHeader = `DỮ LIỆU ĐẦU VÀO:
+DỮ LIỆU ĐẦU VÀO:
+- Tên Sản Phẩm: ${inputs.productName}
+- Giá bán / Giá khuyến mãi: ${inputs.price}
+- Điểm nổi bật (USP) / Giải quyết vấn đề gì: ${inputs.usp}
+- Đối tượng nhắm tới: ${inputs.targetAudience}
+- Nền tảng: ${platformTitle}
+
+YÊU CẦU ĐỊNH DẠNG ĐẦU RA (MARKDOWN CHUẨN XÁC, KHÔNG LỒNG THẺ THỪA):
+${isShopee ? `
+## 🛒 PHẦN 1: CHIẾN DỊCH SHOPEE ADS TỐI ƯU TÌM KIẾM
+
+### 📌 Nhóm 1: Từ khóa chính xác (Exact Match) - Ý định mua cao
+(Liệt kê 4-6 từ khóa cốt lõi người dùng gõ khi đã sẵn sàng mua hàng, mỗi dòng theo đúng định dạng: - Tên từ khóa: Mức giá thầu)
+- [Tên từ khóa]: [Giá thầu đề xuất: 2.000đ - 3.500đ]
+
+### 📌 Nhóm 2: Từ khóa mở rộng (Broad Match) - Gom traffic giá rẻ
+(Liệt kê 4-6 từ khóa bao quát, từ khóa giải pháp)
+- [Tên từ khóa]: [Giá thầu đề xuất: 500đ - 1.500đ]
+
+### 📌 Nhóm 3: Từ khóa lỗi gõ / từ địa phương / từ khóa ngách
+(Liệt kê 3-5 từ khóa không dấu, gõ sai chính tả phổ biến, từ địa phương ít cạnh tranh)
+- [Tên từ khóa]: [Giá thầu đề xuất: 200đ - 800đ]
+
+### 🎯 3 MẪU TIÊU ĐỀ QUẢNG CÁO TỐI ƯU CTR (Dưới 60 ký tự):
+(Giật tít thu hút người mua click, tận dụng số liệu, deal hot, bảo hành, cam kết. Tuyệt đối không quá 60 ký tự mỗi tiêu đề):
+- Mẫu 1 (Góc Deal sốc & Quà tặng): [Nội dung tiêu đề dưới 60 ký tự]
+- Mẫu 2 (Góc USP & Tính năng độc quyền): [Nội dung tiêu đề dưới 60 ký tự]
+- Mẫu 3 (Góc Cam kết uy tín & Chính hãng): [Nội dung tiêu đề dưới 60 ký tự]
+` : ""}
+${isTiktok ? `
+## 🎵 PHẦN ${isShopee ? "2" : "1"}: CHIẾN DỊCH TIKTOK SPARK ADS TỐI ƯU GIỎ HÀNG
+
+### ⚡ 5 CÂU HOOK TEXT ĐÈ VIDEO (Overlay Text trong 3 giây đầu):
+(Đánh trúng nỗi đau, gây tò mò cực độ, khiến người xem dừng lướt):
+- Hook 1 (Góc Cảnh báo / Ngăn cản): "[Câu Hook kích thích]"
+- Hook 2 (Góc Sự thật bất ngờ / Vạch trần): "[Câu Hook kích thích]"
+- Hook 3 (Góc Đổi đời sau khi dùng): "[Câu Hook kích thích]"
+- Hook 4 (Góc So sánh tương phản): "[Câu Hook kích thích]"
+- Hook 5 (Góc Tò mò cực đỉnh): "[Câu Hook kích thích]"
+
+### 📝 3 MẪU CAPTION QUẢNG CÁO KÈM CALL-TO-ACTION (CTA):
+(Dưới 100 chữ, ngắn gọn, súc tích, thúc đẩy bấm vào biểu tượng Giỏ hàng màu vàng ở góc trái màn hình):
+- Mẫu Caption 1 (Tập trung giải quyết nỗi đau): [Nội dung caption]
+- Mẫu Caption 2 (Review nhanh tính năng đỉnh): [Nội dung caption]
+- Mẫu Caption 3 (Cảnh báo sắp hết Flash Sale): [Nội dung caption]
+
+### 🏷️ 5 HASHTAG CHẠY ADS CHUẨN TỆP:
+#hashtag1 #hashtag2 #hashtag3 #hashtag4 #hashtag5
+` : ""}
+
+Quy tắc:
+- Không thêm lời dẫn rườm rà.
+- Trả về nội dung thực chiến, áp dụng được ngay.`;
+        break;
+      }
+
+      case "chat-broadcast": {
+        const channel = inputs.channel || "both";
+        const isShopee = channel === "shopee" || channel === "both";
+        const isZalo = channel === "zalo" || channel === "both";
+
+        const scenarioMap: Record<string, string> = {
+          cart_abandoned: "Nhắc giỏ hàng bỏ quên (Khách đã thêm vào giỏ nhưng chưa thanh toán)",
+          loyalty_voucher: "Tri ân khách cũ tặng voucher độc quyền (Chăm sóc khách đã từng mua hàng)",
+          repurchase: "Nhắc mua lại hàng tiêu hao (Đã đến chu kỳ cần bổ sung / thay mới sản phẩm)",
+          mega_sale: "Thông báo Mega Sale / Flash Sale độc quyền cho khách thân thiết",
+        };
+
+        const scenarioText = scenarioMap[inputs.scenario] || inputs.scenario || "Tri ân khách hàng cũ";
+
+        systemPrompt = "Bạn là chuyên gia CRM và Chăm sóc Khách hàng TMĐT (Retention Marketing) hàng đầu. Hãy viết kịch bản tin nhắn remarketing gửi cho khách hàng cũ để kéo họ quay lại mua hàng mà KHÔNG GÂY CẢM GIÁC LÀM PHIỀN HOẶC SPAM. Hãy trả về kết quả bằng tiếng Việt, định dạng Markdown rõ ràng, chuyên nghiệp.";
+
+        userPrompt = `Hãy viết các mẫu tin nhắn remarketing gửi khách cũ theo thông tin sau:
+
+DỮ LIỆU ĐẦU VÀO:
+- Tên Gian Hàng / Shop: ${inputs.shopName}
+- Tên Sản Phẩm / Danh Mục: ${inputs.productName}
+- Tình huống gửi: ${scenarioText}
+- Ưu đãi / Voucher / Quà tặng: ${inputs.offer}
+- Kênh gửi: ${channel === "both" ? "Shopee Chat Broadcast & Zalo" : channel === "shopee" ? "Shopee Chat Broadcast" : "Zalo OA & Zalo Cá Nhân"}
+
+YÊU CẦU ĐỊNH DẠNG ĐẦU RA (MARKDOWN CHUẨN):
+${isShopee ? `
+## 💬 KỊCH BẢN SHOPEE CHAT BROADCAST (TỐI ƯU GIAO DIỆN CHAT SÀN)
+Quy chuẩn nghiêm ngặt:
+- Độ dài: CỰC KỲ SÚC TÍCH (DƯỚI 350 KÝ TỰ mỗi mẫu tin để hiển thị trọn vẹn trên popup chat sàn Shopee mà không bị ẩn 'Xem thêm').
+- Tính CẤP BÁCH: Mã giảm giá có hạn số lượng, sắp hết hạn trong 24h.
+- Lời kêu gọi: Hướng dẫn khách bấm vào giỏ hàng hoặc bấm lưu voucher ngay kèm theo tin nhắn.
+
+Hãy cung cấp 3 biến thể:
+### Mẫu 1 (Trực diện & Cấp bách):
+[Nội dung tin nhắn dưới 350 ký tự]
+
+### Mẫu 2 (Thân thiện & Tri ân đặc quyền):
+[Nội dung tin nhắn dưới 350 ký tự]
+
+### Mẫu 3 (Kích thích tò mò & Giới hạn số lượng):
+[Nội dung tin nhắn dưới 350 ký tự]
+` : ""}
+${isZalo ? `
+## 📱 KỊCH BẢN ZALO OA & ZALO CÁ NHÂN (CHĂM SÓC KHÁCH HÀNG THÂN THIẾT)
+Quy chuẩn nghiêm ngặt:
+- Văn phong: Thân tình, ấm áp, lịch sự, xưng hô "Em/Shop" và "Anh/Chị".
+- Luôn có phần HỎI THĂM TRẢI NGHIỆM sử dụng đơn hàng cũ trước khi giới thiệu ưu đãi mới (tuyệt đối không vào đề bán hàng ngay).
+- Kêu gọi khách phản hồi tin nhắn để được gửi mã riêng hoặc hỗ trợ miễn phí vận chuyển.
+
+Hãy cung cấp 3 biến thể:
+### Mẫu 1 (Hỏi thăm chân thành & Tặng quà tri ân):
+[Nội dung tin nhắn]
+
+### Mẫu 2 (Nhắc chu kỳ sử dụng & Ưu đãi thành viên VIP):
+[Nội dung tin nhắn]
+
+### Mẫu 3 (Hỗ trợ riêng 1:1 & Giữ voucher độc quyền):
+[Nội dung tin nhắn]
+` : ""}
+
+### 💡 LỜI KHUYÊN GỬI TIN HIỆU QUẢ TỪ CHUYÊN GIA:
+- Khung giờ vàng gửi tin có tỷ lệ mở cao nhất.
+- Tần suất gửi phù hợp để tránh bị khách chặn (block).`;
+        break;
+      }
+
+      case "video-repurposer": {
+        const toneMap: Record<string, string> = {
+          gen_z: "Hài hước, bắt trend, Gen Z năng động, từ ngữ viral tự nhiên",
+          expert: "Chuyên gia uy tín, chuyên sâu, phân tích logic, khách quan và đáng tin cậy",
+          friendly: "Tâm sự gần gũi, chân thật, như bạn thân chia sẻ trải nghiệm đời thường",
+        };
+
+        const toneText = toneMap[inputs.brand_tone] || inputs.brand_tone || "Tâm sự gần gũi";
+        const ctaText = inputs.call_to_action || "Bình luận nhận link / Mua ngay";
+        const productName = inputs.product_name || "Sản phẩm";
+        const videoScript = inputs.video_script || "";
+
+        systemPrompt = `Bạn là Giám đốc Sáng tạo Nội dung Đa kênh (Omnichannel Content Strategist).
+Nhiệm vụ của bạn là nhận vào kịch bản/lời thoại của 1 video ngắn (TikTok/Reels) và chuyển đổi thành 5 ĐỊNH DẠNG NỘI DUNG CHUYÊN BIỆT cho 5 kênh khác nhau, tuân thủ nghiêm ngặt văn hóa người dùng của từng nền tảng:
+---
+ĐỊNH DẠNG 1: BÀI ĐĂNG FACEBOOK GROUP (Phong cách Seeding / Tâm sự thật)
+- Không dùng từ ngữ bán hàng lộ liễu, không chèn link trực tiếp (tránh bị admin duyệt bài).
+- Viết dưới dạng chia sẻ kinh nghiệm thực tế, tự nhận mình từng gặp vấn đề gì -> đã tìm ra giải pháp này ra sao.
+- Cuối bài: Kêu gọi thảo luận tự nhiên ("Có bác nào dùng dòng này chưa cho em xin thêm review?", "Bác nào cần link em để dưới cmt nhé").
+---
+ĐỊNH DẠNG 2: BÀI ĐĂNG FANPAGE FACEBOOK (Tối ưu Click & Inbox)
+- Dòng 1-2: Giật tít cực mạnh, chạm nỗi đau hoặc gây tò mò.
+- Thân bài: 3-4 gạch đầu dòng ngắn gọn với icon bắt mắt.
+- Cuối bài: Call-to-action dứt khoát (Nhắn tin nhận ưu đãi / Bấm vào link đặt hàng).
+---
+ĐỊNH DẠNG 3: KỊCH BẢN CHUỖI ẢNH CAROUSEL (Dành cho Lemon8 / Facebook Album / Instagram)
+- Chuyển nội dung video thành kịch bản 5 Slide ảnh ngắn:
+  * Slide 1 (Bìa): Tiêu đề giật tít dạng "Tips / Cách làm / Sai lầm".
+  * Slide 2, 3, 4: Mỗi slide là 1 bước hoặc 1 ưu điểm cụ thể (dưới 20 từ mỗi slide).
+  * Slide 5: Tổng kết + Kêu gọi thả tim & Lưu lại (Save) bài viết.
+---
+ĐỊNH DẠNG 4: BÀI VIẾT REVIEW CHUẨN SEO (Đăng Website / Blog Affiliate)
+- Đặt tiêu đề chuẩn SEO Google (chứa tên sản phẩm + từ khóa tìm kiếm).
+- Cấu trúc: Giới thiệu -> Đánh giá trải nghiệm thực tế -> Bảng Ưu & Nhược điểm (Pros & Cons) -> Lời khuyên ai nên mua.
+---
+ĐỊNH DẠNG 5: TIN NHẮN ZALO OA / TIN NHẮN CHĂM SÓC KHÁCH HÀNG
+- Độ dài ngắn gọn, thân mật, xưng hô "Em - Anh/Chị".
+- Tóm tắt giá trị lớn nhất từ video và gửi tặng riêng một ưu đãi/voucher bí mật.`;
+
+        userPrompt = `Hãy chuyển đổi kịch bản video sau đây thành 5 ĐỊNH DẠNG NỘI DUNG CHUYÊN BIỆT:
+
+DỮ LIỆU ĐẦU VÀO:
 - Tên sản phẩm: ${productName}
-- Thương hiệu / Brand: ${brand || "Chính hãng"}
-- Tên Shop: ${shop}
-- Điểm nổi bật (USP): ${usp}
-${hasPainPoint ? `- Nỗi đau / Tình huống khách gặp phải: ${painPoint}` : "- Nỗi đau: (Người bán KHÔNG nhập -> BỎ QUA HOÀN TOÀN KHỐI NỖI ĐAU)"}
-${hasGift ? `- Quà tặng kèm & Cam kết: ${gift}` : "- Quà tặng: (Người bán KHÔNG CÓ QUÀ TẶNG -> BỎ QUA HOÀN TOÀN MỤC QUÀ TẶNG)"}
-- Thông số kỹ thuật: ${specs || "Thông số tiêu chuẩn chất lượng cao"}
-- Nền tảng: ${platform.toUpperCase()}
-- ${platformGuide}
-- ${toneGuide}
+- Kịch bản video gốc:
+"""
+${videoScript}
+"""
+- Mục tiêu kêu gọi (CTA): ${ctaText}
+- Văn phong: ${toneText}
 
-ĐIỀU KIỆN LỌC BẮT BUỘC (RẤT QUAN TRỌNG):
-${
-  !hasGift
-    ? "⚠️ LƯU Ý VỀ QUÀ TẶNG: Người bán KHÔNG nhập quà tặng. TUYỆT ĐỐI CẤM xuất hiện từ 'TẶNG KÈM', 'QUÀ TẶNG' trong toàn bài (kể cả 'Tặng kèm: không có' hay 'quà tặng: không' cũng TUYỆT ĐỐI CẤM KHÔNG ĐƯỢC XUẤT HIỆN)."
-    : `✅ QUÀ TẶNG: Đưa quà tặng "${gift}" vào đúng vị trí nổi bật.`
-}
-${
-  !hasPainPoint
-    ? "⚠️ LƯU Ý VỀ NỖI ĐAU: Người bán KHÔNG nhập nỗi đau / tình huống. TUYỆT ĐỐI CẤM viết khối '⚡ BẠN ĐANG GẶP PHẢI TÌNH TRẠNG NÀY?' hay '📖 BẠN CÓ TỪNG RƠI VÀO CẢNH NÀY?'. Không bịa chuyện tiêu cực. Sau khối Cam kết vàng, chuyển thẳng sang khối '🔥 ĐIỂM KHÁC BIỆT VƯỢT TRỘI'."
-    : `✅ NỖI ĐAU: Khai thác nỗi đau "${painPoint}" làm móc câu giữ chân khách.`
-}
+YÊU CẦU ĐẦU RA (MARKDOWN CHUẨN XÁC VỚI TIÊU ĐỀ VÀ PHÂN ĐOẠN RÕ RÀNG):
 
-QUY TẮC AN TOÀN SÀN & TRÌNH BÀY:
-- Dùng icon (🌟, ⚡, 🛡️, 📦, 🔥, 🎁) ngắt dòng hợp lý, tuyệt đối không viết đoạn văn dài quá 3 dòng.
-- TUYỆT ĐỐI KHÔNG DÙNG TỪ CẤM CỦA SÀN: cấm dùng 'trị dứt điểm', 'vĩnh viễn', 'số 1', 'duy nhất', 'độc quyền', 'tốt nhất', '100% không tái phát' (tránh bị sàn quét khóa sản phẩm).
-- Dùng dấu phân cách '---' giữa các phần để bài viết thoáng mắt, dễ đọc trên điện thoại.
-- Trả về 100% tiếng Việt chuẩn, không thêm lời chào mở đầu hay giải thích kết bài ngoài lề.`;
-
-        // Kịch bản theo từng chế độ
-        if (mode === "mobile-short") {
-          // CHẾ ĐỘ 2: NGẮN GỌN MOBILE-FIRST
-          userPrompt = `Bạn là chuyên gia Copywriting Mobile-First hàng đầu. Khách hàng trên điện thoại chỉ có 3-5 giây để lướt, hãy tạo bản mô tả NGẮN GỌN - TRỰC DIỆN - TẬP TRUNG BULLET POINTS cho sản phẩm sau:
-
-${dataHeader}
-
-CẤU TRÚC BẮT BUỘC (MOBILE-FIRST):
-⚡ TOP 3 ĐIỂM ĐẮT GIÁ NHẤT:
-- [Tính năng 1 in đậm]: [Lợi ích trong 1 câu ngắn gọn]
-- [Tính năng 2 in đậm]: [Lợi ích trong 1 câu ngắn gọn]
-- [Tính năng 3 in đậm]: [Lợi ích trong 1 câu ngắn gọn]
+## 👥 ĐỊNH DẠNG 1: BÀI ĐĂNG FACEBOOK GROUP (Seeding / Tâm Sự Thực Tế)
+[Bài viết phong cách tâm sự chia sẻ thật, không quảng cáo lộ liễu, kết bài kêu gọi thảo luận/hỏi cmt tự nhiên]
 
 ---
-🛡️ CHÍNH SÁCH BẢO HÀNH & ĐẶC QUYỀN HÔM NAY:
-${hasGift ? `- 🎁 TẶNG KÈM: ${gift}\n` : ""}- Bảo hành 1 ĐỔI 1 tận nhà trong 30 ngày nếu có lỗi từ nhà sản xuất.
-- Đóng gói bọc bóng khí chống sốc 3 lớp, giao hỏa tốc.
+
+## 📢 ĐỊNH DẠNG 2: BÀI ĐĂNG FANPAGE FACEBOOK (Tối Ưu Click & Inbox)
+[Giật tít mạnh mẽ 1-2 dòng đầu, 3-4 gạch đầu dòng icon bắt mắt, CTA dứt khoát inbox/click link]
 
 ---
-📋 THÔNG SỐ RÚT GỌN:
-${specs ? specs : "- Kích thước & Trọng lượng nhỏ gọn, tiện mang theo\n- Điện áp / Công suất tiêu chuẩn tối ưu\n- Chất liệu cao cấp bền bỉ theo thời gian"}
+
+## 📸 ĐỊNH DẠNG 3: KỊCH BẢN CHUỖI ẢNH CAROUSEL (Lemon8 / Facebook Album / Instagram)
+[Kịch bản chi tiết 5 slide ngắn gọn, súc tích:
+- Slide 1 (Bìa): [Tiêu đề giật tít]
+- Slide 2: [Ý 1 - dưới 20 từ]
+- Slide 3: [Ý 2 - dưới 20 từ]
+- Slide 4: [Ý 3 - dưới 20 từ]
+- Slide 5: [Tổng kết + Kêu gọi Thả tim & Lưu lại (Save)]]
 
 ---
-🛡️ CHÍNH SÁCH MUA HÀNG AN TÂM:
-- Kiểm tra hàng trước khi thanh toán / Quay video mở hàng để được xử lý ngay lập tức.
-- Bấm [THEO DÕI SHOP] ngay để nhận voucher giảm giá cho đơn hàng này!
+
+## 📝 ĐỊNH DẠNG 4: BÀI VIẾT REVIEW CHUẨN SEO (Website / Blog Affiliate)
+[Tiêu đề chuẩn SEO Google, Mở bài lôi cuốn, Đánh giá trải nghiệm thực tế, Bảng Ưu & Nhược điểm, Lời khuyên ai nên mua]
 
 ---
-🏷️ HASHTAG:
-[8-10 hashtag ngắn gọn bám sát từ khóa tìm kiếm của sản phẩm]`;
-        } else if (mode === "storytelling") {
-          // CHẾ ĐỘ 3: STORYTELLING CẢM XÚC
-          userPrompt = `Bạn là bậc thầy Kể chuyện Bán hàng (Storytelling Copywriting). Hãy viết bản mô tả sản phẩm chạm sâu vào cảm xúc:
 
-${dataHeader}
-
-CẤU TRÚC BẮT BUỘC (STORYTELLING):
-${
-  hasPainPoint
-    ? `📖 BẠN CÓ TỪNG RƠI VÀO CẢNH NÀY?
-[Kể một lát cắt câu chuyện ngắn 2-3 câu thật chân thực, gợi cảm giác khó chịu/mệt mỏi/bối rối mà khách thường gặp khi chưa có sản phẩm: "${painPoint}"]
-👉 Và đó chính là lý do ${productName} từ ${brandDisplay} ra đời để đồng hành cùng bạn!`
-    : `✨ KHỞI ĐẦU TRẢI NGHIỆM TIỆN NGHI CÙNG ${productName.toUpperCase()}:
-[Viết đoạn mở đầu 2-3 câu khơi gợi sự hứng khởi, nâng tầm phong cách sống tiện ích khi sở hữu sản phẩm ${productName} từ ${brandDisplay}]`
-}
-
----
-✨ SỰ THAY ĐỔI KHI BẠN SỞ HỮU ${productName.toUpperCase()}:
-- [Khoảnh khắc trải nghiệm 1]: [Mô tả cảm giác thoải mái/tiết kiệm thời gian...]
-- [Khoảnh khắc trải nghiệm 2]: [Mô tả sự tự tin, an tâm...]
-- [Khoảnh khắc trải nghiệm 3]: [Giá trị nhận lại vượt xa số tiền bỏ ra...]
-
----
-🔥 ĐIỂM KHÁC BIỆT MÀ BẠN SẼ YÊU THÍCH:
-- ${usp}
-
----
-📋 THÔNG TIN KỸ THUẬT:
-${specs ? specs : "- Thông số chi tiết từ nhà sản xuất"}
-
----
-💎 LỜI HỨA DANH DỰ TỪ ${shop.toUpperCase()}:
-- Cam kết hàng chuẩn mô tả, hỗ trợ đổi trả tận tình nếu không hài lòng.
-${hasGift ? `- 🎁 TẶNG KÈM: ${gift}\n` : ""}- Bấm theo dõi shop để cùng nhau tạo nên những trải nghiệm mua sắm tuyệt vời!
-
----
-🏷️ BỘ HASHTAG LAN TỎA:
-[10-12 hashtag cảm xúc và từ khóa tìm kiếm sản phẩm]`;
-        } else if (mode === "flash-sale") {
-          // CHẾ ĐỘ 4: FLASH SALE & FOMO KHẨN CẤP
-          userPrompt = `Bạn là chuyên gia Săn Sale & Kích thích mua hàng cấp tốc (FOMO Copywriting). Hãy viết một bản mô tả tạo động lực hành động NGAY BÂY GIỜ, tận dụng tâm lý sợ bỏ lỡ cơ hội:
-
-${dataHeader}
-
-CẤU TRÚC BẮT BUỘC (FLASH SALE & FOMO):
-🚨 CẢNH BÁO DEAL CHỚP NHOÁNG - DUY NHẤT HÔM NAY! 🚨
-- Ưu đãi giảm sốc có hạn: Áp dụng cho 50 đơn hàng đầu tiên trong ngày!
-${hasGift ? `- 🎁 QUÀ TẶNG ĐỘC QUYỀN: ${gift} (Số lượng quà có hạn, hết quà tự động về giá gốc)` : "- Trợ giá sốc trực tiếp từ shop (Số lượng có hạn, hết suất tự động về giá gốc)"}
-
----
-🔥 3 LÝ DO BẠN NÊN MUA NGAY ĐƠN HÀNG NÀY:
-- 1. GIẢI PHÁP ĐỘT PHÁ: ${hasPainPoint ? painPoint : usp}
-- 2. ĐỘ BỀN & CHẤT LƯỢNG: Chuẩn chính hãng từ ${brandDisplay}
-- 3. TIẾT KIỆM TỐI ĐA: Mua đúng đợt trợ giá tốt nhất của ${shop}
-
----
-📋 THÔNG SỐ SẢN PHẨM:
-${specs ? specs : "- Thông số kỹ thuật chuẩn hãng"}
-
----
-⚡ HƯỚNG DẪN SĂN DEAL TỐI ƯU CHI PHÍ:
-- Bước 1: Bấm [Lưu Mã Giảm Giá] của Shop & Mã Freeship của Sàn.
-- Bước 2: Chọn đúng phân loại màu sắc/kích thước mong muốn.
-- Bước 3: Bấm [Mua Ngay] trước khi hết thời gian Flash Sale!
-
----
-🛡️ CAM KẾT CHÍNH HÃNG:
-- Dù là hàng Flash Sale trợ giá, quyền lợi bảo hành 1 ĐỔI 1 trong 30 ngày vẫn giữ nguyên 100%!
-
----
-🏷️ HASHTAG SĂN SALE:
-[10-12 hashtag hot sale, săn deal và từ khóa sản phẩm]`;
-        } else {
-          // CHẾ ĐỘ 1: CHUẨN SEO & ĐẦY ĐỦ (MẶC ĐỊNH)
-          const blocks = [
-            `🌟 CAM KẾT VÀNG TỪ ${shop.toUpperCase()} 🌟
-- Bảo hành 1 ĐỔI 1 trong 30 ngày nếu phát sinh lỗi từ nhà sản xuất.
-- Sản phẩm được kiểm tra kỹ càng và bọc chống sốc 3 lớp trước khi giao.
-- Hỗ trợ đổi trả miễn phí tận nhà nếu không vừa ý hoặc hàng không đúng mô tả.${
-              hasGift ? `\n- 🎁 TẶNG KÈM: ${gift}` : ""
-            }`,
-
-            hasPainPoint
-              ? `---
-⚡ BẠN ĐANG GẶP PHẢI TÌNH TRẠNG NÀY?
-[Dựa trên nỗi đau: "${painPoint}", viết 2-3 câu khơi gợi đúng tình huống khó chịu, nhức nhối đời thường mà khách gặp phải]
-👉 ${productName} từ ${brandDisplay} chính là "vị cứu tinh" giúp giải quyết triệt để vấn đề ngay lập tức!`
-              : null,
-
-            `---
-🔥 ĐIỂM KHÁC BIỆT VƯỢT TRỘI:
-[Liệt kê từ 4 đến 5 tính năng kèm lợi ích thực tế dựa trên: "${usp}", định dạng: - [TÊN TÍNH NĂNG/USP]: [LỢI ÍCH CỤ THỂ, TẠI SAO KHÁCH CẦN, GIẢI QUYẾT ĐƯỢC GÌ TRONG ĐỜI SỐNG]]`,
-
-            `---
-📋 THÔNG SỐ KỸ THUẬT:
-${specs ? `[Trình bày rõ ràng, gạch đầu dòng các thông số sau: ${specs}]` : "[Thông số kỹ thuật rõ ràng: Công suất / Kích thước / Chất liệu / Dung tích / Điện áp / Xuất xứ...]"}`,
-
-            `---
-📖 HƯỚNG DẪN SỬ DỤNG & LƯU Ý ĐỂ ĐẠT HIỆU QUẢ TỐT NHẤT:
-1. [Bước 1...]
-2. [Bước 2...]
-3. [Bước 3...]
-*Lưu ý: [1 mẹo nhỏ bảo quản hoặc sử dụng để sản phẩm bền lâu nhất]*`,
-
-            `---
-🛡️ CHÍNH SÁCH ĐỔI TRẢ & LỜI KÊU GỌI:
-- Khách hàng vui lòng QUAY VIDEO MỞ HÀNG để được hỗ trợ nhanh nhất nếu có sự cố vận chuyển.
-- Bấm [THEO DÕI SHOP] ngay để nhận mã giảm giá 10k - 20k cho đơn hàng này!`,
-
-            `---
-🏷️ BỘ HASHTAG CHUẨN SEO:
-[10-12 hashtag liên quan trực tiếp đến từ khóa tìm kiếm của sản phẩm trên sàn]`,
-          ]
-            .filter(Boolean)
-            .join("\n\n");
-
-          userPrompt = `Bạn là chuyên gia Copywriting TMĐT hàng đầu. Hãy tạo một bản mô tả sản phẩm chuẩn SEO và tối ưu chuyển đổi:
-
-${dataHeader}
-
-KỊCH BẢN CẤU TRÚC BẮT BUỘC:
-${blocks}`;
-        }
+## 💬 ĐỊNH DẠNG 5: TIN NHẮN ZALO OA / CHĂM SÓC KHÁCH HÀNG
+[Ngắn gọn, xưng hô Em - Anh/Chị, tóm tắt giá trị lớn nhất từ video + voucher/ưu đãi bí mật]
+`;
         break;
       }
 
@@ -427,7 +420,7 @@ ${blocks}`;
         { role: "user", content: userMessageContent }
       ],
       temperature: 0.7,
-      max_tokens: 1500,
+      max_tokens: tool === "video-repurposer" ? 2500 : 1500,
     });
 
     return NextResponse.json({ success: true, data: completion.choices[0].message.content });

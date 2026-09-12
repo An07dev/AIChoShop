@@ -1,12 +1,31 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { AlertTriangle, Check, Copy, Download, ExternalLink, PieChart, Scale, ShieldCheck } from "lucide-react";
+import { useMemo, useState, type ReactNode } from "react";
+import {
+  AlertTriangle,
+  ArrowUpRight,
+  Check,
+  CircleDollarSign,
+  Copy,
+  Download,
+  ExternalLink,
+  Layers,
+  Percent,
+  PieChart,
+  ReceiptText,
+  Scale,
+  ShieldAlert,
+  ShieldCheck,
+  TrendingDown,
+  TrendingUp,
+  Wallet,
+} from "lucide-react";
 import { ACTIVITY_RATES, TAX_EXEMPT_REVENUE_2026 } from "@/lib/tax-calculator/engine";
 import type { TaxCalculatorInput, TaxCalculatorResult } from "@/lib/tax-calculator/types";
 
 const currency = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 });
 const money = (value: number) => currency.format(Math.round(value));
+const formatMoney = money;
 
 const SOURCES = {
   threshold: "https://vanban.chinhphu.vn/?classid=0&docid=217960&pageid=27160",
@@ -15,40 +34,460 @@ const SOURCES = {
   company: "https://xaydungchinhsach.chinhphu.vn/thue-suat-thue-thu-nhap-doanh-nghiep-moi-ap-dung-tu-1-10-2025-119250730082233732.htm",
 };
 
-function Row({ label, value, strong = false, tone = "slate" }: { label: string; value: string; strong?: boolean; tone?: "slate" | "rose" | "green" | "amber" }) {
-  const colors = { slate: "text-slate-100", rose: "text-rose-400", green: "text-emerald-400", amber: "text-amber-400" };
-  return <div className={`flex items-center justify-between gap-4 border-b border-slate-700/60 py-2.5 text-xs ${strong ? "font-black" : "font-semibold"}`}><span className="text-slate-300">{label}</span><span className={`font-mono ${colors[tone]}`}>{value}</span></div>;
+function Row({
+  label,
+  value,
+  strong = false,
+  tone = "slate",
+  hint,
+}: {
+  label: string;
+  value: string;
+  strong?: boolean;
+  tone?: "slate" | "rose" | "green" | "amber" | "brand";
+  hint?: string;
+}) {
+  const colors = {
+    slate: "text-slate-900 dark:text-slate-100",
+    rose: "text-rose-600 dark:text-rose-400 font-bold",
+    green: "text-emerald-600 dark:text-emerald-400 font-bold",
+    amber: "text-amber-600 dark:text-amber-400 font-bold",
+    brand: "text-brand font-bold",
+  };
+  return (
+    <div
+      className={`flex items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800/80 py-2.5 text-xs ${
+        strong ? "font-black" : "font-semibold"
+      }`}
+    >
+      <div>
+        <span className={strong ? "text-slate-900 dark:text-white" : "text-slate-600 dark:text-slate-300"}>
+          {label}
+        </span>
+        {hint && <span className="ml-2 text-[10px] text-slate-400 dark:text-slate-500 font-normal">{hint}</span>}
+      </div>
+      <span className={`font-mono text-right ${colors[tone]}`}>{value}</span>
+    </div>
+  );
+}
+
+function Metric({
+  label,
+  value,
+  tone = "slate",
+  subtext,
+  icon,
+}: {
+  label: string;
+  value: string;
+  tone?: "slate" | "brand" | "green" | "rose" | "amber";
+  subtext?: string;
+  icon?: ReactNode;
+}) {
+  const tones = {
+    slate: "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100",
+    brand: "border-brand/30 bg-brand-light/30 dark:bg-brand-light/10 text-brand",
+    green: "border-emerald-200 dark:border-emerald-900/50 bg-emerald-50/70 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300",
+    rose: "border-rose-200 dark:border-rose-900/50 bg-rose-50/70 dark:bg-rose-950/30 text-rose-800 dark:text-rose-300",
+    amber: "border-amber-200 dark:border-amber-900/50 bg-amber-50/70 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300",
+  };
+  return (
+    <div className={`rounded-2xl border p-3.5 transition-all shadow-xs ${tones[tone]}`}>
+      <div className="flex items-center justify-between gap-1">
+        <p className="text-[11px] font-bold uppercase tracking-wider opacity-70">{label}</p>
+        {icon && <div className="opacity-75">{icon}</div>}
+      </div>
+      <p className="mt-1 text-base sm:text-lg font-black font-mono tracking-tight">{value}</p>
+      {subtext && <p className="mt-0.5 text-[11px] opacity-75 font-medium">{subtext}</p>}
+    </div>
+  );
 }
 
 export function TaxCalculatorOutput({ input, result }: { input: TaxCalculatorInput; result: TaxCalculatorResult }) {
   const [copied, setCopied] = useState(false);
+  const [activeTab, setActiveTab] = useState<"breakdown" | "withheld" | "cashflow">("breakdown");
+
   const isCompany = input.payerType === "company";
   const incomeName = isCompany ? "TNDN" : "TNCN";
-  const report = useMemo(() => [
-    `BẢNG ƯỚC TÍNH THUẾ TMĐT ${input.taxYear}`,
-    `Tổng doanh thu đa kênh: ${money(result.totalRevenue)}`,
-    `Thuế GTGT: ${money(result.vat)}`,
-    `${incomeName}: ${money(result.incomeTax)}`,
-    `Tổng nghĩa vụ: ${money(result.totalTax)}`,
-    `Đã khấu trừ/tạm nộp: ${money(input.withheldVat + input.withheldIncomeTax)}`,
-    `Còn phải nộp: ${money(result.remainingPayable)}`,
-    `Có thể bù trừ/hoàn: ${money(result.potentialRefundOrOffset)}`,
-    `Dòng tiền sau phí sàn và thuế: ${money(result.netCashAfterTaxAndPlatformFees)}`,
-  ].join("\n"), [incomeName, input, result]);
-  const copy = async () => { await navigator.clipboard.writeText(report); setCopied(true); window.setTimeout(() => setCopied(false), 1600); };
-  const download = () => { const url = URL.createObjectURL(new Blob([report], { type: "text/plain;charset=utf-8" })); const anchor = document.createElement("a"); anchor.href = url; anchor.download = `uoc-tinh-thue-tmdt-${input.taxYear}.txt`; anchor.click(); URL.revokeObjectURL(url); };
 
-  return <aside className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 text-white shadow-xl lg:sticky lg:top-4">
-    <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-800 px-5 py-4"><div><h2 className="flex items-center gap-2 font-black"><PieChart size={18} className="text-rose-400" /> Kết quả nghĩa vụ thuế</h2><p className="mt-1 text-xs text-slate-400">Ước tính theo dữ liệu và phương pháp đã chọn.</p></div><div className="flex gap-2"><button onClick={download} className="rounded-lg border border-slate-700 px-2.5 py-1.5 text-xs font-bold"><Download size={13} className="inline" /> Tải</button><button onClick={copy} className="rounded-lg border border-slate-700 px-2.5 py-1.5 text-xs font-bold">{copied ? <Check size={13} className="inline text-emerald-400" /> : <Copy size={13} className="inline" />} {copied ? "Đã chép" : "Sao chép"}</button></div></div>
-    <div className="space-y-4 p-5">
-      {result.isExempt && <div className="rounded-xl border border-emerald-500/40 bg-emerald-950/50 p-4"><h3 className="font-black text-emerald-400">Thuộc ngưỡng không chịu GTGT và không phải nộp TNCN</h3><p className="mt-1 text-xs leading-relaxed text-emerald-200/80">Tổng doanh thu không quá {money(TAX_EXEMPT_REVENUE_2026)} trong năm.</p></div>}
-      <div className="grid grid-cols-2 gap-3"><div className="rounded-xl border border-slate-700 bg-slate-800 p-3"><p className="text-[10px] uppercase text-slate-400">Tổng doanh thu</p><strong className="mt-1 block font-mono text-base">{money(result.totalRevenue)}</strong></div><div className="rounded-xl border border-rose-500/30 bg-rose-950/30 p-3"><p className="text-[10px] uppercase text-rose-300">Tổng nghĩa vụ thuế</p><strong className="mt-1 block font-mono text-base text-rose-400">{money(result.totalTax)}</strong></div></div>
-      <section className="rounded-xl border border-slate-700 bg-slate-800/70 p-4"><h3 className="mb-1 flex items-center gap-2 text-xs font-black uppercase"><Scale size={14} className="text-rose-400" /> Chi tiết tính thuế</h3><Row label={`GTGT (${result.vatRate}%)`} value={money(result.vat)} /><Row label={`${incomeName} trước giảm (${result.incomeTaxRate}%)`} value={money(result.incomeTaxBeforeReduction)} /><Row label="Giảm thuế thu nhập 30%" value={`-${money(result.incomeTaxReduction)}`} tone="green" /><Row label={`${incomeName} sau giảm`} value={money(result.incomeTax)} /><Row label="Tổng nghĩa vụ" value={money(result.totalTax)} strong tone="rose" /></section>
-      <section className="rounded-xl border border-slate-700 bg-slate-800/70 p-4"><h3 className="mb-1 text-xs font-black uppercase">Đối chiếu đã khấu trừ</h3><Row label="GTGT còn phải nộp" value={money(result.remainingVat)} /><Row label={`${incomeName} còn phải nộp`} value={money(result.remainingIncomeTax)} /><Row label="Tổng còn phải nộp" value={money(result.remainingPayable)} strong tone="rose" /><Row label="Có thể bù trừ/hoàn" value={money(result.potentialRefundOrOffset)} strong tone="green" /></section>
-      <section className="rounded-xl bg-gradient-to-r from-emerald-700 to-cyan-700 p-4"><p className="text-xs text-emerald-100">Doanh thu còn lại sau phí sàn và tổng nghĩa vụ thuế</p><strong className="mt-1 block font-mono text-2xl">{money(result.netCashAfterTaxAndPlatformFees)}</strong><p className="mt-1 text-xs text-emerald-100">Tỷ lệ còn lại {result.netRate.toFixed(1)}% · Thuế hiệu dụng {result.effectiveTaxRate.toFixed(2)}%</p></section>
-      {!isCompany && <p className="rounded-xl border border-blue-500/30 bg-blue-950/30 p-3 text-xs text-blue-200">Phương pháp: {result.effectivePersonalMethod === "revenue" ? `${ACTIVITY_RATES[input.activity].label}; TNCN tính trên phần doanh thu vượt 1 tỷ đồng.` : `TNCN tính trên thu nhập chịu thuế ${money(result.taxableIncomeBase)}.`}</p>}
-      {result.warnings.map((warning) => <p key={warning} className="flex gap-2 rounded-xl border border-amber-500/30 bg-amber-950/30 p-3 text-xs text-amber-200"><AlertTriangle size={14} className="shrink-0" />{warning}</p>)}
-      <section className="rounded-xl border border-slate-700 p-4 text-xs text-slate-400"><h3 className="mb-2 flex items-center gap-2 font-black text-slate-200"><ShieldCheck size={15} /> Căn cứ cập nhật</h3><div className="flex flex-wrap gap-3"><a href={SOURCES.threshold} target="_blank" rel="noreferrer" className="text-blue-400">Ngưỡng 1 tỷ <ExternalLink size={11} className="inline" /></a><a href={SOURCES.household} target="_blank" rel="noreferrer" className="text-blue-400">NĐ 68/2026 <ExternalLink size={11} className="inline" /></a><a href={SOURCES.reduction} target="_blank" rel="noreferrer" className="text-blue-400">Giảm 30% <ExternalLink size={11} className="inline" /></a><a href={SOURCES.company} target="_blank" rel="noreferrer" className="text-blue-400">Thuế TNDN <ExternalLink size={11} className="inline" /></a></div><p className="mt-3 leading-relaxed">Công cụ hỗ trợ dự toán; hồ sơ, hóa đơn và đặc điểm hoạt động quyết định số quyết toán cuối cùng.</p></section>
-    </div>
-  </aside>;
+  const report = useMemo(
+    () =>
+      [
+        `BẢNG DỰ TOÁN THUẾ THƯƠNG MẠI ĐIỆN TỬ ${input.taxYear}`,
+        `Loại người nộp thuế: ${
+          input.payerType === "company"
+            ? "Doanh nghiệp / Công ty"
+            : input.payerType === "household"
+            ? "Hộ kinh doanh"
+            : "Cá nhân kinh doanh"
+        }`,
+        `Tổng doanh thu đa kênh: ${money(result.totalRevenue)}`,
+        `Thuế GTGT: ${money(result.vat)} (${result.vatRate}%)`,
+        `Thuế ${incomeName}: ${money(result.incomeTax)} (${result.incomeTaxRate}%)`,
+        `Ưu đãi giảm 30% ${incomeName}: -${money(result.incomeTaxReduction)}`,
+        `Tổng nghĩa vụ thuế phát sinh: ${money(result.totalTax)}`,
+        `Đã được sàn khấu trừ / nộp thay: ${money(input.withheldVat + input.withheldIncomeTax)}`,
+        `Số thuế còn phải nộp: ${money(result.remainingPayable)}`,
+        `Số có thể bù trừ hoặc hoàn: ${money(result.potentialRefundOrOffset)}`,
+        `Dòng tiền ròng sau phí sàn & thuế: ${money(result.netCashAfterTaxAndPlatformFees)}`,
+        `Tỷ lệ thuế hiệu dụng: ${result.effectiveTaxRate.toFixed(2)}%`,
+        `Căn cứ pháp lý: Nghị định 68/2026 & Luật Thuế TMĐT mới`,
+      ].join("\n"),
+    [incomeName, input, result]
+  );
+
+  const copy = async () => {
+    await navigator.clipboard.writeText(report);
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 1600);
+  };
+
+  const download = () => {
+    const url = URL.createObjectURL(new Blob([report], { type: "text/plain;charset=utf-8" }));
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `du-toan-thue-tmdt-${input.taxYear}.txt`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
+  return (
+    <aside className="space-y-5 lg:sticky lg:top-4 self-start">
+      {/* 1. Hero Tax Output Card */}
+      <section
+        className={`relative overflow-hidden rounded-3xl border shadow-xl transition-all ${
+          result.isExempt
+            ? "border-emerald-500/40 bg-gradient-to-br from-emerald-950 via-slate-950 to-slate-900"
+            : result.remainingPayable > 0
+            ? "border-slate-800 dark:border-slate-800 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900"
+            : "border-cyan-500/40 bg-gradient-to-br from-cyan-950 via-slate-950 to-slate-900"
+        }`}
+      >
+        {/* Ambient Glow */}
+        <div
+          className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full opacity-25 blur-3xl"
+          style={{
+            background: result.isExempt ? "#10b981" : result.remainingPayable > 0 ? "var(--brand-primary)" : "#06b6d4",
+          }}
+        />
+
+        <div className="relative p-6 sm:p-7 text-white">
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">
+                  {result.isExempt
+                    ? "Trạng thái nghĩa vụ thuế"
+                    : result.remainingPayable > 0
+                    ? "Tổng thuế thực tế còn phải nộp"
+                    : "Thuế đã nộp đủ / Bù trừ hoàn"}
+                </span>
+                <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold text-slate-300">
+                  Năm {input.taxYear}
+                </span>
+              </div>
+
+              {result.isExempt ? (
+                <div className="mt-2">
+                  <p className="text-3xl sm:text-4xl lg:text-5xl font-black font-mono tracking-tight text-emerald-400">
+                    0 ₫
+                  </p>
+                  <p className="mt-1.5 text-xs text-emerald-300 font-medium">
+                    Doanh thu năm ≤ 1.000.000.000 ₫ (Miễn nộp thuế GTGT & TNCN).
+                  </p>
+                </div>
+              ) : (
+                <div className="mt-2">
+                  <p className="text-3xl sm:text-4xl lg:text-5xl font-black font-mono tracking-tight text-emerald-400">
+                    {formatMoney(result.remainingPayable)}
+                  </p>
+                  <p className="mt-1.5 text-xs text-slate-400 font-medium">
+                    Tổng thuế phát sinh:{" "}
+                    <strong className="text-white font-mono">{formatMoney(result.totalTax)}</strong> · Đã khấu trừ:{" "}
+                    <strong className="text-white font-mono">
+                      {formatMoney(input.withheldVat + input.withheldIncomeTax)}
+                    </strong>
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <button
+                type="button"
+                onClick={download}
+                className="flex items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/10 hover:bg-white/20 px-3 py-2 text-xs font-bold text-white transition cursor-pointer"
+                title="Tải báo cáo văn bản"
+              >
+                <Download size={13} /> Tải file
+              </button>
+              <button
+                type="button"
+                onClick={copy}
+                className="flex items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/10 hover:bg-white/20 px-3.5 py-2 text-xs font-bold text-white transition cursor-pointer active:scale-95"
+              >
+                {copied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+                {copied ? "Đã sao chép" : "Sao chép"}
+              </button>
+            </div>
+          </div>
+
+          {/* 4 Mini Core Overview Numbers */}
+          <div className="mt-6 grid grid-cols-2 gap-3 border-t border-white/10 pt-5 sm:grid-cols-4">
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Tổng doanh thu</p>
+              <p className="mt-1 font-black font-mono text-sm sm:text-base text-white">
+                {money(result.totalRevenue)}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Thuế GTGT ({result.vatRate}%)</p>
+              <p className="mt-1 font-black font-mono text-sm sm:text-base text-slate-200">
+                {money(result.vat)}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Thuế {incomeName}</p>
+              <p className="mt-1 font-black font-mono text-sm sm:text-base text-slate-200">
+                {money(result.incomeTax)}
+              </p>
+            </div>
+            <div>
+              <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">Còn phải nộp</p>
+              <p
+                className={`mt-1 font-black font-mono text-sm sm:text-base ${
+                  result.remainingPayable > 0 ? "text-rose-400" : "text-emerald-400"
+                }`}
+              >
+                {money(result.remainingPayable)}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* 2. Four Financial Health Metrics (2x2 Grid) */}
+      <div className="grid grid-cols-2 gap-3">
+        <Metric
+          label="Thuế suất hiệu dụng"
+          value={`${result.effectiveTaxRate.toFixed(2)}%`}
+          tone="brand"
+          subtext="Tỷ trọng thuế / doanh thu"
+          icon={<Percent size={15} />}
+        />
+        <Metric
+          label="Ưu đãi giảm 30%"
+          value={`-${money(result.incomeTaxReduction)}`}
+          tone={result.incomeTaxReduction > 0 ? "green" : "slate"}
+          subtext={result.reductionEligible ? "Áp dụng kỳ 2026-2027" : "Không đủ điều kiện"}
+          icon={<TrendingDown size={15} />}
+        />
+        <Metric
+          label="Dòng tiền ròng thực nhận"
+          value={money(result.netCashAfterTaxAndPlatformFees)}
+          tone="green"
+          subtext="Sau trừ thuế & phí sàn"
+          icon={<Wallet size={15} />}
+        />
+        <Metric
+          label="Tỷ lệ tiền mặt giữ lại"
+          value={`${result.netRate.toFixed(1)}%`}
+          tone="slate"
+          subtext="Hiệu suất thu về"
+          icon={<TrendingUp size={15} />}
+        />
+      </div>
+
+      {/* 3. Segmented Navigation for Deep Analytical Breakdown */}
+      <section className="overflow-hidden rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs transition-colors p-5">
+        <div className="flex items-center justify-between rounded-2xl bg-slate-100 dark:bg-slate-800 p-1 border border-slate-200/80 dark:border-slate-700/80 text-xs font-bold mb-4">
+          <button
+            type="button"
+            onClick={() => setActiveTab("breakdown")}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl transition-all cursor-pointer ${
+              activeTab === "breakdown"
+                ? "bg-white dark:bg-slate-700 text-brand shadow-xs"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+          >
+            <Scale size={14} /> Chi tiết tính thuế
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("withheld")}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl transition-all cursor-pointer ${
+              activeTab === "withheld"
+                ? "bg-white dark:bg-slate-700 text-brand shadow-xs"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+          >
+            <ReceiptText size={14} /> Đối chiếu khấu trừ
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("cashflow")}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl transition-all cursor-pointer ${
+              activeTab === "cashflow"
+                ? "bg-white dark:bg-slate-700 text-brand shadow-xs"
+                : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+            }`}
+          >
+            <CircleDollarSign size={14} /> Dòng tiền ròng
+          </button>
+        </div>
+
+        {/* Tab 1: Tax Breakdown */}
+        {activeTab === "breakdown" && (
+          <div className="space-y-1">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
+              Hạch toán từng sắc thuế phát sinh
+            </h3>
+            <Row label={`Thuế Giá trị gia tăng (GTGT)`} value={money(result.vat)} hint={`${result.vatRate}% doanh thu`} />
+            <Row
+              label={`Thuế ${incomeName} trước khi giảm`}
+              value={money(result.incomeTaxBeforeReduction)}
+              hint={`Thuế suất ${result.incomeTaxRate}%`}
+            />
+            {result.incomeTaxReduction > 0 && (
+              <Row
+                label="Ưu đãi giảm 30% thuế thu nhập"
+                value={`-${money(result.incomeTaxReduction)}`}
+                tone="green"
+                hint="Nghị định 2026"
+              />
+            )}
+            <Row label={`Thuế ${incomeName} thực tế sau giảm`} value={money(result.incomeTax)} />
+            <div className="border-t-2 border-slate-200 dark:border-slate-700 pt-1.5">
+              <Row label="Tổng nghĩa vụ thuế phát sinh" value={money(result.totalTax)} strong tone="rose" />
+            </div>
+            {!isCompany && (
+              <p className="mt-3 text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl leading-relaxed">
+                {result.effectivePersonalMethod === "revenue"
+                  ? `Áp dụng phương pháp khoán tỷ lệ: ${ACTIVITY_RATES[input.activity].label}. Thuế TNCN tính trên phần doanh thu vượt ngưỡng 1 tỷ đồng.`
+                  : `Áp dụng phương pháp thu nhập: Doanh thu trừ chi phí hợp lệ có hóa đơn. Thu nhập chịu thuế: ${money(
+                      result.taxableIncomeBase
+                    )}.`}
+              </p>
+            )}
+          </div>
+        )}
+
+        {/* Tab 2: Withheld Reconciliation */}
+        {activeTab === "withheld" && (
+          <div className="space-y-1">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
+              Đối soát số đã khấu trừ & Số còn phải nộp
+            </h3>
+            <Row
+              label="Thuế GTGT sàn đã khấu trừ"
+              value={money(input.withheldVat)}
+              hint={`Nghĩa vụ: ${money(result.vat)}`}
+            />
+            <Row label="Thuế GTGT còn phải nộp bổ sung" value={money(result.remainingVat)} />
+            <Row
+              label={`Thuế ${incomeName} sàn đã khấu trừ`}
+              value={money(input.withheldIncomeTax)}
+              hint={`Nghĩa vụ: ${money(result.incomeTax)}`}
+            />
+            <Row label={`Thuế ${incomeName} còn phải nộp bổ sung`} value={money(result.remainingIncomeTax)} />
+            <div className="border-t-2 border-slate-200 dark:border-slate-700 pt-1.5">
+              <Row
+                label="Tổng số thuế còn phải nộp vào NSNN"
+                value={money(result.remainingPayable)}
+                strong
+                tone={result.remainingPayable > 0 ? "rose" : "green"}
+              />
+            </div>
+            {result.potentialRefundOrOffset > 0 && (
+              <Row
+                label="Số thuế nộp thừa có thể bù trừ / hoàn"
+                value={money(result.potentialRefundOrOffset)}
+                strong
+                tone="green"
+              />
+            )}
+          </div>
+        )}
+
+        {/* Tab 3: Net Cashflow */}
+        {activeTab === "cashflow" && (
+          <div className="space-y-1">
+            <h3 className="text-xs font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2">
+              Dòng tiền thực tế sau sàn & thuế
+            </h3>
+            <Row label="Tổng doanh thu bán hàng" value={money(result.totalRevenue)} />
+            <Row label="Tổng phí sàn TMĐT (Ước tính)" value={`-${money(input.platformFees)}`} hint="Shopee, TikTok,..." />
+            <Row label="Tổng nghĩa vụ thuế phải nộp" value={`-${money(result.totalTax)}`} tone="rose" />
+            <div className="border-t-2 border-slate-200 dark:border-slate-700 pt-1.5">
+              <Row
+                label="Dòng tiền ròng thực tế thu về"
+                value={money(result.netCashAfterTaxAndPlatformFees)}
+                strong
+                tone="green"
+              />
+            </div>
+            <div className="mt-3 p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/50 text-xs text-emerald-900 dark:text-emerald-300 flex items-center justify-between">
+              <span>Tỷ suất tiền mặt thực giữ lại:</span>
+              <strong className="font-mono text-sm">{result.netRate.toFixed(1)}%</strong>
+            </div>
+          </div>
+        )}
+      </section>
+
+      {/* 4. Warning Messages */}
+      {result.warnings.map((warning) => (
+        <div
+          key={warning}
+          className="flex gap-2.5 rounded-2xl border border-amber-300 dark:border-amber-800/50 bg-amber-50 dark:bg-amber-950/30 px-4 py-3 text-xs font-semibold text-amber-900 dark:text-amber-300"
+        >
+          <AlertTriangle size={16} className="shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+          <span>{warning}</span>
+        </div>
+      ))}
+
+      {/* 5. Official Legal References */}
+      <section className="rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/60 p-4 sm:p-5 text-xs text-slate-600 dark:text-slate-400">
+        <div className="flex items-center gap-2 font-bold text-slate-900 dark:text-white mb-2">
+          <ShieldCheck size={16} className="text-brand" /> Căn cứ pháp lý & Cổng văn bản chính phủ
+        </div>
+        <p className="leading-relaxed mb-3">
+          Công cụ hỗ trợ dự toán nghĩa vụ tài chính theo quy định mới nhất. Quyết toán thực tế căn cứ theo hồ sơ khai thuế và chứng từ hợp lệ.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <a
+            href={SOURCES.threshold}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold text-brand hover:border-brand transition"
+          >
+            Ngưỡng 1 Tỷ <ExternalLink size={10} />
+          </a>
+          <a
+            href={SOURCES.household}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold text-brand hover:border-brand transition"
+          >
+            Nghị Định 68/2026 <ExternalLink size={10} />
+          </a>
+          <a
+            href={SOURCES.reduction}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold text-brand hover:border-brand transition"
+          >
+            Giảm 30% Thuế <ExternalLink size={10} />
+          </a>
+          <a
+            href={SOURCES.company}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold text-brand hover:border-brand transition"
+          >
+            Thuế TNDN 2026 <ExternalLink size={10} />
+          </a>
+        </div>
+      </section>
+    </aside>
+  );
 }

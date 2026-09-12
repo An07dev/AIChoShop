@@ -167,3 +167,95 @@ export async function simulateSePayWebhookAction(data: {
     return { success: false, error: error?.message || "Lỗi xử lý webhook giả lập" };
   }
 }
+
+/**
+ * Phê duyệt thủ công một giao dịch chuyển khoản (Kích hoạt VIP)
+ */
+export async function approveTransactionAction(txId: string) {
+  try {
+    const tx = await prisma.transaction.findUnique({
+      where: { id: txId },
+      include: { user: true },
+    });
+
+    if (!tx) {
+      return { success: false, error: "Không tìm thấy giao dịch này" };
+    }
+
+    if (tx.status === "SUCCESS") {
+      return { success: false, error: "Giao dịch này đã ở trạng thái thành công" };
+    }
+
+    // Xác định số ngày gia hạn theo số tiền
+    const activePlans = await getActiveVipPlans();
+    let matchedPlan = activePlans.find((p) => p.price === tx.amount);
+    if (!matchedPlan) {
+      const eligiblePlans = activePlans
+        .filter((p) => p.price <= tx.amount)
+        .sort((a, b) => b.price - a.price);
+      if (eligiblePlans.length > 0) matchedPlan = eligiblePlans[0];
+    }
+    const durationDays = matchedPlan ? matchedPlan.durationDays : (tx.amount >= 990000 ? 0 : 30);
+
+    // Cập nhật người dùng nếu có
+    if (tx.userId && tx.user) {
+      const newExpiresAt = calculateNewVipExpiration(
+        tx.user.vipExpiresAt,
+        tx.user.isVIP,
+        durationDays
+      );
+
+      await prisma.user.update({
+        where: { id: tx.userId },
+        data: {
+          isVIP: true,
+          vipExpiresAt: newExpiresAt,
+        },
+      });
+    }
+
+    // Cập nhật trạng thái giao dịch
+    await prisma.transaction.update({
+      where: { id: txId },
+      data: {
+        status: "SUCCESS",
+      },
+    });
+
+    revalidatePath("/admin/sepay");
+    revalidatePath("/admin");
+    revalidatePath("/admin/users");
+    revalidatePath("/profile");
+
+    return {
+      success: true,
+      message: `Đã duyệt thành công giao dịch và kích hoạt VIP cho ${tx.user?.name || tx.user?.email || "học viên"}!`,
+    };
+  } catch (error: any) {
+    console.error("Lỗi khi duyệt giao dịch:", error);
+    return { success: false, error: error?.message || "Lỗi khi duyệt giao dịch" };
+  }
+}
+
+/**
+ * Xóa một giao dịch (dùng cho đơn test/rác)
+ */
+export async function deleteTransactionAction(txId: string) {
+  try {
+    await prisma.transaction.delete({
+      where: { id: txId },
+    });
+
+    revalidatePath("/admin/sepay");
+    revalidatePath("/admin");
+
+    return {
+      success: true,
+      message: "Đã xóa bản ghi giao dịch thành công!",
+    };
+  } catch (error: any) {
+    console.error("Lỗi khi xóa giao dịch:", error);
+    return { success: false, error: error?.message || "Không thể xóa giao dịch" };
+  }
+}
+

@@ -294,7 +294,7 @@ export function SettingsManager({ user }: SettingsManagerProps) {
       {/* ── CARD 2: BẢO MẬT & ĐỔI MẬT KHẨU ───────────────────────────────────────── */}
       <section className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-6 shadow-xs space-y-5 transition-colors">
         <div className="border-b border-slate-100 dark:border-slate-800 pb-4 flex items-center gap-2.5">
-          <div className="p-2 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950 dark:text-blue-400">
+          <div className="p-2 rounded-xl bg-brand-light text-brand">
             <Shield size={18} />
           </div>
           <div>
@@ -324,7 +324,7 @@ export function SettingsManager({ user }: SettingsManagerProps) {
           </div>
         )}
 
-        <form onSubmit={handlePasswordSubmit} className="space-y-4 max-w-lg text-xs">
+        <form onSubmit={handlePasswordSubmit} className="space-y-4 w-full text-xs">
           {/* Mật khẩu hiện tại */}
           <div>
             <label className="block font-bold text-slate-700 dark:text-slate-300 mb-1.5">
@@ -337,7 +337,7 @@ export function SettingsManager({ user }: SettingsManagerProps) {
                 value={currentPassword}
                 onChange={(e) => setCurrentPassword(e.target.value)}
                 placeholder="Nhập mật khẩu đang dùng"
-                className="w-full px-3.5 py-2.5 pr-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-800"
+                className="w-full px-3.5 py-2.5 pr-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand focus:bg-white dark:focus:bg-slate-800"
               />
               <button
                 type="button"
@@ -361,7 +361,7 @@ export function SettingsManager({ user }: SettingsManagerProps) {
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
                 placeholder="Tối thiểu 6 ký tự"
-                className="w-full px-3.5 py-2.5 pr-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-800"
+                className="w-full px-3.5 py-2.5 pr-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand focus:bg-white dark:focus:bg-slate-800"
               />
               <button
                 type="button"
@@ -385,7 +385,7 @@ export function SettingsManager({ user }: SettingsManagerProps) {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="Nhập lại mật khẩu mới"
-                className="w-full px-3.5 py-2.5 pr-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-800"
+                className="w-full px-3.5 py-2.5 pr-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-brand focus:bg-white dark:focus:bg-slate-800"
               />
               <button
                 type="button"
@@ -400,7 +400,7 @@ export function SettingsManager({ user }: SettingsManagerProps) {
           <button
             type="submit"
             disabled={isChangingPassword}
-            className="py-2.5 px-5 bg-brand hover:bg-brand-hover text-white rounded-xl font-bold text-xs shadow-xs transition flex items-center gap-2 cursor-pointer active:scale-98 disabled:opacity-50"
+            className="py-2.5 px-6 bg-brand hover:bg-brand-hover text-white rounded-xl font-bold text-xs shadow-xs transition flex items-center gap-2 cursor-pointer active:scale-98 disabled:opacity-50"
           >
             {isChangingPassword ? (
               <>

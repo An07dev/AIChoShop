@@ -23,7 +23,7 @@ export type TextShimmerWaveProps = {
 
 export function TextShimmerWave({
   children,
-  as: Component = "p",
+  as: Component = "span",
   className,
   duration = 1,
   baseColor,

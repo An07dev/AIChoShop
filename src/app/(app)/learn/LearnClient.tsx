@@ -115,7 +115,7 @@ export default function LearnClient({
     console.log("📊 Thống Kê:", {
       tongSoPhan: modules.length,
       tongSoBaiHoc: allLessons.length,
-      daHoanThanh: `${initialCompletedLessonIds.length}/${allLessons.length}`,
+      daHoanThanh: `${allLessons.filter((l) => initialCompletedLessonIds.includes(l.id)).length}/${allLessons.length}`,
     });
     console.log("📚 Danh Sách Học Phần & Bài Học (Phân Quyền VIP/FREE):");
     console.table(
@@ -155,11 +155,17 @@ export default function LearnClient({
   const prevLesson = currentIndex > 0 ? allLessons[currentIndex - 1] : null;
   const nextLesson = currentIndex < allLessons.length - 1 ? allLessons[currentIndex + 1] : null;
 
-  // Tính % tiến độ hoàn thành khóa học
+  // Tính % tiến độ hoàn thành khóa học (chỉ tính các bài học thuộc khóa học đang xem)
   const totalLessonsCount = allLessons.length;
-  const completedCount = completedIds.length;
+  const courseLessonIds = useMemo(() => new Set(allLessons.map((l) => l.id)), [allLessons]);
+  const completedCount = useMemo(
+    () => completedIds.filter((id) => courseLessonIds.has(id)).length,
+    [completedIds, courseLessonIds]
+  );
   const progressPercent =
-    totalLessonsCount > 0 ? Math.round((completedCount / totalLessonsCount) * 100) : 0;
+    totalLessonsCount > 0
+      ? Math.min(100, Math.round((completedCount / totalLessonsCount) * 100))
+      : 0;
 
   // Xử lý đánh dấu hoàn thành bài học
   const handleToggleComplete = () => {
@@ -188,7 +194,7 @@ export default function LearnClient({
   };
 
   return (
-    <div className="flex flex-col lg:flex-row gap-6 max-w-[1600px] mx-auto pb-12">
+    <div className="w-full flex flex-col lg:flex-row gap-6 max-w-[1600px] mx-auto pb-12">
       {/* VÙNG BÊN TRÁI: KHUNG PHÁT VIDEO & NỘI DUNG BÀI HỌC */}
       <div className="flex-1 min-w-0 space-y-6">
         {/* Khung Trình Phát Video */}
@@ -346,41 +352,43 @@ export default function LearnClient({
           </div>
 
           {/* Điều Hướng Bài Trước / Bài Kế Tiếp */}
-          <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
-            {prevLesson ? (
-              <button
-                onClick={() => handleSelectLesson(prevLesson)}
-                className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-brand px-3 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-              >
-                <ChevronLeft size={16} />
-                <span className="truncate max-w-[150px] sm:max-w-[200px]">
-                  Bài trước: #{prevLesson.order}
-                </span>
-              </button>
-            ) : (
-              <div></div>
-            )}
+          {(prevLesson || nextLesson) && (
+            <div className="flex items-center justify-between pt-4 border-t border-slate-100 dark:border-slate-800">
+              {prevLesson ? (
+                <button
+                  onClick={() => handleSelectLesson(prevLesson)}
+                  className="flex items-center gap-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-brand px-3 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                >
+                  <ChevronLeft size={16} />
+                  <span className="truncate max-w-[150px] sm:max-w-[200px]">
+                    Bài trước: #{prevLesson.order}
+                  </span>
+                </button>
+              ) : (
+                <div />
+              )}
 
-            {nextLesson ? (
-              <button
-                onClick={() => handleSelectLesson(nextLesson)}
-                className="flex items-center gap-2 text-xs font-bold text-brand hover:text-brand-hover px-3 py-2 rounded-lg hover:bg-brand-light transition-colors cursor-pointer ml-auto"
-              >
-                <span className="truncate max-w-[150px] sm:max-w-[200px]">
-                  Bài kế: #{nextLesson.order}
-                </span>
-                <ChevronRight size={16} />
-              </button>
-            ) : (
-              <div></div>
-            )}
-          </div>
+              {nextLesson ? (
+                <button
+                  onClick={() => handleSelectLesson(nextLesson)}
+                  className="flex items-center gap-2 text-xs font-bold text-brand hover:text-brand-hover px-3 py-2 rounded-lg hover:bg-brand-light transition-colors cursor-pointer ml-auto"
+                >
+                  <span className="truncate max-w-[150px] sm:max-w-[200px]">
+                    Bài kế: #{nextLesson.order}
+                  </span>
+                  <ChevronRight size={16} />
+                </button>
+              ) : (
+                <div />
+              )}
+            </div>
+          )}
         </div>
       </div>
 
       {/* VÙNG BÊN PHẢI: PLAYLIST / DANH SÁCH BÀI HỌC CỦA KHÓA HỌC */}
       <div className="lg:w-[380px] xl:w-[430px] shrink-0">
-        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col lg:h-[calc(100vh-100px)] lg:sticky lg:top-6">
+        <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-sm border border-slate-200 dark:border-slate-800 overflow-hidden flex flex-col lg:max-h-[calc(100vh-100px)] h-fit lg:sticky lg:top-6">
           {/* Header Playlist & Thanh Tiến Độ Học */}
           <div className="p-4 border-b border-slate-200 dark:border-slate-800 bg-slate-50/80 dark:bg-slate-900/80">
             {courses && courses.length > 1 ? (

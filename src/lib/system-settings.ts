@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 
 export interface SystemSettingData {
   id: string;
+  adminPassword?: string | null;
   openaiApiKey: string | null;
   openaiModel: string;
   openaiBaseUrl: string | null;
@@ -12,6 +13,7 @@ export interface SystemSettingData {
 
 export const DEFAULT_SYSTEM_SETTINGS = {
   id: "default",
+  adminPassword: "bigman123",
   openaiApiKey: "",
   openaiModel: "gpt-4o-mini",
   openaiBaseUrl: "",
@@ -90,6 +92,7 @@ export async function getSystemSettings(): Promise<SystemSettingData> {
  * Hỗ trợ cả Prisma ORM và Direct SQL Fallback (không bao giờ lỗi upsert undefined)
  */
 export async function updateSystemSettings(data: {
+  adminPassword?: string | null;
   openaiApiKey?: string | null;
   openaiModel?: string;
   openaiBaseUrl?: string | null;
@@ -97,6 +100,10 @@ export async function updateSystemSettings(data: {
 }): Promise<SystemSettingData> {
   const current = await getSystemSettings();
 
+  const nextAdminPassword =
+    data.adminPassword !== undefined
+      ? data.adminPassword ? data.adminPassword.trim() : null
+      : current.adminPassword || "bigman123";
   const nextApiKey =
     data.openaiApiKey !== undefined
       ? data.openaiApiKey ? data.openaiApiKey.trim() : null
@@ -120,6 +127,7 @@ export async function updateSystemSettings(data: {
       return await (prisma as any).systemSetting.upsert({
         where: { id: "default" },
         update: {
+          adminPassword: nextAdminPassword,
           openaiApiKey: nextApiKey,
           openaiModel: nextModel,
           openaiBaseUrl: nextBaseUrl,
@@ -127,6 +135,7 @@ export async function updateSystemSettings(data: {
         },
         create: {
           id: "default",
+          adminPassword: nextAdminPassword,
           openaiApiKey: nextApiKey,
           openaiModel: nextModel,
           openaiBaseUrl: nextBaseUrl,
@@ -140,10 +149,11 @@ export async function updateSystemSettings(data: {
 
   // 2. Direct SQL Upsert Fallback (chạy độc lập, không phụ thuộc vào PrismaClient instance cache)
   await prisma.$executeRawUnsafe(
-    `INSERT INTO "SystemSetting" ("id", "openaiApiKey", "openaiModel", "openaiBaseUrl", "isOpenAiActive", "createdAt", "updatedAt")
-     VALUES ('default', $1, $2, $3, $4, NOW(), NOW())
+    `INSERT INTO "SystemSetting" ("id", "adminPassword", "openaiApiKey", "openaiModel", "openaiBaseUrl", "isOpenAiActive", "createdAt", "updatedAt")
+     VALUES ('default', $1, $2, $3, $4, $5, NOW(), NOW())
      ON CONFLICT ("id") DO UPDATE
-     SET "openaiApiKey" = $1, "openaiModel" = $2, "openaiBaseUrl" = $3, "isOpenAiActive" = $4, "updatedAt" = NOW();`,
+     SET "adminPassword" = $1, "openaiApiKey" = $2, "openaiModel" = $3, "openaiBaseUrl" = $4, "isOpenAiActive" = $5, "updatedAt" = NOW();`,
+    nextAdminPassword,
     nextApiKey,
     nextModel,
     nextBaseUrl,
@@ -160,6 +170,7 @@ export async function updateSystemSettings(data: {
 
   return {
     id: "default",
+    adminPassword: nextAdminPassword,
     openaiApiKey: nextApiKey,
     openaiModel: nextModel,
     openaiBaseUrl: nextBaseUrl,
@@ -167,6 +178,45 @@ export async function updateSystemSettings(data: {
     createdAt: current.createdAt || new Date(),
     updatedAt: new Date(),
   };
+}
+
+/**
+ * Xác thực mật khẩu Admin
+ */
+export async function verifyAdminPassword(password: string): Promise<boolean> {
+  try {
+    const settings = await getSystemSettings();
+    const currentPass = settings.adminPassword || "bigman123";
+    return password === currentPass;
+  } catch {
+    return password === "bigman123";
+  }
+}
+
+/**
+ * Đổi mật khẩu Admin an toàn
+ */
+export async function changeAdminPassword(
+  currentPassword: string,
+  newPassword: string
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    const isCorrect = await verifyAdminPassword(currentPassword);
+    if (!isCorrect) {
+      return { success: false, error: "Mật khẩu quản trị hiện tại không chính xác!" };
+    }
+    if (!newPassword || newPassword.trim().length < 6) {
+      return { success: false, error: "Mật khẩu mới phải có tối thiểu 6 ký tự!" };
+    }
+    if (newPassword.trim() === currentPassword.trim()) {
+      return { success: false, error: "Mật khẩu mới không được trùng với mật khẩu hiện tại!" };
+    }
+
+    await updateSystemSettings({ adminPassword: newPassword.trim() });
+    return { success: true };
+  } catch (err: any) {
+    return { success: false, error: err?.message || "Không thể cập nhật mật khẩu quản trị." };
+  }
 }
 
 /**

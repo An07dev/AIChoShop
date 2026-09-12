@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Calculator, ShieldAlert, Video, MessageSquareWarning, Megaphone, Presentation, ArrowRight, Cpu, Layers, FileText } from "lucide-react";
+import { Calculator, ShieldAlert, Video, MessageSquareWarning, Megaphone, Presentation, ArrowRight, Cpu, Layers, Flame, Send, Share2 } from "lucide-react";
 
 export default function ToolsPage() {
   const toolStages = [
@@ -40,14 +40,6 @@ export default function ToolsPage() {
           isFree: true,
         },
         {
-          id: "product-description",
-          name: "AI Mô Tả Chuyển Đổi Cao",
-          description: "Cấu trúc 6 khối vàng chuẩn Top Seller: Cam kết, Đánh trúng nỗi đau, Điểm vượt trội USP, Thông số & Hướng dẫn sử dụng.",
-          icon: <FileText size={32} className="text-amber-500" />,
-          color: "bg-amber-50 border-amber-100 hover:border-amber-300",
-          isFree: false,
-        },
-        {
           id: "title-spinner",
           name: "Nhân Bản Chống Spam",
           description: "Xào nấu tiêu đề, mô tả để lập nhiều shop clone đánh du kích mà không bị phạt trùng lặp.",
@@ -59,8 +51,16 @@ export default function ToolsPage() {
     },
     {
       stage: "Giai đoạn 3: Marketing & Kéo Traffic",
-      description: "Đổ lượng truy cập (Traffic) khổng lồ vào Shop bằng Video ngắn và KOC.",
+      description: "Đổ lượng truy cập (Traffic) khổng lồ vào Shop bằng Quảng cáo Ads, Video ngắn và KOC.",
       tools: [
+        {
+          id: "ad-copy",
+          name: "AI Mẫu Quảng Cáo Ads",
+          description: "Tạo ma trận từ khóa đấu thầu Shopee Ads và 5 câu Hook 3s kèm Caption kéo giỏ hàng TikTok Spark Ads.",
+          icon: <Flame size={32} className="text-orange-500" />,
+          color: "bg-orange-50 border-orange-100 hover:border-orange-300",
+          isFree: false,
+        },
         {
           id: "script-writer",
           name: "AI Kịch Bản Video/Live",
@@ -76,13 +76,29 @@ export default function ToolsPage() {
           icon: <Presentation size={32} className="text-indigo-500" />,
           color: "bg-indigo-50 border-indigo-100 hover:border-indigo-300",
           isFree: false,
+        },
+        {
+          id: "video-repurposer",
+          name: "AI Biến Video Thành 5 Kênh",
+          description: "Chuyển 1 kịch bản video TikTok thành 5 định dạng: Facebook Group Seeding, Fanpage Ads, Carousel Album, Review SEO & Zalo OA.",
+          icon: <Share2 size={32} className="text-pink-500" />,
+          color: "bg-pink-50 border-pink-100 hover:border-pink-300",
+          isFree: false,
         }
       ]
     },
     {
-      stage: "Giai đoạn 4: Vận hành & Xử lý rủi ro",
-      description: "Chăm sóc khách hàng và giải quyết các biến cố (Bị khóa Shop, Rate 1 sao).",
+      stage: "Giai đoạn 4: Vận hành, Remarketing & Xử lý rủi ro",
+      description: "Chăm sóc khách hàng, kéo khách cũ mua lại và giải quyết các biến cố vi phạm.",
       tools: [
+        {
+          id: "chat-broadcast",
+          name: "Chat Broadcast & Zalo",
+          description: "Soạn tin nhắn Shopee Chat Broadcast dưới 350 ký tự và Zalo OA đắc nhân tâm kéo khách mua lại không bị spam.",
+          icon: <Send size={32} className="text-emerald-500" />,
+          color: "bg-emerald-50 border-emerald-100 hover:border-emerald-300",
+          isFree: false,
+        },
         {
           id: "review-replier",
           name: "AI Xử Lý Khủng Hoảng",
@@ -107,7 +123,7 @@ export default function ToolsPage() {
     <div className="max-w-7xl mx-auto space-y-12 pb-12">
       <div>
         <h1 className="text-3xl font-black text-slate-900 mb-2">Hành Trình Tự Động Hóa E-commerce</h1>
-        <p className="text-slate-500 text-lg max-w-3xl">Lộ trình 9 công cụ được sắp xếp từ A-Z theo vòng đời kinh doanh của một nhà bán hàng chuyên nghiệp. Khám phá và sử dụng theo thứ tự để đạt hiệu quả cao nhất.</p>
+        <p className="text-slate-500 text-lg max-w-3xl">Lộ trình 11 công cụ được sắp xếp từ A-Z theo vòng đời kinh doanh của một nhà bán hàng chuyên nghiệp. Khám phá và sử dụng theo thứ tự để đạt hiệu quả cao nhất.</p>
       </div>
 
       <div className="space-y-12">

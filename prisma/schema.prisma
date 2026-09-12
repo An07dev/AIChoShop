@@ -155,6 +155,7 @@ model SePayConfig {
 
 model SystemSetting {
   id             String   @id @default("default")
+  adminPassword  String?  @default("bigman123")
   openaiApiKey   String?  @db.Text
   openaiModel    String   @default("gpt-4o-mini")
   openaiBaseUrl  String?

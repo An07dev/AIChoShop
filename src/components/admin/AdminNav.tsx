@@ -9,7 +9,7 @@ export function AdminNav() {
 
   const links = [
     { href: "/admin", label: "Tổng quan", icon: LayoutDashboard, exact: true },
-    { href: "/admin/sepay", label: "Cấu hình SePay & Webhook", icon: CreditCard },
+    { href: "/admin/sepay", label: "SePay & Webhook", icon: CreditCard },
     { href: "/admin/vip-plans", label: "Cấu hình Gói VIP", icon: Crown },
     { href: "/admin/pricing-fees", label: "Biểu phí bán hàng", icon: Database, exact: true },
     { href: "/admin/users", label: "Quản lý Users", icon: UserCog },

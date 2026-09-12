@@ -531,7 +531,7 @@ export default function ProfileClient({
                     className="px-5 py-3 bg-slate-800/90 hover:bg-slate-700/90 text-white rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-all border border-slate-700 cursor-pointer"
                   >
                     <Zap size={16} className="text-amber-400" />
-                    <span>Mở Kho Công Cụ AI (8/8)</span>
+                    <span>Mở Kho Công Cụ AI</span>
                   </Link>
                   <a
                     href="https://zalo.me"

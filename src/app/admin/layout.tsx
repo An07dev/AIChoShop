@@ -27,17 +27,17 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Main Content */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Top Header */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
-          <h2 className="font-bold text-slate-800">Hệ thống Quản trị viên</h2>
+        <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-5 sm:px-6 shrink-0">
+          <h2 className="font-bold text-slate-800 text-sm sm:text-base">Hệ thống Quản trị viên</h2>
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm">
+            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-2xs">
               AD
             </div>
           </div>
         </header>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-auto p-6">
+        <div className="flex-1 overflow-auto p-4 sm:p-5 lg:p-6">
           {children}
         </div>
       </main>

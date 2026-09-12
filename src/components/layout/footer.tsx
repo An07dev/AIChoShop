@@ -45,16 +45,16 @@ export function Footer() {
                 <Link href="/learn" className="text-sm hover:text-blue-400 transition-colors">Masterclass Bán Hàng AI</Link>
               </li>
               <li>
-                <Link href="/tools" className="text-sm hover:text-blue-400 transition-colors">Kho Mini-Tools AI (9 Tools)</Link>
+                <Link href="/tools" className="text-sm hover:text-blue-400 transition-colors">Kho Mini-Tools AI (11 Tools)</Link>
               </li>
               <li>
-                <Link href="/tools/product-description" className="text-sm hover:text-blue-400 transition-colors">AI Viết Mô Tả Chuyển Đổi</Link>
+                <Link href="/tools/video-repurposer" className="text-sm hover:text-blue-400 transition-colors">AI Biến Video Thành 5 Kênh</Link>
               </li>
               <li>
-                <Link href="/tools/pricing-calculator" className="text-sm hover:text-blue-400 transition-colors">Tính Giá Bán Tối Ưu</Link>
+                <Link href="/tools/ad-copy" className="text-sm hover:text-blue-400 transition-colors">AI Mẫu Quảng Cáo Ads</Link>
               </li>
               <li>
-                <Link href="/tools/appeal-generator" className="text-sm hover:text-blue-400 transition-colors">AI Kháng Nghị Vi Phạm</Link>
+                <Link href="/tools/chat-broadcast" className="text-sm hover:text-blue-400 transition-colors">Chat Broadcast & Zalo</Link>
               </li>
             </ul>
           </div>

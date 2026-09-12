@@ -2,11 +2,13 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { verifyAdminPassword } from "@/lib/system-settings";
 
 export async function loginAdmin(formData: FormData) {
-  const password = formData.get("password") as string;
+  const password = (formData.get("password") as string)?.trim() || "";
   
-  if (password === "bigman123") {
+  const isValid = await verifyAdminPassword(password);
+  if (isValid) {
     const cookieStore = await cookies();
     cookieStore.set("admin_token", "authenticated", {
       httpOnly: true,

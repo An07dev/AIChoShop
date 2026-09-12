@@ -2,63 +2,385 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { AlertTriangle, ArrowLeft, BarChart3, Calculator, Check, ClipboardCopy, CopyPlus, Download, ExternalLink, FileSpreadsheet, FileText, FolderOpen, Presentation, Save, Target, Trash2, Users } from "lucide-react";
+import {
+  AlertTriangle,
+  ArrowLeft,
+  ArrowRight,
+  BarChart3,
+  Calculator,
+  Check,
+  ChevronRight,
+  CircleDollarSign,
+  ClipboardCopy,
+  CopyPlus,
+  DollarSign,
+  Download,
+  ExternalLink,
+  Eye,
+  FileSpreadsheet,
+  FileText,
+  Filter,
+  FolderOpen,
+  HelpCircle,
+  Info,
+  Layers,
+  Package,
+  Percent,
+  PieChart,
+  Play,
+  Plus,
+  Presentation,
+  ReceiptText,
+  RotateCcw,
+  Save,
+  Search,
+  Share2,
+  ShieldCheck,
+  Sparkles,
+  Store,
+  Tag,
+  Target,
+  Trash2,
+  TrendingUp,
+  Tv,
+  Users,
+  Video,
+  Wallet,
+  Zap,
+} from "lucide-react";
 import { useToolGate } from "@/hooks/useToolGate";
 import { calculateKocPlan } from "@/lib/koc-planner/engine";
 import type { KocPlanInput, KocPlanResult } from "@/lib/koc-planner/types";
-import { FEE_DATA_VERSION, getAvailableCategories, getCategoryLabel, getDefaultCategoryId, getFeeProfile, PROGRAMS, SOURCES } from "@/lib/pricing/registry";
+import {
+  FEE_DATA_VERSION,
+  getAvailableCategories,
+  getCategoryLabel,
+  getDefaultCategoryId,
+  getFeeProfile,
+  PROGRAMS,
+  SOURCES,
+} from "@/lib/pricing/registry";
 import { readPricingHistory, type PricingCalculationSnapshot } from "@/lib/pricing/storage";
 import type { ShopType } from "@/lib/pricing/types";
 
-const currency = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 });
+const currency = new Intl.NumberFormat("vi-VN", {
+  style: "currency",
+  currency: "VND",
+  maximumFractionDigits: 0,
+});
 const money = (value: number) => currency.format(Math.round(value));
-const number = (value: number, digits = 0) => new Intl.NumberFormat("vi-VN", { maximumFractionDigits: digits }).format(value);
+const number = (value: number, digits = 0) =>
+  new Intl.NumberFormat("vi-VN", { maximumFractionDigits: digits }).format(value);
 const parseMoney = (value: string) => Number(value.replace(/[^0-9]/g, "")) || 0;
 const STORAGE_KEY = "aichoshop_koc_plans_v2";
 
 const initialInput: KocPlanInput = {
-  campaignName: "", shopType: "marketplace", categoryId: "tiktok-468", totalBudget: 50_000_000, sampleCost: 100_000, sampleShippingCost: 30_000,
-  castFee: 50_000, effectiveKocRate: 80, videosPerKoc: 3, organicOrdersPerEffectiveKoc: 10,
-  averageSellingPrice: 500_000, sellerDiscountRate: 0, platformDiscount: 0, buyerShippingFee: 0,
-  costPerSoldItem: 150_000, packagingCost: 5_000, handlingCost: 0, sellerShippingCost: 0, organicCommissionRate: 10,
-  useAds: true, adsBudgetRate: 30, adsCostPerOrder: 100_000, adsCommissionRate: 7.5,
-  includeTikTokFees: true, platformCommissionRate: 0, transactionFeeRate: 6, fixedOrderFee: 3_000, enabledProgramIds: [],
-  taxRate: 1.5, cancellationRate: 2, cancellationCost: 0, deliveryFailureRate: 4,
-  returnRate: 5, returnedInventoryRecoveryRate: 95, returnCostPerOrder: 25_000,
-  nonRefundableReturnFee: 0, damageRate: 5,
-  extraKocCostRate: 10, otherOperatingCost: 0,
+  campaignName: "",
+  shopType: "marketplace",
+  categoryId: "tiktok-468",
+  totalBudget: 50_000_000,
+  sampleCost: 100_000,
+  sampleShippingCost: 30_000,
+  castFee: 50_000,
+  effectiveKocRate: 80,
+  videosPerKoc: 3,
+  organicOrdersPerEffectiveKoc: 10,
+  averageSellingPrice: 500_000,
+  sellerDiscountRate: 0,
+  platformDiscount: 0,
+  buyerShippingFee: 0,
+  costPerSoldItem: 150_000,
+  packagingCost: 5_000,
+  handlingCost: 0,
+  sellerShippingCost: 0,
+  organicCommissionRate: 10,
+  useAds: true,
+  adsBudgetRate: 30,
+  adsCostPerOrder: 100_000,
+  adsCommissionRate: 7.5,
+  includeTikTokFees: true,
+  platformCommissionRate: 0,
+  transactionFeeRate: 6,
+  fixedOrderFee: 3_000,
+  enabledProgramIds: [],
+  taxRate: 1.5,
+  cancellationRate: 2,
+  cancellationCost: 0,
+  deliveryFailureRate: 4,
+  returnRate: 5,
+  returnedInventoryRecoveryRate: 95,
+  returnCostPerOrder: 25_000,
+  nonRefundableReturnFee: 0,
+  damageRate: 5,
+  extraKocCostRate: 10,
+  otherOperatingCost: 0,
 };
 
-type SavedPlan = { id: string; createdAt: string; categoryId: string; shopType: ShopType; input: KocPlanInput; result: KocPlanResult };
+type SavedPlan = {
+  id: string;
+  createdAt: string;
+  categoryId: string;
+  shopType: ShopType;
+  input: KocPlanInput;
+  result: KocPlanResult;
+};
+
 type LegacyKocInput = Partial<KocPlanInput> & { adsBudget?: number };
 
 function migrateInput(raw: LegacyKocInput): KocPlanInput {
   const totalBudget = raw.totalBudget ?? initialInput.totalBudget;
-  const adsBudgetRate = raw.adsBudgetRate ?? (raw.adsBudget !== undefined && totalBudget > 0
-    ? raw.adsBudget / totalBudget * 100
-    : initialInput.adsBudgetRate);
+  const adsBudgetRate =
+    raw.adsBudgetRate ??
+    (raw.adsBudget !== undefined && totalBudget > 0
+      ? (raw.adsBudget / totalBudget) * 100
+      : initialInput.adsBudgetRate);
   return { ...initialInput, ...raw, adsBudgetRate: Math.min(100, Math.max(0, adsBudgetRate)) };
 }
 
-function MoneyInput({ value, onChange }: { value: number; onChange: (value: number) => void }) {
-  return <input inputMode="numeric" value={value ? number(value) : ""} onChange={(event) => onChange(parseMoney(event.target.value))} className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-semibold font-mono outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15" />;
+function MoneyInput({
+  value,
+  onChange,
+  placeholder,
+  className = "",
+}: {
+  value: number;
+  onChange: (value: number) => void;
+  placeholder?: string;
+  className?: string;
+}) {
+  return (
+    <div className="relative flex items-center">
+      <input
+        inputMode="numeric"
+        placeholder={placeholder}
+        value={value ? new Intl.NumberFormat("vi-VN").format(value) : ""}
+        onChange={(event) => onChange(parseMoney(event.target.value))}
+        className={`w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800/80 px-3.5 py-2.5 pr-8 text-right font-mono text-sm font-bold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 dark:focus:border-brand ${className}`}
+      />
+      <span className="pointer-events-none absolute right-3 text-xs font-bold text-slate-400 dark:text-slate-500">
+        ₫
+      </span>
+    </div>
+  );
 }
-function NumberInput({ value, onChange, suffix = "%", step = 0.5 }: { value: number; onChange: (value: number) => void; suffix?: string; step?: number }) {
-  return <div className="relative"><input type="number" min={0} step={step} value={value} onChange={(event) => onChange(Number(event.target.value))} className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 pr-9 text-sm font-semibold outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/15" />{suffix && <span className="absolute right-3 top-2 text-sm text-slate-400">{suffix}</span>}</div>;
+
+function NumberInput({
+  value,
+  onChange,
+  suffix = "%",
+  step = 0.5,
+  min = 0,
+  max,
+  className = "",
+}: {
+  value: number;
+  onChange: (value: number) => void;
+  suffix?: string;
+  step?: number;
+  min?: number;
+  max?: number;
+  className?: string;
+}) {
+  return (
+    <div className="relative flex items-center">
+      <input
+        type="number"
+        min={min}
+        max={max}
+        step={step}
+        value={value}
+        onChange={(event) => onChange(Number(event.target.value))}
+        className={`w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800/80 px-3.5 py-2.5 pr-8 text-right font-mono text-sm font-bold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 dark:focus:border-brand ${className}`}
+      />
+      {suffix && (
+        <span className="pointer-events-none absolute right-3 text-xs font-bold text-slate-400 dark:text-slate-500">
+          {suffix}
+        </span>
+      )}
+    </div>
+  );
 }
-function Field({ label, hint, children }: { label: string; hint?: string; children: ReactNode }) {
-  return <label className="block"><span className="mb-1.5 flex items-center justify-between gap-2 text-xs font-bold text-slate-700">{label}{hint && <span className="font-normal text-slate-400">{hint}</span>}</span>{children}</label>;
+
+function Field({
+  label,
+  hint,
+  children,
+  tooltip,
+}: {
+  label: string;
+  hint?: string;
+  children: ReactNode;
+  tooltip?: string;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 flex items-center justify-between gap-2 text-xs font-bold text-slate-700 dark:text-slate-300">
+        <span className="inline-flex items-center gap-1.5">
+          {label}
+          {tooltip && (
+            <span title={tooltip} className="cursor-help text-slate-400 hover:text-slate-600">
+              <HelpCircle size={12} />
+            </span>
+          )}
+        </span>
+        {hint && (
+          <span className="font-normal text-slate-400 dark:text-slate-500 text-[11px]">
+            {hint}
+          </span>
+        )}
+      </span>
+      {children}
+    </label>
+  );
 }
-function Toggle({ checked, onChange, label, note }: { checked: boolean; onChange: (checked: boolean) => void; label: string; note?: string }) {
-  return <label className="flex cursor-pointer items-start gap-3"><input type="checkbox" checked={checked} onChange={(event) => onChange(event.target.checked)} className="mt-0.5 h-4 w-4 accent-indigo-600" /><span className="text-xs text-slate-600"><strong className="block text-slate-800">{label}</strong>{note}</span></label>;
+
+function SectionCard({
+  title,
+  icon,
+  children,
+  badge,
+  className = "",
+}: {
+  title: string;
+  icon: ReactNode;
+  children: ReactNode;
+  badge?: ReactNode;
+  className?: string;
+}) {
+  return (
+    <section
+      className={`overflow-hidden rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs transition-colors p-5 sm:p-6 space-y-4 ${className}`}
+    >
+      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-3.5">
+        <h2 className="flex items-center gap-2.5 text-sm sm:text-base font-black text-slate-900 dark:text-white">
+          <span className="text-brand flex items-center">{icon}</span>
+          {title}
+        </h2>
+        {badge}
+      </div>
+      {children}
+    </section>
+  );
 }
-function ResultRow({ label, value, tone = "blue", strong = false }: { label: string; value: string; tone?: "blue" | "green" | "orange" | "red"; strong?: boolean }) {
-  const tones = { blue: "text-blue-700", green: "text-emerald-700", orange: "text-orange-700", red: "text-rose-700" };
-  return <div className={`flex items-center justify-between gap-4 border-b border-slate-200/70 py-2 text-xs ${strong ? "font-black" : "font-semibold"}`}><span className="text-slate-600">{label}</span><span className={`font-mono ${tones[tone]}`}>{value}</span></div>;
+
+function ToggleCard({
+  checked,
+  onChange,
+  label,
+  note,
+  badge,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  label: string;
+  note?: string;
+  badge?: string;
+}) {
+  return (
+    <label className="flex cursor-pointer items-start justify-between gap-3 rounded-2xl border border-slate-200 dark:border-slate-700/80 bg-slate-50/70 dark:bg-slate-800/50 p-4 transition hover:border-slate-300 dark:hover:border-slate-600">
+      <div className="space-y-0.5">
+        <div className="flex items-center gap-2">
+          <strong className="text-sm font-bold text-slate-900 dark:text-white">{label}</strong>
+          {badge && (
+            <span className="rounded-full bg-brand-light px-2 py-0.5 text-[10px] font-black text-brand">
+              {badge}
+            </span>
+          )}
+        </div>
+        {note && <p className="text-xs text-slate-500 dark:text-slate-400">{note}</p>}
+      </div>
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={(event) => onChange(event.target.checked)}
+        className="mt-1 h-4 w-4 rounded accent-brand cursor-pointer"
+      />
+    </label>
+  );
 }
+
+function ResultRow({
+  label,
+  value,
+  subtext,
+  tone = "slate",
+  strong = false,
+  highlight = false,
+}: {
+  label: string;
+  value: string;
+  subtext?: string;
+  tone?: "slate" | "brand" | "green" | "orange" | "red";
+  strong?: boolean;
+  highlight?: boolean;
+}) {
+  const tones = {
+    slate: "text-slate-800 dark:text-slate-200",
+    brand: "text-brand",
+    green: "text-emerald-600 dark:text-emerald-400 font-bold",
+    orange: "text-amber-600 dark:text-amber-400",
+    red: "text-rose-600 dark:text-rose-400",
+  };
+
+  return (
+    <div
+      className={`flex items-center justify-between gap-3 py-2.5 text-xs transition-colors ${highlight
+        ? "rounded-xl bg-brand-light/30 dark:bg-brand-light/10 px-3 border border-brand/20 my-1"
+        : "border-b border-slate-100 dark:border-slate-800/80"
+        }`}
+    >
+      <div className="space-y-0.5">
+        <span className={`${strong ? "font-bold text-slate-900 dark:text-white" : "text-slate-600 dark:text-slate-400"}`}>
+          {label}
+        </span>
+        {subtext && <p className="text-[10px] text-slate-400 dark:text-slate-500">{subtext}</p>}
+      </div>
+      <span className={`font-mono ${tones[tone]} ${strong ? "text-sm font-black" : "font-bold"}`}>
+        {value}
+      </span>
+    </div>
+  );
+}
+
 function download(filename: string, content: string) {
   const url = URL.createObjectURL(new Blob([content], { type: "text/csv;charset=utf-8" }));
-  const anchor = document.createElement("a"); anchor.href = url; anchor.download = filename; anchor.click(); URL.revokeObjectURL(url);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = filename;
+  anchor.click();
+  URL.revokeObjectURL(url);
+}
+
+function exportRows(campaignName: string, category: string, result: KocPlanResult): (string | number)[][] {
+  return [
+    ["Chỉ số", "Giá trị"],
+    ["Chiến dịch", campaignName],
+    ["Ngành hàng TikTok Shop", category],
+    ["KOC có thể mời", result.invitedKocs],
+    ["KOC hiệu quả làm clip", result.effectiveKocs],
+    ["Tổng số Video KOC", result.videos],
+    ["Đơn tự nhiên dự kiến", result.organicOrders],
+    ["Đơn từ quảng cáo Ads", result.adOrders],
+    ["Đơn giao thành công", result.successfulOrders],
+    ["GMV trước rủi ro", result.grossRevenue],
+    ["Doanh thu sau hủy/hoàn", result.netRevenue],
+    ["Giải ngân trước Affiliate & Thuế", result.expectedPayoutBeforeAffiliate],
+    ["Tiền ròng sau Affiliate & Thuế", result.expectedNetSettlement],
+    ["Hoa hồng KOC tự nhiên", result.organicCommission],
+    ["Hoa hồng KOC quảng cáo", result.adsCommission],
+    ["Phí sàn TikTok Shop", result.platformFees],
+    ["Thuế doanh thu ước tính", result.taxes],
+    ["Giá vốn hàng bán (COGS)", result.soldGoodsCost],
+    ["Vận hành đơn hàng & ship", result.fulfillmentCost],
+    ["Tổn thất trạng thái đơn", result.returnLoss],
+    ["Tổng chi phí toàn chiến dịch", result.totalCost],
+    ["Lợi nhuận ròng dự kiến", result.netProfit],
+    ["ROI (%)", result.roi],
+    ["ROAS Ads", result.roas ?? ""],
+    ["Đơn hòa vốn", result.breakEvenOrders ?? ""],
+    ["CPA hòa vốn", result.breakEvenCpa ?? ""],
+    ["Biên lợi nhuận ròng (%)", result.netMargin],
+  ];
 }
 
 export default function KocPlanner() {
@@ -71,6 +393,10 @@ export default function KocPlanner() {
   const [copied, setCopied] = useState(false);
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>([]);
   const [savedProducts, setSavedProducts] = useState<PricingCalculationSnapshot[]>([]);
+  const [saveNotice, setSaveNotice] = useState("");
+  const [activeTab, setActiveTab] = useState<"budget" | "funnel" | "pnl">("budget");
+  const [searchFilter, setSearchFilter] = useState("");
+
   const categories = useMemo(() => getAvailableCategories("tiktok", shopType), [shopType]);
   const category = categories.find((item) => item.id === categoryId) ?? categories[0];
   const level1Values = Array.from(new Set(categories.map((item) => item.level1)));
@@ -78,29 +404,56 @@ export default function KocPlanner() {
   const level2Values = Array.from(new Set(level2Categories.map((item) => item.level2)));
   const level3Categories = level2Categories.filter((item) => item.level2 === category.level2);
   const feeProfile = getFeeProfile("tiktok", shopType, category.id);
-  const calculationInput = useMemo(() => ({ ...input, shopType, categoryId: category.id, platformCommissionRate: feeProfile.commissionRate }), [category.id, feeProfile.commissionRate, input, shopType]);
-  const result = useMemo(() => calculateKocPlan(calculationInput), [calculationInput]);
-  const update = <K extends keyof KocPlanInput>(key: K, value: KocPlanInput[K]) => setInput((current) => ({ ...current, [key]: value }));
 
-  useEffect(() => { checkAccess("koc-planner", false); }, [checkAccess]);
-  /* eslint-disable react-hooks/set-state-in-effect */
+  const calculationInput = useMemo(
+    () => ({
+      ...input,
+      shopType,
+      categoryId: category.id,
+      platformCommissionRate: feeProfile.commissionRate,
+    }),
+    [category.id, feeProfile.commissionRate, input, shopType]
+  );
+
+  const result = useMemo(() => calculateKocPlan(calculationInput), [calculationInput]);
+  const update = <K extends keyof KocPlanInput>(key: K, value: KocPlanInput[K]) =>
+    setInput((current) => ({ ...current, [key]: value }));
+
   useEffect(() => {
-    // localStorage chỉ có sau khi component được gắn trong trình duyệt.
+    checkAccess("koc-planner", false);
+  }, [checkAccess]);
+
+  useEffect(() => {
     try {
       const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]") as SavedPlan[];
-      setSavedPlans(Array.isArray(stored) ? stored.map((item) => ({ ...item, input: migrateInput(item.input as LegacyKocInput) })) : []);
-    } catch { setSavedPlans([]); }
+      setSavedPlans(
+        Array.isArray(stored)
+          ? stored.map((item) => ({ ...item, input: migrateInput(item.input as LegacyKocInput) }))
+          : []
+      );
+    } catch {
+      setSavedPlans([]);
+    }
     setSavedProducts(readPricingHistory(localStorage).filter((item) => item.input.platform === "tiktok"));
   }, []);
-  /* eslint-enable react-hooks/set-state-in-effect */
-  const changeShopType = (next: ShopType) => { setShopType(next); setCategoryId(getDefaultCategoryId("tiktok", next)); };
-  const chooseCategory = (matches: (item: typeof category) => boolean) => {
-    const next = categories.find(matches); if (next) setCategoryId(next.id);
+
+  const changeShopType = (next: ShopType) => {
+    setShopType(next);
+    setCategoryId(getDefaultCategoryId("tiktok", next));
   };
+
+  const chooseCategory = (matches: (item: typeof category) => boolean) => {
+    const next = categories.find(matches);
+    if (next) setCategoryId(next.id);
+  };
+
   const applySavedProduct = (id: string) => {
-    const saved = savedProducts.find((item) => item.id === id); if (!saved) return;
-    setShopType(saved.input.shopType); setCategoryId(saved.input.categoryId);
-    setInput((current) => ({ ...current,
+    const saved = savedProducts.find((item) => item.id === id);
+    if (!saved) return;
+    setShopType(saved.input.shopType);
+    setCategoryId(saved.input.categoryId);
+    setInput((current) => ({
+      ...current,
       averageSellingPrice: saved.result.evaluation.listPrice,
       sellerDiscountRate: saved.input.sellerDiscountRate,
       platformDiscount: saved.input.platformDiscount,
@@ -112,87 +465,1371 @@ export default function KocPlanner() {
       transactionFeeRate: saved.input.transactionOverride ?? 6,
       fixedOrderFee: saved.input.fixedFeeOverride ?? 3_000,
       enabledProgramIds: saved.input.enabledProgramIds,
-      taxRate: saved.input.taxMode === "manual" ? saved.input.manualRevenueTaxRate : saved.result.evaluation.productRevenue > 0 ? saved.result.evaluation.tax / saved.result.evaluation.productRevenue * 100 : current.taxRate,
-      cancellationRate: saved.input.cancellationRate, cancellationCost: saved.input.cancellationCost,
-      deliveryFailureRate: saved.input.deliveryFailureRate, returnRate: saved.input.returnRate,
+      taxRate:
+        saved.input.taxMode === "manual"
+          ? saved.input.manualRevenueTaxRate
+          : saved.result.evaluation.productRevenue > 0
+            ? (saved.result.evaluation.tax / saved.result.evaluation.productRevenue) * 100
+            : current.taxRate,
+      cancellationRate: saved.input.cancellationRate,
+      cancellationCost: saved.input.cancellationCost,
+      deliveryFailureRate: saved.input.deliveryFailureRate,
+      returnRate: saved.input.returnRate,
       returnedInventoryRecoveryRate: saved.input.returnedInventoryRecoveryRate,
       returnCostPerOrder: saved.input.returnShippingCost,
-      nonRefundableReturnFee: saved.input.nonRefundableReturnFee, damageRate: saved.input.damageRate,
+      nonRefundableReturnFee: saved.input.nonRefundableReturnFee,
+      damageRate: saved.input.damageRate,
     }));
+    setSaveNotice(`Đã nạp dữ liệu từ sản phẩm "${saved.productName}"`);
+    setTimeout(() => setSaveNotice(""), 3000);
   };
+
   const calculate = () => {
-    if (!input.campaignName.trim()) return setError("Vui lòng nhập tên chiến dịch trước khi tính.");
-    if (input.totalBudget <= 0) return setError("Tổng ngân sách phải lớn hơn 0.");
-    if (input.adsBudgetRate < 0 || input.adsBudgetRate > 100) return setError("Ngân sách quảng cáo phải nằm trong khoảng 0–100%.");
-    if (input.averageSellingPrice <= 0) return setError("Giá bán trung bình phải lớn hơn 0.");
-    setError(""); setHasCalculated(true);
+    if (!input.campaignName.trim()) {
+      setError("Vui lòng nhập tên chiến dịch trước khi tính.");
+      return;
+    }
+    if (input.totalBudget <= 0) {
+      setError("Tổng ngân sách phải lớn hơn 0.");
+      return;
+    }
+    if (input.adsBudgetRate < 0 || input.adsBudgetRate > 100) {
+      setError("Ngân sách quảng cáo phải nằm trong khoảng 0–100%.");
+      return;
+    }
+    if (input.averageSellingPrice <= 0) {
+      setError("Giá bán trung bình phải lớn hơn 0.");
+      return;
+    }
+    setError("");
+    setHasCalculated(true);
   };
+
+  const runSample = () => {
+    if (!input.campaignName.trim()) {
+      update("campaignName", "Chiến dịch KOC Áo Polo Tháng 10");
+    }
+    setError("");
+    setHasCalculated(true);
+  };
+
   const save = () => {
-    if (!hasCalculated) return setError("Hãy tính kế hoạch trước khi lưu.");
-    const item: SavedPlan = { id: crypto.randomUUID(), createdAt: new Date().toISOString(), categoryId: category.id, shopType, input: calculationInput, result };
-    const next = [item, ...savedPlans]; setSavedPlans(next); localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    if (!hasCalculated) {
+      setError("Hãy tính kế hoạch trước khi lưu.");
+      return;
+    }
+    const item: SavedPlan = {
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString(),
+      categoryId: category.id,
+      shopType,
+      input: calculationInput,
+      result,
+    };
+    const next = [item, ...savedPlans];
+    setSavedPlans(next);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    setSaveNotice("Đã lưu phương án thành công!");
+    setTimeout(() => setSaveNotice(""), 3000);
   };
-  const openPlan = (item: SavedPlan) => { setInput(item.input); setShopType(item.shopType); setCategoryId(item.categoryId); setHasCalculated(true); setError(""); window.scrollTo({ top: 0, behavior: "smooth" }); };
-  const duplicatePlan = (item: SavedPlan) => { setInput({ ...item.input, campaignName: `${item.input.campaignName} (bản sao)` }); setShopType(item.shopType); setCategoryId(item.categoryId); setHasCalculated(true); window.scrollTo({ top: 0, behavior: "smooth" }); };
-  const deletePlan = (id: string) => { const next = savedPlans.filter((item) => item.id !== id); setSavedPlans(next); localStorage.setItem(STORAGE_KEY, JSON.stringify(next)); };
+
+  const openPlan = (item: SavedPlan) => {
+    setInput(item.input);
+    setShopType(item.shopType);
+    setCategoryId(item.categoryId);
+    setHasCalculated(true);
+    setError("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const duplicatePlan = (item: SavedPlan) => {
+    setInput({ ...item.input, campaignName: `${item.input.campaignName} (bản sao)` });
+    setShopType(item.shopType);
+    setCategoryId(item.categoryId);
+    setHasCalculated(true);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const deletePlan = (id: string) => {
+    const next = savedPlans.filter((item) => item.id !== id);
+    setSavedPlans(next);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+  };
+
   const copyResult = async () => {
-    await navigator.clipboard.writeText(`KẾ HOẠCH KOC: ${input.campaignName}\nNgành: ${getCategoryLabel(category)}\nNgân sách: ${money(input.totalBudget)}\nKOC có thể mời: ${result.invitedKocs}\nKOC làm nội dung: ${result.effectiveKocs}\nVideo: ${result.videos}\nĐơn thành công: ${number(result.successfulOrders, 1)}\nDoanh thu sau hoàn: ${money(result.netRevenue)}\nTổng chi phí: ${money(result.totalCost)}\nLợi nhuận ròng: ${money(result.netProfit)}\nROI: ${result.roi.toFixed(1)}%`);
-    setCopied(true); window.setTimeout(() => setCopied(false), 1800);
+    await navigator.clipboard.writeText(
+      `KẾ HOẠCH KOC: ${input.campaignName}\nNgành: ${getCategoryLabel(category)}\nNgân sách: ${money(
+        input.totalBudget
+      )}\nKOC có thể mời: ${result.invitedKocs}\nKOC làm nội dung: ${result.effectiveKocs}\nVideo: ${result.videos
+      }\nĐơn thành công: ${number(result.successfulOrders, 1)}\nDoanh thu sau hoàn: ${money(
+        result.netRevenue
+      )}\nTổng chi phí: ${money(result.totalCost)}\nLợi nhuận ròng: ${money(
+        result.netProfit
+      )}\nROI: ${result.roi.toFixed(1)}%`
+    );
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1800);
   };
+
   const exportCsv = () => {
-    const rows = exportRows(input.campaignName, getCategoryLabel(category), result);
-    download("ke-hoach-koc.csv", `\uFEFF${rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(",")).join("\r\n")}`);
+    const rows = exportRows(input.campaignName || "Chien-dich-KOC", getCategoryLabel(category), result);
+    download(
+      `koc-plan-${Date.now()}.csv`,
+      `\uFEFF${rows.map((row) => row.map((cell) => `"${String(cell).replaceAll('"', '""')}"`).join(",")).join("\r\n")}`
+    );
   };
+
   const exportExcel = async () => {
-    const XLSX = await import("xlsx"); const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(exportRows(input.campaignName, getCategoryLabel(category), result)), "Kế hoạch KOC");
-    XLSX.writeFile(workbook, "ke-hoach-koc.xlsx");
+    const XLSX = await import("xlsx");
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(
+      workbook,
+      XLSX.utils.aoa_to_sheet(
+        exportRows(input.campaignName || "Chien-dich-KOC", getCategoryLabel(category), result)
+      ),
+      "Kế hoạch KOC"
+    );
+    XLSX.writeFile(workbook, `koc-plan-${Date.now()}.xlsx`);
   };
 
-  return <div className="mx-auto max-w-7xl pb-12"><GateModals />
-    <div className="mb-5"><Link href="/tools" className="mb-3 inline-flex items-center gap-1 text-sm font-medium text-slate-500 hover:text-indigo-600"><ArrowLeft size={16} /> Quay lại kho công cụ</Link><div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end"><div className="flex items-center gap-3"><div className="rounded-xl bg-indigo-100 p-2.5 text-indigo-700"><Presentation size={24} /></div><div><h1 className="text-2xl font-black text-slate-950">Lập kế hoạch chi phí KOC Campaign</h1><p className="mt-1 text-sm text-slate-500">Dự phóng từ ngân sách, hiệu suất KOC, Ads, phí TikTok, hoàn đơn và giá vốn.</p></div></div><span className="w-fit rounded-full bg-amber-100 px-3 py-1.5 text-[10px] font-black text-amber-800">PHÍ TIKTOK {FEE_DATA_VERSION}</span></div></div>
-    <div className="mb-5 flex flex-wrap gap-2"><button onClick={save} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-white px-3 py-2 text-xs font-bold text-emerald-700"><Save size={14} /> Lưu phương án</button><button disabled={!hasCalculated} onClick={exportCsv} className="inline-flex items-center gap-1.5 rounded-lg border border-blue-300 bg-white px-3 py-2 text-xs font-bold text-blue-700 disabled:opacity-40"><Download size={14} /> Tải CSV</button><button disabled={!hasCalculated} onClick={exportExcel} className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-300 bg-white px-3 py-2 text-xs font-bold text-emerald-700 disabled:opacity-40"><FileSpreadsheet size={14} /> Tải Excel</button><button disabled={!hasCalculated} onClick={copyResult} className="inline-flex items-center gap-1.5 rounded-lg border border-violet-300 bg-white px-3 py-2 text-xs font-bold text-violet-700 disabled:opacity-40">{copied ? <Check size={14} /> : <ClipboardCopy size={14} />} {copied ? "Đã sao chép" : "Sao chép kết quả"}</button><span className="ml-auto self-center text-xs font-semibold text-slate-500">Đã lưu: {savedPlans.length} phương án</span></div>
-    <div className="grid gap-5 lg:grid-cols-2 lg:items-start">
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="bg-gradient-to-r from-indigo-600 to-violet-600 px-5 py-4 text-white"><h2 className="flex items-center gap-2 font-black"><Users size={19} /> Thông tin chiến dịch</h2></div><div className="space-y-5 p-5">
-        <p className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900"><strong>Dữ liệu mẫu để bắt đầu:</strong> tỷ lệ KOC làm nội dung, số đơn/KOC, CPA, hoàn đơn và chi phí hiện có chưa phải số liệu shop của bạn. Chỉ hoa hồng ngành được lấy từ biểu phí TikTok; hãy thay các số mẫu bằng báo cáo chiến dịch và sao kê thực tế.</p>
-        {savedProducts.length > 0 && <Field label="Lấy dữ liệu từ sản phẩm TikTok đã lưu" hint="Tính giá bán"><select defaultValue="" onChange={(event) => applySavedProduct(event.target.value)} className="w-full rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-900"><option value="" disabled>Chọn sản phẩm để tự điền giá và chi phí</option>{savedProducts.map((item) => <option key={item.id} value={item.id}>{item.productName} — {money(item.result.evaluation.listPrice)}</option>)}</select></Field>}
-        <Field label="Tên chiến dịch" hint="bắt buộc"><input value={input.campaignName} onChange={(event) => { update("campaignName", event.target.value); setError(""); }} placeholder="Ví dụ: Ra mắt áo polo tháng 10" className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm outline-none focus:border-indigo-500" /></Field>
-        <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4"><div className="mb-3 flex items-center justify-between gap-3"><h3 className="text-xs font-black uppercase tracking-wide text-slate-700">Cấu hình TikTok Shop theo ngành cấp 3</h3><span className="rounded-full bg-white px-2.5 py-1 text-xs font-black text-indigo-700">{feeProfile.commissionRate}%</span></div><div className="grid gap-3 sm:grid-cols-2"><Field label="Loại shop TikTok"><select value={shopType} onChange={(event) => changeShopType(event.target.value as ShopType)} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm font-semibold"><option value="marketplace">Shop thường</option><option value="mall">TikTok Shop Mall</option></select></Field><Field label="Ngành cấp 1"><select value={category.level1} onChange={(event) => chooseCategory((item) => item.level1 === event.target.value)} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold">{level1Values.map((value) => <option key={value}>{value}</option>)}</select></Field><Field label="Ngành cấp 2"><select value={category.level2} onChange={(event) => chooseCategory((item) => item.level1 === category.level1 && item.level2 === event.target.value)} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold">{level2Values.map((value) => <option key={value}>{value}</option>)}</select></Field><Field label="Ngành cấp 3"><select value={category.id} onChange={(event) => setCategoryId(event.target.value)} className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold">{level3Categories.map((item) => <option key={item.id} value={item.id}>{item.level3} — {shopType === "mall" ? item.mallRate : item.marketplaceRate}%</option>)}</select></Field></div></div>
-        <Panel title="Ngân sách và chi phí mỗi KOC mời" tone="blue"><div className="grid gap-3 sm:grid-cols-2"><Field label="Tổng ngân sách chiến dịch"><MoneyInput value={input.totalBudget} onChange={(value) => update("totalBudget", value)} /></Field><Field label="Giá vốn hàng mẫu / KOC"><MoneyInput value={input.sampleCost} onChange={(value) => update("sampleCost", value)} /></Field><Field label="Phí gửi mẫu / KOC"><MoneyInput value={input.sampleShippingCost} onChange={(value) => update("sampleShippingCost", value)} /></Field><Field label="Phí cast/booking / KOC"><MoneyInput value={input.castFee} onChange={(value) => update("castFee", value)} /></Field></div></Panel>
-        <div><h3 className="mb-3 text-xs font-black uppercase tracking-wide text-slate-500">Hiệu suất nội dung và kinh tế mỗi đơn</h3><div className="grid gap-3 sm:grid-cols-3"><Field label="KOC thực sự làm nội dung"><NumberInput value={input.effectiveKocRate} onChange={(value) => update("effectiveKocRate", value)} /></Field><Field label="Video / KOC hiệu quả"><NumberInput value={input.videosPerKoc} onChange={(value) => update("videosPerKoc", value)} suffix="" step={1} /></Field><Field label="Đơn tự nhiên / KOC hiệu quả"><NumberInput value={input.organicOrdersPerEffectiveKoc} onChange={(value) => update("organicOrdersPerEffectiveKoc", value)} suffix="" step={1} /></Field><Field label="Giá niêm yết trung bình"><MoneyInput value={input.averageSellingPrice} onChange={(value) => update("averageSellingPrice", value)} /></Field><Field label="Giảm giá của shop"><NumberInput value={input.sellerDiscountRate} onChange={(value) => update("sellerDiscountRate", value)} /></Field><Field label="Voucher TikTok tài trợ"><MoneyInput value={input.platformDiscount} onChange={(value) => update("platformDiscount", value)} /></Field><Field label="Khách trả phí ship"><MoneyInput value={input.buyerShippingFee} onChange={(value) => update("buyerShippingFee", value)} /></Field><Field label="Giá vốn sản phẩm"><MoneyInput value={input.costPerSoldItem} onChange={(value) => update("costPerSoldItem", value)} /></Field><Field label="Đóng gói / đơn"><MoneyInput value={input.packagingCost} onChange={(value) => update("packagingCost", value)} /></Field><Field label="Nhân công / đơn"><MoneyInput value={input.handlingCost} onChange={(value) => update("handlingCost", value)} /></Field><Field label="Shop chịu phí ship"><MoneyInput value={input.sellerShippingCost} onChange={(value) => update("sellerShippingCost", value)} /></Field><Field label="Hoa hồng đơn tự nhiên"><NumberInput value={input.organicCommissionRate} onChange={(value) => update("organicCommissionRate", value)} /></Field></div></div>
-        <Panel title="Quảng cáo" tone="violet"><Toggle checked={input.useAds} onChange={(value) => update("useAds", value)} label="Có sử dụng quảng cáo/Spark Ads" note="Dự phóng đơn quảng cáo theo CPA thực tế bạn nhập." />{input.useAds && <div className="mt-4 grid gap-3 sm:grid-cols-3"><Field label="Ngân sách quảng cáo" hint={money(input.totalBudget * Math.min(100, Math.max(0, input.adsBudgetRate)) / 100)}><NumberInput value={input.adsBudgetRate} onChange={(value) => update("adsBudgetRate", value)} /></Field><Field label="CPA quảng cáo"><MoneyInput value={input.adsCostPerOrder} onChange={(value) => update("adsCostPerOrder", value)} /></Field><Field label="Hoa hồng đơn quảng cáo"><NumberInput value={input.adsCommissionRate} onChange={(value) => update("adsCommissionRate", value)} /></Field></div>}</Panel>
-        <Panel title="Phí TikTok Shop" tone="orange"><Toggle checked={input.includeTikTokFees} onChange={(value) => update("includeTikTokFees", value)} label="Tính phí bán hàng TikTok Shop" note={`Hoa hồng ngành cấp 3 ${feeProfile.commissionRate}%; phí giao dịch dùng đúng cơ sở tiền khách trả + voucher nền tảng.`} />{input.includeTikTokFees && <><div className="mt-4 grid gap-3 sm:grid-cols-3"><Field label="Hoa hồng ngành" hint="bảng chính thức"><div className="rounded-lg border border-orange-200 bg-white px-3 py-2 text-sm font-black text-orange-700">{feeProfile.commissionRate}%</div></Field><Field label="Phí giao dịch"><NumberInput value={input.transactionFeeRate} onChange={(value) => update("transactionFeeRate", value)} /></Field><Field label="Phí xử lý mỗi đơn"><MoneyInput value={input.fixedOrderFee} onChange={(value) => update("fixedOrderFee", value)} /></Field></div><div className="mt-4 space-y-2 border-t border-orange-200 pt-4">{PROGRAMS.tiktok.map((program) => <label key={program.id} className="flex cursor-pointer items-start gap-3 rounded-lg border border-orange-200 bg-white p-3"><input type="checkbox" checked={input.enabledProgramIds.includes(program.id)} onChange={() => update("enabledProgramIds", input.enabledProgramIds.includes(program.id) ? input.enabledProgramIds.filter((id) => id !== program.id) : [...input.enabledProgramIds, program.id])} className="mt-0.5 h-4 w-4 accent-orange-600" /><span className="text-xs text-slate-600"><strong className="block text-slate-800">{program.name}: {program.rate}%{program.cap ? `, tối đa ${money(program.cap)}` : ""}</strong>{program.note}</span></label>)}</div><p className="mt-3 text-[11px] text-orange-800">Không thêm FSC vì chưa tìm thấy chính sách phí FSC hiện hành trong Seller University. Chỉ nhập khoản này vào chi phí khác nếu sao kê của shop có phát sinh.</p></>}</Panel>
-        <div><h3 className="mb-3 text-xs font-black uppercase tracking-wide text-slate-500">Thuế, trạng thái đơn và chi phí bổ sung</h3><div className="grid gap-3 sm:grid-cols-3"><Field label="Thuế trên doanh thu"><NumberInput value={input.taxRate} onChange={(value) => update("taxRate", value)} /></Field><Field label="Tỷ lệ hủy"><NumberInput value={input.cancellationRate} onChange={(value) => update("cancellationRate", value)} /></Field><Field label="Chi phí một đơn hủy"><MoneyInput value={input.cancellationCost} onChange={(value) => update("cancellationCost", value)} /></Field><Field label="Tỷ lệ giao thất bại"><NumberInput value={input.deliveryFailureRate} onChange={(value) => update("deliveryFailureRate", value)} /></Field><Field label="Tỷ lệ hoàn sau giao"><NumberInput value={input.returnRate} onChange={(value) => update("returnRate", value)} /></Field><Field label="Phí vận chuyển hoàn"><MoneyInput value={input.returnCostPerOrder} onChange={(value) => update("returnCostPerOrder", value)} /></Field><Field label="Phí không được hoàn"><MoneyInput value={input.nonRefundableReturnFee} onChange={(value) => update("nonRefundableReturnFee", value)} /></Field><Field label="Thu hồi giá trị hàng hoàn"><NumberInput value={input.returnedInventoryRecoveryRate} onChange={(value) => update("returnedInventoryRecoveryRate", value)} /></Field><Field label="Hao hụt/hư hỏng"><NumberInput value={input.damageRate} onChange={(value) => update("damageRate", value)} /></Field><Field label="Chi phí KOC phát sinh"><NumberInput value={input.extraKocCostRate} onChange={(value) => update("extraKocCostRate", value)} /></Field><Field label="Vận hành chiến dịch khác"><MoneyInput value={input.otherOperatingCost} onChange={(value) => update("otherOperatingCost", value)} /></Field></div></div>
-        {error && <p className="flex items-center gap-2 rounded-lg bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700"><AlertTriangle size={15} />{error}</p>}
-        <button onClick={calculate} className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-indigo-600 to-violet-600 px-4 py-3 text-sm font-black text-white shadow-lg shadow-indigo-500/20"><Calculator size={17} /> Tính kế hoạch KOC</button>
-      </div></section>
-      <div className="space-y-5 lg:sticky lg:top-4">{!hasCalculated ? <section className="flex min-h-80 flex-col items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white p-8 text-center"><div className="rounded-2xl bg-indigo-50 p-4 text-indigo-600"><BarChart3 size={34} /></div><h2 className="mt-4 font-black">Chưa có kết quả dự phóng</h2><p className="mt-1 max-w-sm text-sm text-slate-500">Nhập dữ liệu chiến dịch rồi nhấn “Tính kế hoạch KOC”. Các thay đổi sau đó sẽ cập nhật kết quả ngay.</p></section> : <Results result={result} />}
-        {hasCalculated && <section className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-600"><div className="flex gap-2"><FileText size={16} className="shrink-0 text-indigo-600" /><div><strong className="text-slate-800">Nguồn và giới hạn dữ liệu</strong><p className="mt-1">Hoa hồng lấy theo ngành cấp 3 TikTok Shop. Hiệu quả KOC, CPA, tỷ lệ hoàn và phí hợp đồng phải nhập từ báo cáo thực tế của shop.</p><div className="mt-2 flex flex-wrap gap-3"><a href={SOURCES.tiktok} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-bold text-indigo-600">Phí nhà bán hàng <ExternalLink size={11} /></a><a href={SOURCES.tiktokTransaction} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-bold text-indigo-600">Phí giao dịch <ExternalLink size={11} /></a><a href={SOURCES.tiktokVxp} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-bold text-indigo-600">Voucher Extra <ExternalLink size={11} /></a><a href={SOURCES.tax} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-bold text-indigo-600">Nguồn thuế <ExternalLink size={11} /></a></div></div></div></section>}
+  const filteredPlans = useMemo(() => {
+    if (!searchFilter.trim()) return savedPlans;
+    const q = searchFilter.toLowerCase();
+    return savedPlans.filter((p) => p.input.campaignName.toLowerCase().includes(q));
+  }, [savedPlans, searchFilter]);
+
+  const isLoss = result.netProfit < 0;
+  const singleKocCost = input.sampleCost + input.sampleShippingCost + input.castFee;
+
+  return (
+    <div className="mx-auto max-w-7xl pb-16 px-2 sm:px-4">
+      <GateModals />
+
+      {/* 1. Header Navigation & Branding */}
+      <div className="mb-6 space-y-3">
+        <Link
+          href="/tools"
+          className="inline-flex items-center gap-1.5 text-xs font-bold text-slate-500 hover:text-brand transition-colors"
+        >
+          <ArrowLeft size={16} /> Quay lại kho công cụ
+        </Link>
+
+        <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+          <div className="flex items-center gap-3.5">
+            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-light text-brand shadow-xs">
+              <Presentation size={26} />
+            </div>
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                  Lập Kế Hoạch KOC Campaign TikTok Shop
+                </h1>
+                <span className="rounded-full bg-amber-500/15 border border-amber-500/30 px-2.5 py-0.5 text-[11px] font-black text-amber-600 dark:text-amber-400">
+                  PHÍ TIKTOK {FEE_DATA_VERSION}
+                </span>
+              </div>
+              <p className="mt-0.5 text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                Dự phóng ngân sách, chi phí booking KOC, Ads, phí sàn TikTok, tỷ lệ hủy hoàn & P&L đa kịch bản.
+              </p>
+            </div>
+          </div>
+
+          {/* Quick Actions Bar */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={save}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-emerald-300 dark:border-emerald-700/80 bg-emerald-50 dark:bg-emerald-950/40 px-3.5 py-2 text-xs font-bold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 transition shadow-xs cursor-pointer"
+            >
+              <Save size={14} /> Lưu phương án
+            </button>
+            <button
+              type="button"
+              disabled={!hasCalculated}
+              onClick={exportCsv}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 transition shadow-xs cursor-pointer"
+            >
+              <Download size={14} /> CSV
+            </button>
+            <button
+              type="button"
+              disabled={!hasCalculated}
+              onClick={exportExcel}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 transition shadow-xs cursor-pointer"
+            >
+              <FileSpreadsheet size={14} /> Excel
+            </button>
+            <button
+              type="button"
+              disabled={!hasCalculated}
+              onClick={copyResult}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 transition shadow-xs cursor-pointer"
+            >
+              {copied ? <Check size={14} className="text-emerald-500" /> : <ClipboardCopy size={14} />}
+              {copied ? "Đã chép" : "Báo cáo"}
+            </button>
+            <span className="hidden sm:inline-block rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold text-slate-500 dark:text-slate-400">
+              Đã lưu: {savedPlans.length}
+            </span>
+          </div>
+        </div>
+
+        {saveNotice && (
+          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-50 dark:bg-emerald-950/30 px-4 py-2.5 text-xs font-bold text-emerald-700 dark:text-emerald-300 flex items-center justify-between">
+            <span className="flex items-center gap-2">
+              <Check size={14} /> {saveNotice}
+            </span>
+          </div>
+        )}
       </div>
+
+      {/* 2. Main Balanced 12-Column Architecture (5 cols Left - 7 cols Right) */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
+        {/* Left Column: Form Setup (5 cols) */}
+        <div className="space-y-5 lg:col-span-5">
+          {/* Card 1: Thông tin chiến dịch & Ngành hàng TikTok */}
+          <SectionCard
+            title="Thông tin Chiến dịch & Ngành hàng"
+            icon={<Users size={18} />}
+            badge={
+              <span className="rounded-full bg-brand-light px-2.5 py-0.5 text-xs font-black text-brand">
+                {feeProfile.commissionRate}% hoa hồng
+              </span>
+            }
+          >
+            {/* Guidance banner */}
+            <p className="rounded-2xl border border-amber-200/70 dark:border-amber-900/50 bg-amber-50/70 dark:bg-amber-950/30 px-3.5 py-2.5 text-xs leading-relaxed text-amber-900 dark:text-amber-300">
+              💡 <strong>Lưu ý quan trọng:</strong> Hoa hồng sàn được đối chiếu tự động theo biểu phí TikTok Shop
+              ngành cấp 3. Các tỷ lệ hiệu suất KOC, Ads, hoàn huỷ nên cập nhật theo số liệu thực tế từ Seller Center.
+            </p>
+
+            {/* Quick Load from Pricing History */}
+            {savedProducts.length > 0 && (
+              <div className="rounded-2xl border border-brand/20 bg-brand-light/30 dark:bg-brand-light/10 p-3.5 space-y-2">
+                <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-brand">
+                  <Sparkles size={13} /> Nạp nhanh từ sản phẩm TikTok đã tính giá
+                </span>
+                <select
+                  defaultValue=""
+                  onChange={(event) => applySavedProduct(event.target.value)}
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-bold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 cursor-pointer"
+                >
+                  <option value="" disabled>
+                    Chọn sản phẩm để tự động điền giá bán & chi phí...
+                  </option>
+                  {savedProducts.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.productName} — {money(item.result.evaluation.listPrice)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Campaign Name */}
+            <Field label="Tên chiến dịch KOC" hint="Bắt buộc">
+              <input
+                value={input.campaignName}
+                onChange={(event) => {
+                  update("campaignName", event.target.value);
+                  setError("");
+                }}
+                placeholder="Ví dụ: Mega Live 10.10 - Bộ sưu tập Polo Thu Đông"
+                className="w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800/80 px-3.5 py-2.5 text-sm font-semibold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
+              />
+            </Field>
+
+            {/* Shop Type (Marketplace vs Mall) */}
+            <div className="space-y-2">
+              <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Loại hình gian hàng TikTok</span>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => changeShopType("marketplace")}
+                  className={`flex items-center gap-2.5 rounded-2xl border p-3.5 text-left transition cursor-pointer ${shopType === "marketplace"
+                    ? "border-brand bg-brand-light/30 dark:bg-brand-light/10 shadow-xs ring-2 ring-brand/20"
+                    : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/50 hover:border-slate-300"
+                    }`}
+                >
+                  <Store size={18} className={shopType === "marketplace" ? "text-brand" : "text-slate-400"} />
+                  <div>
+                    <strong className="block text-xs font-bold text-slate-900 dark:text-white">Shop thường</strong>
+                    <span className="text-[10px] text-slate-400">Marketplace tiêu chuẩn</span>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => changeShopType("mall")}
+                  className={`flex items-center gap-2.5 rounded-2xl border p-3.5 text-left transition cursor-pointer ${shopType === "mall"
+                    ? "border-brand bg-brand-light/30 dark:bg-brand-light/10 shadow-xs ring-2 ring-brand/20"
+                    : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/50 hover:border-slate-300"
+                    }`}
+                >
+                  <ShieldCheck size={18} className={shopType === "mall" ? "text-brand" : "text-slate-400"} />
+                  <div>
+                    <strong className="block text-xs font-bold text-slate-900 dark:text-white">TikTok Shop Mall</strong>
+                    <span className="text-[10px] text-slate-400">Thương hiệu chính hãng</span>
+                  </div>
+                </button>
+              </div>
+            </div>
+
+            {/* Cascading Category Selector */}
+            <div className="space-y-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 p-4">
+              <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                Ngành hàng chính thức TikTok Shop
+              </span>
+              <div className="grid gap-3">
+                <Field label="Ngành cấp 1">
+                  <select
+                    value={category.level1}
+                    onChange={(event) => chooseCategory((item) => item.level1 === event.target.value)}
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand"
+                  >
+                    {level1Values.map((value) => (
+                      <option key={value} value={value} className="dark:bg-slate-900">
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Ngành cấp 2">
+                  <select
+                    value={category.level2}
+                    onChange={(event) =>
+                      chooseCategory((item) => item.level1 === category.level1 && item.level2 === event.target.value)
+                    }
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand"
+                  >
+                    {level2Values.map((value) => (
+                      <option key={value} value={value} className="dark:bg-slate-900">
+                        {value}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Ngành cấp 3 (Chi tiết theo biểu phí)">
+                  <select
+                    value={category.id}
+                    onChange={(event) => setCategoryId(event.target.value)}
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand"
+                  >
+                    {level3Categories.map((item) => (
+                      <option key={item.id} value={item.id} className="dark:bg-slate-900">
+                        {item.level3} — {shopType === "mall" ? item.mallRate : item.marketplaceRate}% hoa hồng
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </div>
+            </div>
+          </SectionCard>
+
+          {/* Card 2: Ngân sách & Chi phí Mời KOC */}
+          <SectionCard
+            title="Ngân sách & Chi phí Mời KOC"
+            icon={<Wallet size={18} />}
+            badge={
+              <span className="text-xs font-mono font-bold text-slate-500">
+                1 KOC ~ {money(singleKocCost)}
+              </span>
+            }
+          >
+            {/* Quick Budget Presets */}
+            <div className="space-y-1.5">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Mức ngân sách mẫu</span>
+              <div className="grid grid-cols-4 gap-2">
+                {[10_000_000, 20_000_000, 50_000_000, 100_000_000].map((preset) => (
+                  <button
+                    key={preset}
+                    type="button"
+                    onClick={() => update("totalBudget", preset)}
+                    className={`rounded-xl border py-2 text-xs font-mono font-bold transition cursor-pointer ${input.totalBudget === preset
+                      ? "border-brand bg-brand-light text-brand shadow-xs"
+                      : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300"
+                      }`}
+                  >
+                    {preset / 1_000_000}M
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <Field label="Tổng ngân sách chiến dịch" hint="Toàn bộ kinh phí dự kiến">
+              <MoneyInput value={input.totalBudget} onChange={(value) => update("totalBudget", value)} />
+            </Field>
+
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Field label="Giá vốn mẫu / KOC" tooltip="Giá vốn 1 sản phẩm gửi tặng cho KOC">
+                <MoneyInput value={input.sampleCost} onChange={(value) => update("sampleCost", value)} />
+              </Field>
+              <Field label="Phí ship mẫu / KOC" tooltip="Cước vận chuyển gửi hàng mẫu">
+                <MoneyInput value={input.sampleShippingCost} onChange={(value) => update("sampleShippingCost", value)} />
+              </Field>
+              <Field label="Phí booking / cast" tooltip="Thù lao cứng trả trực tiếp cho KOC">
+                <MoneyInput value={input.castFee} onChange={(value) => update("castFee", value)} />
+              </Field>
+            </div>
+
+            <div className="flex items-center justify-between rounded-xl bg-slate-50 dark:bg-slate-800/60 p-3 text-xs border border-slate-100 dark:border-slate-800">
+              <span className="text-slate-500">Số KOC dự kiến có thể mời:</span>
+              <span className="font-mono font-black text-brand text-sm">{result.invitedKocs} KOC</span>
+            </div>
+          </SectionCard>
+
+          {/* Card 3: Hiệu suất KOC & Kinh tế Đơn hàng */}
+          <SectionCard title="Hiệu suất KOC & Kinh tế Đơn hàng" icon={<Video size={18} />}>
+            <div className="space-y-4">
+              <div>
+                <span className="mb-2 block text-[11px] font-black uppercase tracking-wider text-slate-400">
+                  1. Hiệu suất chuyển đổi KOC
+                </span>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <Field label="Tỷ lệ KOC lên clip" hint="KOC hiệu quả">
+                    <NumberInput
+                      value={input.effectiveKocRate}
+                      onChange={(value) => update("effectiveKocRate", value)}
+                      max={100}
+                    />
+                  </Field>
+                  <Field label="Video / KOC" hint="Số clip mỗi bạn">
+                    <NumberInput
+                      value={input.videosPerKoc}
+                      onChange={(value) => update("videosPerKoc", value)}
+                      suffix="clip"
+                      step={1}
+                    />
+                  </Field>
+                  <Field label="Đơn tự nhiên / KOC" hint="Đơn tự sinh">
+                    <NumberInput
+                      value={input.organicOrdersPerEffectiveKoc}
+                      onChange={(value) => update("organicOrdersPerEffectiveKoc", value)}
+                      suffix="đơn"
+                      step={1}
+                    />
+                  </Field>
+                </div>
+              </div>
+
+              <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
+                <span className="mb-2 block text-[11px] font-black uppercase tracking-wider text-slate-400">
+                  2. Giá bán & Voucher ưu đãi
+                </span>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <Field label="Giá niêm yết trung bình">
+                    <MoneyInput
+                      value={input.averageSellingPrice}
+                      onChange={(value) => update("averageSellingPrice", value)}
+                    />
+                  </Field>
+                  <Field label="Chiết khấu của Shop">
+                    <NumberInput
+                      value={input.sellerDiscountRate}
+                      onChange={(value) => update("sellerDiscountRate", value)}
+                      max={100}
+                    />
+                  </Field>
+                  <Field label="Voucher sàn tài trợ">
+                    <MoneyInput
+                      value={input.platformDiscount}
+                      onChange={(value) => update("platformDiscount", value)}
+                    />
+                  </Field>
+                  <Field label="Khách trả phí ship">
+                    <MoneyInput
+                      value={input.buyerShippingFee}
+                      onChange={(value) => update("buyerShippingFee", value)}
+                    />
+                  </Field>
+                </div>
+              </div>
+
+              <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
+                <span className="mb-2 block text-[11px] font-black uppercase tracking-wider text-slate-400">
+                  3. Giá vốn & Chi phí vận hành đơn
+                </span>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <Field label="Giá vốn SP (COGS)">
+                    <MoneyInput
+                      value={input.costPerSoldItem}
+                      onChange={(value) => update("costPerSoldItem", value)}
+                    />
+                  </Field>
+                  <Field label="Đóng gói / đơn">
+                    <MoneyInput value={input.packagingCost} onChange={(value) => update("packagingCost", value)} />
+                  </Field>
+                  <Field label="Nhân công / đơn">
+                    <MoneyInput value={input.handlingCost} onChange={(value) => update("handlingCost", value)} />
+                  </Field>
+                  <Field label="Shop chịu phí ship">
+                    <MoneyInput
+                      value={input.sellerShippingCost}
+                      onChange={(value) => update("sellerShippingCost", value)}
+                    />
+                  </Field>
+                  <Field label="Hoa hồng Affiliate KOC" hint="">
+                    <NumberInput
+                      value={input.organicCommissionRate}
+                      onChange={(value) => update("organicCommissionRate", value)}
+                    />
+                  </Field>
+                </div>
+              </div>
+            </div>
+          </SectionCard>
+
+          {/* Card 4: Quảng cáo & Phí sàn TikTok */}
+          <SectionCard title="Quảng cáo & Phí sàn TikTok Shop" icon={<TrendingUp size={18} />}>
+            <div className="space-y-4">
+              {/* Ads Toggle */}
+              <ToggleCard
+                checked={input.useAds}
+                onChange={(value) => update("useAds", value)}
+                label="Chạy quảng cáo Ads / Spark Ads"
+                note="Dự phóng đơn hàng từ Ads dựa theo CPA thực tế bạn cấu hình"
+                badge={input.useAds ? `${input.adsBudgetRate}% ngân sách` : undefined}
+              />
+
+              {input.useAds && (
+                <div className="rounded-2xl border border-brand/20 bg-brand-light/20 dark:bg-brand-light/5 p-4 space-y-3">
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <Field
+                      label="% Ngân sách cho Ads"
+                      hint=""
+                    >
+                      <NumberInput
+                        value={input.adsBudgetRate}
+                        onChange={(value) => update("adsBudgetRate", value)}
+                        max={100}
+                      />
+                    </Field>
+                    <Field label="CPA mục tiêu">
+                      <MoneyInput
+                        value={input.adsCostPerOrder}
+                        onChange={(value) => update("adsCostPerOrder", value)}
+                      />
+                    </Field>
+                    <Field label="Hoa hồng đơn Ads">
+                      <NumberInput
+                        value={input.adsCommissionRate}
+                        onChange={(value) => update("adsCommissionRate", value)}
+                      />
+                    </Field>
+                  </div>
+                </div>
+              )}
+
+              {/* TikTok Fees Toggle */}
+              <ToggleCard
+                checked={input.includeTikTokFees}
+                onChange={(value) => update("includeTikTokFees", value)}
+                label="Tính biểu phí sàn TikTok Shop"
+                note={`Hoa hồng ngành ${feeProfile.commissionRate}%, phí thanh toán giao dịch 6% và phí xử lý đơn`}
+              />
+
+              {input.includeTikTokFees && (
+                <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 p-4 space-y-3">
+                  <div className="grid gap-3 sm:grid-cols-3">
+                    <Field label="Hoa hồng ngành" hint="">
+                      <div className="flex h-[42px] items-center justify-end rounded-xl border border-amber-200 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/40 px-3.5 font-mono text-sm font-black text-amber-700 dark:text-amber-300">
+                        {feeProfile.commissionRate}%
+                      </div>
+                    </Field>
+                    <Field label="Phí giao dịch sàn">
+                      <NumberInput
+                        value={input.transactionFeeRate}
+                        onChange={(value) => update("transactionFeeRate", value)}
+                      />
+                    </Field>
+                    <Field label="Phí xử lý đơn cố định">
+                      <MoneyInput value={input.fixedOrderFee} onChange={(value) => update("fixedOrderFee", value)} />
+                    </Field>
+                  </div>
+
+                  {/* Programs Checklist */}
+                  <div className="space-y-2 border-t border-slate-200/70 dark:border-slate-800 pt-3">
+                    <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      Chương trình dịch vụ sàn bổ sung
+                    </span>
+                    <div className="grid gap-2">
+                      {PROGRAMS.tiktok.map((prog) => {
+                        const isChecked = input.enabledProgramIds.includes(prog.id);
+                        return (
+                          <label
+                            key={prog.id}
+                            className={`flex cursor-pointer items-start justify-between gap-3 rounded-xl border p-3 transition ${isChecked
+                              ? "border-brand bg-brand-light/30 dark:bg-brand-light/10"
+                              : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800"
+                              }`}
+                          >
+                            <div className="space-y-0.5">
+                              <strong className="text-xs font-bold text-slate-900 dark:text-white">
+                                {prog.name} ({prog.rate}%{prog.cap ? `, tối đa ${money(prog.cap)}` : ""})
+                              </strong>
+                              <p className="text-[11px] text-slate-400">{prog.note}</p>
+                            </div>
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() =>
+                                update(
+                                  "enabledProgramIds",
+                                  isChecked
+                                    ? input.enabledProgramIds.filter((id) => id !== prog.id)
+                                    : [...input.enabledProgramIds, prog.id]
+                                )
+                              }
+                              className="mt-0.5 h-4 w-4 rounded accent-brand cursor-pointer"
+                            />
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </SectionCard>
+
+          {/* Card 5: Thuế & Quản trị Rủi ro Hủy/Hoàn */}
+          <SectionCard title="Thuế & Quản trị Rủi ro Hủy / Hoàn" icon={<ReceiptText size={18} />}>
+            <div className="space-y-3">
+              <div className="grid gap-3 sm:grid-cols-3">
+                <Field label="Thuế doanh thu" tooltip="Thuế khoán hộ kinh doanh 1.5% hoặc tỷ lệ doanh nghiệp">
+                  <NumberInput value={input.taxRate} onChange={(value) => update("taxRate", value)} />
+                </Field>
+                <Field label="Tỷ lệ hủy đơn">
+                  <NumberInput
+                    value={input.cancellationRate}
+                    onChange={(value) => update("cancellationRate", value)}
+                  />
+                </Field>
+                <Field label="Chi phí 1 đơn hủy">
+                  <MoneyInput
+                    value={input.cancellationCost}
+                    onChange={(value) => update("cancellationCost", value)}
+                  />
+                </Field>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <Field label="Tỷ lệ giao thất bại (Bom hàng)">
+                  <NumberInput
+                    value={input.deliveryFailureRate}
+                    onChange={(value) => update("deliveryFailureRate", value)}
+                  />
+                </Field>
+                <Field label="Tỷ lệ hoàn sau giao">
+                  <NumberInput value={input.returnRate} onChange={(value) => update("returnRate", value)} />
+                </Field>
+                <Field label="Phí vận chuyển hoàn">
+                  <MoneyInput
+                    value={input.returnCostPerOrder}
+                    onChange={(value) => update("returnCostPerOrder", value)}
+                  />
+                </Field>
+                <Field label="Phí sàn không được hoàn">
+                  <MoneyInput
+                    value={input.nonRefundableReturnFee}
+                    onChange={(value) => update("nonRefundableReturnFee", value)}
+                  />
+                </Field>
+                <Field label="Thu hồi giá trị hàng hoàn">
+                  <NumberInput
+                    value={input.returnedInventoryRecoveryRate}
+                    onChange={(value) => update("returnedInventoryRecoveryRate", value)}
+                  />
+                </Field>
+                <Field label="Tỷ lệ hao hụt / hỏng hàng">
+                  <NumberInput value={input.damageRate} onChange={(value) => update("damageRate", value)} />
+                </Field>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2 border-t border-slate-100 dark:border-slate-800 pt-3">
+                <Field label="Dự phòng KOC phát sinh" hint="% ngân sách">
+                  <NumberInput
+                    value={input.extraKocCostRate}
+                    onChange={(value) => update("extraKocCostRate", value)}
+                  />
+                </Field>
+                <Field label="Vận hành chiến dịch khác">
+                  <MoneyInput
+                    value={input.otherOperatingCost}
+                    onChange={(value) => update("otherOperatingCost", value)}
+                  />
+                </Field>
+              </div>
+            </div>
+          </SectionCard>
+
+          {/* Error notice */}
+          {error && (
+            <div className="flex items-center gap-2 rounded-2xl border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/40 p-4 text-xs font-bold text-rose-700 dark:text-rose-300">
+              <AlertTriangle size={16} className="shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          {/* Primary Calculate CTA */}
+          <button
+            type="button"
+            onClick={calculate}
+            className="btn-brand-cta flex w-full items-center justify-center gap-2.5 rounded-2xl py-4 text-base font-black text-white shadow-lg shadow-brand/25 hover:opacity-95 active:scale-[0.99] transition-all cursor-pointer"
+          >
+            <Calculator size={20} /> Tính toán Kế hoạch KOC
+          </button>
+        </div>
+
+        {/* Right Column: Financial Results Engine (7 cols, sticky) */}
+        <div className="space-y-5 lg:col-span-7 lg:sticky lg:top-4 self-start">
+          {!hasCalculated ? (
+            <section className="flex min-h-[440px] flex-col items-center justify-center rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900 p-8 text-center shadow-xs">
+              <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-brand-light text-brand shadow-xs">
+                <BarChart3 size={34} />
+              </div>
+              <h2 className="mt-5 text-lg font-black text-slate-900 dark:text-white">
+                Chưa có kết quả dự phóng chiến dịch
+              </h2>
+              <p className="mt-2 max-w-md text-xs sm:text-sm text-slate-500 dark:text-slate-400">
+                Nhập ngân sách và thông số chiến dịch rồi nhấn{" "}
+                <strong className="text-brand">“Tính toán Kế hoạch KOC”</strong>. Hệ thống sẽ mô phỏng toàn bộ phễu KOC,
+                video, đơn hàng và bảng P&L tài chính chi tiết.
+              </p>
+              <div className="mt-6 flex flex-wrap gap-3 justify-center">
+                <button
+                  type="button"
+                  onClick={runSample}
+                  className="btn-brand-cta inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-xs font-black text-white shadow-md cursor-pointer"
+                >
+                  <Sparkles size={15} /> Chạy thử với dữ liệu mẫu
+                </button>
+              </div>
+            </section>
+          ) : (
+            <>
+              {/* 1. Hero Profit Card */}
+              <section
+                className={`relative overflow-hidden rounded-3xl border shadow-xl transition-all ${isLoss
+                  ? "border-rose-500/40 bg-gradient-to-br from-rose-950 via-slate-950 to-slate-950"
+                  : "border-slate-800 dark:border-slate-800 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900"
+                  }`}
+              >
+                {/* Ambient Glow */}
+                <div
+                  className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full opacity-25 blur-3xl"
+                  style={{ background: isLoss ? "#e11d48" : "var(--brand-primary)" }}
+                />
+
+                <div className="relative p-6 sm:p-7 text-white">
+                  <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">
+                          Lợi nhuận ròng dự kiến
+                        </span>
+                        <span
+                          className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${isLoss ? "bg-rose-500/20 text-rose-300" : "bg-emerald-500/20 text-emerald-300"
+                            }`}
+                        >
+                          Biên ròng: {result.netMargin.toFixed(1)}%
+                        </span>
+                      </div>
+                      <p
+                        className={`mt-2 text-4xl sm:text-5xl font-black font-mono tracking-tight ${isLoss ? "text-rose-400" : "text-emerald-400"
+                          }`}
+                      >
+                        {money(result.netProfit)}
+                      </p>
+                      <p className="mt-1.5 text-xs text-slate-400 font-medium">
+                        ROI Chiến dịch:{" "}
+                        <strong className={result.roi < 0 ? "text-rose-400" : "text-emerald-400"}>
+                          {result.roi.toFixed(1)}%
+                        </strong>{" "}
+                        • Doanh thu sau hoàn:{" "}
+                        <strong className="text-white font-mono">{money(result.netRevenue)}</strong>
+                      </p>
+                    </div>
+
+                    <div className="flex flex-col items-end gap-2">
+                      <button
+                        type="button"
+                        onClick={copyResult}
+                        className="flex h-fit items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/10 hover:bg-white/20 px-3.5 py-2 text-xs font-bold text-white transition cursor-pointer active:scale-95"
+                      >
+                        {copied ? <Check size={14} className="text-emerald-400" /> : <ClipboardCopy size={14} />}
+                        {copied ? "Đã chép" : "Sao chép"}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 4 Core Financial Metrics */}
+                  <div className="mt-6 grid grid-cols-2 gap-3 border-t border-white/10 pt-5 sm:grid-cols-4">
+                    <div className="rounded-2xl bg-white/5 p-3">
+                      <p className="text-[10px] uppercase tracking-wider text-slate-400">Tổng ngân sách</p>
+                      <p className="mt-1 text-sm font-black font-mono text-white">{money(input.totalBudget)}</p>
+                    </div>
+                    <div className="rounded-2xl bg-white/5 p-3">
+                      <p className="text-[10px] uppercase tracking-wider text-slate-400">KOC làm video</p>
+                      <p className="mt-1 text-sm font-black font-mono text-white">
+                        {number(result.effectiveKocs)} / {number(result.invitedKocs)}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl bg-white/5 p-3">
+                      <p className="text-[10px] uppercase tracking-wider text-slate-400">Đơn thành công</p>
+                      <p className="mt-1 text-sm font-black font-mono text-emerald-400">
+                        {number(result.successfulOrders, 1)}
+                      </p>
+                    </div>
+                    <div className="rounded-2xl bg-white/5 p-3">
+                      <p className="text-[10px] uppercase tracking-wider text-slate-400">Đơn hòa vốn</p>
+                      <p className="mt-1 text-sm font-black font-mono text-white">
+                        {result.breakEvenOrders === null ? "—" : number(result.breakEvenOrders, 1)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </section>
+
+              {/* 2. Four Financial Intelligence KPI Cards Grid (2x2) */}
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-xs">
+                  <div className="flex items-center justify-between text-slate-400">
+                    <span className="text-[11px] font-bold uppercase">ROI Toàn bộ</span>
+                    <Percent size={14} className="text-brand" />
+                  </div>
+                  <p
+                    className={`mt-2 font-mono text-lg font-black ${result.roi < 0
+                      ? "text-rose-600 dark:text-rose-400"
+                      : "text-emerald-600 dark:text-emerald-400"
+                      }`}
+                  >
+                    {result.roi.toFixed(1)}%
+                  </p>
+                  <span className="mt-1 block text-[10px] text-slate-400">
+                    {result.roi > 50 ? "Hiệu quả cao" : result.roi > 0 ? "Khả quan" : "Cần tối ưu"}
+                  </span>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-xs">
+                  <div className="flex items-center justify-between text-slate-400">
+                    <span className="text-[11px] font-bold uppercase">ROAS Ads</span>
+                    <Tv size={14} className="text-brand" />
+                  </div>
+                  <p className="mt-2 font-mono text-lg font-black text-slate-900 dark:text-white">
+                    {result.roas === null ? "—" : `${result.roas.toFixed(2)}x`}
+                  </p>
+                  <span className="mt-1 block text-[10px] text-slate-400">
+                    {input.useAds ? `Đơn Ads: ${number(result.adOrders, 1)}` : "Tắt Ads"}
+                  </span>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-xs">
+                  <div className="flex items-center justify-between text-slate-400">
+                    <span className="text-[11px] font-bold uppercase">Chi phí / Đơn</span>
+                    <Package size={14} className="text-brand" />
+                  </div>
+                  <p className="mt-2 font-mono text-lg font-black text-slate-900 dark:text-white">
+                    {result.costPerSuccessfulOrder === null ? "—" : money(result.costPerSuccessfulOrder)}
+                  </p>
+                  <span className="mt-1 block text-[10px] text-slate-400">Trên mỗi đơn giao đạt</span>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-xs">
+                  <div className="flex items-center justify-between text-slate-400">
+                    <span className="text-[11px] font-bold uppercase">CPA Hòa vốn</span>
+                    <Target size={14} className="text-brand" />
+                  </div>
+                  <p className="mt-2 font-mono text-lg font-black text-slate-900 dark:text-white">
+                    {result.breakEvenCpa === null ? "—" : money(result.breakEvenCpa)}
+                  </p>
+                  <span className="mt-1 block text-[10px] text-slate-400">Mức trần chi phí Ads</span>
+                </div>
+              </div>
+
+              {/* 3. Deep Analytical Tabs */}
+              <section className="overflow-hidden rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+                {/* Tab Header Buttons */}
+                <div className="flex border-b border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 p-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("budget")}
+                    className={`flex-1 flex items-center justify-center gap-1.5 rounded-2xl py-2.5 text-xs font-bold transition cursor-pointer ${activeTab === "budget"
+                      ? "bg-white dark:bg-slate-900 text-brand shadow-xs"
+                      : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                  >
+                    <PieChart size={14} /> Phân bổ Ngân sách
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("funnel")}
+                    className={`flex-1 flex items-center justify-center gap-1.5 rounded-2xl py-2.5 text-xs font-bold transition cursor-pointer ${activeTab === "funnel"
+                      ? "bg-white dark:bg-slate-900 text-brand shadow-xs"
+                      : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                  >
+                    <Layers size={14} /> Sản lượng & Funnel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab("pnl")}
+                    className={`flex-1 flex items-center justify-center gap-1.5 rounded-2xl py-2.5 text-xs font-bold transition cursor-pointer ${activeTab === "pnl"
+                      ? "bg-white dark:bg-slate-900 text-brand shadow-xs"
+                      : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                      }`}
+                  >
+                    <ReceiptText size={14} /> Báo cáo P&L Doanh thu
+                  </button>
+                </div>
+
+                <div className="p-5 sm:p-6">
+                  {/* Tab 1: Phân bổ ngân sách */}
+                  {activeTab === "budget" && (
+                    <div className="space-y-4">
+                      {/* Visual Allocation Bar */}
+                      <div>
+                        <div className="mb-2 flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-300">
+                          <span>Biểu đồ tỷ lệ ngân sách ({money(input.totalBudget)})</span>
+                          <span className="text-brand">
+                            {((result.sampleAndCastCost / input.totalBudget) * 100).toFixed(0)}% Mẫu & Booking •{" "}
+                            {((result.adSpend / input.totalBudget) * 100).toFixed(0)}% Ads
+                          </span>
+                        </div>
+                        <div className="flex h-3 w-full overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+                          <div
+                            style={{ width: `${Math.min(100, (result.sampleAndCastCost / input.totalBudget) * 100)}%` }}
+                            className="bg-brand"
+                            title="Ngân sách Mẫu & Booking KOC"
+                          />
+                          <div
+                            style={{ width: `${Math.min(100, (result.adSpend / input.totalBudget) * 100)}%` }}
+                            className="bg-sky-400"
+                            title="Ngân sách Quảng cáo Ads"
+                          />
+                          <div
+                            style={{ width: `${Math.max(0, (result.unusedBudget / input.totalBudget) * 100)}%` }}
+                            className="bg-amber-400"
+                            title="Ngân sách chưa phân bổ"
+                          />
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-4 text-[11px] text-slate-500">
+                          <span className="flex items-center gap-1.5">
+                            <span className="h-2 w-2 rounded-full bg-brand" /> Mẫu & Booking KOC
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <span className="h-2 w-2 rounded-full bg-sky-400" /> Ngân sách Ads
+                          </span>
+                          <span className="flex items-center gap-1.5">
+                            <span className="h-2 w-2 rounded-full bg-amber-400" /> Chưa phân bổ
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1 divide-y divide-slate-100 dark:divide-slate-800">
+                        <ResultRow
+                          label="Ngân sách mẫu / booking khả dụng"
+                          value={money(result.creatorBudget)}
+                        />
+                        <ResultRow
+                          label="Chi phí chuẩn bị cho mỗi KOC được mời"
+                          value={money(result.costPerInvitedKoc)}
+                          subtext="Bao gồm: Hàng mẫu + Ship mẫu + Booking cast"
+                        />
+                        <ResultRow
+                          label="Tổng chi phí mẫu & booking thực dùng"
+                          value={money(result.sampleAndCastCost)}
+                          strong
+                        />
+                        <ResultRow
+                          label="Ngân sách phân bổ cho Quảng cáo Ads"
+                          value={money(result.adSpend)}
+                          strong
+                        />
+                        <ResultRow
+                          label="Ngân sách dôi dư / chưa phân bổ"
+                          value={money(result.unusedBudget)}
+                          tone={result.unusedBudget > 0 ? "orange" : "slate"}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Tab 2: Sản lượng KOC & Funnel */}
+                  {activeTab === "funnel" && (
+                    <div className="space-y-3">
+                      <div className="grid gap-2 sm:grid-cols-3">
+                        <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-3.5">
+                          <span className="text-[10px] uppercase font-bold text-slate-400">1. KOC Mời</span>
+                          <p className="mt-1 text-lg font-black font-mono text-slate-900 dark:text-white">
+                            {number(result.invitedKocs)}
+                          </p>
+                          <span className="text-[11px] text-slate-400">Được gửi mẫu</span>
+                        </div>
+                        <div className="rounded-2xl border border-brand/20 bg-brand-light/20 dark:bg-brand-light/10 p-3.5">
+                          <span className="text-[10px] uppercase font-bold text-brand">2. KOC Lên clip</span>
+                          <p className="mt-1 text-lg font-black font-mono text-brand">
+                            {number(result.effectiveKocs)}
+                          </p>
+                          <span className="text-[11px] text-brand">Tỷ lệ {input.effectiveKocRate}%</span>
+                        </div>
+                        <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-3.5">
+                          <span className="text-[10px] uppercase font-bold text-slate-400">3. Video clip</span>
+                          <p className="mt-1 text-lg font-black font-mono text-slate-900 dark:text-white">
+                            {number(result.videos)}
+                          </p>
+                          <span className="text-[11px] text-slate-400">{input.videosPerKoc} video/KOC</span>
+                        </div>
+                      </div>
+
+                      <div className="grid gap-2 sm:grid-cols-3">
+                        <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-3.5">
+                          <span className="text-[10px] uppercase font-bold text-slate-400">4. Đơn tự nhiên</span>
+                          <p className="mt-1 text-lg font-black font-mono text-slate-900 dark:text-white">
+                            {number(result.organicOrders, 1)}
+                          </p>
+                          <span className="text-[11px] text-slate-400">Từ video KOC</span>
+                        </div>
+                        <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-3.5">
+                          <span className="text-[10px] uppercase font-bold text-slate-400">5. Đơn từ Ads</span>
+                          <p className="mt-1 text-lg font-black font-mono text-slate-900 dark:text-white">
+                            {number(result.adOrders, 1)}
+                          </p>
+                          <span className="text-[11px] text-slate-400">Chạy Spark Ads</span>
+                        </div>
+                        <div className="rounded-2xl border border-emerald-500/30 bg-emerald-50 dark:bg-emerald-950/30 p-3.5">
+                          <span className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400">
+                            6. Đơn thành công
+                          </span>
+                          <p className="mt-1 text-lg font-black font-mono text-emerald-600 dark:text-emerald-400">
+                            {number(result.successfulOrders, 1)}
+                          </p>
+                          <span className="text-[11px] text-emerald-600/80">Sau trừ hủy/hoàn</span>
+                        </div>
+                      </div>
+
+                      <div className="mt-3 space-y-1">
+                        <ResultRow
+                          label="Tổng đơn hàng kỳ vọng ban đầu"
+                          value={`${number(result.expectedOrders, 1)} đơn`}
+                        />
+                        <ResultRow
+                          label="Số đơn bị hủy / giao thất bại / hoàn hàng"
+                          value={`-${number(result.returnedOrders, 1)} đơn`}
+                          tone="orange"
+                        />
+                        <ResultRow
+                          label="Số đơn giao thành công thực tế"
+                          value={`${number(result.successfulOrders, 1)} đơn`}
+                          tone="green"
+                          strong
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Tab 3: Báo cáo P&L Doanh thu & Chi phí */}
+                  {activeTab === "pnl" && (
+                    <div className="space-y-3">
+                      <div>
+                        <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">
+                          Dòng Doanh Thu & Dòng Tiền Về Ví
+                        </span>
+                        <div className="mt-1 space-y-1">
+                          <ResultRow
+                            label="Tổng GMV niêm yết (trước rủi ro)"
+                            value={money(result.grossRevenue)}
+                          />
+                          <ResultRow
+                            label="Doanh thu kỳ vọng sau hủy / hoàn"
+                            value={money(result.netRevenue)}
+                            tone="green"
+                            strong
+                          />
+                          <ResultRow
+                            label="Giải ngân sàn trước Affiliate & Thuế"
+                            value={money(result.expectedPayoutBeforeAffiliate)}
+                            tone="green"
+                          />
+                          <ResultRow
+                            label="Dòng tiền ròng thực nhận về ví sàn"
+                            value={money(result.expectedNetSettlement)}
+                            tone="green"
+                            strong
+                            highlight
+                          />
+                        </div>
+                      </div>
+
+                      <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
+                        <span className="text-[11px] font-black uppercase tracking-wider text-slate-400">
+                          Các Khoản Chi Phí Chiến Dịch
+                        </span>
+                        <div className="mt-1 space-y-1">
+                          <ResultRow
+                            label="Chi phí Hàng mẫu & Booking KOC"
+                            value={`-${money(result.sampleAndCastCost)}`}
+                          />
+                          <ResultRow
+                            label="Ngân sách Chạy Quảng cáo Ads"
+                            value={`-${money(result.adSpend)}`}
+                          />
+                          <ResultRow
+                            label="Hoa hồng KOC đơn tự nhiên"
+                            value={`-${money(result.organicCommission)}`}
+                          />
+                          <ResultRow
+                            label="Hoa hồng KOC đơn quảng cáo"
+                            value={`-${money(result.adsCommission)}`}
+                          />
+                          <ResultRow
+                            label="Tổng phí dịch vụ sàn TikTok Shop"
+                            value={`-${money(result.platformFees)}`}
+                          />
+                          <ResultRow
+                            label="Thuế trên doanh thu ước tính"
+                            value={`-${money(result.taxes)}`}
+                          />
+                          <ResultRow
+                            label="Giá vốn hàng bán (COGS đơn giao thành công)"
+                            value={`-${money(result.soldGoodsCost)}`}
+                          />
+                          <ResultRow
+                            label="Đóng gói, nhân sự, vận hành & ship shop"
+                            value={`-${money(result.fulfillmentCost)}`}
+                          />
+                          <ResultRow
+                            label="Tổn thất trạng thái đơn (hủy / giao lỗi / ship hoàn)"
+                            value={`-${money(result.returnLoss)}`}
+                            tone="orange"
+                          />
+                          <ResultRow
+                            label="Dự phòng KOC phát sinh & chi phí khác"
+                            value={`-${money(result.extraKocCost)}`}
+                          />
+                          <ResultRow
+                            label="Tổng chi phí chiến dịch"
+                            value={money(result.totalCost)}
+                            tone="red"
+                            strong
+                            highlight
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </section>
+
+              {/* 4. Warning Alerts */}
+              {result.warnings.length > 0 && (
+                <div className="space-y-2">
+                  {result.warnings.map((warning, index) => (
+                    <div
+                      key={index}
+                      className="flex gap-2.5 rounded-2xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/80 dark:bg-amber-950/30 p-3.5 text-xs text-amber-900 dark:text-amber-300"
+                    >
+                      <AlertTriangle size={16} className="shrink-0 text-amber-600 mt-0.5" />
+                      <span>{warning}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* 5. Policy & Reference Citations */}
+              <section className="rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 p-5 text-xs text-slate-600 dark:text-slate-400 space-y-2.5">
+                <div className="flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200">
+                  <FileText size={16} className="text-brand" />
+                  <span>Căn cứ pháp lý & Biểu phí TikTok Shop Việt Nam</span>
+                </div>
+                <p className="text-[11px] leading-relaxed">
+                  Tỷ lệ hoa hồng được tham chiếu trực tiếp từ biểu phí TikTok Shop Seller University mới nhất. Thuế
+                  áp dụng theo chính sách kê khai TMĐT hiện hành.
+                </p>
+                <div className="flex flex-wrap gap-2.5 pt-1">
+                  <a
+                    href={SOURCES.tiktok}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold text-brand hover:border-brand transition"
+                  >
+                    Phí nhà bán hàng <ExternalLink size={10} />
+                  </a>
+                  <a
+                    href={SOURCES.tiktokTransaction}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold text-brand hover:border-brand transition"
+                  >
+                    Phí giao dịch <ExternalLink size={10} />
+                  </a>
+                  <a
+                    href={SOURCES.tiktokVxp}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold text-brand hover:border-brand transition"
+                  >
+                    Voucher Extra <ExternalLink size={10} />
+                  </a>
+                  <a
+                    href={SOURCES.tax}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold text-brand hover:border-brand transition"
+                  >
+                    Thuế TMĐT <ExternalLink size={10} />
+                  </a>
+                </div>
+              </section>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* 3. Saved Plans Comparison Section */}
+      <section className="mt-8 overflow-hidden rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+        <div className="flex flex-col gap-3 border-b border-slate-100 dark:border-slate-800 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-light text-brand">
+              <FolderOpen size={20} />
+            </div>
+            <div>
+              <h2 className="text-base font-black text-slate-900 dark:text-white">
+                Bảng So Sánh Các Phương Án Đã Lưu ({savedPlans.length})
+              </h2>
+              <p className="text-xs text-slate-400">
+                Lưu trữ và đối chiếu các kịch bản ngân sách KOC đã thử nghiệm
+              </p>
+            </div>
+          </div>
+
+          {savedPlans.length > 0 && (
+            <div className="flex items-center gap-2">
+              <div className="relative">
+                <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Tìm theo tên..."
+                  value={searchFilter}
+                  onChange={(e) => setSearchFilter(e.target.value)}
+                  className="rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800/80 pl-8 pr-3 py-1.5 text-xs text-slate-900 dark:text-slate-100 outline-none focus:border-brand"
+                />
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (confirm("Bạn có chắc chắn muốn xóa toàn bộ phương án đã lưu?")) {
+                    setSavedPlans([]);
+                    localStorage.setItem(STORAGE_KEY, "[]");
+                  }
+                }}
+                className="inline-flex items-center gap-1 rounded-xl border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/40 px-3 py-1.5 text-xs font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-100 transition cursor-pointer"
+              >
+                <Trash2 size={13} /> Xóa tất cả
+              </button>
+            </div>
+          )}
+        </div>
+
+        {savedPlans.length === 0 ? (
+          <div className="p-10 text-center text-sm text-slate-400">
+            Chưa có phương án nào được lưu. Sau khi tính toán kịch bản, hãy nhấn nút{" "}
+            <strong className="text-brand">“Lưu phương án”</strong> trên góc phải.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[840px] text-left text-xs">
+              <thead className="bg-slate-50/80 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 font-bold uppercase tracking-wider text-[11px] border-b border-slate-100 dark:border-slate-800">
+                <tr>
+                  <th className="px-5 py-3.5">Chiến dịch KOC</th>
+                  <th className="px-4 py-3.5 text-right">Tổng ngân sách</th>
+                  <th className="px-4 py-3.5 text-center">KOC Clip</th>
+                  <th className="px-4 py-3.5 text-center">Đơn thành công</th>
+                  <th className="px-4 py-3.5 text-right">Doanh thu sau hoàn</th>
+                  <th className="px-4 py-3.5 text-right">Lợi nhuận ròng</th>
+                  <th className="px-4 py-3.5 text-center">ROI</th>
+                  <th className="px-5 py-3.5 text-center">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {filteredPlans.map((item) => (
+                  <tr
+                    key={item.id}
+                    className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors"
+                  >
+                    <td className="px-5 py-4">
+                      <strong className="block text-slate-900 dark:text-white font-bold text-sm">
+                        {item.input.campaignName || "Chiến dịch chưa đặt tên"}
+                      </strong>
+                      <span className="text-[11px] text-slate-400 font-normal">
+                        {new Date(item.createdAt).toLocaleString("vi-VN")} •{" "}
+                        {item.shopType === "mall" ? "Mall" : "Shop thường"}
+                      </span>
+                    </td>
+                    <td className="px-4 py-4 text-right font-mono font-bold text-slate-900 dark:text-white">
+                      {money(item.input.totalBudget)}
+                    </td>
+                    <td className="px-4 py-4 text-center font-mono font-bold text-brand">
+                      {number(item.result.effectiveKocs)}
+                    </td>
+                    <td className="px-4 py-4 text-center font-mono text-slate-700 dark:text-slate-300">
+                      {number(item.result.successfulOrders, 1)}
+                    </td>
+                    <td className="px-4 py-4 text-right font-mono text-emerald-600 dark:text-emerald-400 font-bold">
+                      {money(item.result.netRevenue)}
+                    </td>
+                    <td
+                      className={`px-4 py-4 text-right font-mono font-black ${item.result.netProfit < 0
+                        ? "text-rose-600 dark:text-rose-400"
+                        : "text-emerald-600 dark:text-emerald-400"
+                        }`}
+                    >
+                      {money(item.result.netProfit)}
+                    </td>
+                    <td className="px-4 py-4 text-center">
+                      <span
+                        className={`inline-block rounded-full px-2 py-0.5 text-[11px] font-mono font-black ${item.result.roi < 0
+                          ? "bg-rose-100 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300"
+                          : "bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300"
+                          }`}
+                      >
+                        {item.result.roi.toFixed(1)}%
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 text-center">
+                      <div className="flex items-center justify-center gap-1.5">
+                        <button
+                          type="button"
+                          title="Mở lại phương án này"
+                          onClick={() => openPlan(item)}
+                          className="rounded-lg border border-brand/30 bg-brand-light/40 p-2 text-brand hover:bg-brand-light transition cursor-pointer"
+                        >
+                          <FolderOpen size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          title="Nhân bản phương án"
+                          onClick={() => duplicatePlan(item)}
+                          className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-50 transition cursor-pointer"
+                        >
+                          <CopyPlus size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          title="Xóa phương án"
+                          onClick={() => deletePlan(item.id)}
+                          className="rounded-lg border border-rose-200 dark:border-rose-900/40 bg-rose-50 dark:bg-rose-950/30 p-2 text-rose-600 dark:text-rose-400 hover:bg-rose-100 transition cursor-pointer"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </div>
-    <section className="mt-6 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="flex items-center justify-between border-b bg-slate-50 px-5 py-4"><h2 className="font-black text-slate-900">So sánh phương án đã lưu ({savedPlans.length})</h2>{savedPlans.length > 0 && <button onClick={() => { setSavedPlans([]); localStorage.setItem(STORAGE_KEY, "[]"); }} className="inline-flex items-center gap-1 text-xs font-bold text-rose-600"><Trash2 size={14} /> Xóa tất cả</button>}</div>{savedPlans.length === 0 ? <p className="p-8 text-center text-sm text-slate-500">Chưa có phương án nào. Hãy tính rồi nhấn “Lưu phương án”.</p> : <div className="overflow-x-auto"><table className="w-full min-w-[900px] text-left text-xs"><thead className="bg-slate-900 text-white"><tr><th className="px-4 py-3">Chiến dịch</th><th className="px-4 py-3">Ngân sách</th><th className="px-4 py-3">KOC hiệu quả</th><th className="px-4 py-3">Đơn thành công</th><th className="px-4 py-3">Doanh thu</th><th className="px-4 py-3">Lợi nhuận</th><th className="px-4 py-3">ROI</th><th className="px-4 py-3">Thao tác</th></tr></thead><tbody className="divide-y">{savedPlans.map((item) => <tr key={item.id}><td className="px-4 py-3"><strong>{item.input.campaignName}</strong><span className="mt-1 block text-[10px] text-slate-400">{new Date(item.createdAt).toLocaleString("vi-VN")}</span></td><td className="px-4 py-3 font-mono">{money(item.input.totalBudget)}</td><td className="px-4 py-3">{number(item.result.effectiveKocs)}</td><td className="px-4 py-3">{number(item.result.successfulOrders, 1)}</td><td className="px-4 py-3 font-mono text-emerald-700">{money(item.result.netRevenue)}</td><td className={`px-4 py-3 font-mono font-bold ${item.result.netProfit < 0 ? "text-rose-600" : "text-blue-700"}`}>{money(item.result.netProfit)}</td><td className="px-4 py-3 font-bold">{item.result.roi.toFixed(1)}%</td><td className="px-4 py-3"><div className="flex gap-1"><button title="Mở lại" onClick={() => openPlan(item)} className="rounded-lg border border-blue-200 p-2 text-blue-600"><FolderOpen size={14} /></button><button title="Nhân bản" onClick={() => duplicatePlan(item)} className="rounded-lg border border-violet-200 p-2 text-violet-600"><CopyPlus size={14} /></button><button title="Xóa" onClick={() => deletePlan(item.id)} className="rounded-lg border border-rose-200 p-2 text-rose-600"><Trash2 size={14} /></button></div></td></tr>)}</tbody></table></div>}</section>
-  </div>;
+  );
 }
-
-function Panel({ title, tone, children }: { title: string; tone: "blue" | "violet" | "orange"; children: ReactNode }) { const colors = { blue: "border-blue-200 bg-blue-50", violet: "border-violet-200 bg-violet-50", orange: "border-orange-200 bg-orange-50" }; return <div className={`rounded-xl border p-4 ${colors[tone]}`}><h3 className="mb-3 text-xs font-black uppercase tracking-wide text-slate-700">{title}</h3>{children}</div>; }
-function ResultGroup({ title, children }: { title: string; children: ReactNode }) { return <div className="rounded-xl border border-slate-200 bg-slate-50/70 p-4"><h3 className="mb-1 flex items-center gap-2 text-xs font-black uppercase tracking-wide text-slate-800"><Target size={14} className="text-indigo-600" />{title}</h3>{children}</div>; }
-function Kpi({ label, value }: { label: string; value: string }) { return <div className="rounded-lg bg-white/10 p-3 text-center"><p className="text-[10px] uppercase text-white/70">{label}</p><p className="mt-1 font-mono text-sm font-black">{value}</p></div>; }
-function Results({ result }: { result: KocPlanResult }) { return <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"><div className="bg-gradient-to-r from-cyan-600 to-blue-700 px-5 py-4 text-white"><h2 className="flex items-center gap-2 font-black"><BarChart3 size={19} /> Kết quả ước tính</h2><p className="mt-1 text-xs text-blue-100">Dự phóng từ dữ liệu bạn nhập, không phải cam kết doanh số.</p></div><div className="space-y-4 p-5">
-  <ResultGroup title="Phân bổ ngân sách"><ResultRow label="Ngân sách mẫu/cast khả dụng" value={money(result.creatorBudget)} /><ResultRow label="Chi phí mỗi KOC được mời" value={money(result.costPerInvitedKoc)} /><ResultRow label="Chi phí mẫu/cast thực dùng" value={money(result.sampleAndCastCost)} /><ResultRow label="Ngân sách quảng cáo" value={money(result.adSpend)} /><ResultRow label="Ngân sách chưa phân bổ" value={money(result.unusedBudget)} tone="orange" /></ResultGroup>
-  <ResultGroup title="Sản lượng chiến dịch"><ResultRow label="Số KOC có thể mời" value={`${number(result.invitedKocs)} KOC`} /><ResultRow label="KOC dự kiến làm nội dung" value={`${number(result.effectiveKocs)} KOC`} /><ResultRow label="Tổng video dự kiến" value={`${number(result.videos)} video`} /><ResultRow label="Đơn tự nhiên" value={`${number(result.organicOrders, 1)} đơn`} /><ResultRow label="Đơn từ quảng cáo" value={`${number(result.adOrders, 1)} đơn`} /><ResultRow label="Đơn thành công sau hoàn" value={`${number(result.successfulOrders, 1)} đơn`} tone="green" strong /></ResultGroup>
-  <ResultGroup title="Doanh thu và chi phí"><ResultRow label="GMV niêm yết trước rủi ro" value={money(result.grossRevenue)} tone="green" /><ResultRow label="Doanh thu kỳ vọng sau hủy/hoàn" value={money(result.netRevenue)} tone="green" strong /><ResultRow label="Giải ngân trước Affiliate và thuế" value={money(result.expectedPayoutBeforeAffiliate)} tone="green" /><ResultRow label="Tiền ròng sau Affiliate và thuế" value={money(result.expectedNetSettlement)} tone="green" strong /><ResultRow label="Hoa hồng đơn tự nhiên" value={`-${money(result.organicCommission)}`} /><ResultRow label="Hoa hồng đơn quảng cáo" value={`-${money(result.adsCommission)}`} /><ResultRow label="Phí TikTok Shop" value={`-${money(result.platformFees)}`} /><ResultRow label="Thuế ước tính" value={`-${money(result.taxes)}`} /><ResultRow label="Giá vốn đơn thành công" value={`-${money(result.soldGoodsCost)}`} /><ResultRow label="Đóng gói, vận hành, ship" value={`-${money(result.fulfillmentCost)}`} /><ResultRow label="Tổn thất hủy/giao lỗi/hoàn" value={`-${money(result.returnLoss)}`} tone="orange" /><ResultRow label="Tổng chi phí" value={money(result.totalCost)} tone="orange" strong /></ResultGroup>
-  <div className={`rounded-xl p-5 text-white ${result.netProfit < 0 ? "bg-gradient-to-r from-rose-600 to-orange-600" : "bg-gradient-to-r from-indigo-600 to-violet-600"}`}><div className="flex items-center justify-between gap-4"><span className="text-sm font-bold">Lợi nhuận ròng dự kiến</span><strong className="font-mono text-2xl">{money(result.netProfit)}</strong></div><div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3"><Kpi label="ROI" value={`${result.roi.toFixed(1)}%`} /><Kpi label="ROAS Ads" value={result.roas === null ? "—" : `${result.roas.toFixed(2)}x`} /><Kpi label="Chi phí/đơn" value={result.costPerSuccessfulOrder === null ? "—" : money(result.costPerSuccessfulOrder)} /><Kpi label="Đơn hòa vốn" value={result.breakEvenOrders === null ? "—" : number(result.breakEvenOrders, 1)} /><Kpi label="CPA Ads hòa vốn" value={result.breakEvenCpa === null ? "—" : money(result.breakEvenCpa)} /><Kpi label="Biên ròng" value={`${result.netMargin.toFixed(1)}%`} /></div></div>
-  {result.warnings.map((warning) => <p key={warning} className="flex gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900"><AlertTriangle size={14} className="shrink-0" />{warning}</p>)}
-</div></section>; }
-
-function exportRows(campaignName: string, category: string, result: KocPlanResult): (string | number)[][] { return [
-  ["Chỉ số", "Giá trị"], ["Chiến dịch", campaignName], ["Ngành cấp 3", category],
-  ["KOC có thể mời", result.invitedKocs], ["KOC hiệu quả", result.effectiveKocs], ["Video", result.videos],
-  ["Đơn tự nhiên", result.organicOrders], ["Đơn quảng cáo", result.adOrders], ["Đơn thành công", result.successfulOrders],
-  ["GMV trước rủi ro", result.grossRevenue], ["Doanh thu sau hủy/hoàn", result.netRevenue],
-  ["Giải ngân trước Affiliate và thuế", result.expectedPayoutBeforeAffiliate], ["Tiền ròng sau Affiliate và thuế", result.expectedNetSettlement],
-  ["Hoa hồng tự nhiên", result.organicCommission], ["Hoa hồng quảng cáo", result.adsCommission], ["Phí TikTok", result.platformFees],
-  ["Thuế", result.taxes], ["Giá vốn", result.soldGoodsCost], ["Vận hành đơn", result.fulfillmentCost], ["Tổn thất trạng thái đơn", result.returnLoss],
-  ["Tổng chi phí", result.totalCost], ["Lợi nhuận ròng", result.netProfit], ["ROI (%)", result.roi], ["ROAS", result.roas ?? ""],
-  ["Đơn hòa vốn", result.breakEvenOrders ?? ""], ["CPA hòa vốn", result.breakEvenCpa ?? ""], ["Biên ròng (%)", result.netMargin],
-]; }

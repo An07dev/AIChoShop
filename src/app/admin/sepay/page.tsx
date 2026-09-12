@@ -14,11 +14,8 @@ export default async function AdminSePayPage() {
   const config = await getSePayConfig();
 
   const transactions = await prisma.transaction.findMany({
-    where: {
-      type: "UPGRADE_VIP",
-    },
     orderBy: { createdAt: "desc" },
-    take: 20,
+    take: 50,
     include: {
       user: {
         select: {
@@ -39,7 +36,13 @@ export default async function AdminSePayPage() {
     type: t.type,
     sepayId: t.sepayId,
     createdAt: t.createdAt.toISOString(),
-    user: t.user,
+    user: t.user || {
+      id: t.userId || "",
+      email: "Chưa định danh",
+      name: "Khách chuyển khoản",
+      phone: null,
+      isVIP: false,
+    },
   }));
 
   return (

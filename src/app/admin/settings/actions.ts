@@ -102,3 +102,55 @@ export async function testOpenAiConnectionAction(params: {
     };
   }
 }
+
+/**
+ * Server Action: Đổi mật khẩu tài khoản ADMIN
+ */
+export async function changeAdminPasswordAction(params: {
+  currentPassword: string;
+  newPassword: string;
+  confirmPassword: string;
+}) {
+  try {
+    const currentPassword = params.currentPassword?.trim() || "";
+    const newPassword = params.newPassword?.trim() || "";
+    const confirmPassword = params.confirmPassword?.trim() || "";
+
+    if (!currentPassword) {
+      return { success: false, error: "Vui lòng nhập mật khẩu Admin hiện tại." };
+    }
+
+    if (!newPassword) {
+      return { success: false, error: "Vui lòng nhập mật khẩu mới." };
+    }
+
+    if (newPassword.length < 6) {
+      return { success: false, error: "Mật khẩu mới phải có tối thiểu 6 ký tự." };
+    }
+
+    if (newPassword !== confirmPassword) {
+      return { success: false, error: "Xác nhận mật khẩu mới không khớp!" };
+    }
+
+    const { changeAdminPassword } = await import("@/lib/system-settings");
+    const result = await changeAdminPassword(currentPassword, newPassword);
+
+    if (!result.success) {
+      return { success: false, error: result.error || "Không thể đổi mật khẩu Admin." };
+    }
+
+    revalidatePath("/admin/settings");
+    revalidatePath("/admin");
+
+    return {
+      success: true,
+      message: "Đổi mật khẩu ADMIN thành công! Mật khẩu mới có hiệu lực ngay lập tức.",
+    };
+  } catch (error: any) {
+    console.error("Error changing admin password:", error);
+    return {
+      success: false,
+      error: error?.message || "Lỗi hệ thống khi đổi mật khẩu Admin.",
+    };
+  }
+}

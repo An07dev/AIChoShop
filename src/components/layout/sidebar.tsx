@@ -2,8 +2,8 @@
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { Home, BookOpen, Wrench, UserCircle, Settings, Crown, ChevronDown, LogOut } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Home, BookOpen, Wrench, UserCircle, Settings, ChevronDown, LogOut, LogIn } from 'lucide-react';
+import { useState, useEffect, useTransition } from 'react';
 import { logoutUser } from '@/app/actions/auth';
 
 export interface SidebarCourseItem {
@@ -27,6 +27,13 @@ export function Sidebar({
   const currentCourseId = searchParams.get('courseId');
   const currentLessonId = searchParams.get('lessonId');
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  const [isLoggingOut, startLogoutTransition] = useTransition();
+
+  const handleLogout = () => {
+    startLogoutTransition(async () => {
+      await logoutUser();
+    });
+  };
 
   const totalLessonsCount = dynamicModules?.reduce((a, b) => a + b.count, 0) || 26;
 
@@ -72,7 +79,7 @@ export function Sidebar({
     { 
       id: 3, 
       name: 'Kho Công Cụ AI', 
-      desc: '9 Tools bứt phá doanh số',
+      desc: '11 Tools bứt phá doanh số',
       href: '/tools', 
       icon: Wrench,
       viewAllHref: '/tools',
@@ -80,12 +87,14 @@ export function Sidebar({
         { name: '1. Tính Giá Bán', href: '/tools/pricing-calculator' },
         { name: '2. Tính Thuế TMĐT', href: '/tools/tax-calculator' },
         { name: '3. AI Tối Ưu SEO', href: '/tools/seo-optimizer' },
-        { name: '4. AI Viết Mô Tả', href: '/tools/product-description' },
-        { name: '5. Nhân Bản Chống Spam', href: '/tools/title-spinner' },
+        { name: '4. Nhân Bản Chống Spam', href: '/tools/title-spinner' },
+        { name: '5. AI Mẫu Quảng Cáo Ads', href: '/tools/ad-copy' },
         { name: '6. AI Kịch Bản Video', href: '/tools/script-writer' },
         { name: '7. AI Lập Kế Hoạch KOC', href: '/tools/koc-planner' },
-        { name: '8. AI Xử Lý Khủng Hoảng', href: '/tools/review-replier' },
-        { name: '9. AI Kháng Nghị', href: '/tools/appeal-generator' }
+        { name: '8. AI Biến Video 5 Kênh', href: '/tools/video-repurposer' },
+        { name: '9. Chat Broadcast & Zalo', href: '/tools/chat-broadcast' },
+        { name: '10. AI Xử Lý Khủng Hoảng', href: '/tools/review-replier' },
+        { name: '11. AI Kháng Nghị', href: '/tools/appeal-generator' }
       ]
     },
     { 
@@ -250,44 +259,24 @@ export function Sidebar({
         </div>
       </div>
 
-      <div className="p-4 m-4 sidebar-user-card border rounded-2xl relative overflow-hidden group shadow-xs">
-        <div 
-          className="absolute top-0 right-0 w-24 h-24 rounded-full blur-xl transition-all opacity-40 group-hover:opacity-70 pointer-events-none"
-          style={{ backgroundColor: "var(--brand-primary)" }}
-        ></div>
-        
-        <div className="flex items-center gap-3 mb-4 relative z-10">
-          <div className="w-10 h-10 bg-brand text-white rounded-xl flex items-center justify-center font-black shadow-inner uppercase">
-            {user ? user.name?.charAt(0) : 'U'}
-          </div>
-          <div>
-            <p className="text-sm font-bold text-[var(--sidebar-text-primary)] truncate max-w-[120px]">{user ? user.name : 'Khách Vãng Lai'}</p>
-            {user?.isVIP ? (
-              <p className="text-[11px] text-amber-600 dark:text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded inline-block mt-0.5 border border-amber-500/20">VIP Member</p>
-            ) : (
-              <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded inline-block mt-0.5 border border-emerald-500/20">Free Plan</p>
-            )}
-          </div>
-        </div>
-        
+      <div className="p-4 border-t" style={{ borderColor: "var(--sidebar-border)" }}>
         {user ? (
-          <div className="flex gap-2">
-            {!user.isVIP && (
-              <Link href="/profile#pricing-section" className="relative z-10 flex-1 flex items-center justify-center gap-1.5 text-xs bg-brand hover:bg-brand-hover text-white py-2 rounded-lg font-bold transition-all shadow-md shadow-brand/30">
-                <Crown size={14} /> Lên VIP
-              </Link>
-            )}
-            <button 
-              onClick={() => logoutUser()}
-              className="relative z-10 flex items-center justify-center text-xs hover:bg-[var(--sidebar-hover-bg)] text-[var(--sidebar-text-muted)] hover:text-[var(--sidebar-text-primary)] py-2 px-3 rounded-lg font-bold transition-all border border-[var(--sidebar-card-border)] cursor-pointer"
-              title="Đăng xuất"
-            >
-              <LogOut size={14} />
-            </button>
-          </div>
+          <button
+            onClick={handleLogout}
+            disabled={isLoggingOut}
+            className="w-full flex items-center justify-center gap-2.5 py-2.5 px-4 rounded-xl text-sm font-bold text-rose-600 dark:text-rose-400 hover:text-white hover:bg-rose-600 dark:hover:bg-rose-600 bg-rose-50 dark:bg-rose-500/10 border border-rose-200 dark:border-rose-500/20 transition-all cursor-pointer shadow-xs active:scale-[0.98] disabled:opacity-50"
+            title="Đăng xuất khỏi tài khoản"
+          >
+            <LogOut size={16} className={isLoggingOut ? "animate-spin" : ""} />
+            <span>{isLoggingOut ? "Đang đăng xuất..." : "Đăng xuất"}</span>
+          </button>
         ) : (
-          <Link href="/login" className="relative z-10 flex items-center justify-center gap-2 text-xs bg-brand hover:bg-brand-hover text-white py-2 rounded-lg font-bold transition-all shadow-md shadow-brand/30">
-            Đăng nhập / Đăng ký
+          <Link
+            href="/login"
+            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-bold bg-brand hover:bg-brand-hover text-white transition-all shadow-md shadow-brand/20 active:scale-[0.98]"
+          >
+            <LogIn size={16} />
+            <span>Đăng nhập</span>
           </Link>
         )}
       </div>
