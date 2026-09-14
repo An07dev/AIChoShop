@@ -668,8 +668,8 @@ export function UsersManager({
                 <th className="p-4 font-bold text-center">Gói & Thời Hạn VIP</th>
                 <th className="p-4 font-bold text-center">Trạng Thái</th>
                 <th className="p-4 font-bold text-center">Lượt Free</th>
-                <th className="p-4 font-bold">Quyền & Ngày Tạo</th>
-                <th className="p-4 font-bold text-right">Quản Trị / Thao Tác</th>
+                <th className="p-4 font-bold">Ngày Tạo</th>
+                <th className="p-4 font-bold text-center">Hành động</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">
@@ -843,8 +843,8 @@ export function UsersManager({
                       </td>
 
                       {/* Cột 6: Bộ nút Thao tác Quản trị */}
-                      <td className="p-4 text-right">
-                        <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                      <td className="p-4 text-center">
+                        <div className="flex items-center justify-center gap-1.5 flex-wrap">
 
                           {/* Nút Quản Lý Thời Hạn VIP */}
                           <button
