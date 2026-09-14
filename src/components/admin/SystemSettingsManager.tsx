@@ -26,6 +26,7 @@ import {
   Layers,
   Lock,
 } from "lucide-react";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import {
   saveSystemSettingsAction,
   testOpenAiConnectionAction,
@@ -279,52 +280,49 @@ export function SystemSettingsManager({ initialSettings }: SystemSettingsManager
       )}
 
       {/* ── HEADER CHÍNH ──────────────────────────────────────────────────────── */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-xs flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="p-3 rounded-2xl bg-blue-600 text-white shadow-md shadow-blue-600/20 shrink-0">
-            <Settings size={24} />
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-black text-slate-900 leading-tight">
-              Cài Đặt Hệ Thống & OpenAI API Key
-            </h1>
-            <p className="text-xs sm:text-sm text-slate-500 mt-0.5">
-              Cấu hình mô hình AI, quản trị Token OpenAI và đồng bộ trực tiếp với Database.
-            </p>
-          </div>
-        </div>
+      <AdminPageHeader
+        title="Cài Đặt Hệ Thống & OpenAI API Key"
+        subtitle="Cấu hình mô hình AI, quản trị Token OpenAI và đồng bộ trực tiếp với Database."
+        icon={Settings}
+        iconGradient="from-purple-600 to-indigo-600"
+        badge={
+          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-purple-50 text-purple-700 border border-purple-200 shadow-2xs">
+            Cấu hình DB
+          </span>
+        }
+        actions={
+          <div className="flex items-center gap-2">
+            <a
+              href="https://platform.openai.com/api-keys"
+              target="_blank"
+              rel="noreferrer"
+              className="px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-bold text-slate-700 flex items-center gap-2 transition shadow-2xs hover:border-slate-300"
+            >
+              <span>Lấy Key tại OpenAI</span>
+              <ExternalLink size={13} className="text-slate-400" />
+            </a>
 
-        <div className="flex items-center gap-2.5 shrink-0">
-          <a
-            href="https://platform.openai.com/api-keys"
-            target="_blank"
-            rel="noreferrer"
-            className="px-4 py-2.5 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-xs font-bold text-slate-700 flex items-center gap-2 transition shadow-2xs hover:border-slate-300"
-          >
-            <span>Lấy Key tại OpenAI</span>
-            <ExternalLink size={13} className="text-slate-400" />
-          </a>
-
-          <button
-            type="button"
-            onClick={() => handleSave()}
-            disabled={isSaving}
-            className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-blue-600/20 transition active:scale-95 disabled:opacity-50 cursor-pointer"
-          >
-            {isSaving ? (
-              <>
-                <RefreshCw size={14} className="animate-spin" />
-                <span>Đang lưu...</span>
-              </>
-            ) : (
-              <>
-                <Save size={14} />
-                <span>Lưu Cấu Hình</span>
-              </>
-            )}
-          </button>
-        </div>
-      </div>
+            <button
+              type="button"
+              onClick={() => handleSave()}
+              disabled={isSaving}
+              className="px-5 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center gap-2 shadow-md shadow-blue-600/20 transition active:scale-95 disabled:opacity-50 cursor-pointer"
+            >
+              {isSaving ? (
+                <>
+                  <RefreshCw size={14} className="animate-spin" />
+                  <span>Đang lưu...</span>
+                </>
+              ) : (
+                <>
+                  <Save size={14} />
+                  <span>Lưu Cấu Hình</span>
+                </>
+              )}
+            </button>
+          </div>
+        }
+      />
 
       {/* ── METRIC CARDS OVERVIEW (4 THẺ TỔNG QUAN CÂN ĐỐI) ────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

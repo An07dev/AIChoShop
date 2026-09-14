@@ -1,6 +1,10 @@
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
+import { AdminCharts } from "@/components/admin/AdminCharts";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import type { Metadata } from "next";
 import {
+  LayoutDashboard,
   Users,
   BookOpen,
   Crown,
@@ -26,6 +30,11 @@ import {
 } from "lucide-react";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Bảng Điều Khiển Quản Trị",
+  description: "Tổng quan tình hình kinh doanh, số liệu học viên, nội dung đào tạo và doanh thu VIP hệ thống AIChoShop.",
+};
 
 const formatMoney = (val: number) =>
   new Intl.NumberFormat("vi-VN", {
@@ -69,6 +78,8 @@ export default async function AdminDashboard() {
   let successTxCount = 0;
   let recentUsers: any[] = [];
   let recentTransactions: any[] = [];
+  let allSuccessfulTxs: any[] = [];
+  let allUsersTimeline: any[] = [];
 
   try {
     const [
@@ -80,6 +91,8 @@ export default async function AdminDashboard() {
       sTxCount,
       users,
       txs,
+      succTxs,
+      usersTimeline,
     ] = await Promise.all([
       prisma.user.count(),
       prisma.user.count({ where: { isVIP: true } }),
@@ -119,6 +132,23 @@ export default async function AdminDashboard() {
           },
         },
       }),
+      prisma.transaction.findMany({
+        where: { status: "SUCCESS" },
+        select: {
+          id: true,
+          amount: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: "asc" },
+      }),
+      prisma.user.findMany({
+        select: {
+          id: true,
+          isVIP: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: "asc" },
+      }),
     ]);
 
     userCount = uCount;
@@ -129,9 +159,23 @@ export default async function AdminDashboard() {
     successTxCount = sTxCount;
     recentUsers = users;
     recentTransactions = txs;
+    allSuccessfulTxs = succTxs;
+    allUsersTimeline = usersTimeline;
   } catch (error) {
     console.error("Lỗi khi tải dữ liệu dashboard:", error);
   }
+
+  const serializedTransactions = (allSuccessfulTxs || []).map((t) => ({
+    id: String(t.id),
+    amount: Number(t.amount) || 0,
+    createdAt: t.createdAt instanceof Date ? t.createdAt.toISOString() : String(t.createdAt),
+  }));
+
+  const serializedUsersTimeline = (allUsersTimeline || []).map((u) => ({
+    id: String(u.id),
+    isVIP: Boolean(u.isVIP),
+    createdAt: u.createdAt instanceof Date ? u.createdAt.toISOString() : String(u.createdAt),
+  }));
 
   const stats = [
     {
@@ -170,7 +214,21 @@ export default async function AdminDashboard() {
 
   return (
     <div className="space-y-4 sm:space-y-5 pb-6">
-      {/* ── 1. METRICS CARDS (4 THẺ TỔNG QUAN) ─────────────────────────────── */}
+      {/* TIÊU ĐỀ TRANG TỔNG QUAN DASHBOARD */}
+      <AdminPageHeader
+        title="Bảng Điều Khiển Quản Trị"
+        subtitle="Tổng quan tình hình kinh doanh, số liệu học viên, tiến độ đào tạo và doanh thu nạp VIP."
+        icon={LayoutDashboard}
+        iconGradient="from-blue-600 to-indigo-600"
+        badge={
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            Trực Tuyến 24/7
+          </span>
+        }
+      />
+
+      {/* 1. METRICS CARDS (4 THẺ TỔNG QUAN) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
         {stats.map((stat, idx) => (
           <Link
@@ -203,6 +261,16 @@ export default async function AdminDashboard() {
           </Link>
         ))}
       </div>
+
+      {/* ── 1.5. BIỂU ĐỒ DOANH THU & PHÂN BỔ HỌC VIÊN VIP/FREE ───────────── */}
+      <AdminCharts
+        transactions={serializedTransactions}
+        usersTimeline={serializedUsersTimeline}
+        userCount={userCount}
+        vipCount={vipCount}
+        totalRevenue={totalRevenue}
+        successTxCount={successTxCount}
+      />
 
       {/* ── 2. TWO-COLUMN MAIN WORKSPACE (NGƯỜI DÙNG MỚI & CHUYỂN KHOẢN GẦN ĐÂY) ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5 items-stretch">
@@ -412,11 +480,10 @@ export default async function AdminDashboard() {
                       <div className="flex items-center gap-3 min-w-0">
                         {/* Icon Status */}
                         <div
-                          className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 shadow-2xs ${
-                            isSuccess
-                              ? "bg-emerald-50 text-emerald-600 border-emerald-100"
-                              : "bg-amber-50 text-amber-600 border-amber-100"
-                          }`}
+                          className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 shadow-2xs ${isSuccess
+                            ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+                            : "bg-amber-50 text-amber-600 border-amber-100"
+                            }`}
                         >
                           {isSuccess ? <CheckCircle2 size={16} /> : <Clock size={16} />}
                         </div>
@@ -447,9 +514,8 @@ export default async function AdminDashboard() {
                       {/* Amount & Time */}
                       <div className="text-right shrink-0">
                         <span
-                          className={`text-xs sm:text-sm font-black font-mono block ${
-                            isSuccess ? "text-emerald-600" : "text-amber-600"
-                          }`}
+                          className={`text-xs sm:text-sm font-black font-mono block ${isSuccess ? "text-emerald-600" : "text-amber-600"
+                            }`}
                         >
                           +{formatMoney(tx.amount)}
                         </span>

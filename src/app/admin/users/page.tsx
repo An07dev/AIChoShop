@@ -3,10 +3,15 @@ import { UsersManager } from "@/components/admin/UsersManager";
 import { syncAllExpiredVipUsers } from "@/lib/sepay-server";
 import { computeVipDaysLeft } from "@/lib/vip-expiration";
 import { getActiveVipPlans } from "@/lib/vip-plans-server";
-
 import { getStartOfTodayVn } from "@/lib/ai-usage";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Quản Lý Người Dùng & Học Viên",
+  description: "Quản lý danh sách tài khoản học viên, cấp quyền VIP, phân bổ lượt dùng AI và đổi mật khẩu người dùng.",
+};
 
 export default async function AdminUsers() {
   try {

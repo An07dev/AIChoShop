@@ -12,6 +12,7 @@ import {
   AlertCircle,
   Clock,
   Send,
+  Crown,
 } from "lucide-react";
 import Link from "next/link";
 import { useToolGate } from "@/hooks/useToolGate";
@@ -137,9 +138,13 @@ export default function ChatBroadcastPage() {
             <span>/</span>
             <span className="text-slate-600 dark:text-slate-300">Remarketing Khách Cũ</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white flex items-center gap-3">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white flex flex-wrap items-center gap-2 sm:gap-3">
             Soạn Tin Nhắn Chat Broadcast & Zalo
-            <span className="text-[10px] font-black px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 uppercase tracking-wide border border-emerald-200 dark:border-emerald-800">
+            <span className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 shadow-xs uppercase tracking-wider">
+              <Crown size={11} className="text-amber-600 dark:text-amber-400" />
+              VIP TOOL
+            </span>
+            <span className="hidden sm:inline-flex text-[10px] font-black px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 uppercase tracking-wide border border-emerald-200 dark:border-emerald-800">
               Chống Spam
             </span>
           </h1>

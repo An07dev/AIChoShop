@@ -15,7 +15,10 @@ import {
   CheckCircle2,
   Bookmark,
   ExternalLink,
+  FileSpreadsheet,
+  Loader2,
 } from "lucide-react";
+import * as XLSX from "xlsx";
 import { TextShimmerWave } from "@/components/loading-ui/text-shimmer-wave";
 
 interface VideoRepurposerOutputProps {
@@ -24,6 +27,7 @@ interface VideoRepurposerOutputProps {
   productName: string;
   brandTone: string;
   callToAction: string;
+  onUseSample?: () => void;
 }
 
 const CHANNELS = [
@@ -41,6 +45,7 @@ export default function VideoRepurposerOutput({
   productName,
   brandTone,
   callToAction,
+  onUseSample,
 }: VideoRepurposerOutputProps) {
   const [activeTab, setActiveTab] = useState<string>("all");
   const [copiedSection, setCopiedSection] = useState<string | null>(null);
@@ -87,6 +92,70 @@ export default function VideoRepurposerOutput({
     setTimeout(() => setCopiedSection(null), 2000);
   };
 
+  const handleExportExcel = () => {
+    if (!result) return;
+
+    const rows = [
+      {
+        STT: 1,
+        "Kênh Phân Phối": "Facebook Group",
+        "Định Dạng": "Bài Viết Seeding / Chia Sẻ Kinh Nghiệm",
+        "Mục Tiêu": "Tạo thảo luận tự nhiên, tránh bóp reach, tăng tương tác",
+        "Sản Phẩm": productName || "Chưa đặt tên",
+        "Nội Dung": sections.group || result,
+      },
+      {
+        STT: 2,
+        "Kênh Phân Phối": "Fanpage Facebook",
+        "Định Dạng": "Bài Viết Bán Hàng / Chạy Ads",
+        "Mục Tiêu": "Tối ưu Click link & Inbox tư vấn",
+        "Sản Phẩm": productName || "Chưa đặt tên",
+        "Nội Dung": sections.fanpage || result,
+      },
+      {
+        STT: 3,
+        "Kênh Phân Phối": "Chuỗi Ảnh Carousel",
+        "Định Dạng": "Kịch Bản 5 Slide Ảnh (Lemon8 / FB / Instagram)",
+        "Mục Tiêu": "Giữ chân người xem lướt slide, lưu bài",
+        "Sản Phẩm": productName || "Chưa đặt tên",
+        "Nội Dung": sections.carousel || result,
+      },
+      {
+        STT: 4,
+        "Kênh Phân Phối": "Blog / Website SEO",
+        "Định Dạng": "Bài Viết Review Chuẩn SEO",
+        "Mục Tiêu": "Lên Top Google tìm kiếm, kéo traffic tự nhiên",
+        "Sản Phẩm": productName || "Chưa đặt tên",
+        "Nội Dung": sections.blog || result,
+      },
+      {
+        STT: 5,
+        "Kênh Phân Phối": "Zalo OA / CSKH",
+        "Định Dạng": "Tin Nhắn Tương Tác / Gửi Deal Riêng",
+        "Mục Tiêu": "Chốt đơn khách cũ, remarketing 0 đồng",
+        "Sản Phẩm": productName || "Chưa đặt tên",
+        "Nội Dung": sections.zalo || result,
+      },
+    ];
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    worksheet["!cols"] = [
+      { wch: 6 },
+      { wch: 22 },
+      { wch: 35 },
+      { wch: 40 },
+      { wch: 30 },
+      { wch: 80 },
+    ];
+
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "5KenhDaKenh");
+
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}_${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}`;
+    XLSX.writeFile(workbook, `AIChoShop_5Kenh_${dateStr}.xlsx`);
+  };
+
   const wordCount = result ? result.trim().split(/\s+/).length : 0;
   const charCount = result ? result.length : 0;
 
@@ -115,16 +184,27 @@ export default function VideoRepurposerOutput({
           )}
         </div>
 
-        {/* Nút Sao chép toàn bộ */}
+        {/* Nút Xuất Excel & Sao chép toàn bộ */}
         {result && !loading && (
-          <button
-            type="button"
-            onClick={() => handleCopy(result, "all_full")}
-            className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 text-xs font-black px-3 py-1 rounded-lg transition-all shadow-md shadow-amber-500/20 flex items-center gap-1.5 cursor-pointer active:scale-95 shrink-0"
-          >
-            {copiedSection === "all_full" ? <Check size={14} className="stroke-[3]" /> : <Copy size={14} />}
-            <span>{copiedSection === "all_full" ? "Đã Chép Hết!" : "Sao Chép Toàn Bộ"}</span>
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleExportExcel}
+              className="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 text-xs font-bold px-3 py-1 rounded-lg transition-all shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-95"
+              title="Xuất bảng nội dung 5 kênh ra file Excel (.xlsx)"
+            >
+              <FileSpreadsheet size={13} className="text-emerald-400" />
+              <span>Xuất Excel</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleCopy(result, "all_full")}
+              className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 text-xs font-black px-3 py-1 rounded-lg transition-all shadow-md shadow-amber-500/20 flex items-center gap-1.5 cursor-pointer active:scale-95"
+            >
+              {copiedSection === "all_full" ? <Check size={14} className="stroke-[3]" /> : <Copy size={14} />}
+              <span>{copiedSection === "all_full" ? "Đã Chép Hết!" : "Sao Chép Toàn Bộ"}</span>
+            </button>
+          </div>
         )}
       </div>
 
@@ -157,30 +237,43 @@ export default function VideoRepurposerOutput({
       <div className="p-4 flex-1 min-h-0 relative z-10 overflow-y-auto custom-scrollbar overscroll-contain">
         {/* Chưa có kết quả */}
         {!result && !loading && (
-          <div className="h-full min-h-[300px] flex flex-col items-center justify-center text-center p-6">
-            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 mb-3 shadow-lg shadow-amber-500/10">
+          <div className="h-full min-h-[300px] flex flex-col items-center justify-center text-center p-6 space-y-3">
+            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 mb-1 shadow-lg shadow-amber-500/10">
               <Share2 size={28} />
             </div>
-            <h3 className="text-base font-bold text-slate-200 mb-1.5">
+            <h3 className="text-base font-bold text-slate-200">
               Chưa Có Nội Dung Đa Kênh
             </h3>
             <p className="text-xs text-slate-400 max-w-md leading-relaxed">
-              Dán kịch bản hoặc lời thoại video TikTok ở cột bên trái và bấm{" "}
-              <strong className="text-amber-400">&quot;Chuyển Đổi Sang 5 Kênh&quot;</strong> hoặc trải nghiệm ngay nút{" "}
-              <strong className="text-amber-400">&quot;Dùng Mẫu Thử (Demo)&quot;</strong> để xem sức mạnh của chiến lược Omnichannel.
+              Dán kịch bản hoặc lời thoại video TikTok ở cột bên trái rồi nhấn{" "}
+              <strong className="text-amber-400">&quot;Chuyển Đổi Sang 5 Định Dạng Kênh&quot;</strong>. Hệ thống AI sẽ tự động phân tích và viết lại chuẩn từng nền tảng.
             </p>
+            {onUseSample && (
+              <button
+                type="button"
+                onClick={onUseSample}
+                className="mt-1 inline-flex items-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 px-4 py-2 text-xs font-bold text-slate-950 shadow-md shadow-amber-500/20 cursor-pointer transition-all active:scale-95"
+              >
+                <Sparkles size={14} /> Chạy thử với dữ liệu mẫu (Demo)
+              </button>
+            )}
           </div>
         )}
 
-        {/* Đang tạo nội dung */}
+        {/* Trạng thái đang tải (Loading) - Biểu tượng xoay tròn */}
         {loading && (
-          <div className="h-full min-h-[300px] flex flex-col items-center justify-center gap-3">
-            <TextShimmerWave className="text-xl font-bold text-amber-400">
-              Đang Chuyển Đổi Sang 5 Định Dạng Đa Kênh...
-            </TextShimmerWave>
-            <p className="text-xs text-slate-500 max-w-sm text-center">
-              Tối ưu cho Facebook Group Seeding, Fanpage Click & Inbox, Carousel Album, Review SEO & Zalo OA
-            </p>
+          <div className="h-full min-h-[360px] flex flex-col items-center justify-center text-center p-6 space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500/20 to-yellow-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-lg shadow-amber-500/10">
+              <Share2 size={28} className="animate-spin text-amber-400" />
+            </div>
+            <div className="space-y-1.5">
+              <div className="font-bold text-base text-white">
+                <TextShimmerWave>AI Đang Chuyển Đổi Sang 5 Định Dạng Đa Kênh...</TextShimmerWave>
+              </div>
+              <p className="text-xs text-slate-400 max-w-sm">
+                Đang tối ưu cho Facebook Group Seeding, Fanpage Ads & Inbox, Carousel Album, Review SEO & Zalo OA...
+              </p>
+            </div>
           </div>
         )}
 

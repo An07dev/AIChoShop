@@ -27,6 +27,7 @@ import {
   GraduationCap,
   FolderPlus,
 } from "lucide-react";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import {
   createLesson,
   updateLesson,
@@ -493,7 +494,7 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
   }, [formData.videoUrl]);
 
   return (
-    <div className="space-y-6">
+    <div className="flex-1 flex flex-col min-h-0 space-y-3 sm:space-y-4">
       {/* Toast thông báo nổi */}
       {toast && (
         <div
@@ -505,10 +506,23 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
         </div>
       )}
 
+      {/* Tiêu đề trang Quản lý Nội dung Khóa học */}
+      <AdminPageHeader
+        title="Quản Lý Nội Dung Khóa Học & Video"
+        subtitle="Tổ chức học phần, gán link video YouTube/Vimeo, và phân quyền bài học FREE hoặc VIP cho học viên."
+        icon={BookOpen}
+        iconGradient="from-emerald-600 to-teal-600"
+        badge={
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+            {stats.total} bài giảng ({stats.vipCount} VIP)
+          </span>
+        }
+      />
+
       {/* 4 Thẻ Thống Kê KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 shrink-0">
         {/* Tổng số bài học */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-center justify-between">
+        <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-slate-200 shadow-sm flex items-center justify-between">
           <div>
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">
               Tổng Số Bài Học
@@ -522,7 +536,7 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
         </div>
 
         {/* Bài học VIP PRO */}
-        <div className="bg-white rounded-2xl p-5 border border-amber-200 shadow-sm flex items-center justify-between relative overflow-hidden">
+        <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-amber-200 shadow-sm flex items-center justify-between relative overflow-hidden">
           <div className="relative z-10">
             <span className="text-xs font-bold text-amber-700 uppercase tracking-wider block mb-1 flex items-center gap-1">
               <Crown size={14} className="text-amber-500 fill-amber-500" /> Bài Học VIP PRO
@@ -539,7 +553,7 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
         </div>
 
         {/* Bài học FREE */}
-        <div className="bg-white rounded-2xl p-5 border border-emerald-200 shadow-sm flex items-center justify-between">
+        <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-emerald-200 shadow-sm flex items-center justify-between">
           <div>
             <span className="text-xs font-bold text-emerald-700 uppercase tracking-wider block mb-1 flex items-center gap-1">
               <Sparkles size={14} className="text-emerald-500" /> Bài Học FREE
@@ -553,7 +567,7 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
         </div>
 
         {/* Đã gắn Video */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-center justify-between">
+        <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-slate-200 shadow-sm flex items-center justify-between">
           <div>
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1 flex items-center gap-1">
               <Video size={14} className="text-blue-500" /> Đã Gắn Video
@@ -572,7 +586,7 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
       </div>
 
       {/* Thanh Tìm Kiếm, Bộ Lọc & Nút Thêm Mới */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-3">
+      <div className="bg-white rounded-2xl border border-slate-200 p-3 sm:p-3.5 shadow-sm space-y-2.5 shrink-0">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
           {/* Tìm kiếm */}
           <div className="relative flex-1 w-full">
@@ -730,18 +744,18 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
         </div>
       </div>
 
-      {/* Bảng Danh Sách Bài Học */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="overflow-x-auto">
+      {/* Bảng Danh Sách Bài Học (Chỉ cuộn trong bảng) */}
+      <div className="flex-1 min-h-[260px] bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
+        <div className="flex-1 min-h-0 overflow-auto custom-scrollbar">
           <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50/80 border-b border-slate-200 text-xs text-slate-600 uppercase tracking-wider">
-                <th className="p-4 font-bold w-16 text-center">STT</th>
-                <th className="p-4 font-bold min-w-[150px]">Khóa Học</th>
-                <th className="p-4 font-bold min-w-[240px]">Tên bài học & Nội dung</th>
-                <th className="p-4 font-bold min-w-[160px]">Video Bài Giảng</th>
-                <th className="p-4 font-bold text-center">Chế Độ Phân Quyền</th>
-                <th className="p-4 font-bold text-right">Thao Tác Quản Trị</th>
+            <thead className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200 shadow-2xs">
+              <tr className="bg-slate-50 border-b border-slate-200 text-xs text-slate-600 uppercase tracking-wider">
+                <th className="p-3.5 sm:p-4 font-bold w-16 text-center bg-slate-50 sticky top-0">STT</th>
+                <th className="p-3.5 sm:p-4 font-bold min-w-[150px] bg-slate-50 sticky top-0">Khóa Học</th>
+                <th className="p-3.5 sm:p-4 font-bold min-w-[240px] bg-slate-50 sticky top-0">Tên bài học & Nội dung</th>
+                <th className="p-3.5 sm:p-4 font-bold min-w-[160px] bg-slate-50 sticky top-0">Video Bài Giảng</th>
+                <th className="p-3.5 sm:p-4 font-bold text-center min-w-[140px] bg-slate-50 sticky top-0">Chế Độ Phân Quyền</th>
+                <th className="p-3.5 sm:p-4 font-bold text-right min-w-[150px] bg-slate-50 sticky top-0">Thao Tác Quản Trị</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">

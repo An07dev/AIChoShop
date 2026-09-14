@@ -19,6 +19,7 @@ import {
   Crown,
   Trash2,
 } from "lucide-react";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import {
   saveSePayConfigAction,
   simulateSePayWebhookAction,
@@ -147,10 +148,10 @@ export function SePayConfigManager({
           prev.map((t) =>
             t.id === txId
               ? {
-                  ...t,
-                  status: "SUCCESS",
-                  user: { ...t.user, isVIP: true },
-                }
+                ...t,
+                status: "SUCCESS",
+                user: { ...t.user, isVIP: true },
+              }
               : t
           )
         );
@@ -302,11 +303,10 @@ export function SePayConfigManager({
       {/* Toast Notification */}
       {toast && (
         <div
-          className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-xl text-xs font-semibold animate-in fade-in slide-in-from-bottom-3 ${
-            toast.type === "success"
-              ? "bg-slate-900 text-emerald-400 border border-emerald-500/20"
-              : "bg-rose-950 text-rose-300 border border-rose-500/20"
-          }`}
+          className={`fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-xl shadow-xl text-xs font-semibold animate-in fade-in slide-in-from-bottom-3 ${toast.type === "success"
+            ? "bg-slate-900 text-emerald-400 border border-emerald-500/20"
+            : "bg-rose-950 text-rose-300 border border-rose-500/20"
+            }`}
         >
           {toast.type === "success" ? (
             <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
@@ -317,33 +317,22 @@ export function SePayConfigManager({
         </div>
       )}
 
-      {/* Header gọn gàng */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl md:text-2xl font-black text-slate-900 flex items-center gap-2.5">
-            <CreditCard size={22} className="text-blue-600" />
-            Cấu hình SePay & Webhook
-          </h1>
-        </div>
-
-        <a
-          href="https://my.sepay.vn"
-          target="_blank"
-          rel="noreferrer"
-          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition shadow-xs"
-        >
-          <span>my.sepay.vn</span>
-          <ExternalLink size={12} className="text-slate-400" />
-        </a>
-      </div>
+      {/* ── TIÊU ĐỀ TRANG CỔNG SEPAY & WEBHOOK ─────────────────────────────── */}
+      <AdminPageHeader
+        title="Cổng Thanh Toán SePay & Lịch Sử Nạp VIP"
+        subtitle="Cấu hình tài khoản ngân hàng nhận tiền, kiểm tra Webhook nạp VIP tự động và tra cứu giao dịch chuyển khoản."
+        icon={CreditCard}
+        iconGradient="from-blue-600 to-cyan-600"
+        badge={
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs">
+            Tự Động 24/7
+          </span>
+        }
+      />
 
       {/* Webhook URL Bar (Gọn gàng, thanh lịch) */}
       <div className="bg-white rounded-2xl p-4 md:p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 mb-1.5">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-            <span className="text-xs font-bold text-slate-800">Webhook URL (Dán vào SePay.vn)</span>
-          </div>
           <div className="font-mono text-xs text-blue-700 bg-blue-50/70 px-3 py-2 rounded-lg border border-blue-100 select-all truncate">
             {webhookUrl || "Đang tải URL..."}
           </div>
@@ -351,14 +340,13 @@ export function SePayConfigManager({
 
         <button
           onClick={handleCopyUrl}
-          className={`flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-xs transition cursor-pointer shrink-0 shadow-xs ${
-            copied
-              ? "bg-emerald-600 text-white"
-              : "bg-blue-600 hover:bg-blue-700 text-white active:scale-95"
-          }`}
+          className={`flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl font-bold text-xs transition cursor-pointer shrink-0 shadow-xs ${copied
+            ? "bg-emerald-600 text-white"
+            : "bg-blue-600 hover:bg-blue-700 text-white active:scale-95"
+            }`}
         >
           {copied ? <Check size={14} /> : <Copy size={14} />}
-          <span>{copied ? "Đã sao chép" : "Sao chép URL"}</span>
+          <span>{copied ? "Đã sao chép" : "URL Webhook"}</span>
         </button>
       </div>
 
@@ -453,11 +441,10 @@ export function SePayConfigManager({
             {/* Switch Tự Động Kích Hoạt */}
             <div
               onClick={() => setFormData({ ...formData, autoActivate: !formData.autoActivate })}
-              className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer select-none ${
-                formData.autoActivate
-                  ? "bg-emerald-50/70 border-emerald-300 shadow-xs"
-                  : "bg-slate-50 border-slate-200 hover:border-slate-300"
-              }`}
+              className={`flex items-center justify-between p-3.5 rounded-2xl border transition-all duration-200 cursor-pointer select-none ${formData.autoActivate
+                ? "bg-emerald-50/70 border-emerald-300 shadow-xs"
+                : "bg-slate-50 border-slate-200 hover:border-slate-300"
+                }`}
             >
               <div>
                 <span className="text-xs font-bold text-slate-800 block">Tự động nâng VIP khi nhận tiền</span>
@@ -481,16 +468,14 @@ export function SePayConfigManager({
                   e.stopPropagation();
                   setFormData({ ...formData, autoActivate: !formData.autoActivate });
                 }}
-                className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${
-                  formData.autoActivate
-                    ? "bg-emerald-500 shadow-md shadow-emerald-500/35"
-                    : "bg-slate-300 hover:bg-slate-400"
-                }`}
+                className={`relative inline-flex h-7 w-12 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${formData.autoActivate
+                  ? "bg-emerald-500 shadow-md shadow-emerald-500/35"
+                  : "bg-slate-300 hover:bg-slate-400"
+                  }`}
               >
                 <span
-                  className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${
-                    formData.autoActivate ? "translate-x-5" : "translate-x-0"
-                  }`}
+                  className={`pointer-events-none inline-block h-6 w-6 transform rounded-full bg-white shadow-md ring-0 transition duration-200 ease-in-out ${formData.autoActivate ? "translate-x-5" : "translate-x-0"
+                    }`}
                 />
               </button>
             </div>
@@ -539,33 +524,30 @@ export function SePayConfigManager({
                 <button
                   type="button"
                   onClick={() => setSimAmount(200000)}
-                  className={`py-1.5 px-2 rounded-lg font-bold text-[11px] border transition ${
-                    simAmount === 200000
-                      ? "bg-blue-50 text-blue-700 border-blue-300"
-                      : "bg-slate-50 text-slate-600 border-slate-200"
-                  }`}
+                  className={`py-1.5 px-2 rounded-lg font-bold text-[11px] border transition ${simAmount === 200000
+                    ? "bg-blue-50 text-blue-700 border-blue-300"
+                    : "bg-slate-50 text-slate-600 border-slate-200"
+                    }`}
                 >
                   200k (Tháng)
                 </button>
                 <button
                   type="button"
                   onClick={() => setSimAmount(1290000)}
-                  className={`py-1.5 px-2 rounded-lg font-bold text-[11px] border transition ${
-                    simAmount === 1290000
-                      ? "bg-blue-50 text-blue-700 border-blue-300"
-                      : "bg-slate-50 text-slate-600 border-slate-200"
-                  }`}
+                  className={`py-1.5 px-2 rounded-lg font-bold text-[11px] border transition ${simAmount === 1290000
+                    ? "bg-blue-50 text-blue-700 border-blue-300"
+                    : "bg-slate-50 text-slate-600 border-slate-200"
+                    }`}
                 >
                   1.290k (Năm)
                 </button>
                 <button
                   type="button"
                   onClick={() => setSimAmount(1990000)}
-                  className={`py-1.5 px-2 rounded-lg font-bold text-[11px] border transition ${
-                    simAmount === 1990000
-                      ? "bg-amber-50 text-amber-800 border-amber-300"
-                      : "bg-slate-50 text-slate-600 border-slate-200"
-                  }`}
+                  className={`py-1.5 px-2 rounded-lg font-bold text-[11px] border transition ${simAmount === 1990000
+                    ? "bg-amber-50 text-amber-800 border-amber-300"
+                    : "bg-slate-50 text-slate-600 border-slate-200"
+                    }`}
                 >
                   1.990k (Trọn đời)
                 </button>
@@ -598,11 +580,10 @@ export function SePayConfigManager({
           {/* Kết quả Test */}
           {simResult && (
             <div
-              className={`p-3 rounded-xl border text-xs ${
-                simResult.success
-                  ? "bg-emerald-50 border-emerald-200 text-emerald-900"
-                  : "bg-rose-50 border-rose-200 text-rose-900"
-              }`}
+              className={`p-3 rounded-xl border text-xs ${simResult.success
+                ? "bg-emerald-50 border-emerald-200 text-emerald-900"
+                : "bg-rose-50 border-rose-200 text-rose-900"
+                }`}
             >
               <div className="flex items-center gap-1.5 font-bold mb-1">
                 {simResult.success ? (
@@ -661,11 +642,10 @@ export function SePayConfigManager({
                 key={String(lim)}
                 type="button"
                 onClick={() => setDisplayLimit(lim as any)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
-                  displayLimit === lim
-                    ? "bg-white text-slate-900 shadow-2xs"
-                    : "text-slate-500 hover:text-slate-800"
-                }`}
+                className={`px-2.5 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${displayLimit === lim
+                  ? "bg-white text-slate-900 shadow-2xs"
+                  : "text-slate-500 hover:text-slate-800"
+                  }`}
               >
                 {lim === "ALL" ? "Tất cả" : `${lim} GD`}
               </button>
@@ -708,11 +688,10 @@ export function SePayConfigManager({
                 key={tab.id}
                 type="button"
                 onClick={() => setStatusFilter(tab.id as any)}
-                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${
-                  statusFilter === tab.id
-                    ? "bg-slate-900 text-white shadow-xs"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }`}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer ${statusFilter === tab.id
+                  ? "bg-slate-900 text-white shadow-xs"
+                  : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+                  }`}
               >
                 {tab.label}
               </button>
@@ -839,9 +818,8 @@ export function SePayConfigManager({
                         {/* Số Tiền */}
                         <td className="py-3.5 px-4 text-right">
                           <span
-                            className={`font-mono font-black text-sm block ${
-                              isSuccess ? "text-emerald-600" : "text-amber-600"
-                            }`}
+                            className={`font-mono font-black text-sm block ${isSuccess ? "text-emerald-600" : "text-amber-600"
+                              }`}
                           >
                             +{Number(tx.amount).toLocaleString("vi-VN")} đ
                           </span>

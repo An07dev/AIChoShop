@@ -106,11 +106,10 @@ export function AiUsageBadge({ tool, refreshTrigger = 0, onSelectOutput }: AiUsa
             <>
               <span className="hidden sm:inline text-slate-400 font-normal">Còn:</span>
               <span
-                className={`font-black ${
-                  (stats.remainingFree ?? 0) <= 2
-                    ? "text-rose-600 dark:text-rose-400"
-                    : "text-slate-900 dark:text-white"
-                }`}
+                className={`font-black ${(stats.remainingFree ?? 0) <= 2
+                  ? "text-rose-600 dark:text-rose-400"
+                  : "text-slate-900 dark:text-white"
+                  }`}
               >
                 {stats.remainingFree ?? 0}/{stats.dailyFreeLimit} lượt
               </span>
@@ -127,9 +126,6 @@ export function AiUsageBadge({ tool, refreshTrigger = 0, onSelectOutput }: AiUsa
         >
           <Clock size={13} className="text-blue-500 shrink-0" />
           <span className="hidden sm:inline">Lịch sử</span>
-          <span className="bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 text-[10px] font-bold px-1.5 rounded-full">
-            {stats.totalGenerated}
-          </span>
         </button>
       </div>
 

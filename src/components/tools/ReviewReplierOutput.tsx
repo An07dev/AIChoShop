@@ -38,6 +38,7 @@ interface ReviewReplierOutputProps {
   reviewContent?: string;
   rating?: string;
   issueType?: string;
+  onUseSample?: () => void;
 }
 
 export function ReviewReplierOutput({
@@ -46,6 +47,7 @@ export function ReviewReplierOutput({
   reviewContent,
   rating = "1 sao",
   issueType,
+  onUseSample,
 }: ReviewReplierOutputProps) {
   const [copiedAll, setCopiedAll] = useState(false);
   const [copiedReplyId, setCopiedReplyId] = useState<number | null>(null);
@@ -60,6 +62,7 @@ export function ReviewReplierOutput({
     const lines = result.split("\n");
     const styles: ReviewStyleItem[] = [];
     let currentStyle: Partial<ReviewStyleItem> | null = null;
+    let currentSection: "reply" | "action" | null = null;
     let isAdviceBlock = false;
     const rawAdviceLines: string[] = [];
 
@@ -80,6 +83,15 @@ export function ReviewReplierOutput({
         } else if (lowerTitle.includes("minh bạch") || lowerTitle.includes("uy tín") || lowerTitle.includes("thương hiệu")) {
           type = "brand";
           badge = "Bảo Vệ Thương Hiệu";
+        } else if (id === 1) {
+          type = "apologetic";
+          badge = "Phương Án 1";
+        } else if (id === 2) {
+          type = "delivery";
+          badge = "Phương Án 2";
+        } else if (id === 3) {
+          type = "brand";
+          badge = "Phương Án 3";
         }
 
         styles.push({
@@ -92,6 +104,7 @@ export function ReviewReplierOutput({
           rawText: (currentStyle.rawText || "").trim(),
         });
         currentStyle = null;
+        currentSection = null;
       }
     };
 
@@ -116,10 +129,10 @@ export function ReviewReplierOutput({
         continue;
       }
 
-      // Phát hiện tiêu đề phong cách mới: "## 1. Phong Cách: ...", "## Phong cách 1", "### Phương án 1"
+      // Phát hiện tiêu đề phong cách mới
       const headerMatch =
-        trimmed.match(/^#{2,3}\s+(?:\d+[\.\:\-]\s*)?(?:Phong [Cc]ách|Phương [Áá]n|Cách|Lựa chọn)[\:\s]*(.+)$/i) ||
-        trimmed.match(/^#{2,3}\s+(\d+[\.\:\-]\s*.+)$/);
+        trimmed.match(/^(?:#{2,4}\s+|\*{2}|\b)(?:\d+[\.\:\-]\s*)?(?:Phong [Cc]ách|Phương [Áá]n|Câu [Tt]rả [Ll]ời|Cách|Lựa [Cc]họn)[\:\s]*(.+?)(?:\*{2})?$/i) ||
+        trimmed.match(/^#{2,4}\s+(\d+[\.\:\-]\s*.+)$/);
 
       if (headerMatch) {
         flushCurrent();
@@ -130,6 +143,7 @@ export function ReviewReplierOutput({
           action: "",
           rawText: "",
         };
+        currentSection = null;
         continue;
       }
 
@@ -141,22 +155,30 @@ export function ReviewReplierOutput({
           action: "",
           rawText: "",
         };
+        currentSection = "reply";
       }
 
       if (currentStyle) {
         // Kiểm tra dòng chứa nội dung phản hồi công khai
         const replyMatch = trimmed.match(/^[-*•\s]*(?:\*\*|\*)?(?:Nội dung phản hồi|Phản hồi công khai|Phản hồi|Câu trả lời)[^:\n\r]*[:\-]\s*(.*)$/i);
         if (replyMatch) {
+          currentSection = "reply";
           let content = replyMatch[1].replace(/^\*\*|\*\*$/g, "").trim();
           if (content.startsWith(">")) content = content.replace(/^>\s*/, "").trim();
-          currentStyle.reply = content;
+          if (content) {
+            currentStyle.reply = currentStyle.reply ? `${currentStyle.reply} ${content}` : content;
+          }
           continue;
         }
 
         // Kiểm tra dòng chứa hành động hậu trường
         const actionMatch = trimmed.match(/^[-*•\s]*(?:\*\*|\*)?(?:Hành động hậu trường|Hành động|Hậu trường|Xử lý inbox|Gợi ý)[^:\n\r]*[:\-]\s*(.*)$/i);
         if (actionMatch) {
-          currentStyle.action = actionMatch[1].replace(/^\*\*|\*\*$/g, "").trim();
+          currentSection = "action";
+          let content = actionMatch[1].replace(/^\*\*|\*\*$/g, "").trim();
+          if (content) {
+            currentStyle.action = currentStyle.action ? `${currentStyle.action} ${content}` : content;
+          }
           continue;
         }
 
@@ -167,8 +189,14 @@ export function ReviewReplierOutput({
           continue;
         }
 
-        // Các dòng mô tả thêm
-        currentStyle.rawText = currentStyle.rawText ? `${currentStyle.rawText}\n${line}` : line;
+        // Nối tiếp văn bản theo section hiện tại (hỗ trợ nhiều dòng)
+        if (currentSection === "reply") {
+          currentStyle.reply = currentStyle.reply ? `${currentStyle.reply} ${trimmed}` : trimmed;
+        } else if (currentSection === "action") {
+          currentStyle.action = currentStyle.action ? `${currentStyle.action} ${trimmed}` : trimmed;
+        } else {
+          currentStyle.rawText = currentStyle.rawText ? `${currentStyle.rawText}\n${line}` : line;
+        }
       }
     }
 
@@ -184,17 +212,45 @@ export function ReviewReplierOutput({
       }
     });
 
-    // Nếu không parse được theo cấu trúc 3 styles, fallback tạo 1 style tổng quan
-    if (styles.length === 0 && result.trim()) {
-      styles.push({
-        id: 1,
-        title: "Phương án phản hồi AI",
-        badge: "Đề Xuất",
-        type: "general",
-        reply: result.trim(),
-        action: "Chủ động liên hệ qua tin nhắn riêng để hỗ trợ khách hàng nhanh chóng.",
-        rawText: result.trim(),
-      });
+    // Fallback: nếu AI trả về văn bản chưa parse được ít nhất 2 styles, tự động bóc tách theo khối
+    if (styles.length < 2 && result.trim()) {
+      const splitChunks = result
+        .split(/(?:\n\s*(?:#{1,4}\s*)?(?:Phương án|Phong cách|Câu trả lời|Cách|Lựa chọn|\d+[\.\:\)])\s*)/i)
+        .filter((c) => c.trim().length > 20);
+
+      if (splitChunks.length >= 2) {
+        styles.length = 0;
+        splitChunks.slice(0, 3).forEach((chunk, index) => {
+          const id = index + 1;
+          const titles = [
+            "Phong Cách Chân Thành & Cầu Thị",
+            "Phong Cách Khéo Léo & Khách Quan",
+            "Phong Cách Minh Bạch & Bảo Vệ Thương Hiệu"
+          ];
+          const badges = ["Khuyên Dùng", "Lỗi Vận Chuyển", "Bảo Vệ Thương Hiệu"];
+          const types: ReviewStyleItem["type"][] = ["apologetic", "delivery", "brand"];
+
+          styles.push({
+            id,
+            title: titles[index] || `Phương án ${id}`,
+            badge: badges[index] || "Đề Xuất",
+            type: types[index] || "general",
+            reply: chunk.trim(),
+            action: "Chủ động nhắn tin riêng qua inbox để trao đổi giải pháp giải quyết thỏa đáng.",
+            rawText: chunk.trim(),
+          });
+        });
+      } else if (styles.length === 0) {
+        styles.push({
+          id: 1,
+          title: "Phương án phản hồi AI",
+          badge: "Đề Xuất",
+          type: "general",
+          reply: result.trim(),
+          action: "Chủ động liên hệ qua tin nhắn riêng để hỗ trợ khách hàng nhanh chóng.",
+          rawText: result.trim(),
+        });
+      }
     }
 
     // Lời khuyên mặc định nếu AI không trả về
@@ -376,18 +432,32 @@ export function ReviewReplierOutput({
               <Sparkles size={13} className="text-amber-400" />
               <span>Gợi ý 3 phong cách: Chân thành, Khéo léo vận chuyển, Bảo vệ thương hiệu</span>
             </div>
+            {onUseSample && (
+              <button
+                type="button"
+                onClick={onUseSample}
+                className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 px-4 py-2 text-xs font-bold text-slate-950 shadow-md shadow-amber-500/20 cursor-pointer transition-all active:scale-95"
+              >
+                <Sparkles size={14} /> Thử mẫu 1 sao (Demo)
+              </button>
+            )}
           </div>
         )}
 
-        {/* Trạng thái đang tải (Loading) */}
+        {/* Trạng thái đang tải (Loading) - Biểu tượng xoay tròn */}
         {loading && (
-          <div className="h-full min-h-[260px] flex flex-col items-center justify-center gap-3">
-            <TextShimmerWave className="text-xl font-medium text-blue-500">
-              AI Thinking
-            </TextShimmerWave>
-            <p className="text-xs text-slate-400 animate-pulse">
-              Đang phân tích tâm lý khách hàng và soạn 3 phương án phản hồi...
-            </p>
+          <div className="h-full min-h-[320px] flex flex-col items-center justify-center text-center p-6 space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-amber-500/20 to-orange-500/20 border border-amber-500/30 flex items-center justify-center text-amber-400 shadow-lg shadow-amber-500/10">
+              <MessageSquareWarning size={28} className="animate-spin text-amber-400" />
+            </div>
+            <div className="space-y-1.5">
+              <div className="font-bold text-base text-white">
+                <TextShimmerWave>AI Đang Phân Tích Tâm Lý & Soạn Kịch Bản...</TextShimmerWave>
+              </div>
+              <p className="text-xs text-slate-400 max-w-sm">
+                Đang bóc tách bức xúc của khách, cân đối lý lẽ bảo vệ shop và xây dựng 3 phương án phản hồi đắc nhân tâm...
+              </p>
+            </div>
           </div>
         )}
 

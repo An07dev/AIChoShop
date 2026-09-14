@@ -25,6 +25,7 @@ interface AppealGeneratorOutputProps {
   platform?: string;
   shopName?: string;
   violationType?: string;
+  onUseSample?: () => void;
 }
 
 export function AppealGeneratorOutput({
@@ -33,6 +34,7 @@ export function AppealGeneratorOutput({
   platform = "Shopee",
   shopName,
   violationType,
+  onUseSample,
 }: AppealGeneratorOutputProps) {
   const [copiedAll, setCopiedAll] = useState(false);
   const [copiedLetter, setCopiedLetter] = useState(false);
@@ -234,22 +236,36 @@ export function AppealGeneratorOutput({
               <strong className="text-rose-400 font-semibold">"Viết Đơn Kháng Nghị Bằng AI"</strong>{" "}
               để tạo giải trình thuyết phục và mẫu đơn chuẩn gửi sàn.
             </p>
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800/80 border border-slate-700/60 text-[11px] text-slate-400">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-slate-800/80 border border-slate-700/60 text-[11px] text-slate-400 mb-2">
               <Sparkles size={13} className="text-rose-400" />
               <span>Hỗ trợ Shopee, TikTok Shop, Lazada, Facebook</span>
             </div>
+            {onUseSample && (
+              <button
+                type="button"
+                onClick={onUseSample}
+                className="mt-1 inline-flex items-center gap-1.5 rounded-xl bg-rose-500 hover:bg-rose-400 px-4 py-2 text-xs font-bold text-white shadow-md shadow-rose-500/20 cursor-pointer transition-all active:scale-95"
+              >
+                <Sparkles size={14} /> Thử mẫu vi phạm (Demo)
+              </button>
+            )}
           </div>
         )}
 
-        {/* Trạng thái đang tải (Loading) */}
+        {/* Trạng thái đang tải (Loading) - Biểu tượng xoay tròn */}
         {loading && (
-          <div className="h-full min-h-[260px] flex flex-col items-center justify-center gap-3">
-            <TextShimmerWave className="text-xl font-medium text-blue-500">
-              AI Thinking
-            </TextShimmerWave>
-            <p className="text-xs text-slate-400 animate-pulse">
-              Đang rà soát chính sách sàn {platform} và biên soạn lập luận pháp lý...
-            </p>
+          <div className="h-full min-h-[360px] flex flex-col items-center justify-center text-center p-6 space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-rose-500/20 to-pink-500/20 border border-rose-500/30 flex items-center justify-center text-rose-400 shadow-lg shadow-rose-500/10">
+              <ShieldAlert size={28} className="animate-spin text-rose-400" />
+            </div>
+            <div className="space-y-1.5">
+              <div className="font-bold text-base text-white">
+                <TextShimmerWave>AI Đang Rà Soát Chính Sách & Viết Đơn Kháng Nghị...</TextShimmerWave>
+              </div>
+              <p className="text-xs text-slate-400 max-w-sm">
+                Đang rà soát chính sách sàn {platform}, xây dựng luận điểm gỡ gậy và biên soạn lá đơn chuẩn mực...
+              </p>
+            </div>
           </div>
         )}
 

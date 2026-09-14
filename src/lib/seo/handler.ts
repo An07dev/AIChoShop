@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { getSystemSettings } from "@/lib/system-settings";
+import { prisma } from "@/lib/prisma";
+import { getAiUsageStats, recordAiUsage } from "@/lib/ai-usage";
 import { SeoError, SEO_SCHEMA, validateSeoInputs } from "./contract";
 import { generateSeo } from "./generate";
 import { finishSeo, reserveSeo, seoIdentity, type RunMetrics } from "./usage";
@@ -30,6 +32,32 @@ export async function handleSeo(req: Request, rawInputs: unknown) {
     const inputs = validateSeoInputs(rawInputs);
     const identity = await seoIdentity();
     subject = identity.id;
+
+    // Kiểm tra định mức lượt dùng Free hàng ngày đối với tài khoản đăng nhập
+    let currentUser: { id: string; isVIP: boolean; isLocked: boolean } | null = null;
+    let userStats: any = null;
+    if (!identity.anonymous && identity.userId) {
+      currentUser = await prisma.user.findUnique({
+        where: { id: identity.userId },
+        select: { id: true, isVIP: true, isLocked: true },
+      });
+
+      if (currentUser?.isLocked) {
+        throw new SeoError("ACCOUNT_LOCKED", "Tài khoản của bạn đã bị khóa bởi Quản trị viên.", 403);
+      }
+
+      if (currentUser && !currentUser.isVIP) {
+        userStats = await getAiUsageStats(currentUser.id);
+        if (userStats.remainingFree !== null && userStats.remainingFree <= 0) {
+          throw new SeoError(
+            "DAILY_LIMIT_EXCEEDED",
+            `Tài khoản miễn phí được sử dụng ${userStats.dailyFreeLimit} lượt/ngày. Bạn đã dùng hết ${userStats.todayCount}/${userStats.dailyFreeLimit} lượt hôm nay. Vui lòng nâng cấp gói VIP để sử dụng không giới hạn!`,
+            403
+          );
+        }
+      }
+    }
+
     runId = await reserveSeo(identity);
     const config = await getSystemSettings();
     const isOpenAI = config.isOpenAiActive;
@@ -65,7 +93,34 @@ export async function handleSeo(req: Request, rawInputs: unknown) {
     }, (input, outputTokens) => { metrics.inputTokens += input; metrics.outputTokens += outputTokens; });
     metrics.durationMs = Date.now() - started;
     const successes = await finishSeo(subject, runId, true, metrics, null);
-    return NextResponse.json({ success: true, data: output, remaining: identity.anonymous ? Math.max(0, 2 - successes) : null }, { headers: { "Cache-Control": "no-store" } });
+
+    // Ghi nhận lượt dùng AI vào AiUsageLog nếu đã đăng nhập
+    if (currentUser) {
+      try {
+        await recordAiUsage({
+          userId: currentUser.id,
+          tool: "seo-optimizer",
+          toolName: "AI Tối Ưu SEO",
+          action: `Tối ưu SEO (${inputs.platform === "tiktok" ? "TikTok Shop" : "Shopee"}): ${inputs.productName}`,
+          input: inputs,
+          output: typeof output === "string" ? output : JSON.stringify(output),
+        });
+      } catch (logErr) {
+        console.error("Error logging AI usage in SEO:", logErr);
+      }
+    }
+
+    const updatedStats = currentUser && !currentUser.isVIP ? await getAiUsageStats(currentUser.id) : null;
+
+    return NextResponse.json({
+      success: true,
+      data: output,
+      remaining: currentUser
+        ? (currentUser.isVIP ? null : updatedStats?.remainingFree)
+        : (identity.anonymous ? Math.max(0, 2 - successes) : null),
+      dailyFreeLimit: updatedStats?.dailyFreeLimit ?? userStats?.dailyFreeLimit,
+      isVIP: currentUser ? currentUser.isVIP : false,
+    }, { headers: { "Cache-Control": "no-store" } });
   } catch (error) {
     const failure = publicError(error);
     metrics.durationMs = Date.now() - started;
@@ -74,8 +129,14 @@ export async function handleSeo(req: Request, rawInputs: unknown) {
       catch { console.error("seo_usage_finalize_failed", { runId, code: failure.code }); }
     }
     if (failure.status >= 500) console.error("seo_request_failed", { runId, code: failure.code, validationHint: failure.validationHint, ...metrics });
-    return NextResponse.json({ success: false, code: failure.code, error: failure.message }, {
-      status: failure.status, headers: { "Cache-Control": "no-store", ...(failure.status === 429 ? { "Retry-After": "60" } : {}) },
+    return NextResponse.json({
+      success: false,
+      code: failure.code,
+      error: failure.message,
+      details: failure.code === "DAILY_LIMIT_EXCEEDED" ? { actionUrl: "/profile#pricing-section" } : undefined,
+    }, {
+      status: failure.status,
+      headers: { "Cache-Control": "no-store", ...(failure.status === 429 ? { "Retry-After": "60" } : {}) },
     });
   }
 }

@@ -30,7 +30,9 @@ import {
   RefreshCw,
   Zap,
   Pencil,
+  UserCog,
 } from "lucide-react";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import {
   toggleUserVip,
   toggleUserLock,
@@ -448,7 +450,7 @@ export function UsersManager({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="flex-1 flex flex-col min-h-0 space-y-3 sm:space-y-4">
       {/* Toast thông báo nổi */}
       {toast && (
         <div
@@ -460,10 +462,23 @@ export function UsersManager({
         </div>
       )}
 
+      {/* Tiêu đề trang Quản lý Người dùng */}
+      <AdminPageHeader
+        title="Quản Lý Người Dùng & Học Viên"
+        subtitle="Cấp quyền VIP, phân bổ định mức lượt dùng AI miễn phí, đổi mật khẩu và quản lý trạng thái tài khoản."
+        icon={UserCog}
+        iconGradient="from-indigo-600 to-violet-600"
+        badge={
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 shadow-2xs">
+            {stats.total} tài khoản
+          </span>
+        }
+      />
+
       {/* 4 Thẻ Thống Kê Tổng Quan (KPIs) */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 shrink-0">
         {/* Tổng Users */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-center justify-between">
+        <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-slate-200 shadow-sm flex items-center justify-between">
           <div>
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">
               Tổng Người Dùng
@@ -477,7 +492,7 @@ export function UsersManager({
         </div>
 
         {/* Khách VIP Pro */}
-        <div className="bg-white rounded-2xl p-5 border border-amber-200 shadow-sm flex items-center justify-between relative overflow-hidden">
+        <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-amber-200 shadow-sm flex items-center justify-between relative overflow-hidden">
           <div className="relative z-10">
             <span className="text-xs font-bold text-amber-700 uppercase tracking-wider block mb-1 flex items-center gap-1">
               <Crown size={14} className="text-amber-500 fill-amber-500" /> Khách VIP
@@ -496,7 +511,7 @@ export function UsersManager({
         {/* Tài khoản FREE */}
         <div
           onClick={openGlobalFreeModal}
-          className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-center justify-between cursor-pointer hover:border-amber-300 hover:shadow-md transition-all group"
+          className="bg-white rounded-2xl p-3.5 sm:p-4 border border-slate-200 shadow-sm flex items-center justify-between cursor-pointer hover:border-amber-300 hover:shadow-md transition-all group"
           title="Bấm để cài đặt số lượt Free chung cho toàn bộ học viên Free"
         >
           <div>
@@ -516,7 +531,7 @@ export function UsersManager({
 
         {/* Tài khoản Bị Khóa */}
         <div
-          className={`rounded-2xl p-5 border shadow-sm flex items-center justify-between ${stats.lockedCount > 0
+          className={`rounded-2xl p-3.5 sm:p-4 border shadow-sm flex items-center justify-between ${stats.lockedCount > 0
             ? "bg-rose-50/70 border-rose-200 text-rose-900"
             : "bg-white border-slate-200 text-slate-900"
             }`}
@@ -541,7 +556,7 @@ export function UsersManager({
       </div>
 
       {/* Thanh Công Cụ Tìm Kiếm & Bộ Lọc */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-sm space-y-3">
+      <div className="bg-white rounded-2xl border border-slate-200 p-3 sm:p-3.5 shadow-sm space-y-2.5 shrink-0">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
           {/* Ô tìm kiếm */}
           <div className="relative flex-1 w-full">
@@ -562,16 +577,6 @@ export function UsersManager({
               </button>
             )}
           </div>
-
-          {/* Nút Cài Đặt Lượt Dùng Free Toàn Hệ Thống */}
-          <button
-            onClick={openGlobalFreeModal}
-            className="w-full sm:w-auto bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-slate-950 font-black px-4 py-2.5 rounded-xl shadow-md shadow-amber-500/20 flex items-center justify-center gap-2 transition-all cursor-pointer whitespace-nowrap active:scale-95 border border-amber-400"
-            title="Cài đặt số lượt dùng AI Free mỗi ngày chung cho toàn bộ tài khoản FREE"
-          >
-            <Zap size={16} className="fill-slate-950 text-slate-950" />
-            <span>Lượt Free ({globalFreeLimit} lượt/ngày)</span>
-          </button>
 
           {/* Nút Thêm User Mới */}
           <button
@@ -598,7 +603,7 @@ export function UsersManager({
               className={`px-2.5 py-1 rounded-md font-semibold transition-all cursor-pointer ${vipFilter === "all" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-800"
                 }`}
             >
-              Tất cả VIP ({stats.total})
+              Tất cả ({stats.total})
             </button>
             <button
               onClick={() => setVipFilter("vip")}
@@ -658,18 +663,18 @@ export function UsersManager({
         </div>
       </div>
 
-      {/* Bảng Danh Sách Người Dùng */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div className="overflow-x-auto">
+      {/* Bảng Danh Sách Người Dùng (Chỉ cuộn trong bảng) */}
+      <div className="flex-1 min-h-[260px] bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
+        <div className="flex-1 min-h-0 overflow-auto custom-scrollbar">
           <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="bg-slate-50/80 border-b border-slate-200 text-xs text-slate-600 uppercase tracking-wider">
-                <th className="p-4 font-bold">Người Dùng</th>
-                <th className="p-4 font-bold text-center">Gói & Thời Hạn VIP</th>
-                <th className="p-4 font-bold text-center">Trạng Thái</th>
-                <th className="p-4 font-bold text-center">Lượt Free</th>
-                <th className="p-4 font-bold">Ngày Tạo</th>
-                <th className="p-4 font-bold text-center">Hành động</th>
+            <thead className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200 shadow-2xs">
+              <tr className="bg-slate-50 border-b border-slate-200 text-xs text-slate-600 uppercase tracking-wider">
+                <th className="p-3.5 sm:p-4 font-bold bg-slate-50 sticky top-0 min-w-[220px]">Người Dùng</th>
+                <th className="p-3.5 sm:p-4 font-bold text-center bg-slate-50 sticky top-0 min-w-[150px]">Gói & Thời Hạn VIP</th>
+                <th className="p-3.5 sm:p-4 font-bold text-center bg-slate-50 sticky top-0 min-w-[120px]">Trạng Thái</th>
+                <th className="p-3.5 sm:p-4 font-bold text-center bg-slate-50 sticky top-0 min-w-[140px]">Lượt Free</th>
+                <th className="p-3.5 sm:p-4 font-bold bg-slate-50 sticky top-0 min-w-[120px]">Ngày Tạo</th>
+                <th className="p-3.5 sm:p-4 font-bold text-center bg-slate-50 sticky top-0 min-w-[160px]">Hành động</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">

@@ -99,6 +99,16 @@ export function summarizeAiAction(tool: string, inputs: any): string {
         ? `Tái bản video 5 kênh: "${inputs.videoTopic.slice(0, 40)}${inputs.videoTopic.length > 40 ? "..." : ""}"`
         : "Tái bản video 5 kênh đa nền tảng";
 
+    case "pricing-calculator":
+      return inputs?.productName
+        ? `Định giá sản phẩm "${inputs.productName}"`
+        : "Định giá bán & tối ưu lợi nhuận";
+
+    case "tax-calculator":
+      return inputs?.title || (inputs?.payerType
+        ? `Tính thuế TMĐT ${inputs.payerType === "company" ? "Doanh nghiệp" : inputs.payerType === "individual" ? "Cá nhân KD" : "Hộ kinh doanh"} (${inputs.taxYear || 2026})`
+        : "Tính thuế TMĐT 2026");
+
     default:
       return `Sử dụng công cụ ${TOOL_NAMES[tool] || tool}`;
   }
@@ -107,7 +117,7 @@ export function summarizeAiAction(tool: string, inputs: any): string {
 /**
  * Lấy toàn bộ số liệu thống kê AI của người dùng
  */
-export async function getAiUsageStats(userId: string) {
+export async function getAiUsageStats(userId: string, filterTool?: string) {
   try {
     const startOfToday = getStartOfTodayVn();
 
@@ -128,14 +138,26 @@ export async function getAiUsageStats(userId: string) {
             userId,
             startOfToday
           ),
-          prisma.$queryRawUnsafe(
-            'SELECT COUNT(*)::int as count FROM "AiUsageLog" WHERE "userId" = $1',
-            userId
-          ),
-          prisma.$queryRawUnsafe(
-            'SELECT id, tool, "toolName", action, output, "createdAt" FROM "AiUsageLog" WHERE "userId" = $1 ORDER BY "createdAt" DESC LIMIT 10',
-            userId
-          ),
+          filterTool
+            ? prisma.$queryRawUnsafe(
+                'SELECT COUNT(*)::int as count FROM "AiUsageLog" WHERE "userId" = $1 AND "tool" = $2',
+                userId,
+                filterTool
+              )
+            : prisma.$queryRawUnsafe(
+                'SELECT COUNT(*)::int as count FROM "AiUsageLog" WHERE "userId" = $1',
+                userId
+              ),
+          filterTool
+            ? prisma.$queryRawUnsafe(
+                'SELECT id, tool, "toolName", action, input, output, "createdAt" FROM "AiUsageLog" WHERE "userId" = $1 AND "tool" = $2 ORDER BY "createdAt" DESC LIMIT 50',
+                userId,
+                filterTool
+              )
+            : prisma.$queryRawUnsafe(
+                'SELECT id, tool, "toolName", action, input, output, "createdAt" FROM "AiUsageLog" WHERE "userId" = $1 ORDER BY "createdAt" DESC LIMIT 10',
+                userId
+              ),
         ]);
         todayCount = Number(todayRes?.[0]?.count) || 0;
         totalGenerated = Number(totalRes?.[0]?.count) || 0;
@@ -147,6 +169,11 @@ export async function getAiUsageStats(userId: string) {
 
     if (typeof (prisma as any).aiUsageLog?.count === "function") {
       try {
+        const whereClause: any = { userId };
+        if (filterTool) {
+          whereClause.tool = filterTool;
+        }
+
         [todayCount, totalGenerated, rawActivities] = await Promise.all([
           (prisma as any).aiUsageLog.count({
             where: {
@@ -155,17 +182,18 @@ export async function getAiUsageStats(userId: string) {
             },
           }),
           (prisma as any).aiUsageLog.count({
-            where: { userId },
+            where: whereClause,
           }),
           (prisma as any).aiUsageLog.findMany({
-            where: { userId },
+            where: whereClause,
             orderBy: { createdAt: "desc" },
-            take: 10,
+            take: filterTool ? 50 : 10,
             select: {
               id: true,
               tool: true,
               toolName: true,
               action: true,
+              input: true,
               output: true,
               createdAt: true,
             },
@@ -206,15 +234,26 @@ export async function getAiUsageStats(userId: string) {
 
     const remainingFree = user?.isVIP ? null : Math.max(0, dailyLimit - todayCount);
 
-    const recentActivities = rawActivities.map((act) => ({
-      id: act.id,
-      tool: act.tool,
-      toolName: act.toolName,
-      action: act.action,
-      output: act.output,
-      time: formatRelativeTime(act.createdAt),
-      createdAt: act.createdAt.toISOString(),
-    }));
+    const recentActivities = rawActivities.map((act) => {
+      let parsedInput = null;
+      if (act.input) {
+        try {
+          parsedInput = typeof act.input === "string" ? JSON.parse(act.input) : act.input;
+        } catch {
+          parsedInput = act.input;
+        }
+      }
+      return {
+        id: act.id,
+        tool: act.tool,
+        toolName: act.toolName,
+        action: act.action,
+        input: parsedInput,
+        output: act.output,
+        time: formatRelativeTime(act.createdAt),
+        createdAt: act.createdAt instanceof Date ? act.createdAt.toISOString() : new Date(act.createdAt).toISOString(),
+      };
+    });
 
     return {
       todayCount,

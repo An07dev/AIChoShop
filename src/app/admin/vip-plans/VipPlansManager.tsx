@@ -19,6 +19,7 @@ import {
   AlertCircle,
   HelpCircle,
 } from "lucide-react";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import {
   createVipPlan,
   updateVipPlan,
@@ -239,45 +240,15 @@ export default function VipPlansManager({ initialPlans }: Props) {
   return (
     <div className="space-y-6">
       {/* ── HEADER ──────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900 flex items-center gap-2">
-            <Crown className="text-amber-500 fill-amber-500" size={26} />
-            Quản Lý Cấu Hình Gói VIP
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 mt-1">
-            Thêm mới, điều chỉnh giá bán, chu kỳ và các đặc quyền của gói VIP hiển thị trên toàn hệ thống.
-          </p>
-        </div>
 
-        <div className="flex items-center gap-2.5">
-          <button
-            onClick={handleResetDefaults}
-            disabled={isSubmitting}
-            className="px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs"
-          >
-            <RefreshCw size={14} className={isSubmitting ? "animate-spin" : ""} />
-            <span>Khôi Phục Gói Chuẩn</span>
-          </button>
-
-          <button
-            onClick={openCreateModal}
-            className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black text-xs transition-all shadow-md shadow-amber-500/20 flex items-center gap-1.5 cursor-pointer"
-          >
-            <Plus size={16} className="stroke-[3]" />
-            <span>Thêm Gói VIP Mới</span>
-          </button>
-        </div>
-      </div>
 
       {/* ── STATUS MESSAGE ──────────────────────────────────────────────────── */}
       {statusMessage && (
         <div
-          className={`p-4 rounded-2xl text-xs font-medium flex items-center justify-between gap-3 ${
-            statusMessage.type === "success"
-              ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-              : "bg-rose-50 text-rose-800 border border-rose-200"
-          }`}
+          className={`p-4 rounded-2xl text-xs font-medium flex items-center justify-between gap-3 ${statusMessage.type === "success"
+            ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+            : "bg-rose-50 text-rose-800 border border-rose-200"
+            }`}
         >
           <div className="flex items-center gap-2">
             {statusMessage.type === "success" ? (
@@ -292,6 +263,19 @@ export default function VipPlansManager({ initialPlans }: Props) {
           </button>
         </div>
       )}
+
+      {/* ── TIÊU ĐỀ TRANG CẤU HÌNH GÓI VIP ─────────────────────────────────── */}
+      <AdminPageHeader
+        title="Cấu Hình Bảng Giá & Gói Cước VIP"
+        subtitle="Thiết lập giá bán, thời hạn, quyền lợi và huy hiệu nổi bật các gói VIP hiển thị trên toàn hệ thống."
+        icon={Crown}
+        iconGradient="from-amber-500 to-yellow-600"
+        badge={
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200 shadow-2xs">
+            {plans.length} gói cước
+          </span>
+        }
+      />
 
       {/* ── 3 KPI CARDS ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -417,11 +401,10 @@ export default function VipPlansManager({ initialPlans }: Props) {
                     <td className="px-5 py-4 text-center">
                       <button
                         onClick={() => handleTogglePopular(plan)}
-                        className={`p-2 rounded-xl transition-all cursor-pointer ${
-                          plan.isPopular
-                            ? "bg-amber-100 text-amber-600 hover:bg-amber-200"
-                            : "bg-slate-100 text-slate-400 hover:bg-slate-200"
-                        }`}
+                        className={`p-2 rounded-xl transition-all cursor-pointer ${plan.isPopular
+                          ? "bg-amber-100 text-amber-600 hover:bg-amber-200"
+                          : "bg-slate-100 text-slate-400 hover:bg-slate-200"
+                          }`}
                         title={plan.isPopular ? "Đang là Best-Seller, bấm để bỏ" : "Bấm để đặt làm Best-Seller"}
                       >
                         <Star size={16} className={plan.isPopular ? "fill-amber-600" : ""} />
@@ -432,11 +415,10 @@ export default function VipPlansManager({ initialPlans }: Props) {
                     <td className="px-5 py-4 text-center">
                       <button
                         onClick={() => handleToggleActive(plan)}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${
-                          plan.active
-                            ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
-                            : "bg-slate-100 text-slate-400 border border-slate-200 hover:bg-slate-200"
-                        }`}
+                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition-all cursor-pointer ${plan.active
+                          ? "bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
+                          : "bg-slate-100 text-slate-400 border border-slate-200 hover:bg-slate-200"
+                          }`}
                       >
                         {plan.active ? (
                           <>

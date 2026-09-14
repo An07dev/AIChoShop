@@ -9,17 +9,19 @@ import {
   Calculator,
   Check,
   ChevronDown,
+  ChevronRight,
   ChevronUp,
   CircleDollarSign,
+  Clock,
   Copy,
   ExternalLink,
+  FolderOpen,
   Info,
   Layers,
   PackageCheck,
   PieChart,
   ReceiptText,
   RotateCcw,
-  Save,
   ShieldAlert,
   ShieldCheck,
   Sparkles,
@@ -27,6 +29,7 @@ import {
   TrendingDown,
   TrendingUp,
   Truck,
+  X,
 } from "lucide-react";
 import { useToolGate } from "@/hooks/useToolGate";
 import { calculatePricing } from "@/lib/pricing/engine";
@@ -42,9 +45,9 @@ import {
   SOURCES,
 } from "@/lib/pricing/registry";
 import { readPricingHistory, writePricingHistory, type PricingCalculationSnapshot } from "@/lib/pricing/storage";
-import type { CostMode, ExternalSalesChannel, FeeOverrideRecord, OfficialFeeCategory, Platform, PricingInput, ShopType, TaxMode } from "@/lib/pricing/types";
+import type { CostMode, ExternalSalesChannel, FeeOverrideRecord, OfficialFeeCategory, Platform, PriceEvaluation, PricingInput, PricingResult, ShopType, TaxMode } from "@/lib/pricing/types";
 import BulkPricing from "./BulkPricing";
-import { CostVisuals, EmptyCalculation, SavedCalculations } from "./PricingExtras";
+import { CostVisuals, EmptyCalculation } from "./PricingExtras";
 
 const initialInput: PricingInput = {
   platform: "shopee",
@@ -292,12 +295,28 @@ export default function PricingCalculatorClient({ feeOverrides }: { feeOverrides
   const [roundingStep, setRoundingStep] = useState(1_000);
   const [copied, setCopied] = useState(false);
   const [suggestedCategoryId, setSuggestedCategoryId] = useState<string | null>(null);
-  const [hasCalculated, setHasCalculated] = useState(true);
+  const [appliedCalculation, setAppliedCalculation] = useState<{
+    result: PricingResult;
+    evaluation: PriceEvaluation;
+    input: PricingInput;
+    mode: "target" | "audit";
+    productName: string;
+    auditPrice: number;
+    isLoss: boolean;
+  } | null>(null);
   const [savedHistory, setSavedHistory] = useState<PricingCalculationSnapshot[]>([]);
   const [saveNotice, setSaveNotice] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [productNameError, setProductNameError] = useState("");
   const productNameRef = useRef<HTMLInputElement>(null);
+
+  // Lịch sử modal & hoạt động server (Hoạt động gần đây)
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [historyActivities, setHistoryActivities] = useState<any[]>([]);
+  const [historyTotal, setHistoryTotal] = useState(0);
+  const [historyRefreshTrigger, setHistoryRefreshTrigger] = useState(0);
+  const [viewingHistoryItem, setViewingHistoryItem] = useState<any | null>(null);
+  const [copiedHistoryId, setCopiedHistoryId] = useState<string | null>(null);
 
   useEffect(() => {
     checkAccess("pricing-calculator", false);
@@ -306,6 +325,39 @@ export default function PricingCalculatorClient({ feeOverrides }: { feeOverrides
   useEffect(() => {
     setSavedHistory(readPricingHistory(window.localStorage));
   }, []);
+
+  useEffect(() => {
+    fetch("/api/ai/usage?tool=pricing-calculator")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data) {
+          setHistoryActivities(data.recentActivities || []);
+          setHistoryTotal(data.totalGenerated || 0);
+        }
+      })
+      .catch(() => { });
+  }, [historyRefreshTrigger]);
+
+  const handleCopyHistory = (id: string, text: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedHistoryId(id);
+    setTimeout(() => setCopiedHistoryId(null), 2000);
+  };
+
+  const displayActivities = useMemo(() => {
+    if (historyActivities.length > 0) return historyActivities;
+    return savedHistory.map((s) => ({
+      id: s.id,
+      tool: "pricing-calculator",
+      toolName: "Tính Giá Bán",
+      action: `Định giá "${s.productName}" - ${s.input.platform.toUpperCase()}`,
+      time: "Đã lưu",
+      createdAt: s.createdAt,
+      output: `Sản phẩm: ${s.productName}\nSàn: ${s.input.platform.toUpperCase()}\nGiá vốn: ${(s.input.costPerUnit || 0).toLocaleString("vi-VN")}đ\nGiá bán đề xuất: ${(s.result?.evaluation?.listPrice || s.auditPrice || 0).toLocaleString("vi-VN")}đ\nLợi nhuận ròng/đơn: ${(s.result?.evaluation?.expectedProfitPerOrder || 0).toLocaleString("vi-VN")}đ\nTỷ suất lợi nhuận: ${(s.result?.evaluation?.expectedMargin || 0).toFixed(1)}%`,
+      snapshot: s,
+    }));
+  }, [historyActivities, savedHistory]);
 
   const update = <K extends keyof PricingInput>(key: K, value: PricingInput[K]) =>
     setInput((current) => ({ ...current, [key]: value }));
@@ -337,12 +389,10 @@ export default function PricingCalculatorClient({ feeOverrides }: { feeOverrides
     [adminOverride, input]
   );
 
-  const result = useMemo(
-    () => calculatePricing(calculationInput, mode, auditPrice, { mode: targetMode, value: targetValue, roundingStep }),
-    [auditPrice, calculationInput, mode, roundingStep, targetMode, targetValue]
-  );
-  const evaluation = result.evaluation;
-  const isLoss = evaluation.expectedProfitPerOrder < 0;
+  const hasCalculated = !!appliedCalculation;
+  const result = appliedCalculation?.result;
+  const evaluation = appliedCalculation?.evaluation;
+  const isLoss = appliedCalculation?.isLoss ?? false;
 
   const applyCategory = (categoryId: string) => {
     const category = getOfficialCategory(categoryId);
@@ -403,7 +453,7 @@ export default function PricingCalculatorClient({ feeOverrides }: { feeOverrides
     setTargetValue(20);
     setRoundingStep(1_000);
     setSuggestedCategoryId(null);
-    setHasCalculated(false);
+    setAppliedCalculation(null);
     setSaveNotice("");
     setEditingId(null);
     setProductNameError("");
@@ -416,22 +466,83 @@ export default function PricingCalculatorClient({ feeOverrides }: { feeOverrides
       return;
     }
     setProductNameError("");
-    setHasCalculated(true);
-    setSaveNotice("");
+
+    const computedResult = calculatePricing(calculationInput, mode, auditPrice, {
+      mode: targetMode,
+      value: targetValue,
+      roundingStep,
+    });
+
+    const applied = {
+      result: computedResult,
+      evaluation: computedResult.evaluation,
+      input: { ...calculationInput },
+      mode,
+      productName: productName.trim(),
+      auditPrice,
+      isLoss: computedResult.evaluation.expectedProfitPerOrder < 0,
+    };
+    setAppliedCalculation(applied);
+
+    // Tự động lưu snapshot vào lịch sử
+    const snapshotId = editingId || (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`);
+    const item: PricingCalculationSnapshot = {
+      id: snapshotId,
+      createdAt: new Date().toISOString(),
+      productName: productName.trim(),
+      mode,
+      input: calculationInput,
+      auditPrice,
+      targetMode,
+      targetValue,
+      roundingStep,
+      result: computedResult,
+    };
+
+    setEditingId(snapshotId);
+
+    persistHistory(
+      editingId ? savedHistory.map((saved) => (saved.id === editingId ? item : saved)) : [item, ...savedHistory]
+    );
+    setSaveNotice(
+      editingId ? `Đã tính toán & cập nhật “${item.productName}”.` : `Đã tính toán & lưu “${item.productName}” vào lịch sử.`
+    );
+
+    // Gửi log đến server để hiển thị tại "Hoạt động gần đây" (Dashboard & Modal Lịch sử)
+    const targetSelling = computedResult.targetPrice ?? computedResult.evaluation?.listPrice ?? auditPrice;
+    const netProfit = computedResult.evaluation?.expectedProfitPerOrder ?? 0;
+    const margin = computedResult.evaluation?.expectedMargin ?? 0;
+    const totalFees = computedResult.evaluation?.platformFees ?? 0;
+    const totalTaxes = computedResult.evaluation?.tax ?? 0;
+    const platformName = input.platform === "shopee" ? "Shopee" : input.platform === "tiktok" ? "TikTok" : "Đơn ngoài";
+
+    fetch("/api/ai/usage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tool: "pricing-calculator",
+        toolName: "Tính Giá Bán",
+        action: editingId
+          ? `Cập nhật định giá "${productName.trim()}" - ${platformName}`
+          : `Định giá "${productName.trim()}" - ${platformName}`,
+        input: {
+          productName: productName.trim(),
+          platform: input.platform,
+          shopType: input.shopType,
+          costPerUnit: input.costPerUnit,
+          targetSellingPrice: targetSelling,
+          netProfit,
+          margin,
+          snapshotId: item.id,
+          snapshot: item,
+        },
+        output: `Sản phẩm: ${productName.trim()}\nSàn: ${platformName} (${input.shopType === "mall" ? "Mall" : "Shop thường"})\nGiá vốn: ${input.costPerUnit.toLocaleString("vi-VN")}đ\nGiá bán đề xuất: ${targetSelling.toLocaleString("vi-VN")}đ\nLợi nhuận ròng/đơn: ${netProfit.toLocaleString("vi-VN")}đ\nTỷ suất lợi nhuận: ${margin.toFixed(1)}%\nTổng phí sàn: ${totalFees.toLocaleString("vi-VN")}đ\nThuế TMĐT: ${totalTaxes.toLocaleString("vi-VN")}đ`,
+      }),
+    })
+      .then(() => setHistoryRefreshTrigger((prev) => prev + 1))
+      .catch((err) => console.warn("Failed to log pricing usage:", err));
   };
 
-  const createSnapshot = (name = productName || "Sản phẩm chưa đặt tên"): PricingCalculationSnapshot => ({
-    id: globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`,
-    createdAt: new Date().toISOString(),
-    productName: name,
-    mode,
-    input: calculationInput,
-    auditPrice,
-    targetMode,
-    targetValue,
-    roundingStep,
-    result,
-  });
 
   const persistHistory = (next: PricingCalculationSnapshot[]) => {
     setSavedHistory(next);
@@ -439,22 +550,26 @@ export default function PricingCalculatorClient({ feeOverrides }: { feeOverrides
   };
 
   const saveCurrent = () => {
-    if (!productName.trim()) {
-      setProductNameError("Vui lòng nhập tên sản phẩm trước khi lưu.");
-      productNameRef.current?.focus();
-      return;
-    }
-    const snapshot = createSnapshot();
-    const item = editingId ? { ...snapshot, id: editingId } : snapshot;
-    persistHistory(
-      editingId ? savedHistory.map((saved) => (saved.id === editingId ? item : saved)) : [item, ...savedHistory]
-    );
-    setSaveNotice(editingId ? `Đã cập nhật “${item.productName}”.` : `Đã lưu “${item.productName}” vào lịch sử.`);
+    calculate();
   };
 
   const saveMany = (items: PricingCalculationSnapshot[]) => {
     persistHistory([...items, ...savedHistory]);
     setSaveNotice(`Đã lưu ${items.length} sản phẩm từ file CSV.`);
+
+    fetch("/api/ai/usage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tool: "pricing-calculator",
+        toolName: "Tính Giá Bán",
+        action: `Định giá hàng loạt ${items.length} sản phẩm`,
+        input: { count: items.length },
+        output: `Đã tính toán và lưu ${items.length} sản phẩm định giá hàng loạt vào tài khoản.`,
+      }),
+    })
+      .then(() => setHistoryRefreshTrigger((prev) => prev + 1))
+      .catch((err) => console.warn("Failed to log bulk pricing:", err));
   };
 
   const openSaved = (item: PricingCalculationSnapshot) => {
@@ -467,7 +582,23 @@ export default function PricingCalculatorClient({ feeOverrides }: { feeOverrides
     setTargetValue(item.targetValue);
     setRoundingStep(item.roundingStep);
     setSuggestedCategoryId(null);
-    setHasCalculated(true);
+
+    const computedResult = item.result || calculatePricing(item.input, item.mode, item.auditPrice, {
+      mode: item.targetMode,
+      value: item.targetValue,
+      roundingStep: item.roundingStep,
+    });
+
+    setAppliedCalculation({
+      result: computedResult,
+      evaluation: computedResult.evaluation,
+      input: { ...item.input },
+      mode: item.mode,
+      productName: item.productName,
+      auditPrice: item.auditPrice,
+      isLoss: computedResult.evaluation.expectedProfitPerOrder < 0,
+    });
+
     setEditingId(item.id);
     setSaveNotice(`Đã mở lại “${item.productName}”. Bạn có thể sửa, tính lại rồi nhấn Cập nhật.`);
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -486,14 +617,14 @@ export default function PricingCalculatorClient({ feeOverrides }: { feeOverrides
   };
 
   const copyResult = async () => {
+    if (!evaluation || !result) return;
     const fees = evaluation.fees.map((fee) => `- ${fee.name}: ${formatMoney(fee.amount)}`).join("\n");
     const channel = input.platform === "external" ? externalChannelNames[input.externalChannel] : platformNames[input.platform];
     const classification = input.platform === "external" ? `Kênh bán: ${channel}` : `Ngành: ${getCategoryLabel(selectedCategory)}`;
     await navigator.clipboard.writeText(
       `PHÂN TÍCH GIÁ BÁN ${channel.toUpperCase()}\nSản phẩm: ${productName || "Chưa đặt tên"}\n${classification}\nGiá niêm yết: ${formatMoney(
         evaluation.listPrice
-      )}\nGiá hòa vốn: ${
-        result.breakEvenPrice === null ? "Không khả thi" : formatMoney(result.breakEvenPrice)
+      )}\nGiá hòa vốn: ${result.breakEvenPrice === null ? "Không khả thi" : formatMoney(result.breakEvenPrice)
       }\n${input.platform === "external" ? "Thực thu" : "Tiền sàn giải ngân"}: ${formatMoney(
         evaluation.payout
       )}\n${fees}\nLãi đơn thành công: ${formatMoney(evaluation.profitOnSuccess)}\nLãi kỳ vọng/đơn phát sinh: ${formatMoney(
@@ -510,6 +641,225 @@ export default function PricingCalculatorClient({ feeOverrides }: { feeOverrides
     <div className="mx-auto max-w-7xl pb-16 px-2 sm:px-4">
       <GateModals />
 
+      {/* Modal Lịch Sử Định Giá Gần Đây (Giống trang Chat Broadcast & Zalo) */}
+      {isHistoryModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs"
+            onClick={() => {
+              setIsHistoryModalOpen(false);
+              setViewingHistoryItem(null);
+            }}
+          />
+
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl border border-slate-200 dark:border-slate-800 relative z-10 flex flex-col max-h-[85vh] overflow-hidden">
+            {/* Header Modal */}
+            <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-800/40 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
+                  <Clock size={16} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+                    {viewingHistoryItem ? "Chi tiết định giá" : "Lịch Sử Định Giá Gần Đây"}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    {viewingHistoryItem
+                      ? (viewingHistoryItem.toolName || "Tính Giá Bán")
+                      : `Tổng cộng ${displayActivities.length} bản ghi đã lưu vào tài khoản`}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (viewingHistoryItem) {
+                    setViewingHistoryItem(null);
+                  } else {
+                    setIsHistoryModalOpen(false);
+                  }
+                }}
+                className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 flex-1 overflow-y-auto custom-scrollbar">
+              {viewingHistoryItem ? (
+                /* Chi tiết 1 bản ghi */
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 text-xs">
+                    <span className="font-bold text-slate-800 dark:text-slate-200">
+                      {viewingHistoryItem.action}
+                    </span>
+                    <span className="text-slate-400">{viewingHistoryItem.time || "Gần đây"}</span>
+                  </div>
+
+                  <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-mono text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed max-h-96 overflow-y-auto custom-scrollbar">
+                    {viewingHistoryItem.output || "(Không có nội dung)"}
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setViewingHistoryItem(null)}
+                      className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                    >
+                      Quay lại danh sách
+                    </button>
+
+                    <div className="flex items-center gap-2">
+                      {/* Nút nạp lại vào bảng tính nếu tìm thấy snapshot */}
+                      {(() => {
+                        const matchedSnapshot =
+                          viewingHistoryItem.snapshot ||
+                          savedHistory.find(
+                            (s) =>
+                              s.id === viewingHistoryItem.input?.snapshotId ||
+                              viewingHistoryItem.action?.includes(s.productName)
+                          );
+                        if (!matchedSnapshot) return null;
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              openSaved(matchedSnapshot);
+                              setIsHistoryModalOpen(false);
+                              setViewingHistoryItem(null);
+                            }}
+                            className="px-3.5 py-2 text-xs font-bold bg-brand hover:bg-brand-hover text-white rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                          >
+                            <FolderOpen size={14} /> Nạp vào bảng tính
+                          </button>
+                        );
+                      })()}
+
+                      {viewingHistoryItem.output && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleCopyHistory(
+                              viewingHistoryItem.id,
+                              viewingHistoryItem.output || ""
+                            )
+                          }
+                          className="px-4 py-2 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+                        >
+                          {copiedHistoryId === viewingHistoryItem.id ? (
+                            <>
+                              <Check size={14} /> Đã sao chép!
+                            </>
+                          ) : (
+                            <>
+                              <Copy size={14} /> Sao chép tóm tắt
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Danh sách bản ghi gần đây */
+                <div className="space-y-2.5">
+                  {displayActivities.length === 0 ? (
+                    <div className="text-center py-12 text-slate-400">
+                      <Sparkles size={36} className="mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+                      <p className="font-medium text-sm text-slate-600 dark:text-slate-300">
+                        Chưa có lịch sử định giá nào
+                      </p>
+                      <p className="text-xs mt-1 text-slate-400">
+                        Hãy nhập thông tin sản phẩm và bấm Cập nhật & Tính toán để lưu tự động.
+                      </p>
+                    </div>
+                  ) : (
+                    displayActivities.map((item: any) => {
+                      const matchedSnapshot =
+                        item.snapshot ||
+                        savedHistory.find(
+                          (s) =>
+                            s.id === item.input?.snapshotId ||
+                            item.action?.includes(s.productName)
+                        );
+
+                      return (
+                        <div
+                          key={item.id}
+                          className="p-3.5 bg-slate-50 dark:bg-slate-800/50 hover:bg-blue-50/50 dark:hover:bg-slate-800 rounded-xl border border-slate-200/80 dark:border-slate-700/60 transition-all flex items-start justify-between gap-3 group"
+                        >
+                          <div
+                            className="flex-1 cursor-pointer min-w-0"
+                            onClick={() => setViewingHistoryItem(item)}
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/40 px-2 py-0.5 rounded">
+                                {item.toolName || "Tính Giá Bán"}
+                              </span>
+                              <span className="text-[11px] text-slate-400">
+                                {item.time || (item.createdAt ? new Date(item.createdAt).toLocaleDateString("vi-VN") : "Gần đây")}
+                              </span>
+                            </div>
+                            <h4 className="font-semibold text-slate-900 dark:text-white text-xs truncate">
+                              {item.action}
+                            </h4>
+                            {item.output && (
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5 font-mono">
+                                {item.output.replace(/\n/g, " • ").slice(0, 90)}...
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-1 shrink-0 pt-1">
+                            {matchedSnapshot && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  openSaved(matchedSnapshot);
+                                  setIsHistoryModalOpen(false);
+                                }}
+                                title="Nạp lại vào bảng tính"
+                                className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-600 shadow-2xs"
+                              >
+                                <FolderOpen size={14} />
+                              </button>
+                            )}
+                            {item.output && (
+                              <button
+                                type="button"
+                                onClick={() => handleCopyHistory(item.id, item.output || "")}
+                                title="Sao chép tóm tắt"
+                                className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-600 shadow-2xs"
+                              >
+                                {copiedHistoryId === item.id ? (
+                                  <Check size={14} className="text-emerald-500" />
+                                ) : (
+                                  <Copy size={14} />
+                                )}
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setViewingHistoryItem(item)}
+                              title="Xem chi tiết"
+                              className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-600 shadow-2xs"
+                            >
+                              <ChevronRight size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 1. Header Toolbar */}
       <div className="mb-6 space-y-4">
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
@@ -525,11 +875,15 @@ export default function PricingCalculatorClient({ feeOverrides }: { feeOverrides
                 <Calculator size={24} />
               </div>
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
                     Tính Giá Bán & Tối Ưu Lợi Nhuận
                   </h1>
-                  <span className="rounded-full bg-brand-light/80 border border-brand/30 px-2.5 py-0.5 text-[10px] font-black text-brand uppercase tracking-wider">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shadow-xs uppercase tracking-wider">
+                    <Sparkles size={11} className="text-emerald-600 dark:text-emerald-400" />
+                    FREE TOOL
+                  </span>
+                  <span className="hidden sm:inline-flex rounded-full bg-brand-light/80 border border-brand/30 px-2.5 py-0.5 text-[10px] font-black text-brand uppercase tracking-wider">
                     {FEE_DATA_VERSION}
                   </span>
                 </div>
@@ -540,29 +894,43 @@ export default function PricingCalculatorClient({ feeOverrides }: { feeOverrides
             </div>
           </div>
 
-          {/* Workspace Switcher: Single vs Bulk */}
-          <div className="flex items-center rounded-2xl bg-slate-100 dark:bg-slate-800/90 p-1 border border-slate-200/80 dark:border-slate-700/80 shadow-xs self-start md:self-auto">
-            <button
-              type="button"
-              onClick={() => setWorkspaceMode("single")}
-              className={`flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition-all cursor-pointer ${
-                workspaceMode === "single"
+          {/* Workspace Switcher: Single vs Bulk & Nút Lịch Sử ở cạnh Định giá đơn lẻ */}
+          <div className="flex items-center gap-2 flex-wrap self-start md:self-auto">
+            <div className="flex items-center rounded-2xl bg-slate-100 dark:bg-slate-800/90 p-1 border border-slate-200/80 dark:border-slate-700/80 shadow-xs">
+              <button
+                type="button"
+                onClick={() => setWorkspaceMode("single")}
+                className={`flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition-all cursor-pointer ${workspaceMode === "single"
                   ? "bg-brand text-white shadow-sm"
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-              }`}
-            >
-              <Calculator size={14} /> Định giá đơn lẻ
-            </button>
-            <button
-              type="button"
-              onClick={() => setWorkspaceMode("bulk")}
-              className={`flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition-all cursor-pointer ${
-                workspaceMode === "bulk"
+                  }`}
+              >
+                <Calculator size={14} /> Định giá đơn lẻ
+              </button>
+              <button
+                type="button"
+                onClick={() => setWorkspaceMode("bulk")}
+                className={`flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition-all cursor-pointer ${workspaceMode === "bulk"
                   ? "bg-brand text-white shadow-sm"
                   : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-              }`}
+                  }`}
+              >
+                <Table2 size={14} /> Định giá hàng loạt
+              </button>
+            </div>
+
+            {/* Nút Lịch sử ở cạnh Định giá đơn lẻ */}
+            <button
+              type="button"
+              onClick={() => {
+                setViewingHistoryItem(null);
+                setIsHistoryModalOpen(true);
+              }}
+              className="flex items-center gap-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-2xl text-xs font-bold text-slate-700 dark:text-slate-200 transition-all cursor-pointer shadow-xs active:scale-95"
+              title="Xem lịch sử định giá đã tính toán"
             >
-              <Table2 size={14} /> Định giá hàng loạt
+              <Clock size={14} className="text-blue-500 shrink-0" />
+              <span>Lịch sử</span>
             </button>
           </div>
         </div>
@@ -576,12 +944,6 @@ export default function PricingCalculatorClient({ feeOverrides }: { feeOverrides
               {saveNotice}
             </div>
           )}
-          <SavedCalculations
-            history={savedHistory}
-            onOpen={openSaved}
-            onDelete={deleteSaved}
-            onDeleteAll={deleteAllSaved}
-          />
         </>
       ) : (
         <>
@@ -618,22 +980,20 @@ export default function PricingCalculatorClient({ feeOverrides }: { feeOverrides
                   key={p.id}
                   type="button"
                   onClick={() => changePlatform(p.id)}
-                  className={`group relative flex flex-col justify-between rounded-2xl border p-4 text-left transition-all cursor-pointer ${
-                    isActive
-                      ? "border-brand bg-brand-light/30 dark:bg-brand-light/15 shadow-md shadow-brand/10 ring-2 ring-brand/20"
-                      : "border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-xs"
-                  }`}
+                  className={`group relative flex flex-col justify-between rounded-2xl border p-4 text-left transition-all cursor-pointer ${isActive
+                    ? "border-brand bg-brand-light/30 dark:bg-brand-light/15 shadow-md shadow-brand/10 ring-2 ring-brand/20"
+                    : "border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-xs"
+                    }`}
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-black text-slate-900 dark:text-white group-hover:text-brand transition-colors">
                       {p.name}
                     </span>
                     <span
-                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                        isActive
-                          ? "bg-brand text-white"
-                          : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
-                      }`}
+                      className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${isActive
+                        ? "bg-brand text-white"
+                        : "bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400"
+                        }`}
                     >
                       {p.badge}
                     </span>
@@ -661,22 +1021,20 @@ export default function PricingCalculatorClient({ feeOverrides }: { feeOverrides
                     <button
                       type="button"
                       onClick={() => setMode("target")}
-                      className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold transition-all cursor-pointer ${
-                        mode === "target"
-                          ? "bg-white dark:bg-slate-700 text-brand shadow-xs"
-                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                      }`}
+                      className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold transition-all cursor-pointer ${mode === "target"
+                        ? "bg-white dark:bg-slate-700 text-brand shadow-xs"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                        }`}
                     >
                       <TrendingUp size={14} /> Tính giá mục tiêu
                     </button>
                     <button
                       type="button"
                       onClick={() => setMode("audit")}
-                      className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold transition-all cursor-pointer ${
-                        mode === "audit"
-                          ? "bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-xs"
-                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                      }`}
+                      className={`flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold transition-all cursor-pointer ${mode === "audit"
+                        ? "bg-white dark:bg-slate-700 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                        }`}
                     >
                       <Check size={14} /> Thẩm định giá bán
                     </button>
@@ -693,11 +1051,10 @@ export default function PricingCalculatorClient({ feeOverrides }: { feeOverrides
                       aria-invalid={Boolean(productNameError)}
                       aria-describedby={productNameError ? "product-name-error" : undefined}
                       placeholder="Ví dụ: Áo polo nam thể thao cao cấp"
-                      className={`w-full rounded-xl border bg-slate-50 dark:bg-slate-800/80 px-3.5 py-2.5 text-sm font-semibold text-slate-900 dark:text-slate-100 outline-none transition focus:ring-2 ${
-                        productNameError
-                          ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/15"
-                          : "border-slate-200 dark:border-slate-700/80 focus:border-brand focus:ring-brand/20"
-                      }`}
+                      className={`w-full rounded-xl border bg-slate-50 dark:bg-slate-800/80 px-3.5 py-2.5 text-sm font-semibold text-slate-900 dark:text-slate-100 outline-none transition focus:ring-2 ${productNameError
+                        ? "border-rose-400 focus:border-rose-500 focus:ring-rose-500/15"
+                        : "border-slate-200 dark:border-slate-700/80 focus:border-brand focus:ring-brand/20"
+                        }`}
                     />
                     {productNameError && (
                       <p id="product-name-error" className="mt-1.5 text-xs font-semibold text-rose-600">
@@ -771,22 +1128,20 @@ export default function PricingCalculatorClient({ feeOverrides }: { feeOverrides
                         <button
                           type="button"
                           onClick={() => changeShopType("marketplace")}
-                          className={`flex-1 rounded-lg py-1.5 text-xs font-bold transition-all ${
-                            input.shopType === "marketplace"
-                              ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs"
-                              : "text-slate-500 dark:text-slate-400"
-                          }`}
+                          className={`flex-1 rounded-lg py-1.5 text-xs font-bold transition-all ${input.shopType === "marketplace"
+                            ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs"
+                            : "text-slate-500 dark:text-slate-400"
+                            }`}
                         >
                           Shop thường
                         </button>
                         <button
                           type="button"
                           onClick={() => changeShopType("mall")}
-                          className={`flex-1 rounded-lg py-1.5 text-xs font-bold transition-all ${
-                            input.shopType === "mall"
-                              ? "bg-brand text-white shadow-xs"
-                              : "text-slate-500 dark:text-slate-400"
-                          }`}
+                          className={`flex-1 rounded-lg py-1.5 text-xs font-bold transition-all ${input.shopType === "mall"
+                            ? "bg-brand text-white shadow-xs"
+                            : "text-slate-500 dark:text-slate-400"
+                            }`}
                         >
                           Shop Mall (Chính hãng)
                         </button>
@@ -900,22 +1255,14 @@ export default function PricingCalculatorClient({ feeOverrides }: { feeOverrides
                   </div>
                 )}
 
-                {/* Action Buttons */}
-                <div className="grid grid-cols-[1fr_auto_auto] gap-2.5 pt-2">
+                {/* Action Buttons (Bỏ nút Lưu thủ công vì tự động lưu vào lịch sử & Hoạt động gần đây) */}
+                <div className="flex items-center gap-2.5 pt-2">
                   <button
                     type="button"
                     onClick={calculate}
-                    className="btn-brand-cta flex items-center justify-center gap-2 rounded-2xl px-5 py-3.5 text-sm font-black text-white shadow-lg shadow-brand/20 hover:opacity-95 active:scale-[0.99] transition-all cursor-pointer"
+                    className="flex-1 btn-brand-cta flex items-center justify-center gap-2 rounded-2xl px-5 py-3.5 text-sm font-black text-white shadow-lg shadow-brand/20 hover:opacity-95 active:scale-[0.99] transition-all cursor-pointer"
                   >
                     <Calculator size={18} /> Cập nhật & Tính toán
-                  </button>
-                  <button
-                    type="button"
-                    onClick={saveCurrent}
-                    title="Lưu vào lịch sử"
-                    className="flex items-center justify-center gap-1.5 rounded-2xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3.5 text-sm font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors shadow-xs cursor-pointer"
-                  >
-                    <Save size={18} /> {editingId ? "Cập nhật" : "Lưu"}
                   </button>
                   <button
                     type="button"
@@ -970,7 +1317,7 @@ export default function PricingCalculatorClient({ feeOverrides }: { feeOverrides
 
             {/* Right Column: Financial Intelligence Engine (7 cols, sticky on desktop) */}
             <div className="space-y-5 lg:col-span-7 lg:sticky lg:top-4 self-start">
-              {!hasCalculated ? (
+              {!hasCalculated || !result || !evaluation ? (
                 <EmptyCalculation />
               ) : (
                 <>
@@ -983,11 +1330,10 @@ export default function PricingCalculatorClient({ feeOverrides }: { feeOverrides
 
                   {/* 1. Hero Valuation Output Card */}
                   <section
-                    className={`relative overflow-hidden rounded-3xl border shadow-xl transition-all ${
-                      isLoss
-                        ? "border-rose-500/40 bg-gradient-to-br from-rose-950 via-slate-950 to-slate-950"
-                        : "border-slate-800 dark:border-slate-800 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900"
-                    }`}
+                    className={`relative overflow-hidden rounded-3xl border shadow-xl transition-all ${isLoss
+                      ? "border-rose-500/40 bg-gradient-to-br from-rose-950 via-slate-950 to-slate-950"
+                      : "border-slate-800 dark:border-slate-800 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900"
+                      }`}
                   >
                     {/* Ambient Glow */}
                     <div
@@ -1083,44 +1429,40 @@ export default function PricingCalculatorClient({ feeOverrides }: { feeOverrides
                     <button
                       type="button"
                       onClick={() => setActiveResultTab("structure")}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl transition-all cursor-pointer ${
-                        activeResultTab === "structure"
-                          ? "bg-white dark:bg-slate-700 text-brand shadow-xs"
-                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                      }`}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl transition-all cursor-pointer ${activeResultTab === "structure"
+                        ? "bg-white dark:bg-slate-700 text-brand shadow-xs"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                        }`}
                     >
                       <PieChart size={14} /> Cơ cấu chi phí
                     </button>
                     <button
                       type="button"
                       onClick={() => setActiveResultTab("breakdown")}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl transition-all cursor-pointer ${
-                        activeResultTab === "breakdown"
-                          ? "bg-white dark:bg-slate-700 text-brand shadow-xs"
-                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                      }`}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl transition-all cursor-pointer ${activeResultTab === "breakdown"
+                        ? "bg-white dark:bg-slate-700 text-brand shadow-xs"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                        }`}
                     >
                       <ReceiptText size={14} /> Đối soát P&L
                     </button>
                     <button
                       type="button"
                       onClick={() => setActiveResultTab("scenarios")}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl transition-all cursor-pointer ${
-                        activeResultTab === "scenarios"
-                          ? "bg-white dark:bg-slate-700 text-brand shadow-xs"
-                          : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                      }`}
+                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl transition-all cursor-pointer ${activeResultTab === "scenarios"
+                        ? "bg-white dark:bg-slate-700 text-brand shadow-xs"
+                        : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                        }`}
                     >
                       <ShieldAlert size={14} /> Kịch bản 100 đơn
                     </button>
                     <button
                       type="button"
                       onClick={() => setActiveResultTab("all")}
-                      className={`px-3 py-2 rounded-xl transition-all cursor-pointer ${
-                        activeResultTab === "all"
-                          ? "bg-white dark:bg-slate-700 text-brand shadow-xs"
-                          : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
-                      }`}
+                      className={`px-3 py-2 rounded-xl transition-all cursor-pointer ${activeResultTab === "all"
+                        ? "bg-white dark:bg-slate-700 text-brand shadow-xs"
+                        : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
+                        }`}
                     >
                       Tất cả
                     </button>
@@ -1190,14 +1532,6 @@ export default function PricingCalculatorClient({ feeOverrides }: { feeOverrides
               )}
             </div>
           </div>
-
-          {/* 4. Saved Snapshots History */}
-          <SavedCalculations
-            history={savedHistory}
-            onOpen={openSaved}
-            onDelete={deleteSaved}
-            onDeleteAll={deleteAllSaved}
-          />
         </>
       )}
     </div>
@@ -1450,9 +1784,8 @@ function Row({
         {hint && <span className="ml-2 text-[10px] text-slate-400 dark:text-slate-500 font-normal">{hint}</span>}
       </div>
       <span
-        className={`shrink-0 font-mono ${strong ? "text-base font-black" : "font-bold text-sm"} ${
-          value < 0 ? "text-rose-600 dark:text-rose-400" : positive ? "text-emerald-600 dark:text-emerald-400" : "text-slate-900 dark:text-white"
-        }`}
+        className={`shrink-0 font-mono ${strong ? "text-base font-black" : "font-bold text-sm"} ${value < 0 ? "text-rose-600 dark:text-rose-400" : positive ? "text-emerald-600 dark:text-emerald-400" : "text-slate-900 dark:text-white"
+          }`}
       >
         {value > 0 && positive ? "+" : ""}
         {formatMoney(value)}
@@ -1540,11 +1873,10 @@ function Scenarios({ evaluation: e, isLoss }: { evaluation: ReturnType<typeof ca
         />
       </div>
       <div
-        className={`mt-4 flex items-center justify-between rounded-2xl p-4 transition-colors ${
-          isLoss
-            ? "border border-rose-300 dark:border-rose-900/50 bg-rose-100 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200"
-            : "border border-emerald-300 dark:border-emerald-900/50 bg-emerald-100 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200"
-        }`}
+        className={`mt-4 flex items-center justify-between rounded-2xl p-4 transition-colors ${isLoss
+          ? "border border-rose-300 dark:border-rose-900/50 bg-rose-100 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200"
+          : "border border-emerald-300 dark:border-emerald-900/50 bg-emerald-100 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200"
+          }`}
       >
         <span className="text-xs sm:text-sm font-bold">Tổng lãi kỳ vọng thực nhận trên 100 đơn phát sinh:</span>
         <span className="text-lg sm:text-xl font-black font-mono">{formatMoney(e.expectedProfitPerOrder * 100)}</span>

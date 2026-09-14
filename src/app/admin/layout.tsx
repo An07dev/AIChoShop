@@ -1,6 +1,16 @@
 import Link from "next/link";
-import { LayoutDashboard, Users, BookOpen, Database, LogOut, ShieldAlert } from "lucide-react";
+import { LogOut, ShieldAlert } from "lucide-react";
 import { AdminNav } from "@/components/admin/AdminNav";
+import { AdminTopBar } from "@/components/admin/AdminTopBar";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: {
+    template: "%s | AIChoShop Admin",
+    default: "Hệ thống Quản trị viên | AIChoShop Admin",
+  },
+  description: "Bảng điều khiển và quản trị hệ thống đào tạo, công cụ AI bán hàng AIChoShop.",
+};
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -27,17 +37,10 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       {/* Main Content */}
       <main className="flex-1 flex flex-col h-screen overflow-hidden">
         {/* Top Header */}
-        <header className="h-14 bg-white border-b border-slate-200 flex items-center justify-between px-5 sm:px-6 shrink-0">
-          <h2 className="font-bold text-slate-800 text-sm sm:text-base">Hệ thống Quản trị viên</h2>
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-2xs">
-              AD
-            </div>
-          </div>
-        </header>
+        <AdminTopBar />
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-auto p-4 sm:p-5 lg:p-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-5 lg:p-6 flex flex-col min-h-0">
           {children}
         </div>
       </main>

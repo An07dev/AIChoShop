@@ -3,15 +3,32 @@ import { prisma } from "@/lib/prisma";
 import { FEE_DATA_VERSION, getCategoryLabel, getOfficialCategory } from "@/lib/pricing/registry";
 import { deactivatePricingFeeOverride } from "./actions";
 import PricingFeeOverrideForm from "./PricingFeeOverrideForm";
+import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Quản Trị Biểu Phí Sàn TMĐT",
+  description: "Cấu hình tỷ lệ hoa hồng, phí thanh toán và phí cố định cho các sàn Shopee, TikTok Shop, Lazada.",
+};
 
 const date = (value: Date | null) => value ? new Intl.DateTimeFormat("vi-VN").format(value) : "Không giới hạn";
 
 export default async function PricingFeesAdminPage() {
   const overrides = await prisma.pricingFeeOverride.findMany({ where: { active: true }, orderBy: { effectiveFrom: "desc" } });
   return <div className="space-y-6">
-    <div><h1 className="flex items-center gap-2 text-2xl font-black text-slate-900"><Database className="text-blue-600" /> Quản trị biểu phí</h1><p className="mt-1 text-sm text-slate-500">Dữ liệu tích hợp phiên bản {FEE_DATA_VERSION}. Bản ghi bên dưới sẽ ghi đè mức mặc định trong khoảng hiệu lực.</p></div>
+    <AdminPageHeader
+      title="Quản Trị Biểu Phí Sàn Thương Mại Điện Tử"
+      subtitle={`Cập nhật tỷ lệ hoa hồng, phí thanh toán và phí cố định cho Shopee, TikTok Shop, Lazada. Dữ liệu tích hợp phiên bản ${FEE_DATA_VERSION}.`}
+      icon={Database}
+      iconGradient="from-blue-600 to-indigo-600"
+      badge={
+        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs">
+          v{FEE_DATA_VERSION}
+        </span>
+      }
+    />
     <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"><h2 className="mb-5 flex items-center gap-2 font-black text-slate-900"><PlusCircle size={18} className="text-emerald-600" /> Thêm phiên bản biểu phí</h2>
       <PricingFeeOverrideForm />
     </section>

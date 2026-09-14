@@ -39,7 +39,8 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    const stats = await getAiUsageStats(user.id);
+    const tool = req.nextUrl.searchParams.get("tool") || undefined;
+    const stats = await getAiUsageStats(user.id, tool);
 
     return NextResponse.json({
       isLogged: true,

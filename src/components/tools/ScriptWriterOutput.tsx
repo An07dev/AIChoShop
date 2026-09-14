@@ -21,6 +21,7 @@ import {
   Camera,
   Type,
   Music,
+  CheckCircle2,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { TextShimmerWave } from "@/components/loading-ui/text-shimmer-wave";
@@ -778,29 +779,48 @@ export function ScriptWriterOutput({
       <div className="p-3.5 flex-1 min-h-0 relative z-10 overflow-y-auto custom-scrollbar">
         {/* Trạng thái chưa có dữ liệu */}
         {!result && !loading && (
-          <div className="h-full min-h-[220px] flex flex-col items-center justify-center text-center p-6">
-            <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-3 shadow-lg shadow-purple-500/10">
-              <Video size={24} />
+          <div className="h-full min-h-[360px] flex flex-col items-center justify-center text-center p-6">
+            <div className="w-14 h-14 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mb-3 shadow-lg shadow-purple-500/10">
+              <Video size={28} />
             </div>
-            <h3 className="text-base font-bold text-slate-300 mb-1.5">
-              Chưa có kịch bản video
+            <h3 className="text-base font-bold text-slate-200 mb-1.5">
+              Chưa Có Kịch Bản Video
             </h3>
-            <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
+            <p className="text-xs text-slate-400 max-w-sm leading-relaxed">
               Nhập tên sản phẩm & điểm nổi bật bên trái rồi bấm{" "}
               <strong className="text-purple-400 font-semibold">
                 "Lên Kịch Bản Bằng AI"
               </strong>{" "}
               để tự động tạo các kịch bản TikTok/Reels phân cảnh chi tiết (Lời thoại, Hành động, Chữ trên video).
             </p>
+            <div className="flex flex-wrap justify-center gap-2 mt-4 text-[10px] text-slate-400">
+              <span className="flex gap-1 items-center border border-slate-700/80 bg-slate-800/50 rounded-full px-2.5 py-1 text-slate-300">
+                <Sparkles size={11} className="text-purple-400" /> Hook 3s giật tít
+              </span>
+              <span className="flex gap-1 items-center border border-slate-700/80 bg-slate-800/50 rounded-full px-2.5 py-1 text-slate-300">
+                <Film size={11} className="text-indigo-400" /> Bảng phân cảnh chi tiết
+              </span>
+              <span className="flex gap-1 items-center border border-slate-700/80 bg-slate-800/50 rounded-full px-2.5 py-1 text-slate-300">
+                <FileSpreadsheet size={11} className="text-emerald-400" /> Xuất Excel quay dựng
+              </span>
+            </div>
           </div>
         )}
 
         {/* Trạng thái đang tải (Loading) */}
         {loading && (
-          <div className="h-full min-h-[220px] flex items-center justify-center">
-            <TextShimmerWave className="text-xl font-medium text-blue-500">
-              AI Thinking
-            </TextShimmerWave>
+          <div className="h-full min-h-[360px] flex flex-col items-center justify-center text-center p-6 space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-purple-500/20 to-indigo-500/20 border border-purple-500/30 flex items-center justify-center text-purple-400 shadow-lg shadow-purple-500/10">
+              <Sparkles size={26} className="animate-spin text-purple-400 duration-1000" />
+            </div>
+            <div className="space-y-1.5">
+              <div className="font-bold text-base text-white">
+                <TextShimmerWave>AI Đang Lên Kịch Bản Phân Cảnh Triệu View...</TextShimmerWave>
+              </div>
+              <p className="text-xs text-slate-400 max-w-sm">
+                Đang thiết kế Hook 3s bắt trend, phân tách lời thoại, góc quay máy và chữ hiển thị trên màn hình...
+              </p>
+            </div>
           </div>
         )}
 

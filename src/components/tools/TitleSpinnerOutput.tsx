@@ -130,11 +130,11 @@ export function TitleSpinnerOutput({ result, loading, originalTitle }: TitleSpin
   return (
     <div className="bg-slate-900 rounded-2xl shadow-xl h-full flex flex-col relative overflow-hidden border border-slate-800">
       {/* Hiệu ứng nền mờ sang trọng */}
-      <div className="absolute top-0 right-0 p-36 bg-teal-500/10 rounded-full blur-[100px] pointer-events-none"></div>
-      <div className="absolute bottom-0 left-0 p-36 bg-emerald-500/10 rounded-full blur-[100px] pointer-events-none"></div>
+      <div className="absolute top-0 right-0 p-36 bg-teal-500/10 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-0 left-0 p-36 bg-emerald-500/10 rounded-full blur-[100px] pointer-events-none" />
 
       {/* Header thanh công cụ thu gọn */}
-      <div className="px-4 py-2.5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2.5 relative z-10 bg-slate-900/70 backdrop-blur-md shrink-0">
+      <div className="px-4 py-2.5 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2.5 relative z-10 bg-slate-900/80 backdrop-blur-md shrink-0">
         <div className="flex items-center gap-2">
           <div className="p-1 rounded-lg bg-teal-500/20 text-teal-400">
             <Sparkles size={16} />
@@ -142,6 +142,11 @@ export function TitleSpinnerOutput({ result, loading, originalTitle }: TitleSpin
           <div>
             <h2 className="font-bold text-white text-sm leading-none">Kho Tiêu Đề Nhân Bản</h2>
           </div>
+          {titleList.length > 0 && (
+            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full border bg-teal-500/20 text-teal-300 border-teal-500/40">
+              {titleList.length} Biến Thể Spin
+            </span>
+          )}
         </div>
 
         {/* Cụm nút hành động */}
@@ -150,18 +155,22 @@ export function TitleSpinnerOutput({ result, loading, originalTitle }: TitleSpin
             {/* Chuyển chế độ xem */}
             <div className="bg-slate-800/80 p-0.5 rounded-lg border border-slate-700/60 flex items-center gap-0.5">
               <button
+                type="button"
                 onClick={() => setViewMode("cards")}
                 title="Dạng thẻ trực quan"
-                className={`px-2 py-1 rounded text-[11px] font-semibold flex items-center gap-1 transition-all ${viewMode === "cards" ? "bg-teal-500 text-white shadow-sm" : "text-slate-400 hover:text-white"
-                  }`}
+                className={`px-2 py-1 rounded text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                  viewMode === "cards" ? "bg-teal-600 text-white shadow-xs" : "text-slate-400 hover:text-white"
+                }`}
               >
                 <LayoutList size={12} /> Thẻ
               </button>
               <button
+                type="button"
                 onClick={() => setViewMode("raw")}
                 title="Dạng văn bản thô"
-                className={`px-2 py-1 rounded text-[11px] font-semibold flex items-center gap-1 transition-all ${viewMode === "raw" ? "bg-teal-500 text-white shadow-sm" : "text-slate-400 hover:text-white"
-                  }`}
+                className={`px-2 py-1 rounded text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer ${
+                  viewMode === "raw" ? "bg-teal-600 text-white shadow-xs" : "text-slate-400 hover:text-white"
+                }`}
               >
                 <FileText size={12} /> Gốc
               </button>
@@ -169,6 +178,7 @@ export function TitleSpinnerOutput({ result, loading, originalTitle }: TitleSpin
 
             {/* Nút Xuất Excel */}
             <button
+              type="button"
               onClick={handleExportExcel}
               className="bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg transition-all shadow-md shadow-emerald-900/30 flex items-center gap-1 cursor-pointer active:scale-95"
             >
@@ -177,6 +187,7 @@ export function TitleSpinnerOutput({ result, loading, originalTitle }: TitleSpin
 
             {/* Nút Sao chép tất cả */}
             <button
+              type="button"
               onClick={handleCopyAll}
               className="bg-white/10 hover:bg-white/20 text-white text-[11px] font-bold px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer border border-white/10 active:scale-95"
             >
@@ -191,23 +202,42 @@ export function TitleSpinnerOutput({ result, loading, originalTitle }: TitleSpin
       <div className="p-3.5 flex-1 min-h-0 relative z-10 overflow-y-auto custom-scrollbar">
         {/* Trạng thái chưa có dữ liệu */}
         {!result && !loading && (
-          <div className="h-full min-h-[220px] flex flex-col items-center justify-center text-center p-6">
-            <div className="w-12 h-12 rounded-2xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400 mb-3 shadow-lg shadow-teal-500/10">
-              <FileSpreadsheet size={24} />
+          <div className="h-full min-h-[360px] flex flex-col items-center justify-center text-center p-6">
+            <div className="w-14 h-14 rounded-2xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400 mb-3 shadow-lg shadow-teal-500/10">
+              <FileSpreadsheet size={28} />
             </div>
-            <h3 className="text-base font-bold text-slate-300 mb-1.5">Chưa có dữ liệu nhân bản</h3>
-            <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
-              Nhập tiêu đề sản phẩm gốc bên trái và bấm <strong className="text-teal-400 font-semibold">"Nhân Bản Bằng AI"</strong> để tạo 10 tiêu đề chuẩn SEO chống quét trùng lặp và tải về file Excel.
+            <h3 className="text-base font-bold text-slate-200 mb-1.5">Chưa Có Dữ Liệu Nhân Bản</h3>
+            <p className="text-xs text-slate-400 max-w-sm leading-relaxed">
+              Nhập tiêu đề sản phẩm gốc ở cột bên trái và bấm <strong className="text-teal-400 font-semibold">"Nhân Bản Bằng AI"</strong> để tạo 10 tiêu đề chuẩn SEO chống quét trùng lặp và tải về file Excel.
             </p>
+            <div className="flex flex-wrap justify-center gap-2 mt-4 text-[10px] text-slate-400">
+              <span className="flex gap-1 items-center border border-slate-700/80 bg-slate-800/50 rounded-full px-2.5 py-1 text-slate-300">
+                <Sparkles size={11} className="text-teal-400" /> 10 Biến thể khác biệt
+              </span>
+              <span className="flex gap-1 items-center border border-slate-700/80 bg-slate-800/50 rounded-full px-2.5 py-1 text-slate-300">
+                <CheckCircle2 size={11} className="text-emerald-400" /> Chuẩn &le; 120 ký tự
+              </span>
+              <span className="flex gap-1 items-center border border-slate-700/80 bg-slate-800/50 rounded-full px-2.5 py-1 text-slate-300">
+                <FileSpreadsheet size={11} className="text-cyan-400" /> Xuất Excel 1 chạm
+              </span>
+            </div>
           </div>
         )}
 
         {/* Trạng thái đang tải (Loading) */}
         {loading && (
-          <div className="h-full min-h-[220px] flex items-center justify-center">
-            <TextShimmerWave className="text-xl font-medium text-blue-500">
-              AI Thinking
-            </TextShimmerWave>
+          <div className="h-full min-h-[360px] flex flex-col items-center justify-center text-center p-6 space-y-4">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-teal-500/20 to-emerald-500/20 border border-teal-500/30 flex items-center justify-center text-teal-400 shadow-lg shadow-teal-500/10">
+              <Sparkles size={26} className="animate-spin text-teal-400 duration-1000" />
+            </div>
+            <div className="space-y-1.5">
+              <div className="font-bold text-base text-white">
+                <TextShimmerWave>AI Đang Xào Nấu & Nhân Bản 10 Tiêu Đề...</TextShimmerWave>
+              </div>
+              <p className="text-xs text-slate-400 max-w-sm">
+                Đang giữ nguyên từ khóa chính, đảo cấu trúc câu và tạo 10 biến thể tự nhiên chống thuật toán quét trùng lặp...
+              </p>
+            </div>
           </div>
         )}
 

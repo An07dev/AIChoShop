@@ -1,33 +1,73 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
   Building2,
   Calculator,
   Check,
-  ChevronDown,
-  ChevronUp,
-  CircleDollarSign,
-  FileSpreadsheet,
-  Globe,
+  ChevronRight,
+  Clock,
+  Copy,
+  FolderOpen,
   Info,
-  Layers,
   ReceiptText,
   RotateCcw,
   ShieldCheck,
   ShoppingCart,
+  Sparkles,
   Store,
   User,
+  X,
   Zap,
 } from "lucide-react";
+import { useToolGate } from "@/hooks/useToolGate";
 import { TaxCalculatorOutput } from "@/components/tools/TaxCalculatorOutput";
-import { ACTIVITY_RATES, calculateEcommerceTax, TAX_EXEMPT_REVENUE_2026 } from "@/lib/tax-calculator/engine";
-import type { TaxCalculatorInput, TaxPayerType } from "@/lib/tax-calculator/types";
+import { ACTIVITY_RATES, calculateEcommerceTax } from "@/lib/tax-calculator/engine";
+import type { TaxCalculatorInput, TaxCalculatorResult, TaxPayerType } from "@/lib/tax-calculator/types";
 
 const moneyFormat = new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 0 });
 const parseMoney = (value: string) => Number(value.replace(/[^0-9]/g, "")) || 0;
+
+export type TaxCalculationSnapshot = {
+  id: string;
+  createdAt: string;
+  payerType: TaxPayerType;
+  taxYear: number;
+  totalRevenue: number;
+  totalTaxPayable: number;
+  netRemainingPayable: number;
+  input: TaxCalculatorInput;
+  summaryText: string;
+};
+
+const STORAGE_KEY = "aicho_tax_calculator_history";
+
+function readTaxHistory(): TaxCalculationSnapshot[] {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeTaxHistory(history: TaxCalculationSnapshot[]) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(0, 50)));
+  } catch {
+    // ignore
+  }
+}
+
+const payerLabels: Record<TaxPayerType, string> = {
+  household: "Hộ kinh doanh",
+  individual: "Cá nhân KD",
+  company: "Doanh nghiệp",
+};
 
 const initialInput: TaxCalculatorInput = {
   taxYear: 2026,
@@ -115,21 +155,155 @@ function Section({
 }
 
 export default function TaxCalculator() {
-  const [input, setInput] = useState<TaxCalculatorInput>(initialInput);
+  const { checkAccess, GateModals } = useToolGate();
 
-  const result = useMemo(() => calculateEcommerceTax(input), [input]);
-  const update = <K extends keyof TaxCalculatorInput>(key: K, value: TaxCalculatorInput[K]) =>
-    setInput((current) => ({ ...current, [key]: value }));
+  const [input, setInput] = useState<TaxCalculatorInput>(initialInput);
+  const [hasCalculated, setHasCalculated] = useState(false);
+  const [calculatedResult, setCalculatedResult] = useState<TaxCalculatorResult | null>(null);
+  const [saveNotice, setSaveNotice] = useState("");
+  const [savedHistory, setSavedHistory] = useState<TaxCalculationSnapshot[]>([]);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  // Modal Lịch sử states
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [historyActivities, setHistoryActivities] = useState<any[]>([]);
+  const [historyTotal, setHistoryTotal] = useState(0);
+  const [historyRefreshTrigger, setHistoryRefreshTrigger] = useState(0);
+  const [viewingHistoryItem, setViewingHistoryItem] = useState<any | null>(null);
+  const [copiedHistoryId, setCopiedHistoryId] = useState<string | null>(null);
+
+  useEffect(() => {
+    checkAccess("tax-calculator", false);
+  }, [checkAccess]);
+
+  useEffect(() => {
+    setSavedHistory(readTaxHistory());
+  }, []);
+
+  // Lấy lịch sử từ server (/api/ai/usage)
+  const fetchActivities = useCallback(async () => {
+    try {
+      const res = await fetch("/api/ai/usage?tool=tax-calculator");
+      if (res.ok) {
+        const data = await res.json();
+        const serverActivities = (data.recentActivities || []).filter(
+          (a: any) => a.tool === "tax-calculator"
+        );
+        setHistoryActivities(serverActivities);
+        setHistoryTotal(serverActivities.length);
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchActivities();
+  }, [fetchActivities, historyRefreshTrigger]);
+
+  const liveTotalRevenue =
+    (Number(input.shopeeRevenue) || 0) +
+    (Number(input.tiktokRevenue) || 0) +
+    (Number(input.otherPlatformRevenue) || 0) +
+    (Number(input.directRevenue) || 0);
 
   const isPersonal = input.payerType !== "company";
+
+  const update = <K extends keyof TaxCalculatorInput>(key: K, value: TaxCalculatorInput[K]) =>
+    setInput((current) => ({ ...current, [key]: value }));
 
   const changePayer = (payerType: TaxPayerType) => {
     setInput((current) => ({
       ...current,
       payerType,
       personalIncomeMethod:
-        payerType !== "company" && result.totalRevenue > 3_000_000_000 ? "profit" : current.personalIncomeMethod,
+        payerType !== "company" && liveTotalRevenue > 3_000_000_000 ? "profit" : current.personalIncomeMethod,
     }));
+  };
+
+  const handleCalculate = async (overrideInput?: TaxCalculatorInput) => {
+    const hasAccess = await checkAccess("tax-calculator", false);
+    if (!hasAccess) return;
+
+    const currentInput = overrideInput || input;
+    const result = calculateEcommerceTax(currentInput);
+    setCalculatedResult(result);
+    setHasCalculated(true);
+
+    const isCompany = currentInput.payerType === "company";
+    const payerLabel = payerLabels[currentInput.payerType];
+    const incomeName = isCompany ? "TNDN" : "TNCN";
+
+    const summaryText = [
+      `BẢNG DỰ TOÁN THUẾ TMĐT ${currentInput.taxYear}`,
+      `Loại người nộp thuế: ${payerLabel}`,
+      `Nhóm ngành: ${ACTIVITY_RATES[currentInput.activity]?.label || "Kinh doanh hàng hóa"}`,
+      `Tổng doanh thu đa kênh: ${moneyFormat.format(result.totalRevenue)} ₫`,
+      `Thuế GTGT: ${moneyFormat.format(result.vat)} ₫ (${result.vatRate}%)`,
+      `Thuế ${incomeName}: ${moneyFormat.format(result.incomeTax)} ₫ (${result.incomeTaxRate}%)`,
+      result.incomeTaxReduction > 0
+        ? `Ưu đãi giảm 30% ${incomeName}: -${moneyFormat.format(result.incomeTaxReduction)} ₫`
+        : null,
+      `Tổng thuế phát sinh: ${moneyFormat.format(result.totalTax)} ₫`,
+      `Thuế sàn đã khấu trừ / nộp thay: ${moneyFormat.format(
+        currentInput.withheldVat + currentInput.withheldIncomeTax
+      )} ₫`,
+      `Số thuế còn phải nộp: ${moneyFormat.format(result.remainingPayable)} ₫`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+
+    const snapshotId = editingId || `tax-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+    const snapshot: TaxCalculationSnapshot = {
+      id: snapshotId,
+      createdAt: new Date().toISOString(),
+      payerType: currentInput.payerType,
+      taxYear: currentInput.taxYear,
+      totalRevenue: result.totalRevenue,
+      totalTaxPayable: result.totalTax,
+      netRemainingPayable: result.remainingPayable,
+      input: { ...currentInput },
+      summaryText,
+    };
+
+    setEditingId(snapshotId);
+
+    const nextHistory = editingId
+      ? savedHistory.map((s) => (s.id === editingId ? snapshot : s))
+      : [snapshot, ...savedHistory.filter((s) => s.id !== snapshotId)].slice(0, 50);
+
+    setSavedHistory(nextHistory);
+    writeTaxHistory(nextHistory);
+    setSaveNotice(
+      editingId
+        ? `Đã tính toán & cập nhật dự toán thuế (${payerLabel} - ${moneyFormat.format(result.totalRevenue)} ₫).`
+        : `Đã tính toán & lưu dự toán thuế (${payerLabel} - ${moneyFormat.format(result.totalRevenue)} ₫).`
+    );
+
+    // Gửi log đến server để hiển thị tại "Hoạt động gần đây" (Dashboard & Modal Lịch sử)
+    fetch("/api/ai/usage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tool: "tax-calculator",
+        toolName: "Tính Thuế TMĐT",
+        action: editingId
+          ? `Cập nhật dự toán thuế ${payerLabel} năm ${currentInput.taxYear} (DT: ${moneyFormat.format(result.totalRevenue)} ₫)`
+          : `Dự toán thuế ${payerLabel} năm ${currentInput.taxYear} (DT: ${moneyFormat.format(result.totalRevenue)} ₫)`,
+        input: {
+          payerType: currentInput.payerType,
+          taxYear: currentInput.taxYear,
+          totalRevenue: result.totalRevenue,
+          totalTax: result.totalTax,
+          remainingPayable: result.remainingPayable,
+          snapshotId,
+          snapshot,
+        },
+        output: summaryText,
+      }),
+    })
+      .then(() => setHistoryRefreshTrigger((p) => p + 1))
+      .catch((err) => console.warn("Failed to log tax usage:", err));
   };
 
   const resetAll = () => {
@@ -144,10 +318,290 @@ export default function TaxCalculator() {
       withheldVat: 0,
       withheldIncomeTax: 0,
     });
+    setHasCalculated(false);
+    setCalculatedResult(null);
+    setEditingId(null);
+    setSaveNotice("");
   };
+
+  const handleUseSample = () => {
+    setInput(initialInput);
+    setEditingId(null);
+    setSaveNotice("Đã nạp dữ liệu mẫu 1 tỷ. Nhấn nút 'Tính toán nghĩa vụ thuế' bên dưới để xem kết quả.");
+  };
+
+  const openSavedSnapshot = (snapshot: TaxCalculationSnapshot) => {
+    setInput(snapshot.input);
+    const res = calculateEcommerceTax(snapshot.input);
+    setCalculatedResult(res);
+    setHasCalculated(true);
+    setEditingId(snapshot.id);
+    setIsHistoryModalOpen(false);
+    setViewingHistoryItem(null);
+    setSaveNotice(`Đã nạp lại dự toán thuế từ lịch sử (${payerLabels[snapshot.payerType]} - ${snapshot.taxYear}). Bạn có thể sửa thông số rồi nhấn Cập nhật.`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleCopyHistory = (id: string, text: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text);
+    setCopiedHistoryId(id);
+    setTimeout(() => setCopiedHistoryId(null), 2000);
+  };
+
+  // Tổng hợp danh sách hiển thị trong Modal Lịch sử - Tránh lưu/hiện duplicate 2 lần
+  const displayActivities = useMemo(() => {
+    if (historyActivities.length > 0) {
+      return historyActivities.map((act) => {
+        const matchedSnapshot =
+          act.input?.snapshot ||
+          savedHistory.find(
+            (s) =>
+              s.id === act.input?.snapshotId ||
+              s.id === act.id ||
+              (s.payerType === act.input?.payerType &&
+                s.taxYear === act.input?.taxYear &&
+                s.totalRevenue === act.input?.totalRevenue)
+          );
+
+        return {
+          ...act,
+          snapshot: matchedSnapshot,
+        };
+      });
+    }
+
+    return savedHistory.map((s) => ({
+      id: s.id,
+      tool: "tax-calculator",
+      toolName: "Tính Thuế TMĐT",
+      action: `Dự toán thuế ${payerLabels[s.payerType]} năm ${s.taxYear} (DT: ${moneyFormat.format(s.totalRevenue)} ₫)`,
+      output: s.summaryText,
+      time: new Date(s.createdAt).toLocaleDateString("vi-VN"),
+      createdAt: s.createdAt,
+      snapshot: s,
+    }));
+  }, [historyActivities, savedHistory]);
+
+  const historyCount = Math.max(historyTotal, savedHistory.length, displayActivities.length);
 
   return (
     <div className="mx-auto max-w-7xl pb-16 px-2 sm:px-4">
+      {/* Modal kiểm tra quyền */}
+      <GateModals />
+
+      {/* Modal Lịch Sử Dự Toán Thuế (Giống trang Chat Broadcast & Định Giá) */}
+      {isHistoryModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+          <div
+            className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs"
+            onClick={() => {
+              setIsHistoryModalOpen(false);
+              setViewingHistoryItem(null);
+            }}
+          />
+
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-2xl border border-slate-200 dark:border-slate-800 relative z-10 flex flex-col max-h-[85vh] overflow-hidden">
+            {/* Header Modal */}
+            <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-800/40 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 flex items-center justify-center font-bold">
+                  <Clock size={16} />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 dark:text-white text-sm">
+                    {viewingHistoryItem ? "Chi tiết dự toán thuế" : "Lịch Sử Tính Thuế Gần Đây"}
+                  </h3>
+                  <p className="text-xs text-slate-400">
+                    {viewingHistoryItem
+                      ? "Tính Thuế TMĐT 2026"
+                      : `Tổng cộng ${displayActivities.length} bản ghi đã lưu vào tài khoản`}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (viewingHistoryItem) {
+                    setViewingHistoryItem(null);
+                  } else {
+                    setIsHistoryModalOpen(false);
+                  }
+                }}
+                className="w-8 h-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="p-5 flex-1 overflow-y-auto custom-scrollbar">
+              {viewingHistoryItem ? (
+                /* Chi tiết 1 bản ghi */
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800 text-xs">
+                    <span className="font-bold text-slate-800 dark:text-slate-200">
+                      {viewingHistoryItem.action}
+                    </span>
+                    <span className="text-slate-400">{viewingHistoryItem.time || "Gần đây"}</span>
+                  </div>
+
+                  <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-mono text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed max-h-96 overflow-y-auto custom-scrollbar">
+                    {viewingHistoryItem.output || "(Không có nội dung)"}
+                  </div>
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setViewingHistoryItem(null)}
+                      className="px-4 py-2 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors cursor-pointer"
+                    >
+                      Quay lại danh sách
+                    </button>
+
+                    <div className="flex items-center gap-2">
+                      {/* Nút nạp lại vào bảng tính nếu tìm thấy snapshot */}
+                      {(() => {
+                        const matchedSnapshot: TaxCalculationSnapshot | undefined =
+                          viewingHistoryItem.snapshot ||
+                          savedHistory.find(
+                            (s) =>
+                              s.id === viewingHistoryItem.input?.snapshotId ||
+                              s.id === viewingHistoryItem.id
+                          );
+                        if (!matchedSnapshot) return null;
+                        return (
+                          <button
+                            type="button"
+                            onClick={() => openSavedSnapshot(matchedSnapshot)}
+                            className="px-3.5 py-2 text-xs font-bold bg-brand hover:bg-brand-hover text-white rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+                          >
+                            <FolderOpen size={14} /> Nạp vào bảng tính
+                          </button>
+                        );
+                      })()}
+
+                      {viewingHistoryItem.output && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            handleCopyHistory(
+                              viewingHistoryItem.id,
+                              viewingHistoryItem.output || ""
+                            )
+                          }
+                          className="px-4 py-2 text-xs font-bold bg-slate-800 hover:bg-slate-700 text-white rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+                        >
+                          {copiedHistoryId === viewingHistoryItem.id ? (
+                            <>
+                              <Check size={14} /> Đã sao chép!
+                            </>
+                          ) : (
+                            <>
+                              <Copy size={14} /> Sao chép tóm tắt
+                            </>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                /* Danh sách bản ghi gần đây */
+                <div className="space-y-2.5">
+                  {displayActivities.length === 0 ? (
+                    <div className="text-center py-12 text-slate-400">
+                      <Sparkles size={36} className="mx-auto text-slate-300 dark:text-slate-600 mb-2" />
+                      <p className="font-medium text-sm text-slate-600 dark:text-slate-300">
+                        Chưa có lịch sử tính thuế nào
+                      </p>
+                      <p className="text-xs mt-1 text-slate-400">
+                        Hãy nhập thông tin doanh thu, chi phí và bấm &ldquo;Tính toán nghĩa vụ thuế&rdquo; để tự động lưu.
+                      </p>
+                    </div>
+                  ) : (
+                    displayActivities.map((item: any) => {
+                      const matchedSnapshot: TaxCalculationSnapshot | undefined =
+                        item.snapshot ||
+                        savedHistory.find(
+                          (s) =>
+                            s.id === item.input?.snapshotId ||
+                            s.id === item.id
+                        );
+
+                      return (
+                        <div
+                          key={item.id}
+                          className="p-3.5 bg-slate-50 dark:bg-slate-800/50 hover:bg-blue-50/50 dark:hover:bg-slate-800 rounded-xl border border-slate-200/80 dark:border-slate-700/60 transition-all flex items-start justify-between gap-3 group"
+                        >
+                          <div
+                            className="flex-1 cursor-pointer min-w-0"
+                            onClick={() => setViewingHistoryItem(item)}
+                          >
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-[11px] font-bold text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/40 px-2 py-0.5 rounded">
+                                {item.toolName || "Tính Thuế TMĐT"}
+                              </span>
+                              <span className="text-[11px] text-slate-400">
+                                {item.time || (item.createdAt ? new Date(item.createdAt).toLocaleDateString("vi-VN") : "Gần đây")}
+                              </span>
+                            </div>
+                            <h4 className="font-semibold text-slate-900 dark:text-white text-xs truncate">
+                              {item.action}
+                            </h4>
+                            {item.output && (
+                              <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-1 mt-0.5 font-mono">
+                                {item.output.replace(/\n/g, " • ").slice(0, 90)}...
+                              </p>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-1 shrink-0 pt-1">
+                            {matchedSnapshot && (
+                              <button
+                                type="button"
+                                onClick={() => openSavedSnapshot(matchedSnapshot)}
+                                title="Nạp lại vào bảng tính"
+                                className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-600 shadow-2xs"
+                              >
+                                <FolderOpen size={14} />
+                              </button>
+                            )}
+                            {item.output && (
+                              <button
+                                type="button"
+                                onClick={() => handleCopyHistory(item.id, item.output || "")}
+                                title="Sao chép tóm tắt"
+                                className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-white transition-colors cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-600 shadow-2xs"
+                              >
+                                {copiedHistoryId === item.id ? (
+                                  <Check size={14} className="text-emerald-500" />
+                                ) : (
+                                  <Copy size={14} />
+                                )}
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={() => setViewingHistoryItem(item)}
+                              title="Xem chi tiết"
+                              className="p-1.5 hover:bg-white dark:hover:bg-slate-700 rounded-lg text-slate-400 hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-600 shadow-2xs"
+                            >
+                              <ChevronRight size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* 1. Header Navigation & Title */}
       <header className="mb-6 space-y-4">
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
@@ -163,11 +617,15 @@ export default function TaxCalculator() {
                 <Calculator size={24} />
               </div>
               <div>
-                <div className="flex items-center gap-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
                     Tính Thuế TMĐT 2026 (Nghị Định Mới)
                   </h1>
-                  <span className="rounded-full bg-brand-light/80 border border-brand/30 px-2.5 py-0.5 text-[10px] font-black text-brand uppercase tracking-wider">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shadow-xs uppercase tracking-wider">
+                    <Sparkles size={11} className="text-emerald-600 dark:text-emerald-400" />
+                    FREE TOOL
+                  </span>
+                  <span className="hidden sm:inline-flex rounded-full bg-brand-light/80 border border-brand/30 px-2.5 py-0.5 text-[10px] font-black text-brand uppercase tracking-wider">
                     LUẬT 2026
                   </span>
                 </div>
@@ -179,14 +637,26 @@ export default function TaxCalculator() {
           </div>
 
           {/* Quick Action Buttons */}
-          <div className="flex items-center gap-2 self-start md:self-auto">
+          <div className="flex items-center gap-2 self-start md:self-auto flex-wrap">
+            {/* Nút Lịch sử giống các công cụ khác */}
             <button
               type="button"
-              onClick={() => setInput(initialInput)}
+              onClick={() => setIsHistoryModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/60 dark:bg-blue-950/30 px-3.5 py-2 text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-100/60 transition cursor-pointer shadow-xs"
+              title="Xem lịch sử các lần tính thuế đã lưu"
+            >
+              <Clock size={14} />
+              <span>Lịch sử</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={handleUseSample}
               className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition cursor-pointer shadow-xs"
             >
               <Zap size={14} className="text-amber-500" /> Dữ liệu mẫu (1 Tỷ)
             </button>
+
             <button
               type="button"
               onClick={resetAll}
@@ -292,17 +762,17 @@ export default function TaxCalculator() {
                 <Field
                   label="Phương pháp tính thuế TNCN"
                   hint={
-                    result.totalRevenue > 3_000_000_000
+                    liveTotalRevenue > 3_000_000_000
                       ? "Trên 3 tỷ: Bắt buộc theo thu nhập ròng"
                       : "Dưới 3 tỷ: Được chọn khoán hoặc thu nhập"
                   }
                 >
                   <select
-                    value={result.effectivePersonalMethod}
+                    value={liveTotalRevenue > 3_000_000_000 ? "profit" : input.personalIncomeMethod}
                     onChange={(event) =>
                       update("personalIncomeMethod", event.target.value as TaxCalculatorInput["personalIncomeMethod"])
                     }
-                    disabled={result.totalRevenue > 3_000_000_000}
+                    disabled={liveTotalRevenue > 3_000_000_000}
                     className="w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-bold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand disabled:opacity-60"
                   >
                     <option value="revenue" className="dark:bg-slate-900">
@@ -319,11 +789,11 @@ export default function TaxCalculator() {
 
           {/* Section 2: Multichannel Revenue */}
           <Section
-            title="Doanh thu đa kênh trong năm "
+            title="Doanh thu đa kênh trong năm"
             icon={<ShoppingCart size={18} className="text-brand" />}
             badge={
               <span className="rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 px-2.5 py-0.5 text-xs font-mono font-black text-emerald-700 dark:text-emerald-300">
-                Tổng: {moneyFormat.format(result.totalRevenue)} ₫
+                Tổng: {moneyFormat.format(liveTotalRevenue)} ₫
               </span>
             }
           >
@@ -380,7 +850,7 @@ export default function TaxCalculator() {
                 />
               </Field>
 
-              {(!isPersonal || result.effectivePersonalMethod === "profit") && (
+              {(!isPersonal || input.personalIncomeMethod === "profit" || liveTotalRevenue > 3_000_000_000) && (
                 <>
                   <Field label="Chi phí hợp lệ có hóa đơn" hint="">
                     <MoneyInput
@@ -467,11 +937,69 @@ export default function TaxCalculator() {
               </span>
             </label>
           </Section>
+
+          {/* ACTION BUTTON & NOTICES: NÚT TÍNH TOÁN THEO YÊU CẦU */}
+          <div className="space-y-3 pt-2">
+            {saveNotice && (
+              <div className="rounded-2xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-950/40 px-4 py-3 text-xs font-semibold text-emerald-800 dark:text-emerald-300 flex items-center gap-2">
+                <Check size={16} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
+                <span>{saveNotice}</span>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => handleCalculate()}
+              className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-brand hover:bg-brand-hover px-5 py-4 text-sm font-black text-white shadow-lg shadow-brand/25 active:scale-[0.99] transition-all cursor-pointer"
+            >
+              <Calculator size={18} />
+              <span>{editingId ? "Cập nhật dự toán thuế" : hasCalculated ? "Cập nhật & Tính toán lại" : "Tính toán nghĩa vụ thuế"}</span>
+            </button>
+          </div>
         </div>
 
-        {/* Right Column: Tax Output & Financial Dashboard (7 cols) */}
+        {/* Right Column: Tax Output (7 cols) - Chỉ hiển thị khi đã ấn tính toán */}
         <div className="lg:col-span-7">
-          <TaxCalculatorOutput input={input} result={result} />
+          {hasCalculated && calculatedResult ? (
+            <TaxCalculatorOutput input={input} result={calculatedResult} />
+          ) : (
+            <div className="rounded-3xl border border-dashed border-slate-300 dark:border-slate-800 bg-white dark:bg-slate-900/60 p-8 sm:p-12 text-center flex flex-col items-center justify-center min-h-[480px] shadow-xs">
+              <div className="w-16 h-16 rounded-2xl bg-brand-light dark:bg-brand-light/20 text-brand flex items-center justify-center mb-4 shadow-xs">
+                <Calculator size={32} />
+              </div>
+              <h3 className="text-lg sm:text-xl font-black text-slate-900 dark:text-white">
+                Sẵn sàng dự toán thuế TMĐT 2026
+              </h3>
+              <p className="mt-2 max-w-md text-xs sm:text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                Thiết lập các thông số doanh thu và chi phí ở cột bên trái, sau đó nhấn nút <strong className="text-brand">Tính toán nghĩa vụ thuế</strong> để xem báo cáo bóc tách chi tiết.
+              </p>
+
+              <div className="mt-6">
+                <button
+                  type="button"
+                  onClick={() => handleCalculate()}
+                  className="inline-flex items-center gap-2 rounded-2xl bg-brand px-6 py-3 text-sm font-black text-white shadow-lg shadow-brand/20 hover:bg-brand-hover active:scale-95 transition-all cursor-pointer"
+                >
+                  <Calculator size={16} /> Bấm để tính toán ngay
+                </button>
+              </div>
+
+              <div className="mt-8 grid grid-cols-1 sm:grid-cols-3 gap-3 w-full max-w-lg text-left">
+                <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-700/60">
+                  <p className="text-[11px] font-bold text-slate-800 dark:text-slate-200">Ngưỡng 1 Tỷ Mới</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Áp dụng Luật 2026 trên tổng doanh thu đa sàn</p>
+                </div>
+                <div className="p-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/70 dark:border-emerald-800/50">
+                  <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300">Giảm 30% Thuế</p>
+                  <p className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70 mt-0.5">Tự động áp dụng nếu doanh thu dưới 10 tỷ</p>
+                </div>
+                <div className="p-3 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200/70 dark:border-blue-800/50">
+                  <p className="text-[11px] font-bold text-blue-700 dark:text-blue-300">Khấu Trừ Sàn</p>
+                  <p className="text-[10px] text-blue-600/70 dark:text-blue-400/70 mt-0.5">Bóc tách thuế sàn đã nộp & số còn phải nộp</p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

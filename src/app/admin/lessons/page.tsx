@@ -1,7 +1,13 @@
 import { prisma } from "@/lib/prisma";
 import { LessonsManager } from "@/components/admin/LessonsManager";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: "Nội Dung Khóa Học & Video Bài Giảng",
+  description: "Quản lý bài giảng video, gắn link YouTube/Vimeo, tổ chức học phần và phân quyền học viên Free hoặc VIP.",
+};
 
 export default async function AdminLessons() {
   try {
@@ -31,14 +37,7 @@ export default async function AdminLessons() {
 
     return (
 
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-black text-slate-900">Quản lý Nội dung Khóa học & Video</h1>
-          <p className="text-slate-500 text-sm mt-0.5">
-            Quản lý bài giảng, gắn video YouTube/MP4, và phân quyền Video FREE hoặc VIP.
-          </p>
-        </div>
-
+      <div className="flex-1 flex flex-col min-h-0">
         <LessonsManager initialLessons={serializedLessons} courses={courses} />
       </div>
     );

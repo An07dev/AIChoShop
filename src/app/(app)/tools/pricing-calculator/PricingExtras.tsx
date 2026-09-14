@@ -179,7 +179,7 @@ export function SavedCalculations({
 
       {!history.length ? (
         <div className="p-8 text-center text-sm text-slate-500 dark:text-slate-400">
-          Chưa có sản phẩm nào được lưu trên trình duyệt này. Nhấn &ldquo;Lưu&rdquo; sau khi tính toán để lưu lại sản phẩm.
+          Chưa có sản phẩm nào được lưu. Hệ thống sẽ tự động lưu lại lịch sử mỗi khi bạn bấm &ldquo;Cập nhật &amp; Tính toán&rdquo;.
         </div>
       ) : (
         <div className="divide-y divide-slate-100 dark:divide-slate-800">

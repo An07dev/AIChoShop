@@ -13,10 +13,17 @@ export async function seoIdentity() {
       SELECT u."id", u."isLocked" FROM "SeoSession" s JOIN "User" u ON u."id" = s."userId"
       WHERE s."tokenHash" = ${hashToken(token)} AND s."expiresAt" > NOW()`;
     if (users[0]?.isLocked) throw new SeoError("ACCOUNT_LOCKED", "Tài khoản đang bị khóa. Vui lòng liên hệ hỗ trợ.", 403);
-    if (users[0]) return { id: `user:${users[0].id}`, anonymous: false };
-    throw new SeoError("LOGIN_REQUIRED", "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.", 401);
+    if (users[0]) return { id: `user:${users[0].id}`, userId: users[0].id, anonymous: false };
   }
-  if (store.has("user_token")) throw new SeoError("LOGIN_REQUIRED", "Vui lòng đăng nhập lại một lần để kích hoạt phiên sử dụng công cụ SEO.", 401);
+  const userToken = store.get("user_token")?.value;
+  if (userToken) {
+    const user = await prisma.user.findUnique({
+      where: { id: userToken },
+      select: { id: true, isLocked: true },
+    });
+    if (user?.isLocked) throw new SeoError("ACCOUNT_LOCKED", "Tài khoản đang bị khóa. Vui lòng liên hệ hỗ trợ.", 403);
+    if (user) return { id: `user:${user.id}`, userId: user.id, anonymous: false };
+  }
   let visitor = store.get("seo_visitor")?.value;
   const known = visitor && /^[a-f0-9]{64}$/.test(visitor)
     ? await prisma.$queryRaw<{ id: string }[]>`SELECT "id" FROM "SeoUsage" WHERE "id" = ${`anon:${hashToken(visitor)}`}` : [];

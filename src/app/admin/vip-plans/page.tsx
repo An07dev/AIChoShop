@@ -6,7 +6,7 @@ import { Metadata } from "next";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Quản Lý Gói VIP | Admin Panel",
+  title: "Cấu Hình Bảng Giá & Gói VIP",
   description: "Cấu hình giá cước, thời hạn và quyền lợi các gói VIP trên hệ thống AIChoShop.",
 };
 

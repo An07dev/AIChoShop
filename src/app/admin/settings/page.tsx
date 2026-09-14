@@ -5,7 +5,7 @@ import { SystemSettingsManager } from "@/components/admin/SystemSettingsManager"
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Cài Đặt Hệ Thống & OpenAI API Key | AIChoShop Admin",
+  title: "Cài Đặt Hệ Thống & OpenAI API Key",
   description: "Cấu hình OpenAI API Key (Token), mô hình AI và các thiết lập toàn hệ thống lưu trữ trực tiếp trong Database.",
 };
 

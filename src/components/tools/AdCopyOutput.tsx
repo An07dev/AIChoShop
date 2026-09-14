@@ -404,7 +404,7 @@ export function AdCopyOutput({
       </div>
 
       {/* Vùng hiển thị nội dung */}
-      <div className="flex-1 p-5 overflow-y-auto custom-scrollbar relative z-10">
+      <div className="flex-1 min-h-0 p-4 sm:p-5 overflow-y-auto custom-scrollbar overscroll-contain relative z-10">
         {loading ? (
           <div className="h-full min-h-[360px] flex flex-col items-center justify-center text-center p-6 space-y-4">
             <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-500/20 to-pink-500/20 border border-blue-500/30 flex items-center justify-center text-blue-400 shadow-lg shadow-blue-500/10">
@@ -425,7 +425,7 @@ export function AdCopyOutput({
               <textarea
                 readOnly
                 value={result}
-                className="w-full h-[520px] bg-slate-950/60 border border-slate-800 rounded-xl p-4 text-xs font-mono text-slate-300 leading-relaxed resize-none focus:outline-hidden custom-scrollbar"
+                className="w-full h-full min-h-[400px] bg-slate-950/60 border border-slate-800 rounded-xl p-4 text-xs font-mono text-slate-300 leading-relaxed resize-none focus:outline-hidden custom-scrollbar"
               />
             ) : (
               <div className="space-y-8">
@@ -776,17 +776,6 @@ export function AdCopyOutput({
                 )}
               </div>
             )}
-
-            {/* Footer metadata */}
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-3 border-t border-slate-800 text-[11px] text-slate-500">
-              <div className="flex items-center gap-3">
-                <span>Số từ: <strong className="text-slate-400">{wordCount}</strong></span>
-                <span>Số ký tự: <strong className="text-slate-400">{charCount}</strong></span>
-              </div>
-              <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
-                <CheckCircle2 size={12} /> Chiến dịch sẵn sàng triển khai Shopee & TikTok Ads
-              </div>
-            </div>
           </div>
         ) : (
           <div className="h-full min-h-[360px] flex flex-col items-center justify-center text-center p-6 text-slate-500 space-y-3">
@@ -802,6 +791,19 @@ export function AdCopyOutput({
           </div>
         )}
       </div>
+
+      {/* Footer metadata ghim cố định đáy khung output */}
+      {result && !loading && (
+        <div className="px-4 py-2.5 border-t border-slate-800 bg-slate-950/85 backdrop-blur-md flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-500 shrink-0 relative z-10">
+          <div className="flex items-center gap-3">
+            <span>Số từ: <strong className="text-slate-300 font-mono">{wordCount}</strong></span>
+            <span>Số ký tự: <strong className="text-slate-300 font-mono">{charCount}</strong></span>
+          </div>
+          <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
+            <CheckCircle2 size={12} /> Chiến dịch sẵn sàng triển khai Shopee & TikTok Ads
+          </div>
+        </div>
+      )}
     </div>
   );
 }

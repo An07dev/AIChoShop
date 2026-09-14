@@ -6,7 +6,7 @@ import { SePayConfigManager } from "@/components/admin/SePayConfigManager";
 export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
-  title: "Cấu hình SePay & Webhook Nạp VIP | AIChoShop Admin",
+  title: "Cổng SePay & Webhook Nạp VIP",
   description: "Quản lý cổng thanh toán tự động SePay, cấu hình số tài khoản ngân hàng và webhook nâng cấp VIP.",
 };
 

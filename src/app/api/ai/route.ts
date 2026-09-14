@@ -193,18 +193,44 @@ Mỗi kịch bản BẮT BUỘC trình bày theo đúng định dạng bảng ph
 LƯU Ý: Tuyệt đối không thêm lời dẫn, trả về đúng 3 kịch bản theo định dạng trên.`;
         break;
 
-      case "review-replier":
-        userPrompt = `Bạn là chuyên viên Chăm sóc khách hàng xuất sắc của Shop "${inputs.shopName || "Aicho Official Store"}".
-Hãy viết phản hồi cho đánh giá sau của khách hàng:
-Số sao: ${inputs.rating} sao
-Nội dung đánh giá của khách: "${inputs.reviewText}"
+      case "review-replier": {
+        const reviewText = inputs.reviewContent || inputs.reviewText || "";
+        const rating = inputs.rating || "1 sao";
+        const issueType = inputs.issueType ? `\nVấn đề gặp phải: ${inputs.issueType}` : "";
+        const note = inputs.note ? `\nBối cảnh/Ghi chú từ Shop: ${inputs.note}` : "";
+        const shopName = inputs.shopName || "Aicho Official Store";
 
-Yêu cầu:
-- Nếu là đánh giá 1-3 sao (tiêu cực): Nhận lỗi chân thành, giữ thái độ lịch sự, cầu thị, xoa dịu khách hàng và đưa ra giải pháp xử lý (đổi trả, bảo hành, tặng voucher...).
-- Nếu là đánh giá 4-5 sao (tích cực): Cảm ơn chân thành, tạo sự gắn kết, chúc khách hàng có trải nghiệm tốt và kêu gọi khách bấm [Theo dõi Shop] để nhận ưu đãi cho lần mua sau.
-- Ngôn ngữ: Tiếng Việt, tự nhiên, ấm áp, chuyên nghiệp, không sáo rỗng.
-- Độ dài: Khoảng 3 - 5 câu ngắn gọn, súc tích. Chỉ trả về nội dung câu trả lời, không thêm lời giải thích.`;
+        systemPrompt = "Bạn là chuyên gia Chăm sóc khách hàng và Xử lý khủng hoảng truyền thông TMĐT hàng đầu tại Việt Nam (Shopee, TikTok Shop, Lazada). Nhiệm vụ của bạn là luôn cung cấp chính xác 3 PHƯƠNG ÁN PHẢN HỒI (3 câu trả lời) theo 3 phong cách khác nhau cho nhà bán hàng lựa chọn.";
+
+        userPrompt = `Hãy đóng vai Trưởng bộ phận CSKH của shop "${shopName}".
+Xử lý đánh giá sau đây của khách hàng:
+- Mức sao: ${rating}
+- Nội dung đánh giá của khách: "${reviewText}"${issueType}${note}
+
+YÊU CẦU BẮT BUỘC:
+Bạn PHẢI đưa ra ĐỦ 3 CÂU TRẢ LỜI (3 PHƯƠNG ÁN PHẢN HỒI) theo 3 phong cách tâm lý khác nhau để chủ shop lựa chọn, kèm theo hướng dẫn hành động hậu trường (xử lý inbox) cho từng phương án.
+
+Hãy trình bày chính xác theo đúng cấu trúc Markdown dưới đây (không thêm lời chào hay giải thích ngoài lề):
+
+## 1. Phong Cách Chân Thành & Cầu Thị (Khuyên Dùng)
+- **Phản hồi công khai**: [Viết câu trả lời công khai từ 3-5 câu: Thừa nhận thiếu sót một cách chân thành, lịch sự, nhún nhường, hạ nhiệt bức xúc của khách, xin lỗi vì trải nghiệm không vui, cam kết đền bù/đổi trả 100% miễn phí và tha thiết mời khách kiểm tra tin nhắn riêng]
+- **Hành động hậu trường**: [Hướng dẫn cụ thể chủ shop nhắn tin riêng cho khách nói gì, tặng voucher bù đắp bao nhiêu hoặc gửi quà đền bù thế nào]
+
+## 2. Phong Cách Khéo Léo & Khách Quan (Lỗi Vận Chuyển / Ngoại Cảnh)
+- **Phản hồi công khai**: [Viết câu trả lời công khai từ 3-5 câu: Khéo léo phân trần sự cố có thể do quá trình vận chuyển quăng quật hoặc yếu tố khách quan, nhưng khẳng định Shop chịu 100% trách nhiệm hỗ trợ không để khách chịu thiệt, đồng thời hướng dẫn khách cách xử lý nhanh]
+- **Hành động hậu trường**: [Kiểm tra lại camera đóng gói, gửi khiếu nại lên đơn vị vận chuyển của sàn, đồng thời chủ động liên hệ gửi sản phẩm mới nguyên vẹn cho khách]
+
+## 3. Phong Cách Minh Bạch & Bảo Vệ Thương Hiệu (Khẳng Định Uy Tín)
+- **Phản hồi công khai**: [Viết câu trả lời công khai từ 3-5 câu: Lịch sự, chuyên nghiệp, giải thích rõ ràng về quy chuẩn chất lượng/nguồn gốc sản phẩm để người mua khác hiểu đúng, đồng thời sẵn sàng thu hồi sản phẩm và hoàn tiền 100% nếu khách không hài lòng]
+- **Hành động hậu trường**: [Chuẩn bị sẵn hình ảnh hóa đơn VAT, chứng từ hoặc clip kiểm tra hàng để gửi riêng cho khách xem, giải tỏa hiểu lầm một cách văn minh]
+
+## Lời khuyên vàng khi xử lý đánh giá
+- Phản hồi trong vòng 1-2 giờ đầu tiên để ngăn chặn khách chia sẻ đánh giá tiêu cực lên mạng xã hội.
+- Tuyệt đối không tranh cãi gay gắt hay đổ lỗi cho khách hàng trên bình luận công khai.
+- Sau khi đã hỗ trợ khách đổi mới hoặc đền bù hài lòng qua tin nhắn riêng, hãy khéo léo nhờ khách chỉnh sửa lại đánh giá thành 5 sao.
+- Báo cáo sàn can thiệp nếu phát hiện đánh giá có dấu hiệu cạnh tranh không lành mạnh từ đối thủ.`;
         break;
+      }
 
       case "koc-planner":
         userPrompt = `Bạn là chuyên gia lập kế hoạch KOC (Key Opinion Consumer) cho ngành TMĐT.

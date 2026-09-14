@@ -146,10 +146,16 @@ export default function ToolsPage() {
                 <Link href={`/tools/${tool.id}`} key={tool.id} className="block group">
                   <div className={`h-full p-6 rounded-2xl border transition-all duration-300 bg-white ${tool.color} shadow-sm hover:shadow-md flex flex-col relative overflow-hidden`}>
                     
-                    {!tool.isFree && (
+                    {!tool.isFree ? (
                       <div className="absolute top-0 right-0">
-                        <div className="bg-gradient-to-r from-amber-400 to-amber-600 text-white text-[10px] font-black px-3 py-1 rounded-bl-xl shadow-sm">
-                          VIP ONLY
+                        <div className="bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[10px] font-black px-3 py-1 rounded-bl-xl shadow-xs flex items-center gap-1 uppercase tracking-wider">
+                          <span>👑</span> VIP TOOL
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="absolute top-0 right-0">
+                        <div className="bg-emerald-500 text-white text-[10px] font-black px-3 py-1 rounded-bl-xl shadow-xs flex items-center gap-1 uppercase tracking-wider">
+                          FREE TOOL
                         </div>
                       </div>
                     )}
