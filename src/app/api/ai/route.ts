@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { getSystemSettings } from "@/lib/system-settings";
+import { handleSeo } from "@/lib/seo/handler";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { tool, inputs } = body;
+    if (tool === "seo-optimizer") return handleSeo(req, inputs);
 
     // Lấy cấu hình hệ thống từ Database (ưu tiên CSDL, không phụ thuộc file .env)
     const systemConfig = await getSystemSettings();
@@ -119,26 +121,6 @@ Yêu cầu:
 - Nếu là đánh giá 4-5 sao (tích cực): Cảm ơn chân thành, tạo sự gắn kết, chúc khách hàng có trải nghiệm tốt và kêu gọi khách bấm [Theo dõi Shop] để nhận ưu đãi cho lần mua sau.
 - Ngôn ngữ: Tiếng Việt, tự nhiên, ấm áp, chuyên nghiệp, không sáo rỗng.
 - Độ dài: Khoảng 3 - 5 câu ngắn gọn, súc tích. Chỉ trả về nội dung câu trả lời, không thêm lời giải thích.`;
-        break;
-
-      case "seo-optimizer":
-        userPrompt = `Bạn là chuyên gia SEO E-commerce (Shopee & TikTok Shop).
-Hãy tối ưu tiêu đề và viết lại bài mô tả sản phẩm sau để lên top tìm kiếm:
-Tên sản phẩm gốc: ${inputs.productName}
-Các tính năng / USP: ${inputs.features}
-Từ khóa chính mong muốn: ${inputs.keywords || "tự động phân tích"}
-
-Yêu cầu đầu ra (Định dạng Markdown):
-### 1. GỢI Ý 3 TIÊU ĐỀ CHUẨN SEO (Dưới 120 ký tự):
-(Cấu trúc: [Loại SP] + [Thương hiệu/Điểm nổi bật] + [Tính năng/Công dụng] + [Mã SP/Kích cỡ] + [Freeship/Chính hãng])
-- Tiêu đề 1: ...
-- Tiêu đề 2: ...
-- Tiêu đề 3: ...
-
-### 2. MÔ TẢ SẢN PHẨM TỐI ƯU SEO & CHUYỂN ĐỔI:
-- Trình bày dạng bullet points ngắn gọn, chia đề mục rõ ràng (Điểm nổi bật, Thông số, Hướng dẫn sử dụng, Cam kết).
-- Lồng ghép từ khóa tự nhiên, không spam.
-- Đính kèm 8 - 10 hashtag chuẩn SEO ở cuối bài.`;
         break;
 
       case "koc-planner":

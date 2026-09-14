@@ -24,6 +24,7 @@ model User {
   userCredit   UserCredit?
   transactions Transaction[]
   progress     Progress[]
+  seoSessions  SeoSession[]
 }
 
 enum Role {
@@ -162,4 +163,36 @@ model SystemSetting {
   isOpenAiActive Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+}
+
+model SeoUsage {
+  id          String @id
+  successes   Int @default(0)
+  windowStart DateTime @default(now())
+  attempts    Int @default(0)
+  leaseId     String?
+  leaseUntil  DateTime?
+  updatedAt   DateTime @default(now())
+}
+
+model SeoRun {
+  id           String @id
+  subject      String
+  status       String
+  model        String?
+  provider     String?
+  inputTokens  Int @default(0)
+  outputTokens Int @default(0)
+  durationMs   Int @default(0)
+  errorCode    String?
+  createdAt    DateTime @default(now())
+  @@index([createdAt])
+}
+
+model SeoSession {
+  tokenHash String @id
+  userId    String
+  user      User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  @@index([expiresAt])
 }

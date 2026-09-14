@@ -126,7 +126,7 @@ export function Sidebar({
   };
 
   return (
-    <aside className="w-72 sidebar-theme border-r min-h-screen flex flex-col relative z-20">
+    <aside className={`w-72 sidebar-theme border-r min-h-screen flex-col relative z-20 ${pathname === '/tools/seo-optimizer' ? 'hidden lg:flex shrink-0' : 'flex'}`}>
       <div className="p-6 pb-2">
         <h1 
           className="text-2xl font-black bg-clip-text text-transparent"

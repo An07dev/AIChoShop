@@ -1,0 +1,30 @@
+BEGIN;
+CREATE TABLE IF NOT EXISTS "SeoUsage" (
+  "id" TEXT PRIMARY KEY,
+  "successes" INTEGER NOT NULL DEFAULT 0,
+  "windowStart" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "attempts" INTEGER NOT NULL DEFAULT 0,
+  "leaseId" TEXT,
+  "leaseUntil" TIMESTAMP(3),
+  "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE TABLE IF NOT EXISTS "SeoRun" (
+  "id" TEXT PRIMARY KEY,
+  "subject" TEXT NOT NULL,
+  "status" TEXT NOT NULL,
+  "model" TEXT,
+  "provider" TEXT,
+  "inputTokens" INTEGER NOT NULL DEFAULT 0,
+  "outputTokens" INTEGER NOT NULL DEFAULT 0,
+  "durationMs" INTEGER NOT NULL DEFAULT 0,
+  "errorCode" TEXT,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS "SeoRun_createdAt_idx" ON "SeoRun"("createdAt");
+CREATE TABLE IF NOT EXISTS "SeoSession" (
+  "tokenHash" TEXT PRIMARY KEY,
+  "userId" TEXT NOT NULL REFERENCES "User"("id") ON DELETE CASCADE,
+  "expiresAt" TIMESTAMP(3) NOT NULL
+);
+CREATE INDEX IF NOT EXISTS "SeoSession_expiresAt_idx" ON "SeoSession"("expiresAt");
+COMMIT;
