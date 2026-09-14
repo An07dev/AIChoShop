@@ -238,25 +238,64 @@ export function AdminCharts({
     return { total, txCount, max, avg };
   }, [revenueChartData]);
 
-  // Tọa độ SVG cho biểu đồ doanh thu
-  const maxRevenue = Math.max(revenueSummary.max, 50_000);
-  const svgWidth = 640;
-  const svgHeight = 220;
-  const paddingX = 40;
-  const paddingY = 30;
-  const chartW = svgWidth - paddingX * 2;
-  const chartH = svgHeight - paddingY * 2;
+  // Kích thước khung vẽ biểu đồ doanh thu SVG
+  const svgWidth = 720;
+  const svgHeight = 230;
+  const paddingLeft = 56;
+  const paddingRight = 20;
+  const paddingTop = 20;
+  const paddingBottom = 34;
+  const chartW = svgWidth - paddingLeft - paddingRight;
+  const chartH = svgHeight - paddingTop - paddingBottom;
+
+  // Tính toán trục Y làm tròn số chẵn đẹp mắt (tránh các số lẻ như 17k, 33k)
+  const yAxis = useMemo(() => {
+    const target = Math.max(revenueSummary.max, 40_000);
+    const roughStep = target / 3;
+    const power = Math.pow(10, Math.floor(Math.log10(roughStep)));
+    const frac = roughStep / power;
+    let niceStep = power;
+    if (frac <= 1.2) niceStep = 1 * power;
+    else if (frac <= 2.5) niceStep = 2 * power;
+    else if (frac <= 6) niceStep = 5 * power;
+    else niceStep = 10 * power;
+
+    const maxTick = Math.max(
+      Math.ceil((target * 1.05) / niceStep) * niceStep,
+      niceStep * 3
+    );
+    const ticks: number[] = [];
+    for (let val = maxTick; val >= 0; val -= niceStep) {
+      ticks.push(val);
+    }
+    return { maxTick, ticks, niceStep };
+  }, [revenueSummary.max]);
 
   const points = useMemo(() => {
     if (revenueChartData.length === 0) return [];
-    const step = chartW / (revenueChartData.length - 1 || 1);
+    const count = revenueChartData.length;
+    const colW = chartW / count;
+
     return revenueChartData.map((item, idx) => {
-      const x = paddingX + idx * step;
-      const ratio = item.revenue / maxRevenue;
-      const y = paddingY + chartH - ratio * chartH;
-      return { ...item, x, y, barH: Math.max(ratio * chartH, 2) };
+      // Tọa độ X căn chính giữa ô phân bổ dữ liệu của cột
+      const x = paddingLeft + (idx + 0.5) * colW;
+      const ratio = yAxis.maxTick > 0 ? Math.min(item.revenue / yAxis.maxTick, 1) : 0;
+      const rawBarH = ratio * chartH;
+      // Chỉ gán chiều cao cột khi doanh thu > 0, tránh vẽ vạch tím đè lên số 0 đ
+      const barH = item.revenue > 0 ? Math.max(rawBarH, 4) : 0;
+      const barY = paddingTop + chartH - barH;
+      const y = paddingTop + chartH - ratio * chartH;
+
+      return {
+        ...item,
+        x,
+        y,
+        barY,
+        barH,
+        colW,
+      };
     });
-  }, [revenueChartData, maxRevenue, chartW, chartH]);
+  }, [revenueChartData, yAxis.maxTick, chartW, chartH, paddingLeft, paddingTop]);
 
   // Đường Path Area & Line cho SVG
   const pathData = useMemo(() => {
@@ -264,9 +303,9 @@ export function AdminCharts({
     const line = points.reduce((acc, pt, i) => {
       return i === 0 ? `M ${pt.x},${pt.y}` : `${acc} L ${pt.x},${pt.y}`;
     }, "");
-    const area = `${line} L ${points[points.length - 1].x},${paddingY + chartH} L ${points[0].x},${paddingY + chartH} Z`;
+    const area = `${line} L ${points[points.length - 1].x},${paddingTop + chartH} L ${points[0].x},${paddingTop + chartH} Z`;
     return { line, area };
-  }, [points, paddingY, chartH]);
+  }, [points, paddingTop, chartH]);
 
   // 2. TÍNH TOÁN DỮ LIỆU HỌC VIÊN (VIP vs FREE)
   const freeCount = Math.max(0, userCount - vipCount);
@@ -468,35 +507,36 @@ export function AdminCharts({
         </div>
 
         {/* Khung vẽ biểu đồ SVG tương tác */}
-        <div className="p-3 sm:p-5 flex-1 flex flex-col justify-center relative select-none">
-          {/* Tooltip nổi khi hover */}
-          {hoveredPoint && (
-            <div
-              className="absolute z-20 pointer-events-none transform -translate-x-1/2 -translate-y-full mb-2 bg-slate-900 text-white text-xs rounded-xl py-2 px-3 shadow-xl border border-slate-700 space-y-1 transition-all duration-100"
-              style={{
-                left: `${(hoveredPoint.x / svgWidth) * 100}%`,
-                top: `${(hoveredPoint.y / svgHeight) * 100}%`,
-              }}
-            >
-              <div className="text-[10px] font-bold text-slate-300 border-b border-slate-800 pb-1">
-                {hoveredPoint.subLabel}
+        <div className="p-3.5 sm:p-5 flex-1 flex flex-col justify-between select-none">
+          {/* Container chứa SVG và Tooltip tuyệt đối khớp tỷ lệ 1:1 */}
+          <div className="relative w-full">
+            {/* Tooltip nổi khi hover */}
+            {hoveredPoint && (
+              <div
+                className="absolute z-20 pointer-events-none transform -translate-x-1/2 -translate-y-full -mt-2 bg-slate-900 text-white text-xs rounded-xl py-2 px-3 shadow-xl border border-slate-700 space-y-1 transition-all duration-100"
+                style={{
+                  left: `${(hoveredPoint.x / svgWidth) * 100}%`,
+                  top: `${(hoveredPoint.y / svgHeight) * 100}%`,
+                }}
+              >
+                <div className="text-[10px] font-bold text-slate-300 border-b border-slate-800 pb-1">
+                  {hoveredPoint.subLabel}
+                </div>
+                <div className="text-emerald-400 font-black text-sm font-mono">
+                  +{formatMoney(hoveredPoint.revenue)}
+                </div>
+                <div className="text-[10px] text-slate-400">
+                  {hoveredPoint.count > 0
+                    ? `${hoveredPoint.count} giao dịch thành công`
+                    : "Chưa có giao dịch"}
+                </div>
               </div>
-              <div className="text-emerald-400 font-black text-sm font-mono">
-                +{formatMoney(hoveredPoint.revenue)}
-              </div>
-              <div className="text-[10px] text-slate-400">
-                {hoveredPoint.count > 0
-                  ? `${hoveredPoint.count} giao dịch thành công`
-                  : "Chưa có giao dịch"}
-              </div>
-            </div>
-          )}
+            )}
 
-          {/* Biểu đồ SVG */}
-          <div className="w-full h-56 sm:h-64">
+            {/* Biểu đồ SVG co giãn tự nhiên theo chiều ngang */}
             <svg
               viewBox={`0 0 ${svgWidth} ${svgHeight}`}
-              className="w-full h-full overflow-visible"
+              className="w-full h-auto block overflow-visible"
             >
               <defs>
                 {/* Gradient cho Cột */}
@@ -516,28 +556,31 @@ export function AdminCharts({
                 </linearGradient>
               </defs>
 
-              {/* Đường lưới ngang Y-axis */}
-              {[0, 0.33, 0.66, 1].map((ratio, i) => {
-                const y = paddingY + chartH - ratio * chartH;
-                const val = maxRevenue * ratio;
+              {/* Đường lưới ngang Y-axis với các mốc số chẵn, không đè lên nhãn */}
+              {yAxis.ticks.map((tickVal, i) => {
+                const ratio = yAxis.maxTick > 0 ? tickVal / yAxis.maxTick : 0;
+                const y = paddingTop + chartH - ratio * chartH;
+                const isBaseline = tickVal === 0;
                 return (
                   <g key={i}>
                     <line
-                      x1={paddingX}
+                      x1={paddingLeft}
                       y1={y}
-                      x2={svgWidth - paddingX}
+                      x2={svgWidth - paddingRight}
                       y2={y}
-                      stroke="#f1f5f9"
-                      strokeWidth="1"
-                      strokeDasharray={ratio === 0 ? "none" : "3 3"}
+                      stroke={isBaseline ? "#cbd5e1" : "#f1f5f9"}
+                      strokeWidth={isBaseline ? "1.5" : "1"}
+                      strokeDasharray={isBaseline ? "none" : "3 3"}
                     />
                     <text
-                      x={paddingX - 6}
-                      y={y + 3}
+                      x={paddingLeft - 8}
+                      y={y + 3.5}
                       textAnchor="end"
-                      className="text-[9px] font-mono fill-slate-400 select-none"
+                      className={`text-[9.5px] font-mono select-none ${
+                        isBaseline ? "fill-slate-500 font-bold" : "fill-slate-400 font-medium"
+                      }`}
                     >
-                      {formatShortMoney(val)}
+                      {formatShortMoney(tickVal)}
                     </text>
                   </g>
                 );
@@ -566,8 +609,8 @@ export function AdminCharts({
               {points.map((pt, idx) => {
                 const isHovered = hoveredPoint?.label === pt.label;
                 const barWidth = Math.max(
-                  Math.min(chartW / points.length - 8, 28),
-                  6
+                  Math.min(pt.colW * 0.55, 24),
+                  8
                 );
 
                 return (
@@ -577,60 +620,89 @@ export function AdminCharts({
                     onMouseEnter={() => setHoveredPoint(pt)}
                     onMouseLeave={() => setHoveredPoint(null)}
                   >
-                    {/* Cột dữ liệu (nếu ở chế độ Bar hoặc kết hợp) */}
+                    {/* Cột highlight mờ phía sau khi hover */}
+                    {isHovered && (
+                      <rect
+                        x={pt.x - pt.colW / 2 + 1}
+                        y={paddingTop}
+                        width={pt.colW - 2}
+                        height={chartH}
+                        rx={6}
+                        fill="#8b5cf6"
+                        opacity={0.06}
+                      />
+                    )}
+
+                    {/* Cột dữ liệu (nếu ở chế độ Bar) */}
                     {chartMode === "bar" && (
                       <>
-                        <rect
-                          x={pt.x - barWidth / 2}
-                          y={pt.y}
-                          width={barWidth}
-                          height={pt.barH}
-                          rx={barWidth > 12 ? 4 : 2}
-                          fill={isHovered ? "url(#barHoverGradient)" : "url(#barGradient)"}
-                          className="transition-all duration-200"
-                        />
-                        {pt.revenue > 0 && (
-                          <rect
-                            x={pt.x - barWidth / 2}
-                            y={pt.y}
-                            width={barWidth}
-                            height={3}
-                            rx={1}
-                            fill="#c084fc"
-                          />
+                        {pt.revenue > 0 ? (
+                          <>
+                            <rect
+                              x={pt.x - barWidth / 2}
+                              y={pt.barY}
+                              width={barWidth}
+                              height={pt.barH}
+                              rx={barWidth > 12 ? 4 : 2}
+                              fill={isHovered ? "url(#barHoverGradient)" : "url(#barGradient)"}
+                              className="transition-all duration-200"
+                            />
+                            {/* Đường viền sáng đỉnh cột */}
+                            <rect
+                              x={pt.x - barWidth / 2}
+                              y={pt.barY}
+                              width={barWidth}
+                              height={3}
+                              rx={1}
+                              fill="#c084fc"
+                            />
+                          </>
+                        ) : (
+                          /* Khi doanh thu = 0: chỉ hiện vạch mờ xám nhẹ khi hover */
+                          isHovered && (
+                            <rect
+                              x={pt.x - barWidth / 2}
+                              y={paddingTop + chartH - 3}
+                              width={barWidth}
+                              height={3}
+                              rx={1.5}
+                              fill="#cbd5e1"
+                              className="transition-all duration-150"
+                            />
+                          )
                         )}
                       </>
                     )}
 
-                    {/* Điểm tròn trên đỉnh đường Line */}
+                    {/* Chế độ Line Chart: Điểm tròn trên đỉnh */}
                     {chartMode === "line" && (
                       <circle
                         cx={pt.x}
                         cy={pt.y}
-                        r={isHovered ? 5.5 : 3.5}
-                        fill={isHovered ? "#a855f7" : "#7c3aed"}
+                        r={isHovered ? 5.5 : pt.revenue > 0 ? 3.5 : 2}
+                        fill={isHovered ? "#a855f7" : pt.revenue > 0 ? "#7c3aed" : "#cbd5e1"}
                         stroke="#ffffff"
                         strokeWidth="2"
                         className="transition-all duration-150"
                       />
                     )}
 
-                    {/* Vùng cảm ứng hover vô hình rộng hơn để dễ rê chuột */}
+                    {/* Vùng cảm ứng hover vô hình rộng toàn bộ ô cột */}
                     <rect
-                      x={pt.x - (chartW / points.length) / 2}
-                      y={paddingY}
-                      width={chartW / points.length}
-                      height={chartH}
+                      x={pt.x - pt.colW / 2}
+                      y={paddingTop}
+                      width={pt.colW}
+                      height={chartH + paddingBottom}
                       fill="transparent"
                     />
 
                     {/* Nhãn X-axis dưới chân cột */}
                     <text
                       x={pt.x}
-                      y={paddingY + chartH + 18}
+                      y={paddingTop + chartH + 18}
                       textAnchor="middle"
-                      className={`text-[10px] select-none transition-colors ${
-                        isHovered ? "fill-purple-700 font-bold" : "fill-slate-400"
+                      className={`text-[9.5px] select-none transition-colors ${
+                        isHovered ? "fill-purple-700 font-bold" : "fill-slate-400 font-medium"
                       }`}
                     >
                       {pt.label}
@@ -641,7 +713,7 @@ export function AdminCharts({
             </svg>
           </div>
 
-          <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-100 pt-2 px-1">
+          <div className="mt-3 flex items-center justify-between text-[11px] text-slate-400 border-t border-slate-100 pt-2.5 px-1">
             <span className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-purple-500" /> Doanh thu thành công qua SePay
             </span>

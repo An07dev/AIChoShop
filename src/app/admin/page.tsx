@@ -200,7 +200,7 @@ export default async function AdminDashboard() {
       subtext: `${courseCount} khóa học thực chiến`,
       icon: <BookOpen size={24} className="text-emerald-600" />,
       color: "bg-emerald-50 text-emerald-600 border-emerald-100",
-      link: "/admin/courses",
+      link: "/admin/lessons",
     },
     {
       name: "Doanh Thu VIP Đã Thu",
@@ -598,7 +598,7 @@ export default async function AdminDashboard() {
           </Link>
 
           <Link
-            href="/admin/courses"
+            href="/admin/lessons"
             className="group bg-white p-3.5 rounded-xl border border-slate-200 hover:border-emerald-400 hover:shadow-xs transition flex items-center gap-3"
           >
             <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 group-hover:scale-105 transition-transform shrink-0">
