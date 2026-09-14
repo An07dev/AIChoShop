@@ -570,7 +570,7 @@ export function UsersManager({
             title="Cài đặt số lượt dùng AI Free mỗi ngày chung cho toàn bộ tài khoản FREE"
           >
             <Zap size={16} className="fill-slate-950 text-slate-950" />
-            <span>Cài Đặt Lượt Free ({globalFreeLimit} lượt/ngày)</span>
+            <span>Lượt Free ({globalFreeLimit} lượt/ngày)</span>
           </button>
 
           {/* Nút Thêm User Mới */}
@@ -607,14 +607,14 @@ export function UsersManager({
                 : "text-amber-600 hover:text-amber-700"
                 }`}
             >
-              <Crown size={11} /> Chỉ VIP 123 ({stats.vipCount})
+              <Crown size={11} />VIP ({stats.vipCount})
             </button>
             <button
               onClick={() => setVipFilter("free")}
               className={`px-2.5 py-1 rounded-md font-semibold transition-all cursor-pointer ${vipFilter === "free" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-800"
                 }`}
             >
-              Chỉ FREE ({stats.freeCount})
+              FREE ({stats.freeCount})
             </button>
           </div>
 
@@ -632,14 +632,14 @@ export function UsersManager({
               className={`px-2.5 py-1 rounded-md font-semibold transition-all cursor-pointer text-emerald-700 ${statusFilter === "active" ? "bg-emerald-600 text-white shadow-sm" : "hover:text-emerald-800"
                 }`}
             >
-              Đang hoạt động ({stats.activeCount})
+              Hoạt động ({stats.activeCount})
             </button>
             <button
               onClick={() => setStatusFilter("locked")}
               className={`px-2.5 py-1 rounded-md font-semibold transition-all cursor-pointer text-rose-700 ${statusFilter === "locked" ? "bg-rose-600 text-white shadow-sm" : "hover:text-rose-800"
                 }`}
             >
-              Đã bị khóa ({stats.lockedCount})
+              Bị khóa ({stats.lockedCount})
             </button>
           </div>
 
@@ -667,7 +667,7 @@ export function UsersManager({
                 <th className="p-4 font-bold">Người Dùng</th>
                 <th className="p-4 font-bold text-center">Gói & Thời Hạn VIP</th>
                 <th className="p-4 font-bold text-center">Trạng Thái</th>
-                <th className="p-4 font-bold text-center">Số Lượt Free Còn Lại</th>
+                <th className="p-4 font-bold text-center">Lượt Free</th>
                 <th className="p-4 font-bold">Quyền & Ngày Tạo</th>
                 <th className="p-4 font-bold text-right">Quản Trị / Thao Tác</th>
               </tr>
@@ -845,17 +845,6 @@ export function UsersManager({
                       {/* Cột 6: Bộ nút Thao tác Quản trị */}
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-1.5 flex-wrap">
-                          {/* Nút Cài Đặt Số Lượt Free (cho tài khoản FREE) */}
-                          {!user.isVIP && (
-                            <button
-                              onClick={openGlobalFreeModal}
-                              disabled={isPending}
-                              title="Cài đặt số lượt Free chung cho toàn bộ tài khoản FREE"
-                              className="p-1.5 rounded-lg text-slate-500 hover:text-amber-700 hover:bg-amber-50 transition-colors cursor-pointer border border-slate-200 hover:border-amber-300 active:scale-95"
-                            >
-                              <Zap size={15} className="text-amber-500" />
-                            </button>
-                          )}
 
                           {/* Nút Quản Lý Thời Hạn VIP */}
                           <button
@@ -1017,28 +1006,6 @@ export function UsersManager({
                 </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">
-                  Số lượt Free mỗi ngày (mặc định 12)
-                </label>
-                <div className="relative">
-                  <Zap size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500" />
-                  <input
-                    type="number"
-                    min="0"
-                    max="10000"
-                    value={addForm.dailyFreeLimit}
-                    onChange={(e) =>
-                      setAddForm({ ...addForm, dailyFreeLimit: Number(e.target.value) || 0 })
-                    }
-                    placeholder="12"
-                    className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium"
-                  />
-                </div>
-                <span className="text-[10px] text-slate-400 mt-0.5 block">
-                  Tài khoản Free sẽ được cấp số lượt dùng AI này mỗi ngày.
-                </span>
-              </div>
 
               {/* <div className="flex items-center justify-between p-3 bg-amber-50/80 border border-amber-200 rounded-xl">
                 <div className="flex items-center gap-2">
@@ -1253,13 +1220,12 @@ export function UsersManager({
                             name: `${plan.name} (${isLifetime ? "Trọn đời" : `+${plan.durationDays} ngày`})`,
                           });
                         }}
-                        className={`p-4 sm:p-4.5 rounded-2xl border text-left transition-all flex flex-col justify-between cursor-pointer active:scale-95 group ${
-                          isSelected
-                            ? "border-amber-500 bg-amber-50/90 shadow-md shadow-amber-500/20 ring-2 ring-amber-500/40 scale-[1.02] z-10"
-                            : isLifetime
+                        className={`p-4 sm:p-4.5 rounded-2xl border text-left transition-all flex flex-col justify-between cursor-pointer active:scale-95 group ${isSelected
+                          ? "border-amber-500 bg-amber-50/90 shadow-md shadow-amber-500/20 ring-2 ring-amber-500/40 scale-[1.02] z-10"
+                          : isLifetime
                             ? "bg-gradient-to-br from-amber-50/60 via-yellow-50/40 to-white border-amber-200/90 hover:border-amber-300 hover:shadow-xs"
                             : "bg-white hover:bg-slate-50 border-slate-200 hover:border-slate-300 hover:shadow-xs"
-                        }`}
+                          }`}
                       >
                         {/* Hàng trên cùng: Badge tag (nếu có) riêng biệt, không đè lên text */}
                         <div className="flex items-center justify-between gap-1.5 mb-2.5 min-h-[22px]">
@@ -1283,9 +1249,8 @@ export function UsersManager({
                         <div className="space-y-1 my-1">
                           <div className="flex items-center gap-2">
                             <div
-                              className={`p-1.5 rounded-xl shrink-0 ${
-                                isLifetime ? "bg-amber-100 text-amber-600" : "bg-blue-100 text-blue-600"
-                              }`}
+                              className={`p-1.5 rounded-xl shrink-0 ${isLifetime ? "bg-amber-100 text-amber-600" : "bg-blue-100 text-blue-600"
+                                }`}
                             >
                               {isLifetime ? (
                                 <Crown size={17} className="fill-amber-500 text-amber-500" />
@@ -1311,13 +1276,12 @@ export function UsersManager({
                             </span>
                           </div>
                           <span
-                            className={`text-xs font-bold px-3 py-1.5 rounded-xl shrink-0 transition-all flex items-center gap-1 ${
-                              isSelected
-                                ? "bg-amber-500 text-slate-950 font-black shadow-xs"
-                                : isLifetime
+                            className={`text-xs font-bold px-3 py-1.5 rounded-xl shrink-0 transition-all flex items-center gap-1 ${isSelected
+                              ? "bg-amber-500 text-slate-950 font-black shadow-xs"
+                              : isLifetime
                                 ? "bg-amber-100 text-amber-900 group-hover:bg-amber-200"
                                 : "bg-slate-100 text-slate-700 group-hover:bg-blue-100 group-hover:text-blue-700"
-                            }`}
+                              }`}
                           >
                             {isSelected ? (
                               <>
@@ -1360,11 +1324,10 @@ export function UsersManager({
                             name: `${btn.label} (${btn.sub})`,
                           });
                         }}
-                        className={`p-3 rounded-2xl border text-xs font-bold transition flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 ${
-                          isSelected
-                            ? "border-blue-600 bg-blue-50 text-blue-900 ring-2 ring-blue-500/30 shadow-xs"
-                            : "border-slate-200 hover:border-blue-400 bg-white hover:bg-blue-50/50 text-slate-800 shadow-2xs"
-                        }`}
+                        className={`p-3 rounded-2xl border text-xs font-bold transition flex flex-col items-center justify-center gap-1 cursor-pointer active:scale-95 ${isSelected
+                          ? "border-blue-600 bg-blue-50 text-blue-900 ring-2 ring-blue-500/30 shadow-xs"
+                          : "border-slate-200 hover:border-blue-400 bg-white hover:bg-blue-50/50 text-slate-800 shadow-2xs"
+                          }`}
                       >
                         <span className="text-sm font-black text-blue-600">{btn.label}</span>
                         <span className="text-xs text-slate-400 font-normal">{btn.sub}</span>
@@ -1413,22 +1376,20 @@ export function UsersManager({
                       name: "Hạ cấp về tài khoản FREE ngay",
                     });
                   }}
-                  className={`pt-3 border-t border-slate-100 flex items-center justify-between p-4 rounded-2xl transition-all cursor-pointer border ${
-                    selectedVipOption?.type === "expire_now"
-                      ? "bg-rose-100 border-rose-400 ring-2 ring-rose-500/30"
-                      : "bg-rose-50/70 border-rose-200 hover:border-rose-300"
-                  }`}
+                  className={`pt-3 border-t border-slate-100 flex items-center justify-between p-4 rounded-2xl transition-all cursor-pointer border ${selectedVipOption?.type === "expire_now"
+                    ? "bg-rose-100 border-rose-400 ring-2 ring-rose-500/30"
+                    : "bg-rose-50/70 border-rose-200 hover:border-rose-300"
+                    }`}
                 >
                   <div>
                     <span className="text-sm font-bold text-rose-900 block">Hạ cấp tài khoản về FREE</span>
                     <span className="text-xs text-rose-600">Thu hồi toàn bộ quyền lợi VIP của học viên này</span>
                   </div>
                   <span
-                    className={`px-4 py-2 rounded-xl font-bold text-xs transition flex items-center gap-1.5 shrink-0 ${
-                      selectedVipOption?.type === "expire_now"
-                        ? "bg-rose-700 text-white shadow-xs"
-                        : "bg-rose-600 text-white hover:bg-rose-700"
-                    }`}
+                    className={`px-4 py-2 rounded-xl font-bold text-xs transition flex items-center gap-1.5 shrink-0 ${selectedVipOption?.type === "expire_now"
+                      ? "bg-rose-700 text-white shadow-xs"
+                      : "bg-rose-600 text-white hover:bg-rose-700"
+                      }`}
                   >
                     <XCircle size={15} />
                     <span>{selectedVipOption?.type === "expire_now" ? "Đang chọn hạ" : "Chọn hạ FREE"}</span>
@@ -1497,7 +1458,7 @@ export function UsersManager({
                   <Zap size={20} className="fill-slate-950" />
                 </div>
                 <div>
-                  <h3 className="font-extrabold text-slate-900 text-base">Cài Đặt Lượt Free Chung</h3>
+                  <h3 className="font-extrabold text-slate-900 text-base">Lượt Free Chung</h3>
                   <p className="text-[11px] text-slate-500">Áp dụng cho tất cả tài khoản FREE trên hệ thống</p>
                 </div>
               </div>
@@ -1563,11 +1524,10 @@ export function UsersManager({
                         key={num}
                         type="button"
                         onClick={() => setGlobalFreeLimitValue(num)}
-                        className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center active:scale-95 ${
-                          isSelected
-                            ? "bg-amber-500 text-slate-950 border-amber-500 font-black shadow-xs ring-2 ring-amber-500/30"
-                            : "bg-white hover:bg-slate-50 text-slate-700 border-slate-200 hover:border-amber-300"
-                        }`}
+                        className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center active:scale-95 ${isSelected
+                          ? "bg-amber-500 text-slate-950 border-amber-500 font-black shadow-xs ring-2 ring-amber-500/30"
+                          : "bg-white hover:bg-slate-50 text-slate-700 border-slate-200 hover:border-amber-300"
+                          }`}
                       >
                         {num === 12 ? "12 (Gốc)" : num}
                       </button>
