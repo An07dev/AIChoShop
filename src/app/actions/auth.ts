@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { createSeoSession, deleteSeoSession } from "@/lib/seo/session";
 
 // Utility to hash password
 function hashPassword(password: string) {
@@ -54,6 +55,7 @@ export async function registerUser(formData: FormData) {
       }
     } catch {}
 
+    await createSeoSession(user.id);
     // Set cookie
     const cookieStore = await cookies();
     cookieStore.set("user_token", user.id, {
@@ -96,6 +98,7 @@ export async function loginUser(formData: FormData) {
       return { success: false, error: "Tài khoản của bạn đã bị tạm khóa bởi Quản trị viên. Vui lòng liên hệ hỗ trợ." };
     }
 
+    await createSeoSession(user.id);
     // Set cookie
     const cookieStore = await cookies();
     cookieStore.set("user_token", user.id, {
@@ -113,6 +116,7 @@ export async function loginUser(formData: FormData) {
 }
 
 export async function logoutUser() {
+  await deleteSeoSession();
   const cookieStore = await cookies();
   cookieStore.delete("user_token");
   redirect("/login");
