@@ -141,39 +141,77 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // C. Thử tìm theo cú pháp: VIP <token> hoặc syntaxPrefix <token>
+    // C. Thử tìm theo cú pháp: VIP <token> hoặc syntaxPrefix <token> (không lấy dấu chấm để tránh dính .CT, .MB của ngân hàng)
     if (!identifiedUser) {
       const prefix = config.syntaxPrefix || "VIP";
-      const regex = new RegExp(`${prefix}\\s*([a-zA-Z0-9_.-]+)`, "i");
+      const regex = new RegExp(`${prefix}\\s*([a-zA-Z0-9_]+)`, "i");
       const match = contentStr.match(regex);
       if (match && match[1]) {
         const token = match[1].trim();
-        // Kiểm tra xem token có phải là userId, email hay phone hoặc username email không
         identifiedUser = await prisma.user.findFirst({
           where: {
             OR: [
               { id: token },
               { phone: token },
-              { email: token.toLowerCase() },
-              { email: { startsWith: token.toLowerCase() + "@" } },
+              { email: { equals: token, mode: "insensitive" } },
+              { email: { startsWith: token.toLowerCase() + "@", mode: "insensitive" } },
             ],
           },
         });
       }
     }
 
-    // D. Nếu vẫn chưa tìm ra, quét toàn bộ từ khóa trong content xem có khớp SĐT của user nào không
+    // D. Quét toàn bộ từng từ trong content xem có từ nào khớp SĐT hoặc username email không
     if (!identifiedUser) {
-      const words = contentStr.replace(/[^a-zA-Z0-9]/g, " ").split(/\s+/).filter(Boolean);
-      for (const word of words) {
-        if (word.length >= 8) {
+      const cleanWords = contentStr
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, " ")
+        .split(/\s+/)
+        .filter(Boolean);
+
+      for (const word of cleanWords) {
+        if (word.length >= 4) {
           const user = await prisma.user.findFirst({
             where: {
-              OR: [{ phone: word }, { id: word }],
+              OR: [
+                { phone: word },
+                { email: { startsWith: word + "@", mode: "insensitive" } },
+                { email: { equals: word, mode: "insensitive" } },
+              ],
             },
           });
           if (user) {
             identifiedUser = user;
+            break;
+          }
+        }
+      }
+    }
+
+    // D2. Thử khớp theo tên học viên (bỏ dấu tiếng Việt, ví dụ: "LE VAN AN chuyen tien")
+    if (!identifiedUser) {
+      const allUsers = await prisma.user.findMany({
+        where: { name: { not: null } },
+      });
+
+      const removeVietnameseTones = (str: string) => {
+        return str
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/đ/g, "d")
+          .replace(/Đ/g, "D")
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, "");
+      };
+
+      const cleanContentNoTones = removeVietnameseTones(contentStr);
+
+      for (const u of allUsers) {
+        if (u.name && u.name.trim().length >= 3) {
+          const cleanName = removeVietnameseTones(u.name);
+          if (cleanName.length >= 4 && cleanContentNoTones.includes(cleanName)) {
+            identifiedUser = u;
+            console.log(`[SePay Webhook] User identified via user name match: ${u.name} (${u.email})`);
             break;
           }
         }

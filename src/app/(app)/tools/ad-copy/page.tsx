@@ -19,6 +19,7 @@ import { useToolGate } from "@/hooks/useToolGate";
 import { AdCopyOutput } from "@/components/tools/AdCopyOutput";
 import { TextDots } from "@/components/ui/text-dots";
 import { useToast } from "@/context/ToastContext";
+import { AiUsageBadge } from "@/components/tools/AiUsageBadge";
 
 const SAMPLE_DATA = {
   productName: "Tai nghe Bluetooth không dây chống ồn ANC AirPro 5",
@@ -34,6 +35,7 @@ export default function AdCopyPage() {
 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState("");
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Form states
   const [productName, setProductName] = useState("");
@@ -103,6 +105,7 @@ export default function AdCopyPage() {
       }
 
       setResult(data.data);
+      setRefreshTrigger((prev) => prev + 1);
     } catch (error: any) {
       showAiError({
         code: "NETWORK_ERROR",
@@ -140,10 +143,11 @@ export default function AdCopyPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <AiUsageBadge tool="ad-copy" refreshTrigger={refreshTrigger} />
           <button
             type="button"
             onClick={handleUseSample}
-            className="px-3 py-1.5 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 text-xs font-bold hover:bg-blue-100/50 transition-colors flex items-center gap-1.5 cursor-pointer"
+            className="px-3 py-1.5 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 text-xs font-bold hover:bg-blue-100/50 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
           >
             <Sparkles size={14} /> Dữ Liệu Mẫu
           </button>

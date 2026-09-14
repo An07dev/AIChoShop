@@ -17,6 +17,7 @@ import { useToolGate } from "@/hooks/useToolGate";
 import { SeoOptimizerOutput } from "@/components/tools/SeoOptimizerOutput";
 import { TextDots } from "@/components/ui/text-dots";
 import { useToast } from "@/context/ToastContext";
+import { AiUsageBadge } from "@/components/tools/AiUsageBadge";
 
 const QUICK_USP_TAGS = [
   "100% Cotton thoáng mát",
@@ -37,6 +38,7 @@ export default function SeoOptimizer() {
 
   const [productName, setProductName] = useState("");
   const [usp, setUsp] = useState("");
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const handleSelectUspTag = (tagText: string) => {
     if (!usp.trim()) {
@@ -81,6 +83,7 @@ export default function SeoOptimizer() {
       const data = await response.json();
       if (data.success) {
         setResult(data.data);
+        setRefreshTrigger((prev) => prev + 1);
       } else {
         showAiError(data, "Có lỗi xảy ra khi tối ưu SEO");
       }
@@ -125,14 +128,17 @@ export default function SeoOptimizer() {
           </div>
         </div>
 
-        {/* Nút thử sản phẩm mẫu */}
-        <button
-          onClick={handleUseSample}
-          className="text-xs font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
-        >
-          <Sparkle size={13} className="text-blue-500 fill-blue-500" />
-          <span>Thử mẫu sản phẩm</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <AiUsageBadge tool="seo-optimizer" refreshTrigger={refreshTrigger} />
+          {/* Nút thử sản phẩm mẫu */}
+          <button
+            onClick={handleUseSample}
+            className="text-xs font-semibold text-blue-600 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 border border-blue-200 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+          >
+            <Sparkle size={13} className="text-blue-500 fill-blue-500" />
+            <span>Thử mẫu sản phẩm</span>
+          </button>
+        </div>
       </div>
 
       {/* Khu vực thao tác chính 2 cột chiếm trọn chiều cao còn lại */}

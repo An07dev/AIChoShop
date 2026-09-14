@@ -40,6 +40,20 @@ export async function registerUser(formData: FormData) {
       },
     });
 
+    // Kế thừa định mức lượt Free hiện tại từ cấu hình hệ thống
+    try {
+      const setting: any = await prisma.$queryRawUnsafe(
+        `SELECT "defaultDailyFreeLimit" FROM "SystemSetting" WHERE id = 'default' LIMIT 1;`
+      );
+      if (setting && setting[0]?.defaultDailyFreeLimit) {
+        await prisma.$executeRawUnsafe(
+          `UPDATE "User" SET "dailyFreeLimit" = $1 WHERE id = $2`,
+          Number(setting[0].defaultDailyFreeLimit) || 12,
+          user.id
+        );
+      }
+    } catch {}
+
     // Set cookie
     const cookieStore = await cookies();
     cookieStore.set("user_token", user.id, {

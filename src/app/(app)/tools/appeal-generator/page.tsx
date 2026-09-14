@@ -20,6 +20,7 @@ import { useToolGate } from "@/hooks/useToolGate";
 import { AppealGeneratorOutput } from "@/components/tools/AppealGeneratorOutput";
 import { TextDots } from "@/components/ui/text-dots";
 import { useToast } from "@/context/ToastContext";
+import { AiUsageBadge } from "@/components/tools/AiUsageBadge";
 
 const VIOLATION_OPTIONS = [
   "Hàng giả / Hàng nhái (Nghi ngờ hàng Fake)",
@@ -52,6 +53,7 @@ export default function AppealGenerator() {
   const [shopName, setShopName] = useState("");
   const [details, setDetails] = useState("");
   const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -119,6 +121,7 @@ export default function AppealGenerator() {
       const data = await response.json();
       if (data.success) {
         setResult(data.data);
+        setRefreshTrigger((prev) => prev + 1);
       } else {
         showAiError(data, "Có lỗi xảy ra khi tạo văn bản kháng nghị");
       }
@@ -163,14 +166,17 @@ export default function AppealGenerator() {
           </div>
         </div>
 
-        {/* Nút thử nội dung mẫu */}
-        <button
-          onClick={handleUseSample}
-          className="text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
-        >
-          <Sparkle size={13} className="text-rose-500 fill-rose-500" />
-          <span>Thử mẫu vi phạm</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <AiUsageBadge tool="appeal-generator" refreshTrigger={refreshTrigger} />
+          {/* Nút thử nội dung mẫu */}
+          <button
+            onClick={handleUseSample}
+            className="text-xs font-semibold text-rose-600 hover:text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+          >
+            <Sparkle size={13} className="text-rose-500 fill-rose-500" />
+            <span>Thử mẫu vi phạm</span>
+          </button>
+        </div>
       </div>
 
       {/* Khu vực thao tác chính 2 cột chiếm trọn chiều cao còn lại */}

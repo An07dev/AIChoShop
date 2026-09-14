@@ -28,6 +28,8 @@ import {
   Check,
   Save,
   RefreshCw,
+  Zap,
+  Pencil,
 } from "lucide-react";
 import {
   toggleUserVip,
@@ -36,6 +38,8 @@ import {
   resetPasswordByAdmin,
   deleteUserByAdmin,
   updateUserVipDuration,
+  updateUserDailyFreeLimit,
+  updateGlobalDailyFreeLimit,
 } from "@/app/admin/users/actions";
 import { computeVipDaysLeft, getVipStatusInfo } from "@/lib/vip-expiration";
 import { VipPlanItem, DEFAULT_VIP_PLANS } from "@/lib/vip-plans";
@@ -49,6 +53,9 @@ export interface AdminUserItem {
   isVIP: boolean;
   vipExpiresAt?: Date | string | null;
   vipDaysLeft?: number | null;
+  dailyFreeLimit?: number;
+  remainingFree?: number | null;
+  usedToday?: number;
   isLocked: boolean;
   createdAt: Date | string;
   userCredit?: { balance: number } | null;
@@ -57,10 +64,18 @@ export interface AdminUserItem {
 interface UsersManagerProps {
   initialUsers: AdminUserItem[];
   initialPlans?: VipPlanItem[];
+  initialGlobalFreeLimit?: number;
 }
 
-export function UsersManager({ initialUsers, initialPlans }: UsersManagerProps) {
+export function UsersManager({
+  initialUsers,
+  initialPlans,
+  initialGlobalFreeLimit = 12,
+}: UsersManagerProps) {
   const [users, setUsers] = useState<AdminUserItem[]>(initialUsers);
+  const [globalFreeLimit, setGlobalFreeLimit] = useState<number>(initialGlobalFreeLimit);
+  const [showGlobalFreeModal, setShowGlobalFreeModal] = useState<boolean>(false);
+  const [globalFreeLimitValue, setGlobalFreeLimitValue] = useState<number>(initialGlobalFreeLimit);
   const vipPlans = initialPlans && initialPlans.length > 0 ? initialPlans : (DEFAULT_VIP_PLANS as unknown as VipPlanItem[]);
   const [searchTerm, setSearchTerm] = useState("");
   const [vipFilter, setVipFilter] = useState<"all" | "vip" | "free">("all");
@@ -84,6 +99,10 @@ export function UsersManager({ initialUsers, initialPlans }: UsersManagerProps) 
   const [modalError, setModalError] = useState("");
   const [modalSuccess, setModalSuccess] = useState("");
 
+  // Modal cài đặt số lượt Free
+  const [freeLimitUser, setFreeLimitUser] = useState<AdminUserItem | null>(null);
+  const [editFreeLimitValue, setEditFreeLimitValue] = useState<number>(12);
+
   // Form thêm user mới
   const [addForm, setAddForm] = useState({
     email: "",
@@ -92,7 +111,48 @@ export function UsersManager({ initialUsers, initialPlans }: UsersManagerProps) 
     phone: "",
     isVIP: false,
     role: "USER" as "USER" | "ADMIN",
+    dailyFreeLimit: globalFreeLimit,
   });
+
+  // Mở modal cài đặt số lượt Free chung cho toàn hệ thống
+  const openGlobalFreeModal = () => {
+    setGlobalFreeLimitValue(globalFreeLimit);
+    setModalError("");
+    setShowGlobalFreeModal(true);
+  };
+
+  // Lưu cài đặt số lượt Free CHUNG cho TẤT CẢ tài khoản FREE
+  const handleSaveGlobalFreeLimit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const newLimit = Math.max(0, Math.floor(Number(globalFreeLimitValue) || 0));
+
+    startTransition(async () => {
+      const res = await updateGlobalDailyFreeLimit(newLimit);
+      if (res.success) {
+        setGlobalFreeLimit(newLimit);
+        // Đồng bộ ngay lập tức cho toàn bộ học viên FREE trong danh sách
+        setUsers((prev) =>
+          prev.map((u) => {
+            if (!u.isVIP) {
+              const used = u.usedToday ?? 0;
+              return {
+                ...u,
+                dailyFreeLimit: newLimit,
+                remainingFree: Math.max(0, newLimit - used),
+              };
+            }
+            return u;
+          })
+        );
+        showToast(
+          `Đã áp dụng định mức ${newLimit} lượt/ngày cho toàn bộ ${stats.freeCount} tài khoản FREE! ⚡`
+        );
+        setShowGlobalFreeModal(false);
+      } else {
+        showToast(res.error || "Không thể cập nhật số lượt Free chung", "error");
+      }
+    });
+  };
 
   // Notification Toast
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -336,6 +396,7 @@ export function UsersManager({ initialUsers, initialPlans }: UsersManagerProps) 
       showToast(`Đã thêm người dùng mới ${addForm.email} thành công!`);
       setShowAddModal(false);
       // Thêm tạm vào danh sách
+      const limit = Number(addForm.dailyFreeLimit) || 12;
       const newUser: AdminUserItem = {
         id: "temp-" + Date.now(),
         email: addForm.email.toLowerCase(),
@@ -343,6 +404,9 @@ export function UsersManager({ initialUsers, initialPlans }: UsersManagerProps) 
         phone: addForm.phone || null,
         role: addForm.role,
         isVIP: addForm.isVIP,
+        dailyFreeLimit: limit,
+        remainingFree: addForm.isVIP ? null : limit,
+        usedToday: 0,
         isLocked: false,
         createdAt: new Date(),
         userCredit: { balance: addForm.isVIP ? 1000 : 100 },
@@ -355,6 +419,7 @@ export function UsersManager({ initialUsers, initialPlans }: UsersManagerProps) 
         phone: "",
         isVIP: false,
         role: "USER",
+        dailyFreeLimit: 12,
       });
     } else {
       setModalError(res.error || "Không thể tạo tài khoản");
@@ -429,16 +494,23 @@ export function UsersManager({ initialUsers, initialPlans }: UsersManagerProps) 
         </div>
 
         {/* Tài khoản FREE */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-center justify-between">
+        <div
+          onClick={openGlobalFreeModal}
+          className="bg-white rounded-2xl p-5 border border-slate-200 shadow-sm flex items-center justify-between cursor-pointer hover:border-amber-300 hover:shadow-md transition-all group"
+          title="Bấm để cài đặt số lượt Free chung cho toàn bộ học viên Free"
+        >
           <div>
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">
               Tài Khoản FREE
             </span>
             <div className="text-2xl font-black text-slate-700">{stats.freeCount}</div>
-            <span className="text-xs text-slate-400 mt-1 block">Chưa nâng cấp</span>
+            <span className="text-xs text-amber-600 group-hover:text-amber-700 font-bold mt-1 flex items-center gap-1">
+              <Zap size={12} className="fill-amber-500 text-amber-500" />
+              Định mức: {globalFreeLimit} lượt/ngày ✏️
+            </span>
           </div>
-          <div className="w-12 h-12 rounded-2xl bg-slate-100 text-slate-600 flex items-center justify-center">
-            <Sparkles size={24} />
+          <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 flex items-center justify-center group-hover:bg-amber-100 group-hover:scale-105 transition-all">
+            <Zap size={24} className="fill-amber-500" />
           </div>
         </div>
 
@@ -490,6 +562,16 @@ export function UsersManager({ initialUsers, initialPlans }: UsersManagerProps) 
               </button>
             )}
           </div>
+
+          {/* Nút Cài Đặt Lượt Dùng Free Toàn Hệ Thống */}
+          <button
+            onClick={openGlobalFreeModal}
+            className="w-full sm:w-auto bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-slate-950 font-black px-4 py-2.5 rounded-xl shadow-md shadow-amber-500/20 flex items-center justify-center gap-2 transition-all cursor-pointer whitespace-nowrap active:scale-95 border border-amber-400"
+            title="Cài đặt số lượt dùng AI Free mỗi ngày chung cho toàn bộ tài khoản FREE"
+          >
+            <Zap size={16} className="fill-slate-950 text-slate-950" />
+            <span>Cài Đặt Lượt Free ({globalFreeLimit} lượt/ngày)</span>
+          </button>
 
           {/* Nút Thêm User Mới */}
           <button
@@ -585,7 +667,7 @@ export function UsersManager({ initialUsers, initialPlans }: UsersManagerProps) 
                 <th className="p-4 font-bold">Người Dùng</th>
                 <th className="p-4 font-bold text-center">Gói & Thời Hạn VIP</th>
                 <th className="p-4 font-bold text-center">Trạng Thái</th>
-                <th className="p-4 font-bold text-center">Số Dư Credit</th>
+                <th className="p-4 font-bold text-center">Số Lượt Free Còn Lại</th>
                 <th className="p-4 font-bold">Quyền & Ngày Tạo</th>
                 <th className="p-4 font-bold text-right">Quản Trị / Thao Tác</th>
               </tr>
@@ -717,12 +799,32 @@ export function UsersManager({ initialUsers, initialPlans }: UsersManagerProps) 
                         )}
                       </td>
 
-                      {/* Cột 4: Số dư Credit */}
-                      <td className="p-4 text-center font-mono">
-                        <span className="inline-flex items-center gap-1 text-xs font-bold text-slate-700 bg-slate-50 px-2.5 py-1 rounded-lg border border-slate-200">
-                          <Coins size={12} className="text-amber-500" />
-                          {user.userCredit?.balance ?? 0}
-                        </span>
+                      {/* Cột 4: Số Lượt Free Còn Lại */}
+                      <td className="p-4 text-center">
+                        {user.isVIP ? (
+                          <span
+                            className="inline-flex items-center gap-1 text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200/80 shadow-2xs"
+                            title="VIP không giới hạn lượt dùng AI mỗi ngày"
+                          >
+                            <Crown size={12} className="text-amber-500 fill-amber-500" />
+                            Không giới hạn
+                          </span>
+                        ) : (
+                          <div className="inline-flex items-center gap-1.5">
+                            <button
+                              type="button"
+                              onClick={openGlobalFreeModal}
+                              className="group inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-slate-50 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-900 px-2.5 py-1 rounded-lg border border-slate-200 transition-all cursor-pointer shadow-2xs"
+                              title="Bấm để cài đặt số lượt Free chung cho toàn bộ tài khoản FREE"
+                            >
+                              <Zap size={13} className="text-amber-500 fill-amber-500 group-hover:scale-110 transition-transform" />
+                              <span className="font-mono">
+                                Còn <strong className={user.remainingFree === 0 ? "text-rose-600" : "text-emerald-700"}>{user.remainingFree ?? globalFreeLimit}</strong>/{user.dailyFreeLimit ?? globalFreeLimit}
+                              </span>
+                              <Pencil size={11} className="text-slate-400 group-hover:text-amber-600 opacity-60 group-hover:opacity-100" />
+                            </button>
+                          </div>
+                        )}
                       </td>
 
                       {/* Cột 5: Quyền & Ngày Tạo */}
@@ -743,6 +845,18 @@ export function UsersManager({ initialUsers, initialPlans }: UsersManagerProps) 
                       {/* Cột 6: Bộ nút Thao tác Quản trị */}
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-1.5 flex-wrap">
+                          {/* Nút Cài Đặt Số Lượt Free (cho tài khoản FREE) */}
+                          {!user.isVIP && (
+                            <button
+                              onClick={openGlobalFreeModal}
+                              disabled={isPending}
+                              title="Cài đặt số lượt Free chung cho toàn bộ tài khoản FREE"
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-amber-700 hover:bg-amber-50 transition-colors cursor-pointer border border-slate-200 hover:border-amber-300 active:scale-95"
+                            >
+                              <Zap size={15} className="text-amber-500" />
+                            </button>
+                          )}
+
                           {/* Nút Quản Lý Thời Hạn VIP */}
                           <button
                             onClick={() => openVipModal(user)}
@@ -901,6 +1015,29 @@ export function UsersManager({ initialUsers, initialPlans }: UsersManagerProps) 
                     className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">
+                  Số lượt Free mỗi ngày (mặc định 12)
+                </label>
+                <div className="relative">
+                  <Zap size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-amber-500" />
+                  <input
+                    type="number"
+                    min="0"
+                    max="10000"
+                    value={addForm.dailyFreeLimit}
+                    onChange={(e) =>
+                      setAddForm({ ...addForm, dailyFreeLimit: Number(e.target.value) || 0 })
+                    }
+                    placeholder="12"
+                    className="w-full pl-8 pr-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium"
+                  />
+                </div>
+                <span className="text-[10px] text-slate-400 mt-0.5 block">
+                  Tài khoản Free sẽ được cấp số lượt dùng AI này mỗi ngày.
+                </span>
               </div>
 
               {/* <div className="flex items-center justify-between p-3 bg-amber-50/80 border border-amber-200 rounded-xl">
@@ -1345,6 +1482,141 @@ export function UsersManager({ initialUsers, initialPlans }: UsersManagerProps) 
                 )}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Cài Đặt Số Lượt Free Chung Cho Toàn Bộ Tài Khoản FREE */}
+      {showGlobalFreeModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden border border-slate-100 animate-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="px-6 py-4.5 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-amber-50/80 to-orange-50/60">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-amber-400 to-amber-500 text-slate-950 flex items-center justify-center shadow-md shadow-amber-500/20">
+                  <Zap size={20} className="fill-slate-950" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-base">Cài Đặt Lượt Free Chung</h3>
+                  <p className="text-[11px] text-slate-500">Áp dụng cho tất cả tài khoản FREE trên hệ thống</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowGlobalFreeModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-xl hover:bg-white/80 transition-colors cursor-pointer"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleSaveGlobalFreeLimit} className="p-6 space-y-5">
+              {/* Summary info */}
+              <div className="p-4 rounded-2xl bg-amber-50/80 border border-amber-200/80 flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] font-bold text-amber-900 uppercase tracking-wider block">Phạm vi cài đặt</span>
+                  <div className="font-black text-slate-900 text-sm mt-0.5">Tất Cả Tài Khoản FREE</div>
+                  <div className="text-xs text-amber-800 font-medium mt-0.5">
+                    Đồng bộ cho {stats.freeCount} tài khoản & đăng ký mới
+                  </div>
+                </div>
+                <div className="text-right shrink-0">
+                  <span className="text-[10px] text-amber-700 font-bold block uppercase tracking-wider">Hiện tại</span>
+                  <span className="text-base font-black text-amber-700 font-mono">
+                    {globalFreeLimit} lượt/ngày
+                  </span>
+                </div>
+              </div>
+
+              {/* Number input */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                  Số lượt Free mỗi ngày (Lượt / ngày):
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    max="10000"
+                    required
+                    value={globalFreeLimitValue}
+                    onChange={(e) => setGlobalFreeLimitValue(Math.max(0, parseInt(e.target.value) || 0))}
+                    className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-2xl text-base font-black text-slate-900 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 focus:bg-white transition-all font-mono"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400">
+                    lượt / ngày
+                  </span>
+                </div>
+              </div>
+
+              {/* Quick Preset Buttons */}
+              <div>
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-2">
+                  Chọn nhanh định mức:
+                </span>
+                <div className="grid grid-cols-5 gap-2">
+                  {[12, 20, 30, 50, 100].map((num) => {
+                    const isSelected = globalFreeLimitValue === num;
+                    return (
+                      <button
+                        key={num}
+                        type="button"
+                        onClick={() => setGlobalFreeLimitValue(num)}
+                        className={`py-2 px-1 rounded-xl text-xs font-bold border transition-all cursor-pointer text-center active:scale-95 ${
+                          isSelected
+                            ? "bg-amber-500 text-slate-950 border-amber-500 font-black shadow-xs ring-2 ring-amber-500/30"
+                            : "bg-white hover:bg-slate-50 text-slate-700 border-slate-200 hover:border-amber-300"
+                        }`}
+                      >
+                        {num === 12 ? "12 (Gốc)" : num}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Info Note */}
+              <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-[11px] text-slate-600 leading-relaxed space-y-1">
+                <div className="font-bold text-slate-800 flex items-center gap-1">
+                  <CheckCircle2 size={13} className="text-emerald-600" /> Đồng bộ toàn hệ thống:
+                </div>
+                <div>
+                  • Toàn bộ <strong>{stats.freeCount} tài khoản FREE</strong> hiện có sẽ được cập nhật định mức mới ngay lập tức.
+                </div>
+                <div>
+                  • Số lượt dùng AI sẽ tự động làm mới vào lúc <strong>00:00 mỗi ngày (GMT+7)</strong>.
+                </div>
+              </div>
+
+              {/* Modal Actions */}
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowGlobalFreeModal(false)}
+                  className="px-4 py-2.5 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-100 cursor-pointer transition"
+                >
+                  Hủy Bỏ
+                </button>
+                <button
+                  type="submit"
+                  disabled={isPending}
+                  className="px-6 py-2.5 rounded-xl text-xs font-black text-slate-950 bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 shadow-md shadow-amber-500/25 cursor-pointer active:scale-95 transition-all flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  {isPending ? (
+                    <>
+                      <RefreshCw size={13} className="animate-spin" />
+                      <span>Đang lưu...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Save size={13} />
+                      <span>Lưu & Áp Dụng Cho Tất Cả</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

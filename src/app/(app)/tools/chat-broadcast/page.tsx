@@ -18,6 +18,7 @@ import { useToolGate } from "@/hooks/useToolGate";
 import { ChatBroadcastOutput } from "@/components/tools/ChatBroadcastOutput";
 import { TextDots } from "@/components/ui/text-dots";
 import { useToast } from "@/context/ToastContext";
+import { AiUsageBadge } from "@/components/tools/AiUsageBadge";
 
 const SCENARIOS = [
   { id: "cart_abandoned", label: "🛒 Nhắc giỏ hàng bỏ quên (Chưa thanh toán)", desc: "Kéo khách chốt đơn giỏ hàng đang chờ" },
@@ -40,6 +41,7 @@ export default function ChatBroadcastPage() {
 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState("");
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Form states
   const [shopName, setShopName] = useState("");
@@ -109,6 +111,7 @@ export default function ChatBroadcastPage() {
       }
 
       setResult(data.data);
+      setRefreshTrigger((prev) => prev + 1);
     } catch (error: any) {
       showAiError({
         code: "NETWORK_ERROR",
@@ -146,10 +149,11 @@ export default function ChatBroadcastPage() {
         </div>
 
         <div className="flex items-center gap-2">
+          <AiUsageBadge tool="chat-broadcast" refreshTrigger={refreshTrigger} />
           <button
             type="button"
             onClick={handleUseSample}
-            className="px-3 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold hover:bg-emerald-100/50 transition-colors flex items-center gap-1.5 cursor-pointer"
+            className="px-3 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold hover:bg-emerald-100/50 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
           >
             <Sparkles size={14} /> Dữ Liệu Mẫu
           </button>

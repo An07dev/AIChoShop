@@ -19,6 +19,7 @@ import Link from "next/link";
 import { useToolGate } from "@/hooks/useToolGate";
 import { useToast } from "@/context/ToastContext";
 import VideoRepurposerOutput from "@/components/tools/VideoRepurposerOutput";
+import { AiUsageBadge } from "@/components/tools/AiUsageBadge";
 
 const BRAND_TONES = [
   {
@@ -60,6 +61,7 @@ export default function VideoRepurposerPage() {
 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState("");
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   // Form states
   const [videoScript, setVideoScript] = useState("");
@@ -141,6 +143,7 @@ export default function VideoRepurposerPage() {
 
       if (data.success && data.data) {
         setResult(data.data);
+        setRefreshTrigger((prev) => prev + 1);
       } else {
         showAiError(data, "Không thể chuyển đổi nội dung đa kênh");
       }
@@ -187,6 +190,7 @@ export default function VideoRepurposerPage() {
 
         {/* Nút hành động nhanh */}
         <div className="flex items-center gap-2">
+          <AiUsageBadge tool="video-repurposer" refreshTrigger={refreshTrigger} />
           <button
             type="button"
             onClick={handleUseSample}

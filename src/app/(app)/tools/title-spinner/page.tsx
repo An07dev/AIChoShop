@@ -7,6 +7,7 @@ import { useToolGate } from "@/hooks/useToolGate";
 import { TitleSpinnerOutput } from "@/components/tools/TitleSpinnerOutput";
 import { TextDots } from "@/components/ui/text-dots";
 import { useToast } from "@/context/ToastContext";
+import { AiUsageBadge } from "@/components/tools/AiUsageBadge";
 
 export default function TitleSpinner() {
   const { checkAccess, GateModals } = useToolGate();
@@ -15,6 +16,7 @@ export default function TitleSpinner() {
   const [result, setResult] = useState("");
 
   const [originalTitle, setOriginalTitle] = useState("");
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const handleGenerate = async () => {
     // const hasAccess = await checkAccess("title-spinner", true); // VIP Only
@@ -41,6 +43,7 @@ export default function TitleSpinner() {
       const data = await response.json();
       if (data.success) {
         setResult(data.data);
+        setRefreshTrigger((prev) => prev + 1);
       } else {
         showAiError(data, "Có lỗi xảy ra khi gọi AI");
       }
@@ -78,6 +81,7 @@ export default function TitleSpinner() {
             </div>
           </div>
         </div>
+        <AiUsageBadge tool="title-spinner" refreshTrigger={refreshTrigger} />
       </div>
 
       {/* Khu vực thao tác chính 2 cột chiếm trọn phần chiều cao còn lại */}

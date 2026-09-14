@@ -129,8 +129,9 @@ export async function createUserByAdmin(data: {
   phone?: string;
   isVIP?: boolean;
   role?: "USER" | "ADMIN";
+  dailyFreeLimit?: number;
 }) {
-  const { email, password, name, phone, isVIP = false, role = "USER" } = data;
+  const { email, password, name, phone, isVIP = false, role = "USER", dailyFreeLimit = 12 } = data;
 
   if (!email || !password) {
     return { success: false, error: "Vui lòng nhập đầy đủ Email và Mật khẩu" };
@@ -145,7 +146,7 @@ export async function createUserByAdmin(data: {
       return { success: false, error: "Email này đã tồn tại trong hệ thống" };
     }
 
-    await prisma.user.create({
+    const created = await prisma.user.create({
       data: {
         email: email.trim().toLowerCase(),
         password: hashPassword(password),
@@ -160,6 +161,17 @@ export async function createUserByAdmin(data: {
         },
       },
     });
+
+    const limit = Number(dailyFreeLimit) || 12;
+    try {
+      await (prisma as any).$executeRawUnsafe(
+        'UPDATE "User" SET "dailyFreeLimit" = $1 WHERE id = $2',
+        limit,
+        created.id
+      );
+    } catch (e) {
+      console.warn("Could not set dailyFreeLimit on create:", e);
+    }
 
     revalidatePath("/admin/users");
     revalidatePath("/admin");
@@ -204,5 +216,60 @@ export async function deleteUserByAdmin(userId: string) {
   } catch (error) {
     console.error("Error deleting user:", error);
     return { success: false, error: "Không thể xóa tài khoản này" };
+  }
+}
+
+// Cập nhật số lượt dùng Free mỗi ngày cho 1 tài khoản cụ thể
+export async function updateUserDailyFreeLimit(userId: string, newLimit: number) {
+  try {
+    const limit = Math.max(0, Math.floor(Number(newLimit) || 0));
+    try {
+      await (prisma.user as any).update({
+        where: { id: userId },
+        data: { dailyFreeLimit: limit },
+      });
+    } catch {
+      await (prisma as any).$executeRawUnsafe(
+        'UPDATE "User" SET "dailyFreeLimit" = $1 WHERE id = $2',
+        limit,
+        userId
+      );
+    }
+    revalidatePath("/admin/users");
+    revalidatePath("/admin");
+    revalidatePath("/dashboard");
+    return { success: true, dailyFreeLimit: limit };
+  } catch (error: any) {
+    console.error("Error updating user free limit:", error);
+    return { success: false, error: error?.message || "Không thể cập nhật số lượt free" };
+  }
+}
+
+// Cập nhật số lượt dùng Free mỗi ngày áp dụng CHUNG cho TẤT CẢ các tài khoản FREE
+export async function updateGlobalDailyFreeLimit(newLimit: number) {
+  try {
+    const limit = Math.max(0, Math.floor(Number(newLimit) || 0));
+
+    // 1. Lưu cấu hình chung vào SystemSetting
+    await prisma.$executeRawUnsafe(
+      `UPDATE "SystemSetting" SET "defaultDailyFreeLimit" = $1 WHERE id = 'default'`,
+      limit
+    );
+
+    // 2. Cập nhật đồng loạt cho TẤT CẢ tài khoản trong bảng User
+    await prisma.$executeRawUnsafe(
+      `UPDATE "User" SET "dailyFreeLimit" = $1`,
+      limit
+    );
+
+    revalidatePath("/admin/users");
+    revalidatePath("/admin");
+    revalidatePath("/dashboard");
+    revalidatePath("/profile");
+
+    return { success: true, defaultDailyFreeLimit: limit };
+  } catch (error: any) {
+    console.error("Error updating global daily free limit:", error);
+    return { success: false, error: error?.message || "Không thể cập nhật số lượt Free chung" };
   }
 }

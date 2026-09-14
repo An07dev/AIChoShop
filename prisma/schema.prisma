@@ -17,13 +17,15 @@ model User {
   phone        String?
   role         Role          @default(USER)
   isVIP        Boolean       @default(false)
-  vipExpiresAt DateTime?
-  isLocked     Boolean       @default(false)
+  vipExpiresAt   DateTime?
+  dailyFreeLimit Int           @default(12)
+  isLocked       Boolean       @default(false)
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
   userCredit   UserCredit?
   transactions Transaction[]
   progress     Progress[]
+  aiUsageLogs  AiUsageLog[]
 }
 
 enum Role {
@@ -159,7 +161,22 @@ model SystemSetting {
   openaiApiKey   String?  @db.Text
   openaiModel    String   @default("gpt-4o-mini")
   openaiBaseUrl  String?
+  defaultDailyFreeLimit Int      @default(12)
   isOpenAiActive Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+}
+
+model AiUsageLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tool      String   // slug: e.g. "seo-optimizer", "script-writer"
+  toolName  String   // e.g. "AI Tối Ưu SEO", "AI Kịch Bản Video"
+  action    String   // Tóm tắt hành động
+  input     String?  @db.Text // Tóm tắt hoặc JSON input
+  output    String?  @db.Text // Nội dung đã sinh ra
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
 }

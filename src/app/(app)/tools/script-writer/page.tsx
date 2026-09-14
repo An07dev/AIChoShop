@@ -7,6 +7,7 @@ import { useToolGate } from "@/hooks/useToolGate";
 import { ScriptWriterOutput } from "@/components/tools/ScriptWriterOutput";
 import { TextDots } from "@/components/ui/text-dots";
 import { useToast } from "@/context/ToastContext";
+import { AiUsageBadge } from "@/components/tools/AiUsageBadge";
 
 export default function ScriptWriter() {
   const { checkAccess, GateModals } = useToolGate();
@@ -16,6 +17,7 @@ export default function ScriptWriter() {
 
   const [productName, setProductName] = useState("");
   const [usp, setUsp] = useState("");
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const handleGenerate = async () => {
     const hasAccess = await checkAccess("script-writer", true); // VIP Only
@@ -42,6 +44,7 @@ export default function ScriptWriter() {
       const data = await response.json();
       if (data.success) {
         setResult(data.data);
+        setRefreshTrigger((prev) => prev + 1);
       } else {
         showAiError(data, "Có lỗi xảy ra khi tạo kịch bản video");
       }
@@ -88,6 +91,7 @@ export default function ScriptWriter() {
             </div>
           </div>
         </div>
+        <AiUsageBadge tool="script-writer" refreshTrigger={refreshTrigger} />
       </div>
 
       {/* Khu vực thao tác chính 2 cột chiếm trọn phần chiều cao còn lại */}

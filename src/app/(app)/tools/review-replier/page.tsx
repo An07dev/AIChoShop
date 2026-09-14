@@ -16,6 +16,7 @@ import { useToolGate } from "@/hooks/useToolGate";
 import { ReviewReplierOutput } from "@/components/tools/ReviewReplierOutput";
 import { TextDots } from "@/components/ui/text-dots";
 import { useToast } from "@/context/ToastContext";
+import { AiUsageBadge } from "@/components/tools/AiUsageBadge";
 
 const QUICK_TAGS = [
   { label: "Giao sai màu / kích thước", sample: "Shop làm ăn chán quá, đặt size L áo đen giao size M áo trắng. Đề nghị hoàn tiền gấp!" },
@@ -31,6 +32,7 @@ export default function ReviewReplier() {
   const { showAiError, showWarning } = useToast();
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState("");
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const [rating, setRating] = useState<string>("1 sao");
   const [selectedTag, setSelectedTag] = useState<string>("");
@@ -88,6 +90,7 @@ export default function ReviewReplier() {
       const data = await response.json();
       if (data.success) {
         setResult(data.data);
+        setRefreshTrigger((prev) => prev + 1);
       } else {
         showAiError(data, "Có lỗi xảy ra khi tạo phản hồi đánh giá");
       }
@@ -132,14 +135,17 @@ export default function ReviewReplier() {
           </div>
         </div>
 
-        {/* Nút thử nội dung mẫu */}
-        <button
-          onClick={handleUseSample}
-          className="text-xs font-semibold text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95"
-        >
-          <Sparkle size={13} className="text-amber-500 fill-amber-500" />
-          <span>Thử mẫu 1 sao</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <AiUsageBadge tool="review-replier" refreshTrigger={refreshTrigger} />
+          {/* Nút thử nội dung mẫu */}
+          <button
+            onClick={handleUseSample}
+            className="text-xs font-semibold text-amber-600 hover:text-amber-700 bg-amber-50 hover:bg-amber-100 border border-amber-200 px-3 py-1.5 rounded-lg transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+          >
+            <Sparkle size={13} className="text-amber-500 fill-amber-500" />
+            <span>Thử mẫu 1 sao</span>
+          </button>
+        </div>
       </div>
 
       {/* Khu vực thao tác chính 2 cột chiếm trọn chiều cao còn lại */}
