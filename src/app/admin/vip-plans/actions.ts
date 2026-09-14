@@ -1,11 +1,14 @@
 "use server";
 
+import { requireAdmin } from "@/lib/auth/session";
+
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { DEFAULT_VIP_PLANS } from "@/lib/vip-plans";
 
 // Lấy danh sách toàn bộ gói VIP (cho Admin)
 export async function getAdminVipPlans() {
+  await requireAdmin();
   try {
     const plans = await prisma.vipPlan.findMany({
       orderBy: { order: "asc" },
@@ -19,6 +22,7 @@ export async function getAdminVipPlans() {
 
 // Bật / Tắt trạng thái hiển thị của gói VIP (1-click)
 export async function toggleVipPlanActive(planId: string, currentActive: boolean) {
+  await requireAdmin();
   try {
     const updated = await prisma.vipPlan.update({
       where: { id: planId },
@@ -38,6 +42,7 @@ export async function toggleVipPlanActive(planId: string, currentActive: boolean
 
 // Đặt gói VIP làm Best Seller (Phổ biến nhất)
 export async function toggleVipPlanPopular(planId: string, currentPopular: boolean) {
+  await requireAdmin();
   try {
     const updated = await prisma.vipPlan.update({
       where: { id: planId },
@@ -70,6 +75,7 @@ export async function createVipPlan(data: {
   order?: number;
   active?: boolean;
 }) {
+  await requireAdmin();
   try {
     if (!data.name || !data.name.trim()) {
       return { success: false, error: "Vui lòng nhập tên gói VIP" };
@@ -147,6 +153,7 @@ export async function updateVipPlan(
     active?: boolean;
   }
 ) {
+  await requireAdmin();
   try {
     const existing = await prisma.vipPlan.findUnique({ where: { id } });
     if (!existing) {
@@ -208,6 +215,7 @@ export async function updateVipPlan(
 
 // Xóa gói VIP
 export async function deleteVipPlan(id: string) {
+  await requireAdmin();
   try {
     const existing = await prisma.vipPlan.findUnique({ where: { id } });
     if (!existing) {
@@ -229,6 +237,7 @@ export async function deleteVipPlan(id: string) {
 
 // Khôi phục 3 gói VIP mặc định
 export async function seedDefaultVipPlans() {
+  await requireAdmin();
   try {
     for (const plan of DEFAULT_VIP_PLANS) {
       await prisma.vipPlan.upsert({

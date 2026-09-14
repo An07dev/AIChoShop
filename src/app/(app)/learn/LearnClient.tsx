@@ -157,11 +157,8 @@ export default function LearnClient({
 
   // Tính % tiến độ hoàn thành khóa học (chỉ tính các bài học thuộc khóa học đang xem)
   const totalLessonsCount = allLessons.length;
-  const courseLessonIds = useMemo(() => new Set(allLessons.map((l) => l.id)), [allLessons]);
-  const completedCount = useMemo(
-    () => completedIds.filter((id) => courseLessonIds.has(id)).length,
-    [completedIds, courseLessonIds]
-  );
+  const courseLessonIds = new Set(allLessons.map((l) => l.id));
+  const completedCount = completedIds.filter((id) => courseLessonIds.has(id)).length;
   const progressPercent =
     totalLessonsCount > 0
       ? Math.min(100, Math.round((completedCount / totalLessonsCount) * 100))
@@ -182,7 +179,7 @@ export default function LearnClient({
     );
 
     startTransition(async () => {
-      const res = await toggleLessonProgress(activeLesson.id);
+      const res = await toggleLessonProgress(activeLesson.id, nextCompleted);
       if (!res.success) {
         // Rollback nếu lỗi
         setCompletedIds((prev) =>

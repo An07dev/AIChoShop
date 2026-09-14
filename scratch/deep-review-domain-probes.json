@@ -1,0 +1,17 @@
+{
+  "companyUnderOneBillion": {
+    "revenue": 800000000,
+    "previousYearRevenue": 800000000,
+    "incomeTax": 45000000,
+    "isExempt": false
+  },
+  "unrelatedCategorySuggestion": {
+    "id": "shopee-6",
+    "level3": "Laptop"
+  },
+  "feeRows": 3696,
+  "feePlatforms": {
+    "shopee": 1656,
+    "tiktok": 2040
+  }
+}

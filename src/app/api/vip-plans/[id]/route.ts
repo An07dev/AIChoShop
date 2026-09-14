@@ -1,3 +1,4 @@
+import { adminRouteGuard } from "@/lib/auth/session";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -15,7 +16,7 @@ export async function GET(req: Request, { params }: Params) {
       },
     });
 
-    if (!plan) {
+    if (!plan || (!plan.active && await adminRouteGuard(req))) {
       return NextResponse.json(
         { success: false, error: "Không tìm thấy gói VIP" },
         { status: 404 }
@@ -34,6 +35,8 @@ export async function GET(req: Request, { params }: Params) {
 
 // PUT /api/vip-plans/[id] - Cập nhật toàn bộ thông tin gói VIP
 export async function PUT(req: Request, { params }: Params) {
+  const denial = await adminRouteGuard(req);
+  if (denial) return denial;
   try {
     const { id } = await params;
     const body = await req.json();
@@ -122,6 +125,8 @@ export async function PUT(req: Request, { params }: Params) {
 
 // PATCH /api/vip-plans/[id] - Cập nhật nhanh một số trường (Bật/Tắt active, isPopular)
 export async function PATCH(req: Request, { params }: Params) {
+  const denial = await adminRouteGuard(req);
+  if (denial) return denial;
   try {
     const { id } = await params;
     const body = await req.json();
@@ -159,6 +164,8 @@ export async function PATCH(req: Request, { params }: Params) {
 
 // DELETE /api/vip-plans/[id] - Xóa gói VIP
 export async function DELETE(req: Request, { params }: Params) {
+  const denial = await adminRouteGuard(req);
+  if (denial) return denial;
   try {
     const { id } = await params;
     const existing = await prisma.vipPlan.findUnique({ where: { id } });

@@ -1,16 +1,19 @@
+import { adminRouteGuard } from "@/lib/auth/session";
 import { NextResponse } from "next/server";
 import { getSystemSettings, updateSystemSettings } from "@/lib/system-settings";
 
-// GET /api/settings/openai - Gọi field token và cấu hình OpenAI để sử dụng
+// Admin-only metadata. Provider credentials are never returned to the browser.
 export async function GET() {
+  const denial = await adminRouteGuard();
+  if (denial) return denial;
   try {
     const settings = await getSystemSettings();
     const token = settings.openaiApiKey || process.env.OPENAI_API_KEY?.trim().replace(/^["']|["']$/g, "") || "";
 
     return NextResponse.json({
       success: true,
-      token: token,
-      apiKey: token,
+
+
       model: settings.openaiModel || "gpt-4o-mini",
       isOpenAiActive: settings.isOpenAiActive,
       baseURL: settings.openaiBaseUrl || null,
@@ -22,8 +25,8 @@ export async function GET() {
       {
         success: false,
         error: "Không thể lấy cấu hình OpenAI",
-        token: "",
-        apiKey: "",
+
+
       },
       { status: 500 }
     );
@@ -32,6 +35,8 @@ export async function GET() {
 
 // POST /api/settings/openai - Lưu token / apiKey vào Database
 export async function POST(req: Request) {
+  const denial = await adminRouteGuard(req);
+  if (denial) return denial;
   try {
     const body = await req.json();
     const {
@@ -63,8 +68,8 @@ export async function POST(req: Request) {
     return NextResponse.json({
       success: true,
       message: "Lưu cấu hình OpenAI thành công",
-      token: finalToken,
-      apiKey: finalToken,
+
+
       model: updated.openaiModel,
       isOpenAiActive: updated.isOpenAiActive,
       baseURL: updated.openaiBaseUrl,
@@ -75,7 +80,7 @@ export async function POST(req: Request) {
     return NextResponse.json(
       {
         success: false,
-        error: error?.message || "Lỗi hệ thống khi lưu cấu hình OpenAI",
+        error: "Lỗi hệ thống khi lưu cấu hình OpenAI",
       },
       { status: 500 }
     );

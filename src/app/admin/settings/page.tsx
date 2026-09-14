@@ -1,3 +1,5 @@
+
+import { requireAdmin } from "@/lib/auth/session";
 import { Metadata } from "next";
 import { getSystemSettings } from "@/lib/system-settings";
 import { SystemSettingsManager } from "@/components/admin/SystemSettingsManager";
@@ -10,13 +12,14 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminSettingsPage() {
+  await requireAdmin();
   const settings = await getSystemSettings();
 
   return (
     <SystemSettingsManager
       initialSettings={{
         id: settings.id,
-        openaiApiKey: settings.openaiApiKey,
+        configured: Boolean(settings.openaiApiKey || process.env.OPENAI_API_KEY),
         openaiModel: settings.openaiModel,
         openaiBaseUrl: settings.openaiBaseUrl,
         isOpenAiActive: settings.isOpenAiActive,

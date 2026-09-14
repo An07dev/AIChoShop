@@ -3,6 +3,9 @@ import { LogOut, ShieldAlert } from "lucide-react";
 import { AdminNav } from "@/components/admin/AdminNav";
 import { AdminTopBar } from "@/components/admin/AdminTopBar";
 import type { Metadata } from "next";
+import { getSessionUser } from "@/lib/auth/session";
+import { redirect } from "next/navigation";
+import { logoutUser } from "@/app/actions/auth";
 
 export const metadata: Metadata = {
   title: {
@@ -12,7 +15,9 @@ export const metadata: Metadata = {
   description: "Bảng điều khiển và quản trị hệ thống đào tạo, công cụ AI bán hàng AIChoShop.",
 };
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const user = await getSessionUser();
+  if (user?.role !== "ADMIN") redirect("/admin-login");
   return (
     <div className="min-h-screen bg-slate-50 flex admin-root">
       {/* Admin Sidebar */}
@@ -28,9 +33,9 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         <AdminNav />
 
         <div className="p-4 border-t border-slate-800">
-          <Link href="/dashboard" className="flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
+          <form action={logoutUser}><button type="submit" className="flex items-center gap-3 px-4 py-3 rounded-lg font-medium text-slate-400 hover:text-white hover:bg-slate-800 transition-colors">
             <LogOut size={20} /> Thoát Admin
-          </Link>
+          </button></form>
         </div>
       </aside>
 

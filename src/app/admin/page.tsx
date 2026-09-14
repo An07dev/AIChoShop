@@ -1,3 +1,5 @@
+
+import { requireAdmin } from "@/lib/auth/session";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { AdminCharts } from "@/components/admin/AdminCharts";
@@ -70,6 +72,7 @@ function timeAgo(date: Date | string) {
 }
 
 export default async function AdminDashboard() {
+  await requireAdmin();
   let userCount = 0;
   let vipCount = 0;
   let lessonCount = 0;

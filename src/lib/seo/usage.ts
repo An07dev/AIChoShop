@@ -1,3 +1,4 @@
+import type { Prisma } from "@prisma/client";
 import { randomUUID, randomBytes } from "node:crypto";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
@@ -14,15 +15,6 @@ export async function seoIdentity() {
       WHERE s."tokenHash" = ${hashToken(token)} AND s."expiresAt" > NOW()`;
     if (users[0]?.isLocked) throw new SeoError("ACCOUNT_LOCKED", "Tài khoản đang bị khóa. Vui lòng liên hệ hỗ trợ.", 403);
     if (users[0]) return { id: `user:${users[0].id}`, userId: users[0].id, anonymous: false };
-  }
-  const userToken = store.get("user_token")?.value;
-  if (userToken) {
-    const user = await prisma.user.findUnique({
-      where: { id: userToken },
-      select: { id: true, isLocked: true },
-    });
-    if (user?.isLocked) throw new SeoError("ACCOUNT_LOCKED", "Tài khoản đang bị khóa. Vui lòng liên hệ hỗ trợ.", 403);
-    if (user) return { id: `user:${user.id}`, userId: user.id, anonymous: false };
   }
   let visitor = store.get("seo_visitor")?.value;
   const known = visitor && /^[a-f0-9]{64}$/.test(visitor)
@@ -51,8 +43,8 @@ export async function reserveSeo(identity: { id: string; anonymous: boolean }) {
 }
 
 export type RunMetrics = { model: string; provider: string; inputTokens: number; outputTokens: number; durationMs: number };
-export async function finishSeo(subject: string, runId: string, success: boolean, metrics: RunMetrics, errorCode: string | null) {
-  return prisma.$transaction(async tx => {
+export async function finishSeo(subject: string, runId: string, success: boolean, metrics: RunMetrics, errorCode: string | null, transaction?: Prisma.TransactionClient) {
+  const finish = async (tx: Prisma.TransactionClient) => {
     const rows = await tx.$queryRaw<{ successes: number }[]>`UPDATE "SeoUsage"
       SET "successes" = "successes" + ${success ? 1 : 0}, "leaseId" = NULL, "leaseUntil" = NULL, "updatedAt" = NOW()
       WHERE "id" = ${subject} AND "leaseId" = ${runId} RETURNING "successes"`;
@@ -61,5 +53,6 @@ export async function finishSeo(subject: string, runId: string, success: boolean
       "provider" = ${metrics.provider}, "inputTokens" = ${metrics.inputTokens}, "outputTokens" = ${metrics.outputTokens},
       "durationMs" = ${metrics.durationMs}, "errorCode" = ${errorCode} WHERE "id" = ${runId}`;
     return rows[0].successes;
-  });
+  };
+  return transaction ? finish(transaction) : prisma.$transaction(finish);
 }

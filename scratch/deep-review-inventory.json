@@ -1,0 +1,4086 @@
+[
+  {
+    "file": "src/app/(app)/courses/CoursesClient.tsx",
+    "lines": 748,
+    "bytes": 37364,
+    "client": true,
+    "imports": [
+      "react",
+      "next/link",
+      "lucide-react",
+      "@/lib/video"
+    ],
+    "functions": [
+      {
+        "name": "CoursesClient",
+        "line": 54
+      }
+    ],
+    "effects": [
+      {
+        "line": 69,
+        "code": "useEffect(() => {\n    if (initialModule) {\n      setSelectedModule(initialModule);\n    }\n  }, [initialModule])"
+      },
+      {
+        "line": 76,
+        "code": "useEffect(() => {\n    if (initialCourseId) {\n      setSelectedCourseId(initialCourseId);\n    }\n  }, [initialCourseId])"
+      },
+      {
+        "line": 83,
+        "code": "useEffect(() => {\n    setSelectedModule(\"ALL\");\n  }, [selectedCourseId])"
+      },
+      {
+        "line": 116,
+        "code": "useMemo(() => {\n    return courses.flatMap((c) => c.lessons);\n  }, [courses])"
+      },
+      {
+        "line": 121,
+        "code": "useMemo(() => {\n    if (selectedCourseId === \"ALL\") {\n      return allLessons;\n    }\n    return courses.find((c) => c.id === selectedCourseId)?.lessons || [];\n  }, [allLessons, selectedCourseId, courses])"
+      },
+      {
+        "line": 129,
+        "code": "useMemo(() => {\n    const set = new Set<string>();\n    scopeLessons.forEach((l) => {\n      if (l.moduleName && l.moduleName.trim()) {\n        set.add(l.moduleName.trim());\n      }\n    });\n    return Array.from(set);\n  }, [scopeLessons])"
+      },
+      {
+        "line": 149,
+        "code": "useMemo(() => {\n    return courses\n      .filter((course) => selectedCourseId === \"ALL\" || course.id === selectedCourseId)\n      .map((course) => {\n        const filteredLessons = course.lessons.filter((lesson) => {\n          // Tìm kiếm theo từ khóa\n          if (searchQuery.trim()) {\n            const q = searchQuery.toLowerCase().trim();\n            const matchTitle = lesson.title.toLowerCase().includes(q);\n            const matchModule = lesson.moduleName?.toLowerCase().includes(q);\n            const matchContent = lesson.content?.toLowerCase().includes(q);\n            const matchOrder = lesson.order.toString().includes(q);\n            if (!matchTitle && !matchModule && !matchContent && !matchOrder) {\n              return false;\n            }\n          }\n\n          // Lọc theo FREE / VIP\n          if (filterType === \"FREE\" && lesson.isVIP) return false;\n          if (filterType === \"VIP\" && !lesson.isVIP) return false;\n\n          // Lọc theo Module\n          if (selectedModule !== "
+      }
+    ],
+    "links": [
+      {
+        "line": 245,
+        "target": "{\n                selectedCourseId !== \"ALL\" && scopeLessons[0]?.id\n                  ? `/learn?lessonId=${scopeLessons[0].id}`\n                  : \"/learn\"\n              }"
+      },
+      {
+        "line": 442,
+        "target": "{`/learn?lessonId=${course.lessons[0]?.id || \"\"}`}"
+      },
+      {
+        "line": 492,
+        "target": "{ytThumbnail}"
+      },
+      {
+        "line": 580,
+        "target": "{`/learn?lessonId=${lesson.id}`}"
+      },
+      {
+        "line": 662,
+        "target": "\"/profile#pricing-section\""
+      },
+      {
+        "line": 669,
+        "target": "\"/login\""
+      },
+      {
+        "line": 693,
+        "target": "{info.embedUrl}"
+      },
+      {
+        "line": 704,
+        "target": "{info.embedUrl}"
+      },
+      {
+        "line": 734,
+        "target": "{`/learn?lessonId=${previewLesson.id}`}"
+      }
+    ]
+  },
+  {
+    "file": "src/app/(app)/courses/page.tsx",
+    "lines": 88,
+    "bytes": 2635,
+    "client": false,
+    "imports": [
+      "@/lib/prisma",
+      "next/headers",
+      "./CoursesClient",
+      "next"
+    ],
+    "functions": [
+      {
+        "name": "CoursesPage",
+        "line": 13
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/(app)/dashboard/page.tsx",
+    "lines": 340,
+    "bytes": 17515,
+    "client": false,
+    "imports": [
+      "next/headers",
+      "@/lib/prisma",
+      "next/link",
+      "lucide-react",
+      "next/navigation",
+      "@/lib/ai-usage"
+    ],
+    "functions": [
+      {
+        "name": "DashboardPage",
+        "line": 19
+      }
+    ],
+    "effects": [],
+    "links": [
+      {
+        "line": 65,
+        "target": "\"/courses\""
+      },
+      {
+        "line": 71,
+        "target": "\"/tools\""
+      },
+      {
+        "line": 113,
+        "target": "\"/profile#pricing-section\""
+      },
+      {
+        "line": 184,
+        "target": "\"/courses\""
+      },
+      {
+        "line": 223,
+        "target": "\"/tools\""
+      },
+      {
+        "line": 272,
+        "target": "\"/tools/seo-optimizer\""
+      },
+      {
+        "line": 290,
+        "target": "\"/tools/script-writer\""
+      },
+      {
+        "line": 313,
+        "target": "\"/tools/appeal-generator\""
+      }
+    ]
+  },
+  {
+    "file": "src/app/(app)/layout.tsx",
+    "lines": 79,
+    "bytes": 2379,
+    "client": false,
+    "imports": [
+      "@/components/layout/sidebar",
+      "@/components/layout/header",
+      "@/components/layout/footer",
+      "next/headers",
+      "@/lib/prisma"
+    ],
+    "functions": [
+      {
+        "name": "AppLayout",
+        "line": 7
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/(app)/learn/LearnClient.tsx",
+    "lines": 555,
+    "bytes": 26168,
+    "client": true,
+    "imports": [
+      "react",
+      "lucide-react",
+      "next/link",
+      "@/lib/video",
+      "@/app/actions/learn"
+    ],
+    "functions": [
+      {
+        "name": "LearnClient",
+        "line": 58
+      }
+    ],
+    "effects": [
+      {
+        "line": 69,
+        "code": "useMemo(() => {\n    return modules.flatMap((m) => m.lessons);\n  }, [modules])"
+      },
+      {
+        "line": 82,
+        "code": "useEffect(() => {\n    if (initialLessonId) {\n      const target = allLessons.find((l) => l.id === initialLessonId);\n      if (target) {\n        setActiveLesson(target);\n        return;\n      }\n    }\n    // Nếu activeLesson hiện tại không thuộc allLessons của khóa học mới, chuyển sang bài đầu tiên\n    if (allLessons.length > 0 && (!activeLesson || !allLessons.some((l) => l.id === activeLesson.id))) {\n      setActiveLesson(allLessons[0]);\n    }\n  }, [initialLessonId, allLessons])"
+      },
+      {
+        "line": 107,
+        "code": "useEffect(() => {\n    console.group(\"🎓 [AIChoShop] DỮ LIỆU KHÓA HỌC & BÀI HỌC TỪ DATABASE:\");\n    console.log(\"📌 Tên Khóa Học:\", courseTitle);\n    console.log(\"👑 Quyền Hạn User:\", {\n      isLogged,\n      isUserVIP,\n      userTier: isUserVIP ? \"VIP PRO (Mở khóa toàn bộ)\" : \"Tài khoản FREE\",\n    });\n    console.log(\"📊 Thống Kê:\", {\n      tongSoPhan: modules.length,\n      tongSoBaiHoc: allLessons.length,\n      daHoanThanh: `${allLessons.filter((l) => initialCompletedLessonIds.includes(l.id)).length}/${allLessons.length}`,\n    });\n    console.log(\"📚 Danh Sách Học Phần & Bài Học (Phân Quyền VIP/FREE):\");\n    console.table(\n      allLessons.map((l) => ({\n        STT: l.order,\n        \"Tiêu Đề\": l.fullTitle || l.title,\n        \"Phân Quyền\": l.isVIP ? \"👑 VIP PRO\" : \"✨ FREE\",\n        \"Quyền Xem\": !l.isVIP || isUserVIP ? \"✅ Được xem\" : \"🔒 Bị khóa (Cần VIP)\",\n        \"Link Video\": l.videoUrl ? l.videoUrl.slice(0, 40) + \"...\" : \"(Chưa có)\",\n      }))\n    );\n    console.groupEnd();\n  }, [cou"
+      },
+      {
+        "line": 160,
+        "code": "useMemo(() => new Set(allLessons.map((l) => l.id)), [allLessons])"
+      },
+      {
+        "line": 161,
+        "code": "useMemo(\n    () => completedIds.filter((id) => courseLessonIds.has(id)).length,\n    [completedIds, courseLessonIds]\n  )"
+      }
+    ],
+    "links": [
+      {
+        "line": 241,
+        "target": "\"/profile#pricing-section\""
+      },
+      {
+        "line": 250,
+        "target": "\"/login\""
+      },
+      {
+        "line": 263,
+        "target": "{videoInfo.embedUrl}"
+      },
+      {
+        "line": 271,
+        "target": "{videoInfo.embedUrl}"
+      }
+    ]
+  },
+  {
+    "file": "src/app/(app)/learn/page.tsx",
+    "lines": 154,
+    "bytes": 4221,
+    "client": false,
+    "imports": [
+      "@/lib/prisma",
+      "./LearnClient",
+      "next/headers"
+    ],
+    "functions": [
+      {
+        "name": "LearnPage",
+        "line": 7
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/(app)/profile/page.tsx",
+    "lines": 128,
+    "bytes": 3558,
+    "client": false,
+    "imports": [
+      "next/headers",
+      "@/lib/prisma",
+      "next/navigation",
+      "next",
+      "./ProfileClient",
+      "@/lib/vip-plans-server",
+      "@/lib/sepay-server",
+      "@/lib/vip-expiration"
+    ],
+    "functions": [
+      {
+        "name": "ProfilePage",
+        "line": 17
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/(app)/profile/ProfileClient.tsx",
+    "lines": 1595,
+    "bytes": 93850,
+    "client": true,
+    "imports": [
+      "react",
+      "lucide-react",
+      "next/link",
+      "@/app/actions/profile",
+      "@/app/actions/auth",
+      "@/lib/vip-plans"
+    ],
+    "functions": [
+      {
+        "name": "ProfileClient",
+        "line": 105
+      }
+    ],
+    "effects": [
+      {
+        "line": 161,
+        "code": "useEffect(() => {\n    setQrImgSrc(qrUrl);\n  }, [qrUrl])"
+      },
+      {
+        "line": 166,
+        "code": "useEffect(() => {\n    const handleKeyDown = (e: KeyboardEvent) => {\n      if (e.key === \"Escape\" && isPaymentModalOpen) {\n        setIsPaymentModalOpen(false);\n        setVipSuccessNotice(null);\n      }\n    };\n    window.addEventListener(\"keydown\", handleKeyDown);\n    return () => window.removeEventListener(\"keydown\", handleKeyDown);\n  }, [isPaymentModalOpen])"
+      },
+      {
+        "line": 178,
+        "code": "useEffect(() => {\n    if (!isPaymentModalOpen || user.isVIP) return;\n\n    const interval = setInterval(async () => {\n      try {\n        const res = await checkCurrentUserVipStatus();\n        if (res.isVIP) {\n          clearInterval(interval);\n          setVipSuccessNotice(\n            \"🎉 Chúc mừng bạn! Hệ thống SePay đã ghi nhận thanh toán thành công và kích hoạt VIP. Đang làm mới hệ thống...\"\n          );\n          setTimeout(() => {\n            window.location.reload();\n          }, 1800);\n        }\n      } catch {\n        // ignore polling error\n      }\n    }, 3000);\n\n    return () => clearInterval(interval);\n  }, [isPaymentModalOpen, user.isVIP])"
+      },
+      {
+        "line": 181,
+        "code": "setInterval(async () => {\n      try {\n        const res = await checkCurrentUserVipStatus();\n        if (res.isVIP) {\n          clearInterval(interval);\n          setVipSuccessNotice(\n            \"🎉 Chúc mừng bạn! Hệ thống SePay đã ghi nhận thanh toán thành công và kích hoạt VIP. Đang làm mới hệ thống...\"\n          );\n          setTimeout(() => {\n            window.location.reload();\n          }, 1800);\n        }\n      } catch {\n        // ignore polling error\n      }\n    }, 3000)"
+      },
+      {
+        "line": 202,
+        "code": "useEffect(() => {\n    const handleHash = () => {\n      if (typeof window !== \"undefined\" && window.location.hash === \"#pricing-section\") {\n        setActiveTab(\"vip\");\n        setTimeout(() => {\n          const el = document.getElementById(\"pricing-section\");\n          if (el) {\n            el.scrollIntoView({ behavior: \"smooth\", block: \"start\" });\n          }\n        }, 150);\n      }\n    };\n\n    handleHash();\n    window.addEventListener(\"hashchange\", handleHash);\n    return () => window.removeEventListener(\"hashchange\", handleHash);\n  }, [])"
+      }
+    ],
+    "links": [
+      {
+        "line": 523,
+        "target": "\"/learn\""
+      },
+      {
+        "line": 530,
+        "target": "\"/tools\""
+      },
+      {
+        "line": 537,
+        "target": "\"https://zalo.me\""
+      },
+      {
+        "line": 869,
+        "target": "\"https://zalo.me\""
+      },
+      {
+        "line": 896,
+        "target": "\"https://zalo.me\""
+      },
+      {
+        "line": 919,
+        "target": "\"/tools\""
+      },
+      {
+        "line": 929,
+        "target": "\"/tools/tiktok-script\""
+      },
+      {
+        "line": 944,
+        "target": "\"/tools/seo-optimizer\""
+      },
+      {
+        "line": 959,
+        "target": "\"/tools/tax-calculator\""
+      },
+      {
+        "line": 974,
+        "target": "\"/learn\""
+      },
+      {
+        "line": 1217,
+        "target": "{qrImgSrc}"
+      },
+      {
+        "line": 1337,
+        "target": "\"https://zalo.me\""
+      },
+      {
+        "line": 1499,
+        "target": "\"/courses\""
+      }
+    ]
+  },
+  {
+    "file": "src/app/(app)/settings/page.tsx",
+    "lines": 43,
+    "bytes": 1065,
+    "client": false,
+    "imports": [
+      "next/headers",
+      "@/lib/prisma",
+      "next/navigation",
+      "next",
+      "@/components/settings/SettingsManager"
+    ],
+    "functions": [
+      {
+        "name": "SettingsPage",
+        "line": 14
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/(app)/tools/ad-copy/page.tsx",
+    "lines": 354,
+    "bytes": 17115,
+    "client": true,
+    "imports": [
+      "react",
+      "lucide-react",
+      "next/link",
+      "@/hooks/useToolGate",
+      "@/components/tools/AdCopyOutput",
+      "@/context/ToastContext",
+      "@/components/tools/AiUsageBadge"
+    ],
+    "functions": [
+      {
+        "name": "AdCopyPage",
+        "line": 26
+      }
+    ],
+    "effects": [
+      {
+        "line": 42,
+        "code": "useEffect(() => {\n    const main = document.querySelector(\"main\");\n    if (!main) return;\n    const handleResize = () => {\n      if (window.innerWidth >= 1024) {\n        main.style.overflow = \"hidden\";\n      } else {\n        main.style.overflow = \"auto\";\n      }\n    };\n    handleResize();\n    window.addEventListener(\"resize\", handleResize);\n    return () => {\n      main.style.overflow = \"\";\n      window.removeEventListener(\"resize\", handleResize);\n    };\n  }, [])"
+      },
+      {
+        "line": 78,
+        "code": "checkAccess(\"ad-copy\", false)"
+      },
+      {
+        "line": 98,
+        "code": "fetch(\"/api/ai\", {\n        method: \"POST\",\n        headers: { \"Content-Type\": \"application/json\" },\n        body: JSON.stringify({\n          tool: \"ad-copy\",\n          inputs: {\n            productName: productName.trim(),\n            price: price.trim(),\n            usp: usp.trim(),\n            targetAudience: targetAudience.trim() || \"Khách hàng mua sắm online toàn quốc\",\n            adPlatform,\n          },\n        }),\n      })"
+      }
+    ],
+    "links": [
+      {
+        "line": 141,
+        "target": "\"/tools\""
+      }
+    ]
+  },
+  {
+    "file": "src/app/(app)/tools/appeal-generator/page.tsx",
+    "lines": 476,
+    "bytes": 22950,
+    "client": true,
+    "imports": [
+      "react",
+      "lucide-react",
+      "next/link",
+      "@/hooks/useToolGate",
+      "@/components/tools/AppealGeneratorOutput",
+      "@/context/ToastContext",
+      "@/components/tools/AiUsageBadge"
+    ],
+    "functions": [
+      {
+        "name": "AppealGenerator",
+        "line": 45
+      }
+    ],
+    "effects": [
+      {
+        "line": 68,
+        "code": "useEffect(() => {\n    const main = document.querySelector(\"main\");\n    if (!main) return;\n    const handleResize = () => {\n      if (window.innerWidth >= 1024) {\n        main.style.overflow = \"hidden\";\n      } else {\n        main.style.overflow = \"auto\";\n      }\n    };\n    handleResize();\n    window.addEventListener(\"resize\", handleResize);\n    return () => {\n      main.style.overflow = \"\";\n      window.removeEventListener(\"resize\", handleResize);\n    };\n  }, [])"
+      },
+      {
+        "line": 86,
+        "code": "useEffect(() => {\n    fetch(\"/api/ai/usage\")\n      .then((res) => res.json())\n      .then((data) => {\n        if (data && typeof data.dailyFreeLimit !== \"undefined\") {\n          setUserQuota({\n            isLogged: !!data.isLogged,\n            isVIP: !!data.isVIP,\n            remainingFree: data.remainingFree,\n            dailyFreeLimit: data.dailyFreeLimit || 12,\n          });\n        }\n      })\n      .catch(() => {});\n  }, [refreshTrigger])"
+      },
+      {
+        "line": 87,
+        "code": "fetch(\"/api/ai/usage\")\n      .then((res) => res.json())\n      .then((data) => {\n        if (data && typeof data.dailyFreeLimit !== \"undefined\") {\n          setUserQuota({\n            isLogged: !!data.isLogged,\n            isVIP: !!data.isVIP,\n            remainingFree: data.remainingFree,\n            dailyFreeLimit: data.dailyFreeLimit || 12,\n          });\n        }\n      })\n      .catch(() => {})"
+      },
+      {
+        "line": 87,
+        "code": "fetch(\"/api/ai/usage\")\n      .then((res) => res.json())\n      .then((data) => {\n        if (data && typeof data.dailyFreeLimit !== \"undefined\") {\n          setUserQuota({\n            isLogged: !!data.isLogged,\n            isVIP: !!data.isVIP,\n            remainingFree: data.remainingFree,\n            dailyFreeLimit: data.dailyFreeLimit || 12,\n          });\n        }\n      })"
+      },
+      {
+        "line": 87,
+        "code": "fetch(\"/api/ai/usage\")\n      .then((res) => res.json())"
+      },
+      {
+        "line": 87,
+        "code": "fetch(\"/api/ai/usage\")"
+      },
+      {
+        "line": 138,
+        "code": "checkAccess(\"appeal-generator\", true)"
+      },
+      {
+        "line": 159,
+        "code": "fetch(\"/api/ai\", {\n        method: \"POST\",\n        headers: { \"Content-Type\": \"application/json\" },\n        body: JSON.stringify({\n          tool: \"appeal-generator\",\n          inputs: {\n            platform,\n            violationType: finalViolationType,\n            shopName: shopName.trim(),\n            details: details.trim(),\n            imageBase64,\n          },\n        }),\n      })"
+      }
+    ],
+    "links": [
+      {
+        "line": 196,
+        "target": "\"/tools\""
+      },
+      {
+        "line": 388,
+        "target": "{imageBase64}"
+      },
+      {
+        "line": 451,
+        "target": "\"/profile#pricing-section\""
+      }
+    ]
+  },
+  {
+    "file": "src/app/(app)/tools/chat-broadcast/page.tsx",
+    "lines": 330,
+    "bytes": 15579,
+    "client": true,
+    "imports": [
+      "react",
+      "lucide-react",
+      "next/link",
+      "@/hooks/useToolGate",
+      "@/components/tools/ChatBroadcastOutput",
+      "@/components/ui/text-dots",
+      "@/context/ToastContext",
+      "@/components/tools/AiUsageBadge"
+    ],
+    "functions": [
+      {
+        "name": "ChatBroadcastPage",
+        "line": 39
+      }
+    ],
+    "effects": [
+      {
+        "line": 72,
+        "code": "checkAccess(\"chat-broadcast\", false)"
+      },
+      {
+        "line": 92,
+        "code": "fetch(\"/api/ai\", {\n        method: \"POST\",\n        headers: { \"Content-Type\": \"application/json\" },\n        body: JSON.stringify({\n          tool: \"chat-broadcast\",\n          inputs: {\n            shopName: shopName.trim(),\n            productName: productName.trim(),\n            scenario,\n            offer: offer.trim(),\n            channel,\n          },\n        }),\n      })"
+      }
+    ],
+    "links": [
+      {
+        "line": 135,
+        "target": "\"/tools\""
+      }
+    ]
+  },
+  {
+    "file": "src/app/(app)/tools/koc-planner/page.tsx",
+    "lines": 2058,
+    "bytes": 102420,
+    "client": true,
+    "imports": [
+      "react",
+      "next/link",
+      "lucide-react",
+      "@/hooks/useToolGate",
+      "@/lib/koc-planner/engine",
+      "@/lib/koc-planner/types",
+      "@/lib/pricing/registry",
+      "@/lib/pricing/storage",
+      "@/lib/pricing/types"
+    ],
+    "functions": [
+      {
+        "name": "migrateInput",
+        "line": 134
+      },
+      {
+        "name": "MoneyInput",
+        "line": 144
+      },
+      {
+        "name": "NumberInput",
+        "line": 171
+      },
+      {
+        "name": "Field",
+        "line": 208
+      },
+      {
+        "name": "SectionCard",
+        "line": 241
+      },
+      {
+        "name": "ToggleCard",
+        "line": 270
+      },
+      {
+        "name": "ResultRow",
+        "line": 306
+      },
+      {
+        "name": "download",
+        "line": 349
+      },
+      {
+        "name": "exportRows",
+        "line": 358
+      },
+      {
+        "name": "KocPlanner",
+        "line": 390
+      }
+    ],
+    "effects": [
+      {
+        "line": 409,
+        "code": "useEffect(() => {\n    const main = document.querySelector(\"main\");\n    if (!main) return;\n    const handleResize = () => {\n      if (window.innerWidth >= 1024) {\n        main.style.overflow = \"hidden\";\n      } else {\n        main.style.overflow = \"auto\";\n      }\n    };\n    handleResize();\n    window.addEventListener(\"resize\", handleResize);\n    return () => {\n      main.style.overflow = \"\";\n      window.removeEventListener(\"resize\", handleResize);\n    };\n  }, [])"
+      },
+      {
+        "line": 427,
+        "code": "useMemo(() => getAvailableCategories(\"tiktok\", shopType), [shopType])"
+      },
+      {
+        "line": 435,
+        "code": "useMemo(\n    () => ({\n      ...input,\n      shopType,\n      categoryId: category.id,\n      platformCommissionRate: feeProfile.commissionRate,\n    }),\n    [category.id, feeProfile.commissionRate, input, shopType]\n  )"
+      },
+      {
+        "line": 449,
+        "code": "useEffect(() => {\n    checkAccess(\"koc-planner\", false);\n  }, [checkAccess])"
+      },
+      {
+        "line": 450,
+        "code": "checkAccess(\"koc-planner\", false)"
+      },
+      {
+        "line": 453,
+        "code": "useEffect(() => {\n    try {\n      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? \"[]\") as SavedPlan[];\n      setSavedPlans(\n        Array.isArray(stored)\n          ? stored.map((item) => ({ ...item, input: migrateInput(item.input as LegacyKocInput) }))\n          : []\n      );\n    } catch {\n      setSavedPlans([]);\n    }\n    setSavedProducts(readPricingHistory(localStorage).filter((item) => item.input.platform === \"tiktok\"));\n  }, [])"
+      },
+      {
+        "line": 455,
+        "code": "localStorage.getItem(STORAGE_KEY)"
+      },
+      {
+        "line": 588,
+        "code": "localStorage.setItem(STORAGE_KEY, JSON.stringify(next))"
+      },
+      {
+        "line": 629,
+        "code": "localStorage.setItem(STORAGE_KEY, JSON.stringify(next))"
+      },
+      {
+        "line": 671,
+        "code": "useMemo(() => {\n    if (!searchFilter.trim()) return savedPlans;\n    const q = searchFilter.toLowerCase();\n    return savedPlans.filter((p) => p.input.campaignName.toLowerCase().includes(q));\n  }, [savedPlans, searchFilter])"
+      },
+      {
+        "line": 727,
+        "code": "localStorage.setItem(STORAGE_KEY, \"[]\")"
+      }
+    ],
+    "links": [
+      {
+        "line": 883,
+        "target": "\"/tools\""
+      },
+      {
+        "line": 2017,
+        "target": "{SOURCES.tiktok}"
+      },
+      {
+        "line": 2025,
+        "target": "{SOURCES.tiktokTransaction}"
+      },
+      {
+        "line": 2033,
+        "target": "{SOURCES.tiktokVxp}"
+      },
+      {
+        "line": 2041,
+        "target": "{SOURCES.tax}"
+      }
+    ]
+  },
+  {
+    "file": "src/app/(app)/tools/page.tsx",
+    "lines": 194,
+    "bytes": 9448,
+    "client": true,
+    "imports": [
+      "next/link",
+      "lucide-react"
+    ],
+    "functions": [
+      {
+        "name": "ToolsPage",
+        "line": 6
+      }
+    ],
+    "effects": [],
+    "links": [
+      {
+        "line": 146,
+        "target": "{`/tools/${tool.id}`}"
+      }
+    ]
+  },
+  {
+    "file": "src/app/(app)/tools/pricing-calculator/BulkPricing.tsx",
+    "lines": 1069,
+    "bytes": 52846,
+    "client": true,
+    "imports": [
+      "react",
+      "lucide-react",
+      "@/lib/pricing/engine",
+      "@/lib/pricing/registry",
+      "@/lib/pricing/storage",
+      "@/lib/pricing/types"
+    ],
+    "functions": [
+      {
+        "name": "makeRow",
+        "line": 56
+      },
+      {
+        "name": "parseCsvLine",
+        "line": 70
+      },
+      {
+        "name": "parseCsv",
+        "line": 89
+      },
+      {
+        "name": "MoneyInput",
+        "line": 118
+      },
+      {
+        "name": "PercentInput",
+        "line": 133
+      },
+      {
+        "name": "SettingField",
+        "line": 161
+      },
+      {
+        "name": "BulkPricing",
+        "line": 170
+      }
+    ],
+    "effects": [
+      {
+        "line": 242,
+        "code": "useMemo<(BatchResult | null)[]>(\n    () =>\n      rows.map((row) => {\n        if (!row.name.trim() || row.cost <= 0) return null;\n        const platformConfig = platformSettings[row.platform];\n        const available = getAvailableCategories(row.platform, platformConfig.shopType);\n        const categoryId = available.some((category) => category.id === row.categoryId)\n          ? row.categoryId\n          : getDefaultCategoryId(row.platform, platformConfig.shopType);\n        const adminOverride = feeOverrides.find(\n          (item) =>\n            item.platform === row.platform &&\n            item.shopType === platformConfig.shopType &&\n            item.categoryId === categoryId\n        );\n        const input: PricingInput = {\n          ...baseInput,\n          platform: row.platform,\n          externalChannel: row.externalChannel,\n          shopType: platformConfig.shopType,\n          categoryId,\n          quantity: Math.max(1, Math.floor(row.quantity)),\n          costPerUnit: row.cost,\n  "
+      }
+    ],
+    "links": []
+  },
+  {
+    "file": "src/app/(app)/tools/pricing-calculator/page.tsx",
+    "lines": 26,
+    "bytes": 1262,
+    "client": false,
+    "imports": [
+      "./PricingCalculatorClient",
+      "@/lib/prisma",
+      "@/lib/pricing/types"
+    ],
+    "functions": [
+      {
+        "name": "PricingCalculatorPage",
+        "line": 5
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/(app)/tools/pricing-calculator/PricingCalculatorClient.tsx",
+    "lines": 1918,
+    "bytes": 90667,
+    "client": true,
+    "imports": [
+      "react",
+      "next/link",
+      "lucide-react",
+      "@/hooks/useToolGate",
+      "@/lib/pricing/engine",
+      "@/lib/pricing/registry",
+      "@/lib/pricing/storage",
+      "@/lib/pricing/types",
+      "./BulkPricing",
+      "./PricingExtras"
+    ],
+    "functions": [
+      {
+        "name": "MoneyInput",
+        "line": 98
+      },
+      {
+        "name": "NumberInput",
+        "line": 125
+      },
+      {
+        "name": "Field",
+        "line": 162
+      },
+      {
+        "name": "CategorySelector",
+        "line": 174
+      },
+      {
+        "name": "Metric",
+        "line": 252
+      },
+      {
+        "name": "PricingCalculatorClient",
+        "line": 284
+      },
+      {
+        "name": "AdvancedFields",
+        "line": 1543
+      },
+      {
+        "name": "Group",
+        "line": 1745
+      },
+      {
+        "name": "Mini",
+        "line": 1754
+      },
+      {
+        "name": "Row",
+        "line": 1765
+      },
+      {
+        "name": "Breakdown",
+        "line": 1797
+      },
+      {
+        "name": "Scenarios",
+        "line": 1834
+      },
+      {
+        "name": "Scenario",
+        "line": 1888
+      }
+    ],
+    "effects": [
+      {
+        "line": 185,
+        "code": "useMemo(() => getAvailableCategories(platform, shopType), [platform, shopType])"
+      },
+      {
+        "line": 321,
+        "code": "useEffect(() => {\n    checkAccess(\"pricing-calculator\", false);\n  }, [checkAccess])"
+      },
+      {
+        "line": 322,
+        "code": "checkAccess(\"pricing-calculator\", false)"
+      },
+      {
+        "line": 325,
+        "code": "useEffect(() => {\n    setSavedHistory(readPricingHistory(window.localStorage));\n  }, [])"
+      },
+      {
+        "line": 329,
+        "code": "useEffect(() => {\n    fetch(\"/api/ai/usage?tool=pricing-calculator\")\n      .then((res) => (res.ok ? res.json() : null))\n      .then((data) => {\n        if (data) {\n          setHistoryActivities(data.recentActivities || []);\n          setHistoryTotal(data.totalGenerated || 0);\n        }\n      })\n      .catch(() => { });\n  }, [historyRefreshTrigger])"
+      },
+      {
+        "line": 330,
+        "code": "fetch(\"/api/ai/usage?tool=pricing-calculator\")\n      .then((res) => (res.ok ? res.json() : null))\n      .then((data) => {\n        if (data) {\n          setHistoryActivities(data.recentActivities || []);\n          setHistoryTotal(data.totalGenerated || 0);\n        }\n      })\n      .catch(() => { })"
+      },
+      {
+        "line": 330,
+        "code": "fetch(\"/api/ai/usage?tool=pricing-calculator\")\n      .then((res) => (res.ok ? res.json() : null))\n      .then((data) => {\n        if (data) {\n          setHistoryActivities(data.recentActivities || []);\n          setHistoryTotal(data.totalGenerated || 0);\n        }\n      })"
+      },
+      {
+        "line": 330,
+        "code": "fetch(\"/api/ai/usage?tool=pricing-calculator\")\n      .then((res) => (res.ok ? res.json() : null))"
+      },
+      {
+        "line": 330,
+        "code": "fetch(\"/api/ai/usage?tool=pricing-calculator\")"
+      },
+      {
+        "line": 348,
+        "code": "useMemo(() => {\n    if (historyActivities.length > 0) return historyActivities;\n    return savedHistory.map((s) => ({\n      id: s.id,\n      tool: \"pricing-calculator\",\n      toolName: \"Tính Giá Bán\",\n      action: `Định giá \"${s.productName}\" - ${s.input.platform.toUpperCase()}`,\n      time: \"Đã lưu\",\n      createdAt: s.createdAt,\n      output: `Sản phẩm: ${s.productName}\\nSàn: ${s.input.platform.toUpperCase()}\\nGiá vốn: ${(s.input.costPerUnit || 0).toLocaleString(\"vi-VN\")}đ\\nGiá bán đề xuất: ${(s.result?.evaluation?.listPrice || s.auditPrice || 0).toLocaleString(\"vi-VN\")}đ\\nLợi nhuận ròng/đơn: ${(s.result?.evaluation?.expectedProfitPerOrder || 0).toLocaleString(\"vi-VN\")}đ\\nTỷ suất lợi nhuận: ${(s.result?.evaluation?.expectedMargin || 0).toFixed(1)}%`,\n      snapshot: s,\n    }));\n  }, [historyActivities, savedHistory])"
+      },
+      {
+        "line": 382,
+        "code": "useMemo(\n    () => ({\n      ...input,\n      commissionOverride: input.commissionOverride ?? adminOverride?.commissionRate ?? null,\n      transactionOverride: input.transactionOverride ?? adminOverride?.transactionRate ?? null,\n      fixedFeeOverride: input.fixedFeeOverride ?? adminOverride?.orderProcessingFee ?? null,\n    }),\n    [adminOverride, input]\n  )"
+      },
+      {
+        "line": 519,
+        "code": "fetch(\"/api/ai/usage\", {\n      method: \"POST\",\n      headers: { \"Content-Type\": \"application/json\" },\n      body: JSON.stringify({\n        tool: \"pricing-calculator\",\n        toolName: \"Tính Giá Bán\",\n        action: editingId\n          ? `Cập nhật định giá \"${productName.trim()}\" - ${platformName}`\n          : `Định giá \"${productName.trim()}\" - ${platformName}`,\n        input: {\n          productName: productName.trim(),\n          platform: input.platform,\n          shopType: input.shopType,\n          costPerUnit: input.costPerUnit,\n          targetSellingPrice: targetSelling,\n          netProfit,\n          margin,\n          snapshotId: item.id,\n          snapshot: item,\n        },\n        output: `Sản phẩm: ${productName.trim()}\\nSàn: ${platformName} (${input.shopType === \"mall\" ? \"Mall\" : \"Shop thường\"})\\nGiá vốn: ${input.costPerUnit.toLocaleString(\"vi-VN\")}đ\\nGiá bán đề xuất: ${targetSelling.toLocaleString(\"vi-VN\")}đ\\nLợi nhuận ròng/đơn: ${netProfit.toLocaleString(\"vi-VN\")}đ\\nTỷ s"
+      },
+      {
+        "line": 519,
+        "code": "fetch(\"/api/ai/usage\", {\n      method: \"POST\",\n      headers: { \"Content-Type\": \"application/json\" },\n      body: JSON.stringify({\n        tool: \"pricing-calculator\",\n        toolName: \"Tính Giá Bán\",\n        action: editingId\n          ? `Cập nhật định giá \"${productName.trim()}\" - ${platformName}`\n          : `Định giá \"${productName.trim()}\" - ${platformName}`,\n        input: {\n          productName: productName.trim(),\n          platform: input.platform,\n          shopType: input.shopType,\n          costPerUnit: input.costPerUnit,\n          targetSellingPrice: targetSelling,\n          netProfit,\n          margin,\n          snapshotId: item.id,\n          snapshot: item,\n        },\n        output: `Sản phẩm: ${productName.trim()}\\nSàn: ${platformName} (${input.shopType === \"mall\" ? \"Mall\" : \"Shop thường\"})\\nGiá vốn: ${input.costPerUnit.toLocaleString(\"vi-VN\")}đ\\nGiá bán đề xuất: ${targetSelling.toLocaleString(\"vi-VN\")}đ\\nLợi nhuận ròng/đơn: ${netProfit.toLocaleString(\"vi-VN\")}đ\\nTỷ s"
+      },
+      {
+        "line": 519,
+        "code": "fetch(\"/api/ai/usage\", {\n      method: \"POST\",\n      headers: { \"Content-Type\": \"application/json\" },\n      body: JSON.stringify({\n        tool: \"pricing-calculator\",\n        toolName: \"Tính Giá Bán\",\n        action: editingId\n          ? `Cập nhật định giá \"${productName.trim()}\" - ${platformName}`\n          : `Định giá \"${productName.trim()}\" - ${platformName}`,\n        input: {\n          productName: productName.trim(),\n          platform: input.platform,\n          shopType: input.shopType,\n          costPerUnit: input.costPerUnit,\n          targetSellingPrice: targetSelling,\n          netProfit,\n          margin,\n          snapshotId: item.id,\n          snapshot: item,\n        },\n        output: `Sản phẩm: ${productName.trim()}\\nSàn: ${platformName} (${input.shopType === \"mall\" ? \"Mall\" : \"Shop thường\"})\\nGiá vốn: ${input.costPerUnit.toLocaleString(\"vi-VN\")}đ\\nGiá bán đề xuất: ${targetSelling.toLocaleString(\"vi-VN\")}đ\\nLợi nhuận ròng/đơn: ${netProfit.toLocaleString(\"vi-VN\")}đ\\nTỷ s"
+      },
+      {
+        "line": 560,
+        "code": "fetch(\"/api/ai/usage\", {\n      method: \"POST\",\n      headers: { \"Content-Type\": \"application/json\" },\n      body: JSON.stringify({\n        tool: \"pricing-calculator\",\n        toolName: \"Tính Giá Bán\",\n        action: `Định giá hàng loạt ${items.length} sản phẩm`,\n        input: { count: items.length },\n        output: `Đã tính toán và lưu ${items.length} sản phẩm định giá hàng loạt vào tài khoản.`,\n      }),\n    })\n      .then(() => setHistoryRefreshTrigger((prev) => prev + 1))\n      .catch((err) => console.warn(\"Failed to log bulk pricing:\", err))"
+      },
+      {
+        "line": 560,
+        "code": "fetch(\"/api/ai/usage\", {\n      method: \"POST\",\n      headers: { \"Content-Type\": \"application/json\" },\n      body: JSON.stringify({\n        tool: \"pricing-calculator\",\n        toolName: \"Tính Giá Bán\",\n        action: `Định giá hàng loạt ${items.length} sản phẩm`,\n        input: { count: items.length },\n        output: `Đã tính toán và lưu ${items.length} sản phẩm định giá hàng loạt vào tài khoản.`,\n      }),\n    })\n      .then(() => setHistoryRefreshTrigger((prev) => prev + 1))"
+      },
+      {
+        "line": 560,
+        "code": "fetch(\"/api/ai/usage\", {\n      method: \"POST\",\n      headers: { \"Content-Type\": \"application/json\" },\n      body: JSON.stringify({\n        tool: \"pricing-calculator\",\n        toolName: \"Tính Giá Bán\",\n        action: `Định giá hàng loạt ${items.length} sản phẩm`,\n        input: { count: items.length },\n        output: `Đã tính toán và lưu ${items.length} sản phẩm định giá hàng loạt vào tài khoản.`,\n      }),\n    })"
+      }
+    ],
+    "links": [
+      {
+        "line": 868,
+        "target": "\"/tools\""
+      },
+      {
+        "line": 1511,
+        "target": "{feeProfile.sourceUrl}"
+      },
+      {
+        "line": 1520,
+        "target": "{SOURCES.tax}"
+      }
+    ]
+  },
+  {
+    "file": "src/app/(app)/tools/pricing-calculator/PricingExtras.tsx",
+    "lines": 256,
+    "bytes": 12765,
+    "client": true,
+    "imports": [
+      "lucide-react",
+      "@/lib/pricing/storage",
+      "@/lib/pricing/types"
+    ],
+    "functions": [
+      {
+        "name": "EmptyCalculation",
+        "line": 10
+      },
+      {
+        "name": "CostVisuals",
+        "line": 26
+      },
+      {
+        "name": "CalculationSummary",
+        "line": 105
+      },
+      {
+        "name": "SummaryValue",
+        "line": 124
+      },
+      {
+        "name": "SavedCalculations",
+        "line": 133
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/(app)/tools/review-replier/page.tsx",
+    "lines": 390,
+    "bytes": 19592,
+    "client": true,
+    "imports": [
+      "react",
+      "lucide-react",
+      "next/link",
+      "@/hooks/useToolGate",
+      "@/components/tools/ReviewReplierOutput",
+      "@/context/ToastContext",
+      "@/components/tools/AiUsageBadge"
+    ],
+    "functions": [
+      {
+        "name": "ReviewReplier",
+        "line": 31
+      }
+    ],
+    "effects": [
+      {
+        "line": 51,
+        "code": "useEffect(() => {\n    const main = document.querySelector(\"main\");\n    if (!main) return;\n    const handleResize = () => {\n      if (window.innerWidth >= 1024) {\n        main.style.overflow = \"hidden\";\n      } else {\n        main.style.overflow = \"auto\";\n      }\n    };\n    handleResize();\n    window.addEventListener(\"resize\", handleResize);\n    return () => {\n      main.style.overflow = \"\";\n      window.removeEventListener(\"resize\", handleResize);\n    };\n  }, [])"
+      },
+      {
+        "line": 69,
+        "code": "useEffect(() => {\n    fetch(\"/api/ai/usage\")\n      .then((res) => res.json())\n      .then((data) => {\n        if (data && typeof data.dailyFreeLimit !== \"undefined\") {\n          setUserQuota({\n            isLogged: !!data.isLogged,\n            isVIP: !!data.isVIP,\n            remainingFree: data.remainingFree,\n            dailyFreeLimit: data.dailyFreeLimit || 12,\n          });\n        }\n      })\n      .catch(() => {});\n  }, [refreshTrigger])"
+      },
+      {
+        "line": 70,
+        "code": "fetch(\"/api/ai/usage\")\n      .then((res) => res.json())\n      .then((data) => {\n        if (data && typeof data.dailyFreeLimit !== \"undefined\") {\n          setUserQuota({\n            isLogged: !!data.isLogged,\n            isVIP: !!data.isVIP,\n            remainingFree: data.remainingFree,\n            dailyFreeLimit: data.dailyFreeLimit || 12,\n          });\n        }\n      })\n      .catch(() => {})"
+      },
+      {
+        "line": 70,
+        "code": "fetch(\"/api/ai/usage\")\n      .then((res) => res.json())\n      .then((data) => {\n        if (data && typeof data.dailyFreeLimit !== \"undefined\") {\n          setUserQuota({\n            isLogged: !!data.isLogged,\n            isVIP: !!data.isVIP,\n            remainingFree: data.remainingFree,\n            dailyFreeLimit: data.dailyFreeLimit || 12,\n          });\n        }\n      })"
+      },
+      {
+        "line": 70,
+        "code": "fetch(\"/api/ai/usage\")\n      .then((res) => res.json())"
+      },
+      {
+        "line": 70,
+        "code": "fetch(\"/api/ai/usage\")"
+      },
+      {
+        "line": 107,
+        "code": "checkAccess(\"review-replier\", false)"
+      },
+      {
+        "line": 119,
+        "code": "fetch(\"/api/ai\", {\n        method: \"POST\",\n        headers: { \"Content-Type\": \"application/json\" },\n        body: JSON.stringify({\n          tool: \"review-replier\",\n          inputs: {\n            reviewContent: reviewContent.trim(),\n            reviewText: reviewContent.trim(),\n            rating,\n            issueType: selectedTag,\n            note: note.trim(),\n          },\n        }),\n      })"
+      }
+    ],
+    "links": [
+      {
+        "line": 156,
+        "target": "\"/tools\""
+      },
+      {
+        "line": 365,
+        "target": "\"/profile#pricing-section\""
+      }
+    ]
+  },
+  {
+    "file": "src/app/(app)/tools/script-writer/page.tsx",
+    "lines": 350,
+    "bytes": 16108,
+    "client": true,
+    "imports": [
+      "react",
+      "lucide-react",
+      "next/link",
+      "@/hooks/useToolGate",
+      "@/components/tools/ScriptWriterOutput",
+      "@/context/ToastContext",
+      "@/components/tools/AiUsageBadge"
+    ],
+    "functions": [
+      {
+        "name": "ScriptWriterPage",
+        "line": 36
+      }
+    ],
+    "effects": [
+      {
+        "line": 54,
+        "code": "useEffect(() => {\n    const main = document.querySelector(\"main\");\n    if (!main) return;\n    const handleResize = () => {\n      if (window.innerWidth >= 1024) {\n        main.style.overflow = \"hidden\";\n      } else {\n        main.style.overflow = \"auto\";\n      }\n    };\n    handleResize();\n    window.addEventListener(\"resize\", handleResize);\n    return () => {\n      main.style.overflow = \"\";\n      window.removeEventListener(\"resize\", handleResize);\n    };\n  }, [])"
+      },
+      {
+        "line": 72,
+        "code": "useEffect(() => {\n    fetch(\"/api/ai/usage\")\n      .then((res) => res.json())\n      .then((data) => {\n        if (data && typeof data.dailyFreeLimit !== \"undefined\") {\n          setUserQuota({\n            isLogged: !!data.isLogged,\n            isVIP: !!data.isVIP,\n            remainingFree: data.remainingFree,\n            dailyFreeLimit: data.dailyFreeLimit || 12,\n          });\n        }\n      })\n      .catch(() => {});\n  }, [refreshTrigger])"
+      },
+      {
+        "line": 73,
+        "code": "fetch(\"/api/ai/usage\")\n      .then((res) => res.json())\n      .then((data) => {\n        if (data && typeof data.dailyFreeLimit !== \"undefined\") {\n          setUserQuota({\n            isLogged: !!data.isLogged,\n            isVIP: !!data.isVIP,\n            remainingFree: data.remainingFree,\n            dailyFreeLimit: data.dailyFreeLimit || 12,\n          });\n        }\n      })\n      .catch(() => {})"
+      },
+      {
+        "line": 73,
+        "code": "fetch(\"/api/ai/usage\")\n      .then((res) => res.json())\n      .then((data) => {\n        if (data && typeof data.dailyFreeLimit !== \"undefined\") {\n          setUserQuota({\n            isLogged: !!data.isLogged,\n            isVIP: !!data.isVIP,\n            remainingFree: data.remainingFree,\n            dailyFreeLimit: data.dailyFreeLimit || 12,\n          });\n        }\n      })"
+      },
+      {
+        "line": 73,
+        "code": "fetch(\"/api/ai/usage\")\n      .then((res) => res.json())"
+      },
+      {
+        "line": 73,
+        "code": "fetch(\"/api/ai/usage\")"
+      },
+      {
+        "line": 104,
+        "code": "checkAccess(\"script-writer\", false)"
+      },
+      {
+        "line": 116,
+        "code": "fetch(\"/api/ai\", {\n        method: \"POST\",\n        headers: { \"Content-Type\": \"application/json\" },\n        body: JSON.stringify({\n          tool: \"script-writer\",\n          inputs: { productName: productName.trim(), usp: usp.trim() },\n        }),\n      })"
+      }
+    ],
+    "links": [
+      {
+        "line": 149,
+        "target": "\"/tools\""
+      },
+      {
+        "line": 327,
+        "target": "\"/profile#pricing-section\""
+      }
+    ]
+  },
+  {
+    "file": "src/app/(app)/tools/seo-optimizer/page.tsx",
+    "lines": 542,
+    "bytes": 27125,
+    "client": true,
+    "imports": [
+      "react",
+      "next/link",
+      "lucide-react",
+      "@/hooks/useToolGate",
+      "@/components/auth/AuthModal",
+      "@/components/tools/SeoOptimizerOutput",
+      "@/components/tools/AiUsageBadge",
+      "@/context/ToastContext",
+      "@/lib/seo/contract"
+    ],
+    "functions": [
+      {
+        "name": "SeoOptimizerPage",
+        "line": 62
+      }
+    ],
+    "effects": [
+      {
+        "line": 80,
+        "code": "useEffect(() => {\n    fetch(\"/api/ai/usage\")\n      .then((res) => res.json())\n      .then((data) => {\n        if (data && typeof data.dailyFreeLimit !== \"undefined\") {\n          setUserQuota({\n            isLogged: !!data.isLogged,\n            isVIP: !!data.isVIP,\n            remainingFree: data.remainingFree,\n            dailyFreeLimit: data.dailyFreeLimit || 12,\n          });\n        }\n      })\n      .catch(() => { });\n  }, [refreshTrigger])"
+      },
+      {
+        "line": 81,
+        "code": "fetch(\"/api/ai/usage\")\n      .then((res) => res.json())\n      .then((data) => {\n        if (data && typeof data.dailyFreeLimit !== \"undefined\") {\n          setUserQuota({\n            isLogged: !!data.isLogged,\n            isVIP: !!data.isVIP,\n            remainingFree: data.remainingFree,\n            dailyFreeLimit: data.dailyFreeLimit || 12,\n          });\n        }\n      })\n      .catch(() => { })"
+      },
+      {
+        "line": 81,
+        "code": "fetch(\"/api/ai/usage\")\n      .then((res) => res.json())\n      .then((data) => {\n        if (data && typeof data.dailyFreeLimit !== \"undefined\") {\n          setUserQuota({\n            isLogged: !!data.isLogged,\n            isVIP: !!data.isVIP,\n            remainingFree: data.remainingFree,\n            dailyFreeLimit: data.dailyFreeLimit || 12,\n          });\n        }\n      })"
+      },
+      {
+        "line": 81,
+        "code": "fetch(\"/api/ai/usage\")\n      .then((res) => res.json())"
+      },
+      {
+        "line": 81,
+        "code": "fetch(\"/api/ai/usage\")"
+      },
+      {
+        "line": 97,
+        "code": "useEffect(() => {\n    const main = document.querySelector(\"main\");\n    if (!main) return;\n    const handleResize = () => {\n      if (window.innerWidth >= 1024) {\n        main.style.overflow = \"hidden\";\n      } else {\n        main.style.overflow = \"auto\";\n      }\n    };\n    handleResize();\n    window.addEventListener(\"resize\", handleResize);\n    return () => {\n      main.style.overflow = \"\";\n      window.removeEventListener(\"resize\", handleResize);\n    };\n  }, [])"
+      },
+      {
+        "line": 133,
+        "code": "checkAccess(\"seo-optimizer\", false)"
+      },
+      {
+        "line": 151,
+        "code": "fetch(\"/api/ai/seo\", {\n          method: \"POST\",\n          headers: { \"Content-Type\": \"application/json\" },\n          body: JSON.stringify(submitted),\n          signal,\n        })"
+      },
+      {
+        "line": 172,
+        "code": "checkAccess(\"seo-optimizer\", false)"
+      }
+    ],
+    "links": [
+      {
+        "line": 211,
+        "target": "\"/tools\""
+      },
+      {
+        "line": 520,
+        "target": "\"/profile#pricing-section\""
+      }
+    ]
+  },
+  {
+    "file": "src/app/(app)/tools/tax-calculator/page.tsx",
+    "lines": 1008,
+    "bytes": 47155,
+    "client": true,
+    "imports": [
+      "react",
+      "next/link",
+      "lucide-react",
+      "@/hooks/useToolGate",
+      "@/components/tools/TaxCalculatorOutput",
+      "@/lib/tax-calculator/engine",
+      "@/lib/tax-calculator/types"
+    ],
+    "functions": [
+      {
+        "name": "readTaxHistory",
+        "line": 47
+      },
+      {
+        "name": "writeTaxHistory",
+        "line": 57
+      },
+      {
+        "name": "MoneyInput",
+        "line": 93
+      },
+      {
+        "name": "Field",
+        "line": 120
+      },
+      {
+        "name": "Section",
+        "line": 132
+      },
+      {
+        "name": "TaxCalculator",
+        "line": 157
+      }
+    ],
+    "effects": [
+      {
+        "line": 50,
+        "code": "window.localStorage.getItem(STORAGE_KEY)"
+      },
+      {
+        "line": 60,
+        "code": "window.localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(0, 50)))"
+      },
+      {
+        "line": 175,
+        "code": "useEffect(() => {\n    checkAccess(\"tax-calculator\", false);\n  }, [checkAccess])"
+      },
+      {
+        "line": 176,
+        "code": "checkAccess(\"tax-calculator\", false)"
+      },
+      {
+        "line": 179,
+        "code": "useEffect(() => {\n    setSavedHistory(readTaxHistory());\n  }, [])"
+      },
+      {
+        "line": 186,
+        "code": "fetch(\"/api/ai/usage?tool=tax-calculator\")"
+      },
+      {
+        "line": 200,
+        "code": "useEffect(() => {\n    fetchActivities();\n  }, [fetchActivities, historyRefreshTrigger])"
+      },
+      {
+        "line": 201,
+        "code": "fetchActivities()"
+      },
+      {
+        "line": 225,
+        "code": "checkAccess(\"tax-calculator\", false)"
+      },
+      {
+        "line": 284,
+        "code": "fetch(\"/api/ai/usage\", {\n      method: \"POST\",\n      headers: { \"Content-Type\": \"application/json\" },\n      body: JSON.stringify({\n        tool: \"tax-calculator\",\n        toolName: \"Tính Thuế TMĐT\",\n        action: editingId\n          ? `Cập nhật dự toán thuế ${payerLabel} năm ${currentInput.taxYear} (DT: ${moneyFormat.format(result.totalRevenue)} ₫)`\n          : `Dự toán thuế ${payerLabel} năm ${currentInput.taxYear} (DT: ${moneyFormat.format(result.totalRevenue)} ₫)`,\n        input: {\n          payerType: currentInput.payerType,\n          taxYear: currentInput.taxYear,\n          totalRevenue: result.totalRevenue,\n          totalTax: result.totalTax,\n          remainingPayable: result.remainingPayable,\n          snapshotId,\n          snapshot,\n        },\n        output: summaryText,\n      }),\n    })\n      .then(() => setHistoryRefreshTrigger((p) => p + 1))\n      .catch((err) => console.warn(\"Failed to log tax usage:\", err))"
+      },
+      {
+        "line": 284,
+        "code": "fetch(\"/api/ai/usage\", {\n      method: \"POST\",\n      headers: { \"Content-Type\": \"application/json\" },\n      body: JSON.stringify({\n        tool: \"tax-calculator\",\n        toolName: \"Tính Thuế TMĐT\",\n        action: editingId\n          ? `Cập nhật dự toán thuế ${payerLabel} năm ${currentInput.taxYear} (DT: ${moneyFormat.format(result.totalRevenue)} ₫)`\n          : `Dự toán thuế ${payerLabel} năm ${currentInput.taxYear} (DT: ${moneyFormat.format(result.totalRevenue)} ₫)`,\n        input: {\n          payerType: currentInput.payerType,\n          taxYear: currentInput.taxYear,\n          totalRevenue: result.totalRevenue,\n          totalTax: result.totalTax,\n          remainingPayable: result.remainingPayable,\n          snapshotId,\n          snapshot,\n        },\n        output: summaryText,\n      }),\n    })\n      .then(() => setHistoryRefreshTrigger((p) => p + 1))"
+      },
+      {
+        "line": 284,
+        "code": "fetch(\"/api/ai/usage\", {\n      method: \"POST\",\n      headers: { \"Content-Type\": \"application/json\" },\n      body: JSON.stringify({\n        tool: \"tax-calculator\",\n        toolName: \"Tính Thuế TMĐT\",\n        action: editingId\n          ? `Cập nhật dự toán thuế ${payerLabel} năm ${currentInput.taxYear} (DT: ${moneyFormat.format(result.totalRevenue)} ₫)`\n          : `Dự toán thuế ${payerLabel} năm ${currentInput.taxYear} (DT: ${moneyFormat.format(result.totalRevenue)} ₫)`,\n        input: {\n          payerType: currentInput.payerType,\n          taxYear: currentInput.taxYear,\n          totalRevenue: result.totalRevenue,\n          totalTax: result.totalTax,\n          remainingPayable: result.remainingPayable,\n          snapshotId,\n          snapshot,\n        },\n        output: summaryText,\n      }),\n    })"
+      },
+      {
+        "line": 353,
+        "code": "useMemo(() => {\n    if (historyActivities.length > 0) {\n      return historyActivities.map((act) => {\n        const matchedSnapshot =\n          act.input?.snapshot ||\n          savedHistory.find(\n            (s) =>\n              s.id === act.input?.snapshotId ||\n              s.id === act.id ||\n              (s.payerType === act.input?.payerType &&\n                s.taxYear === act.input?.taxYear &&\n                s.totalRevenue === act.input?.totalRevenue)\n          );\n\n        return {\n          ...act,\n          snapshot: matchedSnapshot,\n        };\n      });\n    }\n\n    return savedHistory.map((s) => ({\n      id: s.id,\n      tool: \"tax-calculator\",\n      toolName: \"Tính Thuế TMĐT\",\n      action: `Dự toán thuế ${payerLabels[s.payerType]} năm ${s.taxYear} (DT: ${moneyFormat.format(s.totalRevenue)} ₫)`,\n      output: s.summaryText,\n      time: new Date(s.createdAt).toLocaleDateString(\"vi-VN\"),\n      createdAt: s.createdAt,\n      snapshot: s,\n    }));\n  }, [historyActivities, savedHist"
+      }
+    ],
+    "links": [
+      {
+        "line": 610,
+        "target": "\"/tools\""
+      }
+    ]
+  },
+  {
+    "file": "src/app/(app)/tools/title-spinner/page.tsx",
+    "lines": 331,
+    "bytes": 15124,
+    "client": true,
+    "imports": [
+      "react",
+      "lucide-react",
+      "next/link",
+      "@/hooks/useToolGate",
+      "@/components/tools/TitleSpinnerOutput",
+      "@/context/ToastContext",
+      "@/components/tools/AiUsageBadge"
+    ],
+    "functions": [
+      {
+        "name": "TitleSpinnerPage",
+        "line": 33
+      }
+    ],
+    "effects": [
+      {
+        "line": 50,
+        "code": "useEffect(() => {\n    const main = document.querySelector(\"main\");\n    if (!main) return;\n    const handleResize = () => {\n      if (window.innerWidth >= 1024) {\n        main.style.overflow = \"hidden\";\n      } else {\n        main.style.overflow = \"auto\";\n      }\n    };\n    handleResize();\n    window.addEventListener(\"resize\", handleResize);\n    return () => {\n      main.style.overflow = \"\";\n      window.removeEventListener(\"resize\", handleResize);\n    };\n  }, [])"
+      },
+      {
+        "line": 68,
+        "code": "useEffect(() => {\n    fetch(\"/api/ai/usage\")\n      .then((res) => res.json())\n      .then((data) => {\n        if (data && typeof data.dailyFreeLimit !== \"undefined\") {\n          setUserQuota({\n            isLogged: !!data.isLogged,\n            isVIP: !!data.isVIP,\n            remainingFree: data.remainingFree,\n            dailyFreeLimit: data.dailyFreeLimit || 12,\n          });\n        }\n      })\n      .catch(() => {});\n  }, [refreshTrigger])"
+      },
+      {
+        "line": 69,
+        "code": "fetch(\"/api/ai/usage\")\n      .then((res) => res.json())\n      .then((data) => {\n        if (data && typeof data.dailyFreeLimit !== \"undefined\") {\n          setUserQuota({\n            isLogged: !!data.isLogged,\n            isVIP: !!data.isVIP,\n            remainingFree: data.remainingFree,\n            dailyFreeLimit: data.dailyFreeLimit || 12,\n          });\n        }\n      })\n      .catch(() => {})"
+      },
+      {
+        "line": 69,
+        "code": "fetch(\"/api/ai/usage\")\n      .then((res) => res.json())\n      .then((data) => {\n        if (data && typeof data.dailyFreeLimit !== \"undefined\") {\n          setUserQuota({\n            isLogged: !!data.isLogged,\n            isVIP: !!data.isVIP,\n            remainingFree: data.remainingFree,\n            dailyFreeLimit: data.dailyFreeLimit || 12,\n          });\n        }\n      })"
+      },
+      {
+        "line": 69,
+        "code": "fetch(\"/api/ai/usage\")\n      .then((res) => res.json())"
+      },
+      {
+        "line": 69,
+        "code": "fetch(\"/api/ai/usage\")"
+      },
+      {
+        "line": 98,
+        "code": "checkAccess(\"title-spinner\", false)"
+      },
+      {
+        "line": 110,
+        "code": "fetch(\"/api/ai\", {\n        method: \"POST\",\n        headers: { \"Content-Type\": \"application/json\" },\n        body: JSON.stringify({\n          tool: \"title-spinner\",\n          inputs: { originalTitle: originalTitle.trim() },\n        }),\n      })"
+      }
+    ],
+    "links": [
+      {
+        "line": 143,
+        "target": "\"/tools\""
+      },
+      {
+        "line": 309,
+        "target": "\"/profile#pricing-section\""
+      }
+    ]
+  },
+  {
+    "file": "src/app/(app)/tools/video-repurposer/page.tsx",
+    "lines": 447,
+    "bytes": 21455,
+    "client": true,
+    "imports": [
+      "react",
+      "lucide-react",
+      "next/link",
+      "@/hooks/useToolGate",
+      "@/context/ToastContext",
+      "@/components/tools/VideoRepurposerOutput",
+      "@/components/tools/AiUsageBadge"
+    ],
+    "functions": [
+      {
+        "name": "VideoRepurposerPage",
+        "line": 62
+      }
+    ],
+    "effects": [
+      {
+        "line": 84,
+        "code": "useEffect(() => {\n    const main = document.querySelector(\"main\");\n    if (!main) return;\n    const handleResize = () => {\n      if (window.innerWidth >= 1024) {\n        main.style.overflow = \"hidden\";\n      } else {\n        main.style.overflow = \"auto\";\n      }\n    };\n    handleResize();\n    window.addEventListener(\"resize\", handleResize);\n    return () => {\n      main.style.overflow = \"\";\n      window.removeEventListener(\"resize\", handleResize);\n    };\n  }, [])"
+      },
+      {
+        "line": 102,
+        "code": "useEffect(() => {\n    fetch(\"/api/ai/usage\")\n      .then((res) => res.json())\n      .then((data) => {\n        if (data && typeof data.dailyFreeLimit !== \"undefined\") {\n          setUserQuota({\n            isLogged: !!data.isLogged,\n            isVIP: !!data.isVIP,\n            remainingFree: data.remainingFree,\n            dailyFreeLimit: data.dailyFreeLimit || 12,\n          });\n        }\n      })\n      .catch(() => {});\n  }, [refreshTrigger])"
+      },
+      {
+        "line": 103,
+        "code": "fetch(\"/api/ai/usage\")\n      .then((res) => res.json())\n      .then((data) => {\n        if (data && typeof data.dailyFreeLimit !== \"undefined\") {\n          setUserQuota({\n            isLogged: !!data.isLogged,\n            isVIP: !!data.isVIP,\n            remainingFree: data.remainingFree,\n            dailyFreeLimit: data.dailyFreeLimit || 12,\n          });\n        }\n      })\n      .catch(() => {})"
+      },
+      {
+        "line": 103,
+        "code": "fetch(\"/api/ai/usage\")\n      .then((res) => res.json())\n      .then((data) => {\n        if (data && typeof data.dailyFreeLimit !== \"undefined\") {\n          setUserQuota({\n            isLogged: !!data.isLogged,\n            isVIP: !!data.isVIP,\n            remainingFree: data.remainingFree,\n            dailyFreeLimit: data.dailyFreeLimit || 12,\n          });\n        }\n      })"
+      },
+      {
+        "line": 103,
+        "code": "fetch(\"/api/ai/usage\")\n      .then((res) => res.json())"
+      },
+      {
+        "line": 103,
+        "code": "fetch(\"/api/ai/usage\")"
+      },
+      {
+        "line": 139,
+        "code": "checkAccess(\"video-repurposer\", true)"
+      },
+      {
+        "line": 155,
+        "code": "fetch(\"/api/ai\", {\n        method: \"POST\",\n        headers: { \"Content-Type\": \"application/json\" },\n        body: JSON.stringify({\n          tool: \"video-repurposer\",\n          inputs: {\n            video_script: videoScript.trim(),\n            product_name: productName.trim(),\n            call_to_action: callToAction.trim() || \"Bình luận nhận link / Mua ngay\",\n            brand_tone: brandTone,\n          },\n        }),\n      })"
+      }
+    ],
+    "links": [
+      {
+        "line": 192,
+        "target": "\"/tools\""
+      },
+      {
+        "line": 422,
+        "target": "\"/profile#pricing-section\""
+      }
+    ]
+  },
+  {
+    "file": "src/app/actions/auth.ts",
+    "lines": 124,
+    "bytes": 3624,
+    "client": false,
+    "imports": [
+      "@/lib/prisma",
+      "crypto",
+      "next/headers",
+      "next/navigation",
+      "@/lib/seo/session"
+    ],
+    "functions": [
+      {
+        "name": "hashPassword",
+        "line": 10
+      },
+      {
+        "name": "registerUser",
+        "line": 14
+      },
+      {
+        "name": "loginUser",
+        "line": 75
+      },
+      {
+        "name": "logoutUser",
+        "line": 118
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/actions/learn.ts",
+    "lines": 57,
+    "bytes": 1528,
+    "client": false,
+    "imports": [
+      "@/lib/prisma",
+      "next/headers",
+      "next/cache"
+    ],
+    "functions": [
+      {
+        "name": "toggleLessonProgress",
+        "line": 7
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/actions/profile.ts",
+    "lines": 153,
+    "bytes": 4736,
+    "client": false,
+    "imports": [
+      "@/lib/prisma",
+      "next/headers",
+      "next/cache",
+      "crypto"
+    ],
+    "functions": [
+      {
+        "name": "hashPassword",
+        "line": 8
+      },
+      {
+        "name": "updateUserProfile",
+        "line": 12
+      },
+      {
+        "name": "changeUserPassword",
+        "line": 45
+      },
+      {
+        "name": "requestVipActivation",
+        "line": 98
+      },
+      {
+        "name": "checkCurrentUserVipStatus",
+        "line": 131
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/actions/user.ts",
+    "lines": 20,
+    "bytes": 574,
+    "client": false,
+    "imports": [
+      "next/headers",
+      "@/lib/prisma"
+    ],
+    "functions": [
+      {
+        "name": "getUserPlan",
+        "line": 6
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/admin/layout.tsx",
+    "lines": 50,
+    "bytes": 1832,
+    "client": false,
+    "imports": [
+      "next/link",
+      "lucide-react",
+      "@/components/admin/AdminNav",
+      "@/components/admin/AdminTopBar",
+      "next"
+    ],
+    "functions": [
+      {
+        "name": "AdminLayout",
+        "line": 15
+      }
+    ],
+    "effects": [],
+    "links": [
+      {
+        "line": 21,
+        "target": "\"/admin\""
+      },
+      {
+        "line": 31,
+        "target": "\"/dashboard\""
+      }
+    ]
+  },
+  {
+    "file": "src/app/admin/lessons/actions.ts",
+    "lines": 276,
+    "bytes": 10371,
+    "client": false,
+    "imports": [
+      "@/lib/prisma",
+      "next/cache"
+    ],
+    "functions": [
+      {
+        "name": "toggleLessonVip",
+        "line": 7
+      },
+      {
+        "name": "createLesson",
+        "line": 24
+      },
+      {
+        "name": "updateLesson",
+        "line": 89
+      },
+      {
+        "name": "restoreDefaultLessons",
+        "line": 171
+      },
+      {
+        "name": "deleteLesson",
+        "line": 233
+      },
+      {
+        "name": "createCourse",
+        "line": 251
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/admin/lessons/page.tsx",
+    "lines": 55,
+    "bytes": 1799,
+    "client": false,
+    "imports": [
+      "@/lib/prisma",
+      "@/components/admin/LessonsManager",
+      "next"
+    ],
+    "functions": [
+      {
+        "name": "AdminLessons",
+        "line": 12
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/admin/page.tsx",
+    "lines": 655,
+    "bytes": 28228,
+    "client": false,
+    "imports": [
+      "next/link",
+      "@/lib/prisma",
+      "@/components/admin/AdminCharts",
+      "@/components/admin/AdminPageHeader",
+      "next",
+      "lucide-react"
+    ],
+    "functions": [
+      {
+        "name": "timeAgo",
+        "line": 57
+      },
+      {
+        "name": "AdminDashboard",
+        "line": 72
+      }
+    ],
+    "effects": [],
+    "links": [
+      {
+        "line": 236,
+        "target": "{stat.link}"
+      },
+      {
+        "line": 300,
+        "target": "\"/admin/users\""
+      },
+      {
+        "line": 372,
+        "target": "{`/admin/users?search=${encodeURIComponent(user.email)}`}"
+      },
+      {
+        "line": 417,
+        "target": "\"/admin/users\""
+      },
+      {
+        "line": 448,
+        "target": "\"/admin/sepay\""
+      },
+      {
+        "line": 465,
+        "target": "\"/admin/sepay\""
+      },
+      {
+        "line": 568,
+        "target": "\"/admin/sepay\""
+      },
+      {
+        "line": 584,
+        "target": "\"/admin/users\""
+      },
+      {
+        "line": 601,
+        "target": "\"/admin/lessons\""
+      },
+      {
+        "line": 618,
+        "target": "\"/admin/sepay\""
+      },
+      {
+        "line": 635,
+        "target": "\"/admin/settings\""
+      }
+    ]
+  },
+  {
+    "file": "src/app/admin/pricing-fees/actions.ts",
+    "lines": 63,
+    "bytes": 3351,
+    "client": false,
+    "imports": [
+      "next/headers",
+      "next/cache",
+      "@/lib/prisma",
+      "@/lib/pricing/registry"
+    ],
+    "functions": [
+      {
+        "name": "requireAdmin",
+        "line": 8
+      },
+      {
+        "name": "nullableNumber",
+        "line": 13
+      },
+      {
+        "name": "vietnamDate",
+        "line": 21
+      },
+      {
+        "name": "createPricingFeeOverride",
+        "line": 26
+      },
+      {
+        "name": "deactivatePricingFeeOverride",
+        "line": 55
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/admin/pricing-fees/page.tsx",
+    "lines": 40,
+    "bytes": 4067,
+    "client": false,
+    "imports": [
+      "lucide-react",
+      "@/lib/prisma",
+      "@/lib/pricing/registry",
+      "./actions",
+      "./PricingFeeOverrideForm",
+      "@/components/admin/AdminPageHeader",
+      "next"
+    ],
+    "functions": [
+      {
+        "name": "PricingFeesAdminPage",
+        "line": 18
+      }
+    ],
+    "effects": [],
+    "links": [
+      {
+        "line": 36,
+        "target": "{item.sourceUrl}"
+      }
+    ]
+  },
+  {
+    "file": "src/app/admin/pricing-fees/PricingFeeOverrideForm.tsx",
+    "lines": 44,
+    "bytes": 4849,
+    "client": true,
+    "imports": [
+      "react",
+      "@/lib/pricing/registry",
+      "@/lib/pricing/types",
+      "./actions"
+    ],
+    "functions": [
+      {
+        "name": "PricingFeeOverrideForm",
+        "line": 8
+      },
+      {
+        "name": "AdminField",
+        "line": 41
+      }
+    ],
+    "effects": [
+      {
+        "line": 12,
+        "code": "useMemo(() => getAvailableCategories(platform, shopType), [platform, shopType])"
+      }
+    ],
+    "links": []
+  },
+  {
+    "file": "src/app/admin/sepay/actions.ts",
+    "lines": 262,
+    "bytes": 7581,
+    "client": false,
+    "imports": [
+      "next/cache",
+      "@/lib/sepay-server",
+      "@/lib/prisma",
+      "@/lib/vip-plans-server"
+    ],
+    "functions": [
+      {
+        "name": "saveSePayConfigAction",
+        "line": 11
+      },
+      {
+        "name": "simulateSePayWebhookAction",
+        "line": 41
+      },
+      {
+        "name": "approveTransactionAction",
+        "line": 174
+      },
+      {
+        "name": "deleteTransactionAction",
+        "line": 243
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/admin/sepay/page.tsx",
+    "lines": 63,
+    "bytes": 1633,
+    "client": false,
+    "imports": [
+      "next",
+      "@/lib/prisma",
+      "@/lib/sepay-server",
+      "@/components/admin/SePayConfigManager"
+    ],
+    "functions": [
+      {
+        "name": "AdminSePayPage",
+        "line": 13
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/admin/settings/actions.ts",
+    "lines": 157,
+    "bytes": 5226,
+    "client": false,
+    "imports": [
+      "next/cache",
+      "openai",
+      "@/lib/system-settings"
+    ],
+    "functions": [
+      {
+        "name": "saveSystemSettingsAction",
+        "line": 10
+      },
+      {
+        "name": "testOpenAiConnectionAction",
+        "line": 50
+      },
+      {
+        "name": "changeAdminPasswordAction",
+        "line": 109
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/admin/settings/page.tsx",
+    "lines": 27,
+    "bytes": 854,
+    "client": false,
+    "imports": [
+      "next",
+      "@/lib/system-settings",
+      "@/components/admin/SystemSettingsManager"
+    ],
+    "functions": [
+      {
+        "name": "AdminSettingsPage",
+        "line": 12
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/admin/users/actions.ts",
+    "lines": 276,
+    "bytes": 8875,
+    "client": false,
+    "imports": [
+      "@/lib/prisma",
+      "crypto",
+      "next/cache",
+      "@/lib/sepay-server"
+    ],
+    "functions": [
+      {
+        "name": "hashPassword",
+        "line": 7
+      },
+      {
+        "name": "toggleUserVip",
+        "line": 14
+      },
+      {
+        "name": "updateUserVipDuration",
+        "line": 50
+      },
+      {
+        "name": "toggleUserLock",
+        "line": 109
+      },
+      {
+        "name": "createUserByAdmin",
+        "line": 125
+      },
+      {
+        "name": "resetPasswordByAdmin",
+        "line": 186
+      },
+      {
+        "name": "deleteUserByAdmin",
+        "line": 204
+      },
+      {
+        "name": "updateUserDailyFreeLimit",
+        "line": 223
+      },
+      {
+        "name": "updateGlobalDailyFreeLimit",
+        "line": 249
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/admin/users/page.tsx",
+    "lines": 139,
+    "bytes": 4868,
+    "client": false,
+    "imports": [
+      "@/lib/prisma",
+      "@/components/admin/UsersManager",
+      "@/lib/sepay-server",
+      "@/lib/vip-expiration",
+      "@/lib/vip-plans-server",
+      "@/lib/ai-usage",
+      "next"
+    ],
+    "functions": [
+      {
+        "name": "AdminUsers",
+        "line": 16
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/admin/vip-plans/actions.ts",
+    "lines": 251,
+    "bytes": 7868,
+    "client": false,
+    "imports": [
+      "@/lib/prisma",
+      "next/cache",
+      "@/lib/vip-plans"
+    ],
+    "functions": [
+      {
+        "name": "getAdminVipPlans",
+        "line": 8
+      },
+      {
+        "name": "toggleVipPlanActive",
+        "line": 21
+      },
+      {
+        "name": "toggleVipPlanPopular",
+        "line": 40
+      },
+      {
+        "name": "createVipPlan",
+        "line": 59
+      },
+      {
+        "name": "updateVipPlan",
+        "line": 133
+      },
+      {
+        "name": "deleteVipPlan",
+        "line": 210
+      },
+      {
+        "name": "seedDefaultVipPlans",
+        "line": 231
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/admin/vip-plans/page.tsx",
+    "lines": 38,
+    "bytes": 1067,
+    "client": false,
+    "imports": [
+      "@/lib/prisma",
+      "@/lib/vip-plans",
+      "./VipPlansManager",
+      "next"
+    ],
+    "functions": [
+      {
+        "name": "AdminVipPlansPage",
+        "line": 13
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/admin/vip-plans/VipPlansManager.tsx",
+    "lines": 734,
+    "bytes": 33397,
+    "client": true,
+    "imports": [
+      "react",
+      "lucide-react",
+      "@/components/admin/AdminPageHeader",
+      "./actions",
+      "@/lib/vip-plans"
+    ],
+    "functions": [
+      {
+        "name": "VipPlansManager",
+        "line": 37
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/admin-login/actions.ts",
+    "lines": 25,
+    "bytes": 716,
+    "client": false,
+    "imports": [
+      "next/headers",
+      "next/navigation",
+      "@/lib/system-settings"
+    ],
+    "functions": [
+      {
+        "name": "loginAdmin",
+        "line": 7
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/admin-login/layout.tsx",
+    "lines": 15,
+    "bytes": 374,
+    "client": false,
+    "imports": [
+      "next"
+    ],
+    "functions": [
+      {
+        "name": "AdminLoginLayout",
+        "line": 8
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/admin-login/page.tsx",
+    "lines": 71,
+    "bytes": 2600,
+    "client": true,
+    "imports": [
+      "react",
+      "./actions",
+      "lucide-react"
+    ],
+    "functions": [
+      {
+        "name": "AdminLogin",
+        "line": 7
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/api/ai/route.ts",
+    "lines": 597,
+    "bytes": 32031,
+    "client": false,
+    "imports": [
+      "next/server",
+      "next/headers",
+      "openai",
+      "@/lib/system-settings",
+      "@/lib/ai-usage",
+      "@/lib/prisma",
+      "@/lib/seo/handler"
+    ],
+    "functions": [
+      {
+        "name": "POST",
+        "line": 9
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/api/ai/seo/route.ts",
+    "lines": 33,
+    "bytes": 1224,
+    "client": false,
+    "imports": [
+      "next/server",
+      "@/lib/seo/handler"
+    ],
+    "functions": [
+      {
+        "name": "POST",
+        "line": 7
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/api/ai/usage/route.ts",
+    "lines": 102,
+    "bytes": 2583,
+    "client": false,
+    "imports": [
+      "next/server",
+      "next/headers",
+      "@/lib/prisma",
+      "@/lib/ai-usage"
+    ],
+    "functions": [
+      {
+        "name": "GET",
+        "line": 12
+      },
+      {
+        "name": "POST",
+        "line": 62
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/api/settings/openai/route.ts",
+    "lines": 84,
+    "bytes": 2725,
+    "client": false,
+    "imports": [
+      "next/server",
+      "@/lib/system-settings"
+    ],
+    "functions": [
+      {
+        "name": "GET",
+        "line": 5
+      },
+      {
+        "name": "POST",
+        "line": 34
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/api/upload/video/route.ts",
+    "lines": 70,
+    "bytes": 2151,
+    "client": false,
+    "imports": [
+      "next/server",
+      "fs",
+      "path"
+    ],
+    "functions": [
+      {
+        "name": "POST",
+        "line": 7
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/api/vip-plans/route.ts",
+    "lines": 112,
+    "bytes": 3181,
+    "client": false,
+    "imports": [
+      "next/server",
+      "@/lib/prisma",
+      "@/lib/vip-plans-server"
+    ],
+    "functions": [
+      {
+        "name": "GET",
+        "line": 6
+      },
+      {
+        "name": "POST",
+        "line": 30
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/api/vip-plans/[id]/route.ts",
+    "lines": 186,
+    "bytes": 5707,
+    "client": false,
+    "imports": [
+      "next/server",
+      "@/lib/prisma"
+    ],
+    "functions": [
+      {
+        "name": "GET",
+        "line": 9
+      },
+      {
+        "name": "PUT",
+        "line": 36
+      },
+      {
+        "name": "PATCH",
+        "line": 124
+      },
+      {
+        "name": "DELETE",
+        "line": 161
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/api/webhooks/sepay/route.ts",
+    "lines": 402,
+    "bytes": 13353,
+    "client": false,
+    "imports": [
+      "next/server",
+      "@/lib/prisma",
+      "@/lib/sepay-server",
+      "@/lib/vip-plans-server"
+    ],
+    "functions": [
+      {
+        "name": "GET",
+        "line": 12
+      },
+      {
+        "name": "POST",
+        "line": 24
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/globals.css",
+    "lines": 1175,
+    "bytes": 38453,
+    "client": false,
+    "imports": [],
+    "functions": [],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/layout.tsx",
+    "lines": 61,
+    "bytes": 2177,
+    "client": false,
+    "imports": [
+      "next",
+      "next/font/google",
+      "./globals.css",
+      "@/context/ThemeContext",
+      "@/context/ToastContext"
+    ],
+    "functions": [
+      {
+        "name": "RootLayout",
+        "line": 17
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/app/login/page.tsx",
+    "lines": 119,
+    "bytes": 4829,
+    "client": true,
+    "imports": [
+      "react",
+      "next/link",
+      "next/navigation",
+      "lucide-react",
+      "@/app/actions/auth"
+    ],
+    "functions": [
+      {
+        "name": "LoginPage",
+        "line": 9
+      }
+    ],
+    "effects": [],
+    "links": [
+      {
+        "line": 36,
+        "target": "\"/\""
+      },
+      {
+        "line": 73,
+        "target": "\"#\""
+      },
+      {
+        "line": 108,
+        "target": "\"/register\""
+      }
+    ]
+  },
+  {
+    "file": "src/app/page.tsx",
+    "lines": 662,
+    "bytes": 38692,
+    "client": false,
+    "imports": [
+      "next/link",
+      "next/image",
+      "lucide-react",
+      "@/components/layout/footer",
+      "@/lib/vip-plans-server",
+      "@/lib/vip-plans"
+    ],
+    "functions": [
+      {
+        "name": "LandingPage",
+        "line": 19
+      },
+      {
+        "name": "PainCard",
+        "line": 599
+      },
+      {
+        "name": "SmallToolCard",
+        "line": 614
+      },
+      {
+        "name": "ReviewCard",
+        "line": 626
+      },
+      {
+        "name": "Faq",
+        "line": 651
+      }
+    ],
+    "effects": [],
+    "links": [
+      {
+        "line": 34,
+        "target": "\"/\""
+      },
+      {
+        "line": 42,
+        "target": "\"#tools\""
+      },
+      {
+        "line": 43,
+        "target": "\"#course\""
+      },
+      {
+        "line": 44,
+        "target": "\"#pricing\""
+      },
+      {
+        "line": 48,
+        "target": "\"/login\""
+      },
+      {
+        "line": 51,
+        "target": "\"/tools\""
+      },
+      {
+        "line": 76,
+        "target": "\"/tools\""
+      },
+      {
+        "line": 79,
+        "target": "\"/learn\""
+      },
+      {
+        "line": 98,
+        "target": "\"/dashboard-mockup.jpg\""
+      },
+      {
+        "line": 193,
+        "target": "\"/tools/seo-optimizer\""
+      },
+      {
+        "line": 205,
+        "target": "\"/tools/title-spinner\""
+      },
+      {
+        "line": 218,
+        "target": "\"/tools/ad-copy\""
+      },
+      {
+        "line": 230,
+        "target": "\"/tools/pricing-calculator\""
+      },
+      {
+        "line": 231,
+        "target": "\"/tools/tax-calculator\""
+      },
+      {
+        "line": 234,
+        "target": "\"/tools/video-repurposer\""
+      },
+      {
+        "line": 246,
+        "target": "\"/tools/chat-broadcast\""
+      },
+      {
+        "line": 247,
+        "target": "\"/tools/script-writer\""
+      },
+      {
+        "line": 250,
+        "target": "\"/tools/appeal-generator\""
+      },
+      {
+        "line": 262,
+        "target": "\"/tools/review-replier\""
+      },
+      {
+        "line": 263,
+        "target": "\"/tools/koc-planner\""
+      },
+      {
+        "line": 267,
+        "target": "\"/tools\""
+      },
+      {
+        "line": 306,
+        "target": "\"/learn\""
+      },
+      {
+        "line": 413,
+        "target": "\"/register\""
+      },
+      {
+        "line": 475,
+        "target": "\"/register\""
+      },
+      {
+        "line": 533,
+        "target": "\"/register\""
+      },
+      {
+        "line": 572,
+        "target": "\"/tools\""
+      },
+      {
+        "line": 575,
+        "target": "\"/learn\""
+      },
+      {
+        "line": 589,
+        "target": "\"/tools\""
+      },
+      {
+        "line": 618,
+        "target": "{href}"
+      }
+    ]
+  },
+  {
+    "file": "src/app/register/page.tsx",
+    "lines": 134,
+    "bytes": 5588,
+    "client": true,
+    "imports": [
+      "react",
+      "next/link",
+      "next/navigation",
+      "lucide-react",
+      "@/app/actions/auth"
+    ],
+    "functions": [
+      {
+        "name": "RegisterPage",
+        "line": 9
+      }
+    ],
+    "effects": [],
+    "links": [
+      {
+        "line": 36,
+        "target": "\"/\""
+      },
+      {
+        "line": 123,
+        "target": "\"/login\""
+      }
+    ]
+  },
+  {
+    "file": "src/components/admin/AdminCharts.tsx",
+    "lines": 971,
+    "bytes": 38403,
+    "client": true,
+    "imports": [
+      "react",
+      "lucide-react"
+    ],
+    "functions": [
+      {
+        "name": "AdminCharts",
+        "line": 60
+      }
+    ],
+    "effects": [
+      {
+        "line": 93,
+        "code": "useMemo(() => {\n    const now = new Date();\n\n    if (revenuePeriod === \"day\") {\n      // 14 ngày gần nhất\n      const days: { key: string; label: string; subLabel: string; date: Date }[] = [];\n      for (let i = 13; i >= 0; i--) {\n        const d = new Date(now);\n        d.setDate(d.getDate() - i);\n        const yyyy = d.getFullYear();\n        const mm = String(d.getMonth() + 1).padStart(2, \"0\");\n        const dd = String(d.getDate()).padStart(2, \"0\");\n        days.push({\n          key: `${yyyy}-${mm}-${dd}`,\n          label: `${dd}/${mm}`,\n          subLabel: `Ngày ${dd}/${mm}/${yyyy}`,\n          date: d,\n        });\n      }\n\n      const map = new Map<string, { revenue: number; count: number }>();\n      days.forEach((d) => map.set(d.key, { revenue: 0, count: 0 }));\n\n      transactions.forEach((tx) => {\n        const txDate = new Date(tx.createdAt);\n        const yyyy = txDate.getFullYear();\n        const mm = String(txDate.getMonth() + 1).padStart(2, \"0\");\n        const dd = String(tx"
+      },
+      {
+        "line": 233,
+        "code": "useMemo(() => {\n    const total = revenueChartData.reduce((acc, curr) => acc + curr.revenue, 0);\n    const txCount = revenueChartData.reduce((acc, curr) => acc + curr.count, 0);\n    const max = Math.max(...revenueChartData.map((d) => d.revenue), 0);\n    const avg = revenueChartData.length > 0 ? Math.round(total / revenueChartData.length) : 0;\n    return { total, txCount, max, avg };\n  }, [revenueChartData])"
+      },
+      {
+        "line": 252,
+        "code": "useMemo(() => {\n    const target = Math.max(revenueSummary.max, 40_000);\n    const roughStep = target / 3;\n    const power = Math.pow(10, Math.floor(Math.log10(roughStep)));\n    const frac = roughStep / power;\n    let niceStep = power;\n    if (frac <= 1.2) niceStep = 1 * power;\n    else if (frac <= 2.5) niceStep = 2 * power;\n    else if (frac <= 6) niceStep = 5 * power;\n    else niceStep = 10 * power;\n\n    const maxTick = Math.max(\n      Math.ceil((target * 1.05) / niceStep) * niceStep,\n      niceStep * 3\n    );\n    const ticks: number[] = [];\n    for (let val = maxTick; val >= 0; val -= niceStep) {\n      ticks.push(val);\n    }\n    return { maxTick, ticks, niceStep };\n  }, [revenueSummary.max])"
+      },
+      {
+        "line": 274,
+        "code": "useMemo(() => {\n    if (revenueChartData.length === 0) return [];\n    const count = revenueChartData.length;\n    const colW = chartW / count;\n\n    return revenueChartData.map((item, idx) => {\n      // Tọa độ X căn chính giữa ô phân bổ dữ liệu của cột\n      const x = paddingLeft + (idx + 0.5) * colW;\n      const ratio = yAxis.maxTick > 0 ? Math.min(item.revenue / yAxis.maxTick, 1) : 0;\n      const rawBarH = ratio * chartH;\n      // Chỉ gán chiều cao cột khi doanh thu > 0, tránh vẽ vạch tím đè lên số 0 đ\n      const barH = item.revenue > 0 ? Math.max(rawBarH, 4) : 0;\n      const barY = paddingTop + chartH - barH;\n      const y = paddingTop + chartH - ratio * chartH;\n\n      return {\n        ...item,\n        x,\n        y,\n        barY,\n        barH,\n        colW,\n      };\n    });\n  }, [revenueChartData, yAxis.maxTick, chartW, chartH, paddingLeft, paddingTop])"
+      },
+      {
+        "line": 301,
+        "code": "useMemo(() => {\n    if (points.length === 0) return { line: \"\", area: \"\" };\n    const line = points.reduce((acc, pt, i) => {\n      return i === 0 ? `M ${pt.x},${pt.y}` : `${acc} L ${pt.x},${pt.y}`;\n    }, \"\");\n    const area = `${line} L ${points[points.length - 1].x},${paddingTop + chartH} L ${points[0].x},${paddingTop + chartH} Z`;\n    return { line, area };\n  }, [points, paddingTop, chartH])"
+      },
+      {
+        "line": 323,
+        "code": "useMemo(() => {\n    const now = new Date();\n    const months: {\n      label: string;\n      year: number;\n      month: number;\n      vip: number;\n      free: number;\n    }[] = [];\n\n    for (let i = 5; i >= 0; i--) {\n      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);\n      const yyyy = d.getFullYear();\n      const mm = d.getMonth() + 1;\n      months.push({\n        label: `T${mm}`,\n        year: yyyy,\n        month: mm,\n        vip: 0,\n        free: 0,\n      });\n    }\n\n    usersTimeline.forEach((u) => {\n      const d = new Date(u.createdAt);\n      const y = d.getFullYear();\n      const m = d.getMonth() + 1;\n      const target = months.find((it) => it.year === y && it.month === m);\n      if (target) {\n        if (u.isVIP) target.vip += 1;\n        else target.free += 1;\n      }\n    });\n\n    return months;\n  }, [usersTimeline])"
+      }
+    ],
+    "links": []
+  },
+  {
+    "file": "src/components/admin/AdminNav.tsx",
+    "lines": 45,
+    "bytes": 1634,
+    "client": true,
+    "imports": [
+      "next/link",
+      "next/navigation",
+      "lucide-react"
+    ],
+    "functions": [
+      {
+        "name": "AdminNav",
+        "line": 7
+      }
+    ],
+    "effects": [],
+    "links": [
+      {
+        "line": 31,
+        "target": "{link.href}"
+      }
+    ]
+  },
+  {
+    "file": "src/components/admin/AdminPageHeader.tsx",
+    "lines": 52,
+    "bytes": 1602,
+    "client": false,
+    "imports": [
+      "react"
+    ],
+    "functions": [
+      {
+        "name": "AdminPageHeader",
+        "line": 13
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/components/admin/AdminTopBar.tsx",
+    "lines": 69,
+    "bytes": 3206,
+    "client": true,
+    "imports": [
+      "next/link",
+      "next/navigation",
+      "lucide-react"
+    ],
+    "functions": [
+      {
+        "name": "AdminTopBar",
+        "line": 17
+      }
+    ],
+    "effects": [],
+    "links": [
+      {
+        "line": 45,
+        "target": "\"/dashboard\""
+      }
+    ]
+  },
+  {
+    "file": "src/components/admin/LessonsManager.tsx",
+    "lines": 1400,
+    "bytes": 64293,
+    "client": true,
+    "imports": [
+      "react",
+      "lucide-react",
+      "@/components/admin/AdminPageHeader",
+      "@/app/admin/lessons/actions",
+      "@/lib/video"
+    ],
+    "functions": [
+      {
+        "name": "LessonsManager",
+        "line": 67
+      }
+    ],
+    "effects": [
+      {
+        "line": 103,
+        "code": "useEffect(() => {\n    setCoursesList(courses);\n  }, [courses])"
+      },
+      {
+        "line": 120,
+        "code": "useEffect(() => {\n    console.group(\"🛠️ [ADMIN AIChoShop] DỮ LIỆU BÀI HỌC LOAD TỪ DATABASE:\");\n    console.log(\"Tổng số bài học:\", initialLessons.length);\n    console.log(\"Khóa học:\", coursesList.map((c) => c.title).join(\", \"));\n    console.log(\"Số bài VIP PRO:\", initialLessons.filter((l) => l.isVIP).length);\n    console.log(\"Số bài FREE:\", initialLessons.filter((l) => !l.isVIP).length);\n    console.table(\n      initialLessons.map((l) => ({\n        STT: l.order,\n        \"Tiêu Đề\": l.title,\n        \"Phân Quyền\": l.isVIP ? \"👑 VIP PRO\" : \"✨ FREE\",\n        \"Video URL\": l.videoUrl ? l.videoUrl.slice(0, 45) + \"...\" : \"(Chưa có link)\",\n        \"Khóa Học\": l.course.title,\n      }))\n    );\n    console.groupEnd();\n  }, [initialLessons, coursesList])"
+      },
+      {
+        "line": 140,
+        "code": "useMemo(() => {\n    const modulesSet = new Set<string>();\n    const relevantLessons =\n      selectedCourseId === \"all\"\n        ? lessons\n        : lessons.filter((l) => l.course?.id === selectedCourseId);\n\n    relevantLessons.forEach((l) => {\n      if (l.moduleName && l.moduleName.trim()) {\n        modulesSet.add(l.moduleName.trim());\n      }\n    });\n    if (modulesSet.size === 0) {\n      modulesSet.add(\"Phần 1\");\n      modulesSet.add(\"Phần 2\");\n      modulesSet.add(\"Phần 3\");\n      modulesSet.add(\"Phần 4\");\n      modulesSet.add(\"Phần 5\");\n    }\n    return Array.from(modulesSet);\n  }, [lessons, selectedCourseId])"
+      },
+      {
+        "line": 163,
+        "code": "useMemo(() => {\n    const total = lessons.length;\n    const vipCount = lessons.filter((l) => l.isVIP).length;\n    const freeCount = total - vipCount;\n    const vipPercent = total > 0 ? Math.round((vipCount / total) * 100) : 0;\n    const withVideoCount = lessons.filter((l) => l.videoUrl && l.videoUrl.trim()).length;\n\n    return { total, vipCount, freeCount, vipPercent, withVideoCount, moduleCount: allModules.length };\n  }, [lessons, allModules])"
+      },
+      {
+        "line": 174,
+        "code": "useMemo(() => {\n    return lessons\n      .filter((lesson) => {\n        // Lọc theo Khóa học\n        const matchCourse =\n          selectedCourseId === \"all\" || lesson.course?.id === selectedCourseId;\n\n        // Tìm kiếm theo tên bài, nội dung, khóa học hoặc STT\n        const matchSearch =\n          !searchTerm.trim() ||\n          lesson.title.toLowerCase().includes(searchTerm.toLowerCase().trim()) ||\n          (lesson.content && lesson.content.toLowerCase().includes(searchTerm.toLowerCase().trim())) ||\n          (lesson.course?.title && lesson.course.title.toLowerCase().includes(searchTerm.toLowerCase().trim())) ||\n          String(lesson.order).includes(searchTerm.trim());\n\n        // Lọc VIP\n        const matchVip =\n          vipFilter === \"all\" ||\n          (vipFilter === \"vip\" && lesson.isVIP) ||\n          (vipFilter === \"free\" && !lesson.isVIP);\n\n        // Lọc theo Module\n        const matchModule =\n          selectedModule === \"all\" ||\n          lesson.moduleName === selectedMo"
+      },
+      {
+        "line": 306,
+        "code": "fetch(\"/api/upload/video\", {\n        method: \"POST\",\n        body: uploadData,\n      })"
+      },
+      {
+        "line": 492,
+        "code": "useMemo(() => {\n    return parseVideoUrl(formData.videoUrl);\n  }, [formData.videoUrl])"
+      }
+    ],
+    "links": [
+      {
+        "line": 1175,
+        "target": "{formVideoInfo.embedUrl}"
+      },
+      {
+        "line": 1182,
+        "target": "{formVideoInfo.embedUrl}"
+      },
+      {
+        "line": 1280,
+        "target": "{info.embedUrl}"
+      },
+      {
+        "line": 1290,
+        "target": "{info.embedUrl}"
+      }
+    ]
+  },
+  {
+    "file": "src/components/admin/SePayConfigManager.tsx",
+    "lines": 930,
+    "bytes": 41402,
+    "client": true,
+    "imports": [
+      "react",
+      "lucide-react",
+      "@/components/admin/AdminPageHeader",
+      "@/app/admin/sepay/actions"
+    ],
+    "functions": [
+      {
+        "name": "formatRelativeTime",
+        "line": 30
+      },
+      {
+        "name": "SePayConfigManager",
+        "line": 95
+      }
+    ],
+    "effects": [
+      {
+        "line": 114,
+        "code": "useEffect(() => {\n    setTransactions(initialTransactions);\n  }, [initialTransactions])"
+      },
+      {
+        "line": 126,
+        "code": "useEffect(() => {\n    if (typeof window !== \"undefined\") {\n      setWebhookUrl(`${window.location.origin}/api/webhooks/sepay`);\n    }\n  }, [])"
+      }
+    ],
+    "links": []
+  },
+  {
+    "file": "src/components/admin/SystemSettingsManager.tsx",
+    "lines": 883,
+    "bytes": 38668,
+    "client": true,
+    "imports": [
+      "react",
+      "lucide-react",
+      "@/components/admin/AdminPageHeader",
+      "@/app/admin/settings/actions"
+    ],
+    "functions": [
+      {
+        "name": "SystemSettingsManager",
+        "line": 77
+      }
+    ],
+    "effects": [
+      {
+        "line": 248,
+        "code": "fetch(\"/api/settings/openai\")"
+      }
+    ],
+    "links": [
+      {
+        "line": 296,
+        "target": "\"https://platform.openai.com/api-keys\""
+      }
+    ]
+  },
+  {
+    "file": "src/components/admin/UsersManager.tsx",
+    "lines": 1591,
+    "bytes": 76805,
+    "client": true,
+    "imports": [
+      "react",
+      "lucide-react",
+      "@/components/admin/AdminPageHeader",
+      "@/app/admin/users/actions",
+      "@/lib/vip-expiration",
+      "@/lib/vip-plans"
+    ],
+    "functions": [
+      {
+        "name": "UsersManager",
+        "line": 72
+      }
+    ],
+    "effects": [
+      {
+        "line": 168,
+        "code": "useMemo(() => {\n    const total = users.length;\n    const vipCount = users.filter((u) => u.isVIP).length;\n    const freeCount = total - vipCount;\n    const lockedCount = users.filter((u) => u.isLocked).length;\n    const activeCount = total - lockedCount;\n    const vipPercent = total > 0 ? Math.round((vipCount / total) * 100) : 0;\n\n    return { total, vipCount, freeCount, lockedCount, activeCount, vipPercent };\n  }, [users])"
+      },
+      {
+        "line": 180,
+        "code": "useMemo(() => {\n    return users.filter((user) => {\n      // Tìm kiếm theo Email, Tên hoặc SĐT\n      const matchSearch =\n        !searchTerm.trim() ||\n        user.email.toLowerCase().includes(searchTerm.toLowerCase().trim()) ||\n        (user.name && user.name.toLowerCase().includes(searchTerm.toLowerCase().trim())) ||\n        (user.phone && user.phone.includes(searchTerm.trim()));\n\n      // Lọc VIP\n      const matchVip =\n        vipFilter === \"all\" ||\n        (vipFilter === \"vip\" && user.isVIP) ||\n        (vipFilter === \"free\" && !user.isVIP);\n\n      // Lọc Trạng thái Khóa\n      const matchStatus =\n        statusFilter === \"all\" ||\n        (statusFilter === \"active\" && !user.isLocked) ||\n        (statusFilter === \"locked\" && user.isLocked);\n\n      return matchSearch && matchVip && matchStatus;\n    });\n  }, [users, searchTerm, vipFilter, statusFilter])"
+      }
+    ],
+    "links": []
+  },
+  {
+    "file": "src/components/auth/AuthModal.tsx",
+    "lines": 122,
+    "bytes": 5999,
+    "client": true,
+    "imports": [
+      "react",
+      "lucide-react",
+      "@/app/actions/auth",
+      "next/navigation"
+    ],
+    "functions": [
+      {
+        "name": "AuthModal",
+        "line": 8
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/components/layout/footer.tsx",
+    "lines": 115,
+    "bytes": 6913,
+    "client": false,
+    "imports": [
+      "next/link",
+      "lucide-react"
+    ],
+    "functions": [
+      {
+        "name": "Footer",
+        "line": 4
+      }
+    ],
+    "effects": [],
+    "links": [
+      {
+        "line": 16,
+        "target": "\"/\""
+      },
+      {
+        "line": 28,
+        "target": "\"#\""
+      },
+      {
+        "line": 31,
+        "target": "\"#\""
+      },
+      {
+        "line": 34,
+        "target": "\"#\""
+      },
+      {
+        "line": 45,
+        "target": "\"/learn\""
+      },
+      {
+        "line": 48,
+        "target": "\"/tools\""
+      },
+      {
+        "line": 51,
+        "target": "\"/tools/video-repurposer\""
+      },
+      {
+        "line": 54,
+        "target": "\"/tools/ad-copy\""
+      },
+      {
+        "line": 57,
+        "target": "\"/tools/chat-broadcast\""
+      },
+      {
+        "line": 67,
+        "target": "\"#\""
+      },
+      {
+        "line": 70,
+        "target": "\"#\""
+      },
+      {
+        "line": 73,
+        "target": "\"#\""
+      },
+      {
+        "line": 76,
+        "target": "\"#\""
+      }
+    ]
+  },
+  {
+    "file": "src/components/layout/header.tsx",
+    "lines": 87,
+    "bytes": 4189,
+    "client": true,
+    "imports": [
+      "lucide-react",
+      "next/link",
+      "@/context/ThemeContext"
+    ],
+    "functions": [
+      {
+        "name": "Header",
+        "line": 7
+      }
+    ],
+    "effects": [],
+    "links": [
+      {
+        "line": 37,
+        "target": "\"/settings\""
+      },
+      {
+        "line": 53,
+        "target": "\"/profile\""
+      },
+      {
+        "line": 75,
+        "target": "\"/login\""
+      }
+    ]
+  },
+  {
+    "file": "src/components/layout/sidebar.tsx",
+    "lines": 286,
+    "bytes": 12861,
+    "client": true,
+    "imports": [
+      "next/link",
+      "next/navigation",
+      "lucide-react",
+      "react",
+      "@/app/actions/auth"
+    ],
+    "functions": [
+      {
+        "name": "Sidebar",
+        "line": 16
+      }
+    ],
+    "effects": [
+      {
+        "line": 110,
+        "code": "useEffect(() => {\n    const currentStep = journeySteps.find(step => {\n      if (step.id === 2) {\n        return pathname?.startsWith('/courses') || pathname?.startsWith('/learn');\n      }\n      return pathname?.startsWith(step.href) && step.href !== '/';\n    });\n    if (currentStep && currentStep.subItems) {\n      setExpandedId(currentStep.id);\n    }\n  }, [pathname])"
+      }
+    ],
+    "links": [
+      {
+        "line": 159,
+        "target": "{step.href}"
+      },
+      {
+        "line": 211,
+        "target": "{sub.href}"
+      },
+      {
+        "line": 231,
+        "target": "{step.viewAllHref}"
+      },
+      {
+        "line": 249,
+        "target": "\"/settings\""
+      },
+      {
+        "line": 275,
+        "target": "\"/login\""
+      }
+    ]
+  },
+  {
+    "file": "src/components/loading-ui/text-shimmer-wave.tsx",
+    "lines": 99,
+    "bytes": 2510,
+    "client": true,
+    "imports": [
+      "react",
+      "motion/react",
+      "@/lib/utils"
+    ],
+    "functions": [
+      {
+        "name": "TextShimmerWave",
+        "line": 24
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/components/settings/SettingsManager.tsx",
+    "lines": 439,
+    "bytes": 19670,
+    "client": true,
+    "imports": [
+      "react",
+      "lucide-react",
+      "@/context/ThemeContext",
+      "@/app/actions/profile"
+    ],
+    "functions": [
+      {
+        "name": "SettingsManager",
+        "line": 33
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/components/tools/AdCopyOutput.tsx",
+    "lines": 810,
+    "bytes": 37549,
+    "client": true,
+    "imports": [
+      "react",
+      "lucide-react",
+      "@/components/loading-ui/text-shimmer-wave"
+    ],
+    "functions": [
+      {
+        "name": "AdCopyOutput",
+        "line": 66
+      }
+    ],
+    "effects": [
+      {
+        "line": 103,
+        "code": "useMemo(() => {\n    if (!result) return null;\n\n    const lines = result.split(\"\\n\");\n\n    const keywordGroups: KeywordGroup[] = [];\n    const headlines: HeadlineItem[] = [];\n    const hooks: HookItem[] = [];\n    const captions: CaptionItem[] = [];\n    const hashtags: string[] = [];\n\n    let currentGroup: KeywordGroup | null = null;\n    let inHeadlinesSection = false;\n    let inHooksSection = false;\n    let inCaptionsSection = false;\n\n    // Helper tạo nhóm từ khóa\n    const createGroup = (name: string, badge: string, badgeColor: string, intent: string): KeywordGroup => ({\n      id: `group-${keywordGroups.length + 1}`,\n      name,\n      badge,\n      badgeColor,\n      intent,\n      items: [],\n      rawText: \"\",\n    });\n\n    for (let i = 0; i < lines.length; i++) {\n      const line = lines[i].trim();\n      // Bỏ qua dòng trống, dòng chỉ chứa ký tự bullet, hoặc dòng chữ hành động\n      if (\n        !line ||\n        line === \"•\" ||\n        line === \"-\" ||\n        line === \"*\" ||\n        lin"
+      }
+    ],
+    "links": []
+  },
+  {
+    "file": "src/components/tools/AiUsageBadge.tsx",
+    "lines": 290,
+    "bytes": 12921,
+    "client": true,
+    "imports": [
+      "react",
+      "lucide-react"
+    ],
+    "functions": [
+      {
+        "name": "AiUsageBadge",
+        "line": 22
+      }
+    ],
+    "effects": [
+      {
+        "line": 47,
+        "code": "fetch(\"/api/ai/usage\")"
+      },
+      {
+        "line": 65,
+        "code": "useEffect(() => {\n    fetchStats();\n  }, [fetchStats, refreshTrigger])"
+      },
+      {
+        "line": 66,
+        "code": "fetchStats()"
+      }
+    ],
+    "links": []
+  },
+  {
+    "file": "src/components/tools/AppealGeneratorOutput.tsx",
+    "lines": 403,
+    "bytes": 18742,
+    "client": true,
+    "imports": [
+      "react",
+      "lucide-react",
+      "@/components/loading-ui/text-shimmer-wave"
+    ],
+    "functions": [
+      {
+        "name": "AppealGeneratorOutput",
+        "line": 31
+      }
+    ],
+    "effects": [
+      {
+        "line": 44,
+        "code": "useMemo(() => {\n    if (!result) return { coreIssue: \"\", solution: \"\", letter: \"\", rawText: \"\" };\n\n    let coreIssue = \"\";\n    let solution = \"\";\n    let letter = \"\";\n\n    // Tìm vị trí phân chia giữa phần 1 (Phân tích) và phần 2 (Mẫu đơn)\n    const part2Index = result.search(/#{2,4}\\s*2[\\.\\:\\s]*(?:MẪU|Mẫu|ĐƠN|Đơn|MẪU ĐƠN)/i);\n\n    let part1Text = \"\";\n    let part2Text = \"\";\n\n    if (part2Index !== -1) {\n      part1Text = result.slice(0, part2Index);\n      part2Text = result.slice(part2Index);\n    } else {\n      // Nếu không có header phần 2 rõ ràng\n      const splitByKinhGui = result.search(/(?:Kính gửi|Thân gửi|Chào đội ngũ|Dear)/i);\n      if (splitByKinhGui !== -1) {\n        part1Text = result.slice(0, splitByKinhGui);\n        part2Text = result.slice(splitByKinhGui);\n      } else {\n        part2Text = result;\n      }\n    }\n\n    // Bóc tách vấn đề cốt lõi và cách khắc phục từ part 1\n    if (part1Text) {\n      const coreIssueMatch = part1Text.match(/[-*•\\s]*(?:\\*\\*|\\*)?(?:Vấn đề cốt "
+      }
+    ],
+    "links": []
+  },
+  {
+    "file": "src/components/tools/ChatBroadcastOutput.tsx",
+    "lines": 310,
+    "bytes": 14082,
+    "client": true,
+    "imports": [
+      "react",
+      "lucide-react",
+      "@/components/loading-ui/text-shimmer-wave"
+    ],
+    "functions": [
+      {
+        "name": "ChatBroadcastOutput",
+        "line": 26
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/components/tools/KocPlannerOutput.tsx",
+    "lines": 539,
+    "bytes": 24097,
+    "client": true,
+    "imports": [
+      "react",
+      "lucide-react",
+      "@/components/loading-ui/text-shimmer-wave"
+    ],
+    "functions": [
+      {
+        "name": "KocPlannerOutput",
+        "line": 38
+      }
+    ],
+    "effects": [
+      {
+        "line": 49,
+        "code": "useMemo(() => {\n    if (!result) return null;\n\n    // 1. Bóc tách phần Tóm tắt (từ khối ## Tóm tắt)\n    const summaryBlockMatch = result.match(/##\\s*Tóm tắt([\\s\\S]*?)(?=##|$)/i);\n    const summaryText = summaryBlockMatch ? summaryBlockMatch[1] : result;\n\n    const categoryMatch = summaryText.match(/Ngành hàng[\\:\\s\\*]+([^\\n\\r]+)/i);\n    const budgetMatch = summaryText.match(/Ngân sách[^\\:\\n\\r]*[\\:\\s\\*]+([^\\n\\r]+)/i);\n    const strategyMatch = summaryText.match(/Chiến lược[\\:\\s\\*]+([^\\n\\r]+)/i);\n    const useCaseMatch = summaryText.match(/(?:Trường hợp sử dụng|Mục tiêu)[\\:\\s\\*]+([^\\n\\r]+)/i);\n\n    const cleanVal = (val?: string) => (val ? val.replace(/\\*+/g, \"\").trim() : \"\");\n\n    // 2. Bóc tách phân bổ ngân sách\n    const bookingPctMatch = result.match(/Booking[^\\d%]*(\\d+)%/i);\n    const adsPctMatch = result.match(/Chạy Ads[^\\d%]*(\\d+)%/i);\n    const samplePctMatch = result.match(/(?:hàng mẫu|sample)[^\\d%]*(\\d+)%/i);\n\n    // Số tiền trong ngoặc đơn (X.XXX.XXX VNĐ) hoặc sau dấu hai chấm\n"
+      }
+    ],
+    "links": []
+  },
+  {
+    "file": "src/components/tools/ReviewReplierOutput.tsx",
+    "lines": 633,
+    "bytes": 28994,
+    "client": true,
+    "imports": [
+      "react",
+      "lucide-react",
+      "@/components/loading-ui/text-shimmer-wave"
+    ],
+    "functions": [
+      {
+        "name": "ReviewReplierOutput",
+        "line": 44
+      }
+    ],
+    "effects": [
+      {
+        "line": 59,
+        "code": "useMemo(() => {\n    if (!result) return { styles: [], adviceList: [] };\n\n    const lines = result.split(\"\\n\");\n    const styles: ReviewStyleItem[] = [];\n    let currentStyle: Partial<ReviewStyleItem> | null = null;\n    let currentSection: \"reply\" | \"action\" | null = null;\n    let isAdviceBlock = false;\n    const rawAdviceLines: string[] = [];\n\n    const flushCurrent = () => {\n      if (currentStyle && (currentStyle.reply || currentStyle.rawText)) {\n        const id = styles.length + 1;\n        const title = currentStyle.title || `Phương án ${id}`;\n        let type: ReviewStyleItem[\"type\"] = \"general\";\n        let badge = \"Đề Xuất\";\n\n        const lowerTitle = title.toLowerCase();\n        if (lowerTitle.includes(\"chân thành\") || lowerTitle.includes(\"cầu thị\")) {\n          type = \"apologetic\";\n          badge = \"Khuyên Dùng\";\n        } else if (lowerTitle.includes(\"khéo léo\") || lowerTitle.includes(\"vận chuyển\") || lowerTitle.includes(\"khách quan\")) {\n          type = \"delivery\";\n       "
+      },
+      {
+        "line": 342,
+        "code": "useMemo(() => {\n    if (activeTab === \"all\") return parsedData.styles;\n    return parsedData.styles.filter((s) => s.id === activeTab);\n  }, [parsedData.styles, activeTab])"
+      }
+    ],
+    "links": []
+  },
+  {
+    "file": "src/components/tools/ScriptWriterOutput.tsx",
+    "lines": 863,
+    "bytes": 35151,
+    "client": true,
+    "imports": [
+      "react",
+      "lucide-react",
+      "xlsx",
+      "@/components/loading-ui/text-shimmer-wave"
+    ],
+    "functions": [
+      {
+        "name": "ScriptWriterOutput",
+        "line": 55
+      }
+    ],
+    "effects": [
+      {
+        "line": 69,
+        "code": "useMemo(() => {\n    if (!result) return [];\n\n    // 1. Chuẩn hóa: ngắt dòng trước các thẻ markdown bị dính liền và lọc ký tự ngoại lai\n    const normalized = result\n      .replace(/```markdown/gi, \"\\n```markdown\\n\")\n      .replace(/```/g, \"\\n```\\n\")\n      .replace(/\\s+(#+\\s+Kịch bản)/gi, \"\\n\\n$1\")\n      .replace(/\\s+(#+\\s+\\[\\d{2}:\\d{2})/gi, \"\\n\\n$1\")\n      .replace(/\\s+(##+\\s+Hook)/gi, \"\\n\\n$1\")\n      .replace(/\\s+(##+\\s+Nỗi đau)/gi, \"\\n\\n$1\")\n      .replace(/\\s+(##+\\s+Giải pháp)/gi, \"\\n\\n$1\")\n      .replace(/\\s+(##+\\s+Call to Action)/gi, \"\\n\\n$1\")\n      .replace(/\\s+(#+\\s+Lưu ý)/gi, \"\\n\\n$1\")\n      .replace(/\\s+(#+\\s+Gợi ý quay dựng)/gi, \"\\n\\n$1\")\n      .replace(/[\\u4e00-\\u9fa5]+[^\\n]*\\n?/g, \"\"); // Lọc câu bình luận tiếng Trung nếu có\n\n    const lines = normalized.split(\"\\n\");\n    const parsedScripts: ScriptItem[] = [];\n\n    let currentScript: Partial<ScriptItem> | null = null;\n    let currentSection: Partial<ScriptSection> | null = null;\n    let bufferSection: string[] = [];\n    let"
+      },
+      {
+        "line": 353,
+        "code": "useEffect(() => {\n    if (scripts.length > 0) {\n      if (!scripts.some((s) => s.id === selectedScriptId)) {\n        setSelectedScriptId(scripts[0].id);\n      }\n    }\n  }, [scripts, selectedScriptId])"
+      },
+      {
+        "line": 362,
+        "code": "useMemo(() => {\n    return scripts.find((s) => s.id === selectedScriptId) || scripts[0];\n  }, [scripts, selectedScriptId])"
+      }
+    ],
+    "links": []
+  },
+  {
+    "file": "src/components/tools/SeoOptimizerOutput.tsx",
+    "lines": 376,
+    "bytes": 17732,
+    "client": true,
+    "imports": [
+      "react",
+      "lucide-react",
+      "@/context/ToastContext",
+      "@/components/loading-ui/text-shimmer-wave",
+      "@/lib/seo/contract"
+    ],
+    "functions": [
+      {
+        "name": "SeoOptimizerOutput",
+        "line": 24
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/components/tools/TaxCalculatorOutput.tsx",
+    "lines": 494,
+    "bytes": 22496,
+    "client": true,
+    "imports": [
+      "react",
+      "lucide-react",
+      "@/lib/tax-calculator/engine",
+      "@/lib/tax-calculator/types"
+    ],
+    "functions": [
+      {
+        "name": "Row",
+        "line": 37
+      },
+      {
+        "name": "Metric",
+        "line": 74
+      },
+      {
+        "name": "TaxCalculatorOutput",
+        "line": 106
+      }
+    ],
+    "effects": [
+      {
+        "line": 113,
+        "code": "useMemo(\n    () =>\n      [\n        `BẢNG DỰ TOÁN THUẾ THƯƠNG MẠI ĐIỆN TỬ ${input.taxYear}`,\n        `Loại người nộp thuế: ${\n          input.payerType === \"company\"\n            ? \"Doanh nghiệp / Công ty\"\n            : input.payerType === \"household\"\n            ? \"Hộ kinh doanh\"\n            : \"Cá nhân kinh doanh\"\n        }`,\n        `Tổng doanh thu đa kênh: ${money(result.totalRevenue)}`,\n        `Thuế GTGT: ${money(result.vat)} (${result.vatRate}%)`,\n        `Thuế ${incomeName}: ${money(result.incomeTax)} (${result.incomeTaxRate}%)`,\n        `Ưu đãi giảm 30% ${incomeName}: -${money(result.incomeTaxReduction)}`,\n        `Tổng nghĩa vụ thuế phát sinh: ${money(result.totalTax)}`,\n        `Đã được sàn khấu trừ / nộp thay: ${money(input.withheldVat + input.withheldIncomeTax)}`,\n        `Số thuế còn phải nộp: ${money(result.remainingPayable)}`,\n        `Số có thể bù trừ hoặc hoàn: ${money(result.potentialRefundOrOffset)}`,\n        `Dòng tiền ròng sau phí sàn & thuế: ${money(result.netCashAf"
+      }
+    ],
+    "links": [
+      {
+        "line": 458,
+        "target": "{SOURCES.threshold}"
+      },
+      {
+        "line": 466,
+        "target": "{SOURCES.household}"
+      },
+      {
+        "line": 474,
+        "target": "{SOURCES.reduction}"
+      },
+      {
+        "line": 482,
+        "target": "{SOURCES.company}"
+      }
+    ]
+  },
+  {
+    "file": "src/components/tools/TitleSpinnerOutput.tsx",
+    "lines": 316,
+    "bytes": 15011,
+    "client": true,
+    "imports": [
+      "react",
+      "lucide-react",
+      "xlsx",
+      "@/components/ui/text-dots",
+      "@/components/loading-ui/text-shimmer-wave"
+    ],
+    "functions": [
+      {
+        "name": "TitleSpinnerOutput",
+        "line": 22
+      }
+    ],
+    "effects": [
+      {
+        "line": 28,
+        "code": "useMemo(() => {\n    if (!result) return [];\n\n    const lines = result.split(\"\\n\").map(line => line.trim()).filter(Boolean);\n    const parsed: TitleItem[] = [];\n\n    lines.forEach((line) => {\n      // Tìm các dòng dạng \"1. Tiêu đề\", \"1/ Tiêu đề\", \"- Tiêu đề\", \"* Tiêu đề\", \"Biến thể 1: Tiêu đề\"\n      const match = line.match(/^(?:(?:\\d+[\\.\\/\\:\\)-]|\\*|\\-|\\+|(?:Biến thể|Tiêu đề)\\s*\\d+[\\:\\.\\-]?))\\s*(.+)$/i);\n      let text = match ? match[1] : line;\n\n      // Loại bỏ các ký tự markdown thừa như ** hoặc dấu ngoặc kép ở đầu/cuối\n      text = text.replace(/^\\*\\*|\\*\\*$/g, \"\").replace(/^[\"']|[\"']$/g, \"\").trim();\n\n      // Bỏ qua các dòng tiêu đề chung chung như \"Dưới đây là 10 tiêu đề...\", \"Chúc bạn bán đắt hàng...\"\n      if (\n        text.length > 10 &&\n        !text.toLowerCase().startsWith(\"dưới đây\") &&\n        !text.toLowerCase().startsWith(\"chúc bạn\") &&\n        !text.toLowerCase().startsWith(\"lưu ý\")\n      ) {\n        parsed.push({\n          id: parsed.length + 1,\n          title: text,\n "
+      }
+    ],
+    "links": []
+  },
+  {
+    "file": "src/components/tools/VideoRepurposerOutput.tsx",
+    "lines": 488,
+    "bytes": 21533,
+    "client": true,
+    "imports": [
+      "react",
+      "lucide-react",
+      "xlsx",
+      "@/components/loading-ui/text-shimmer-wave"
+    ],
+    "functions": [
+      {
+        "name": "VideoRepurposerOutput",
+        "line": 42
+      },
+      {
+        "name": "ContentCard",
+        "line": 456
+      }
+    ],
+    "effects": [
+      {
+        "line": 54,
+        "code": "useMemo(() => {\n    if (!result) return { group: \"\", fanpage: \"\", carousel: \"\", blog: \"\", zalo: \"\" };\n\n    const splitByHeader = (text: string, titleKeywords: string[]) => {\n      for (const kw of titleKeywords) {\n        const idx = text.indexOf(kw);\n        if (idx !== -1) return idx;\n      }\n      return -1;\n    };\n\n    const groupIdx = splitByHeader(result, [\"ĐỊNH DẠNG 1\", \"FACEBOOK GROUP\", \"BÀI ĐĂNG FACEBOOK GROUP\"]);\n    const fanpageIdx = splitByHeader(result, [\"ĐỊNH DẠNG 2\", \"FANPAGE FACEBOOK\", \"BÀI ĐĂNG FANPAGE\"]);\n    const carouselIdx = splitByHeader(result, [\"ĐỊNH DẠNG 3\", \"CAROUSEL\", \"CHUỖI ẢNH CAROUSEL\"]);\n    const blogIdx = splitByHeader(result, [\"ĐỊNH DẠNG 4\", \"REVIEW CHUẨN SEO\", \"BÀI VIẾT REVIEW\"]);\n    const zaloIdx = splitByHeader(result, [\"ĐỊNH DẠNG 5\", \"ZALO OA\", \"TIN NHẮN ZALO\"]);\n\n    const cleanSection = (str: string) => str.trim().replace(/^---\\s*/gm, \"\");\n\n    const group = groupIdx !== -1 && fanpageIdx !== -1 ? cleanSection(result.substring(groupIdx, fanpage"
+      }
+    ],
+    "links": []
+  },
+  {
+    "file": "src/components/ui/button.tsx",
+    "lines": 58,
+    "bytes": 3230,
+    "client": false,
+    "imports": [
+      "@base-ui/react/button",
+      "class-variance-authority",
+      "cn"
+    ],
+    "functions": [
+      {
+        "name": "Button",
+        "line": 42
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/components/ui/text-dots.tsx",
+    "lines": 58,
+    "bytes": 1226,
+    "client": false,
+    "imports": [
+      "react",
+      "@/lib/utils"
+    ],
+    "functions": [
+      {
+        "name": "TextDots",
+        "line": 8
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/context/ThemeContext.tsx",
+    "lines": 197,
+    "bytes": 5632,
+    "client": true,
+    "imports": [
+      "react",
+      "next/navigation"
+    ],
+    "functions": [
+      {
+        "name": "ThemeProvider",
+        "line": 71
+      },
+      {
+        "name": "useTheme",
+        "line": 190
+      }
+    ],
+    "effects": [
+      {
+        "line": 97,
+        "code": "useEffect(() => {\n    // 1. Đọc từ localStorage khi client hydrate\n    let initialMode: ThemeMode = \"light\";\n    let initialColor: ThemeColor = \"blue\";\n    try {\n      const savedMode = localStorage.getItem(\"aicho_theme_mode\") as ThemeMode | null;\n      const savedColor = localStorage.getItem(\"aicho_theme_color\") as ThemeColor | null;\n\n      if (savedMode === \"dark\" || savedMode === \"light\") {\n        initialMode = savedMode;\n      } else {\n        // Kiểm tra cài đặt hệ điều hành\n        const prefersDark = window.matchMedia(\"(prefers-color-scheme: dark)\").matches;\n        initialMode = prefersDark ? \"dark\" : \"light\";\n      }\n\n      if (savedColor && THEME_COLOR_OPTIONS.some((c) => c.id === savedColor)) {\n        initialColor = savedColor;\n      }\n    } catch (e) {\n      console.warn(\"Could not load theme from localStorage\", e);\n    }\n\n    setThemeModeState(initialMode);\n    setThemeColorState(initialColor);\n\n    // Trang chủ \"/\" và trang Quản trị \"/admin*\" giữ nguyên mặc định (light "
+      },
+      {
+        "line": 102,
+        "code": "localStorage.getItem(\"aicho_theme_mode\")"
+      },
+      {
+        "line": 103,
+        "code": "localStorage.getItem(\"aicho_theme_color\")"
+      },
+      {
+        "line": 136,
+        "code": "useEffect(() => {\n    if (!mounted) return;\n    if (isExemptRoute(pathname)) {\n      applyModeToDom(\"light\");\n      applyColorToDom(\"blue\");\n    } else {\n      applyModeToDom(themeMode);\n      applyColorToDom(themeColor);\n    }\n  }, [pathname, mounted, themeMode, themeColor])"
+      },
+      {
+        "line": 153,
+        "code": "localStorage.setItem(\"aicho_theme_mode\", mode)"
+      },
+      {
+        "line": 165,
+        "code": "localStorage.setItem(\"aicho_theme_color\", color)"
+      }
+    ],
+    "links": []
+  },
+  {
+    "file": "src/context/ToastContext.tsx",
+    "lines": 306,
+    "bytes": 11121,
+    "client": true,
+    "imports": [
+      "react",
+      "next/link",
+      "lucide-react"
+    ],
+    "functions": [
+      {
+        "name": "ToastProvider",
+        "line": 42
+      },
+      {
+        "name": "useToast",
+        "line": 299
+      }
+    ],
+    "effects": [],
+    "links": [
+      {
+        "line": 250,
+        "target": "{toast.actionUrl}"
+      }
+    ]
+  },
+  {
+    "file": "src/hooks/useToolGate.tsx",
+    "lines": 110,
+    "bytes": 4352,
+    "client": true,
+    "imports": [
+      "react",
+      "next/link",
+      "lucide-react",
+      "@/app/actions/user",
+      "@/components/auth/AuthModal"
+    ],
+    "functions": [
+      {
+        "name": "useToolGate",
+        "line": 9
+      }
+    ],
+    "effects": [
+      {
+        "line": 36,
+        "code": "fetch(\"/api/ai/usage\")"
+      },
+      {
+        "line": 57,
+        "code": "localStorage.getItem(key)"
+      },
+      {
+        "line": 68,
+        "code": "localStorage.setItem(key, (usages + 1).toString())"
+      }
+    ],
+    "links": [
+      {
+        "line": 95,
+        "target": "\"/profile#pricing-section\""
+      }
+    ]
+  },
+  {
+    "file": "src/lib/ai-usage.ts",
+    "lines": 374,
+    "bytes": 12267,
+    "client": false,
+    "imports": [
+      "@/lib/prisma"
+    ],
+    "functions": [
+      {
+        "name": "getStartOfTodayVn",
+        "line": 20
+      },
+      {
+        "name": "formatRelativeTime",
+        "line": 34
+      },
+      {
+        "name": "summarizeAiAction",
+        "line": 60
+      },
+      {
+        "name": "getAiUsageStats",
+        "line": 120
+      },
+      {
+        "name": "recordAiUsage",
+        "line": 291
+      }
+    ],
+    "effects": [
+      {
+        "line": 204,
+        "code": "fetchStatsViaSql()"
+      },
+      {
+        "line": 207,
+        "code": "fetchStatsViaSql()"
+      }
+    ],
+    "links": []
+  },
+  {
+    "file": "src/lib/koc-planner/engine.test.ts",
+    "lines": 71,
+    "bytes": 3590,
+    "client": false,
+    "imports": [
+      "node:test",
+      "node:assert/strict",
+      "./engine.ts",
+      "./types.ts"
+    ],
+    "functions": [],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/lib/koc-planner/engine.ts",
+    "lines": 96,
+    "bytes": 7672,
+    "client": false,
+    "imports": [
+      "../pricing/engine.ts",
+      "../pricing/types.ts",
+      "./types.ts"
+    ],
+    "functions": [
+      {
+        "name": "orderInput",
+        "line": 8
+      },
+      {
+        "name": "calculateKocPlan",
+        "line": 29
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/lib/koc-planner/types.ts",
+    "lines": 81,
+    "bytes": 2049,
+    "client": false,
+    "imports": [
+      "../pricing/types"
+    ],
+    "functions": [],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/lib/pricing/engine.test.ts",
+    "lines": 98,
+    "bytes": 5661,
+    "client": false,
+    "imports": [
+      "node:test",
+      "node:assert/strict",
+      "./engine.ts",
+      "./registry.ts",
+      "./types.ts"
+    ],
+    "functions": [],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/lib/pricing/engine.ts",
+    "lines": 158,
+    "bytes": 11072,
+    "client": false,
+    "imports": [
+      "./registry.ts",
+      "./types.ts"
+    ],
+    "functions": [
+      {
+        "name": "scenarioWeights",
+        "line": 11
+      },
+      {
+        "name": "validatePricingInput",
+        "line": 20
+      },
+      {
+        "name": "evaluatePrice",
+        "line": 33
+      },
+      {
+        "name": "targetReached",
+        "line": 127
+      },
+      {
+        "name": "solvePrice",
+        "line": 132
+      },
+      {
+        "name": "calculatePricing",
+        "line": 148
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/lib/pricing/registry.ts",
+    "lines": 120,
+    "bytes": 6372,
+    "client": false,
+    "imports": [
+      "./data/official-fees.json",
+      "./types.ts"
+    ],
+    "functions": [
+      {
+        "name": "getAvailableCategories",
+        "line": 19
+      },
+      {
+        "name": "getDefaultCategoryId",
+        "line": 30
+      },
+      {
+        "name": "getOfficialCategory",
+        "line": 38
+      },
+      {
+        "name": "getCategoryLabel",
+        "line": 42
+      },
+      {
+        "name": "searchable",
+        "line": 48
+      },
+      {
+        "name": "detectCategory",
+        "line": 52
+      },
+      {
+        "name": "getFeeProfile",
+        "line": 89
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/lib/pricing/storage.ts",
+    "lines": 67,
+    "bytes": 2733,
+    "client": false,
+    "imports": [
+      "./types"
+    ],
+    "functions": [
+      {
+        "name": "readPricingHistory",
+        "line": 18
+      },
+      {
+        "name": "writePricingHistory",
+        "line": 30
+      },
+      {
+        "name": "csvCell",
+        "line": 34
+      },
+      {
+        "name": "pricingHistoryToCsv",
+        "line": 39
+      },
+      {
+        "name": "downloadTextFile",
+        "line": 58
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/lib/pricing/types.ts",
+    "lines": 66,
+    "bytes": 3371,
+    "client": false,
+    "imports": [],
+    "functions": [],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/lib/prisma.ts",
+    "lines": 26,
+    "bytes": 733,
+    "client": false,
+    "imports": [
+      "@prisma/client",
+      "pg",
+      "@prisma/adapter-pg"
+    ],
+    "functions": [],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/lib/seo/contract.ts",
+    "lines": 139,
+    "bytes": 9567,
+    "client": false,
+    "imports": [],
+    "functions": [
+      {
+        "name": "validateSeoInputs",
+        "line": 36
+      },
+      {
+        "name": "parseSeoResult",
+        "line": 56
+      },
+      {
+        "name": "seoToText",
+        "line": 105
+      },
+      {
+        "name": "seoFilename",
+        "line": 109
+      },
+      {
+        "name": "seoPrompt",
+        "line": 127
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/lib/seo/generate.ts",
+    "lines": 24,
+    "bytes": 1644,
+    "client": false,
+    "imports": [
+      "./contract.ts"
+    ],
+    "functions": [
+      {
+        "name": "generateSeo",
+        "line": 6
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/lib/seo/handler.ts",
+    "lines": 143,
+    "bytes": 8045,
+    "client": false,
+    "imports": [
+      "next/server",
+      "openai",
+      "@/lib/system-settings",
+      "@/lib/prisma",
+      "@/lib/ai-usage",
+      "./contract",
+      "./generate",
+      "./usage"
+    ],
+    "functions": [
+      {
+        "name": "publicError",
+        "line": 10
+      },
+      {
+        "name": "handleSeo",
+        "line": 22
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/lib/seo/seo.test.ts",
+    "lines": 79,
+    "bytes": 5693,
+    "client": false,
+    "imports": [
+      "node:test",
+      "node:assert/strict",
+      "./contract.ts",
+      "./generate.ts",
+      "./usage-policy.ts"
+    ],
+    "functions": [],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/lib/seo/session.ts",
+    "lines": 26,
+    "bytes": 1155,
+    "client": false,
+    "imports": [
+      "node:crypto",
+      "next/headers",
+      "@/lib/prisma"
+    ],
+    "functions": [
+      {
+        "name": "createSeoSession",
+        "line": 9
+      },
+      {
+        "name": "deleteSeoSession",
+        "line": 20
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/lib/seo/usage-policy.ts",
+    "lines": 16,
+    "bytes": 1083,
+    "client": false,
+    "imports": [
+      "./contract.ts"
+    ],
+    "functions": [
+      {
+        "name": "reservePolicy",
+        "line": 8
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/lib/seo/usage.ts",
+    "lines": 66,
+    "bytes": 4092,
+    "client": false,
+    "imports": [
+      "node:crypto",
+      "next/headers",
+      "@/lib/prisma",
+      "./session",
+      "./contract",
+      "./usage-policy"
+    ],
+    "functions": [
+      {
+        "name": "seoIdentity",
+        "line": 8
+      },
+      {
+        "name": "reserveSeo",
+        "line": 40
+      },
+      {
+        "name": "finishSeo",
+        "line": 54
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/lib/sepay-server.ts",
+    "lines": 175,
+    "bytes": 5331,
+    "client": false,
+    "imports": [
+      "@/lib/prisma"
+    ],
+    "functions": [
+      {
+        "name": "getSePayConfig",
+        "line": 29
+      },
+      {
+        "name": "updateSePayConfig",
+        "line": 63
+      },
+      {
+        "name": "syncUserVipExpiration",
+        "line": 96
+      },
+      {
+        "name": "syncAllExpiredVipUsers",
+        "line": 120
+      },
+      {
+        "name": "calculateNewVipExpiration",
+        "line": 145
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/lib/system-settings.ts",
+    "lines": 243,
+    "bytes": 7750,
+    "client": false,
+    "imports": [
+      "@/lib/prisma"
+    ],
+    "functions": [
+      {
+        "name": "getSystemSettings",
+        "line": 27
+      },
+      {
+        "name": "updateSystemSettings",
+        "line": 94
+      },
+      {
+        "name": "verifyAdminPassword",
+        "line": 186
+      },
+      {
+        "name": "changeAdminPassword",
+        "line": 199
+      },
+      {
+        "name": "getOpenAiToken",
+        "line": 225
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/lib/tax-calculator/engine.test.ts",
+    "lines": 54,
+    "bytes": 2548,
+    "client": false,
+    "imports": [
+      "node:test",
+      "node:assert/strict",
+      "./engine.ts",
+      "./types.ts"
+    ],
+    "functions": [],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/lib/tax-calculator/engine.ts",
+    "lines": 100,
+    "bytes": 5735,
+    "client": false,
+    "imports": [
+      "./types.ts"
+    ],
+    "functions": [
+      {
+        "name": "personalProfitRate",
+        "line": 17
+      },
+      {
+        "name": "companyIncomeRate",
+        "line": 23
+      },
+      {
+        "name": "calculateEcommerceTax",
+        "line": 30
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/lib/tax-calculator/types.ts",
+    "lines": 51,
+    "bytes": 1434,
+    "client": false,
+    "imports": [],
+    "functions": [],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/lib/utils.ts",
+    "lines": 2,
+    "bytes": 24,
+    "client": false,
+    "imports": [],
+    "functions": [],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/lib/video.ts",
+    "lines": 80,
+    "bytes": 2088,
+    "client": false,
+    "imports": [],
+    "functions": [
+      {
+        "name": "parseVideoUrl",
+        "line": 12
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/lib/vip-expiration.ts",
+    "lines": 102,
+    "bytes": 2651,
+    "client": false,
+    "imports": [],
+    "functions": [
+      {
+        "name": "computeVipDaysLeft",
+        "line": 21
+      },
+      {
+        "name": "isVipExpired",
+        "line": 37
+      },
+      {
+        "name": "getVipStatusInfo",
+        "line": 47
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/lib/vip-plans-server.ts",
+    "lines": 34,
+    "bytes": 923,
+    "client": false,
+    "imports": [
+      "@/lib/prisma",
+      "@/lib/vip-plans"
+    ],
+    "functions": [
+      {
+        "name": "getActiveVipPlans",
+        "line": 7
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/lib/vip-plans.ts",
+    "lines": 90,
+    "bytes": 2591,
+    "client": false,
+    "imports": [],
+    "functions": [],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/middleware.ts",
+    "lines": 21,
+    "bytes": 509,
+    "client": false,
+    "imports": [
+      "next/server",
+      "next/server"
+    ],
+    "functions": [
+      {
+        "name": "middleware",
+        "line": 4
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/utils/supabase/client.ts",
+    "lines": 9,
+    "bytes": 219,
+    "client": false,
+    "imports": [
+      "@supabase/ssr"
+    ],
+    "functions": [
+      {
+        "name": "createClient",
+        "line": 3
+      }
+    ],
+    "effects": [],
+    "links": []
+  },
+  {
+    "file": "src/utils/supabase/server.ts",
+    "lines": 30,
+    "bytes": 797,
+    "client": false,
+    "imports": [
+      "@supabase/ssr",
+      "next/headers"
+    ],
+    "functions": [
+      {
+        "name": "createClient",
+        "line": 4
+      }
+    ],
+    "effects": [],
+    "links": []
+  }
+]

@@ -1,4 +1,4 @@
-import { cookies } from "next/headers";
+import { getSessionUserId } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { Metadata } from "next";
@@ -12,8 +12,8 @@ export const metadata: Metadata = {
 };
 
 export default async function SettingsPage() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("user_token")?.value;
+
+  const token = await getSessionUserId();
 
   if (!token) {
     redirect("/login");

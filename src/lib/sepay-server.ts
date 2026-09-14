@@ -1,3 +1,4 @@
+import { isVipActive } from "@/lib/vip-expiration";
 import { prisma } from "@/lib/prisma";
 
 export interface SePayConfigData {
@@ -14,47 +15,21 @@ export interface SePayConfigData {
 
 export const DEFAULT_SEPAY_CONFIG = {
   id: "default",
-  bankName: "MB Bank",
-  accountNumber: "0358888899",
-  accountHolder: "AIChoShop Official",
+  bankName: "",
+  accountNumber: "",
+  accountHolder: "",
   apiKey: "",
-  syntaxPrefix: "VIP",
-  autoActivate: true,
+  syntaxPrefix: "ACS",
+  autoActivate: false,
 };
 
 /**
  * Lấy cấu hình SePay từ Database.
- * Nếu chưa có thì tự động tạo cấu hình mặc định.
+ * Chưa cấu hình trả về trạng thái tắt; lỗi database được truyền lên để đóng cổng thanh toán.
  */
 export async function getSePayConfig(): Promise<SePayConfigData> {
-  try {
-    let config = await prisma.sePayConfig.findUnique({
-      where: { id: "default" },
-    });
-
-    if (!config) {
-      config = await prisma.sePayConfig.create({
-        data: {
-          id: "default",
-          bankName: DEFAULT_SEPAY_CONFIG.bankName,
-          accountNumber: DEFAULT_SEPAY_CONFIG.accountNumber,
-          accountHolder: DEFAULT_SEPAY_CONFIG.accountHolder,
-          apiKey: DEFAULT_SEPAY_CONFIG.apiKey,
-          syntaxPrefix: DEFAULT_SEPAY_CONFIG.syntaxPrefix,
-          autoActivate: DEFAULT_SEPAY_CONFIG.autoActivate,
-        },
-      });
-    }
-
-    return config;
-  } catch (error) {
-    console.error("Error fetching SePay config:", error);
-    return {
-      ...DEFAULT_SEPAY_CONFIG,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
-  }
+  const config = await prisma.sePayConfig.findUnique({ where: { id: "default" } });
+  return config ?? { ...DEFAULT_SEPAY_CONFIG, createdAt: new Date(), updatedAt: new Date() };
 }
 
 /**
@@ -91,27 +66,14 @@ export async function updateSePayConfig(data: {
 }
 
 /**
- * Kiểm tra và tự động hạ cấp tài khoản nếu đã hết hạn VIP.
+ * Tính quyền VIP hiện tại, không ghi dữ liệu khi chỉ xem trang.
  */
 export async function syncUserVipExpiration(user: {
   id: string;
   isVIP: boolean;
   vipExpiresAt: Date | null;
 }): Promise<{ isVIP: boolean; vipExpiresAt: Date | null }> {
-  if (!user.isVIP || !user.vipExpiresAt) {
-    return { isVIP: user.isVIP, vipExpiresAt: user.vipExpiresAt };
-  }
-
-  const isExpired = new Date(user.vipExpiresAt).getTime() <= Date.now();
-  if (isExpired) {
-    await prisma.user.update({
-      where: { id: user.id },
-      data: { isVIP: false },
-    });
-    return { isVIP: false, vipExpiresAt: user.vipExpiresAt };
-  }
-
-  return { isVIP: true, vipExpiresAt: user.vipExpiresAt };
+  return { isVIP: isVipActive(user), vipExpiresAt: user.vipExpiresAt };
 }
 
 /**

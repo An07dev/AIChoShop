@@ -1,18 +1,21 @@
 "use server";
 
-import { prisma } from "@/lib/prisma";
-import { cookies } from "next/headers";
-import { revalidatePath } from "next/cache";
-import crypto from "crypto";
+import { isVipActive } from "@/lib/vip-expiration";
 
-function hashPassword(password: string) {
-  return crypto.createHash("sha256").update(password).digest("hex");
-}
+import { prisma } from "@/lib/prisma";
+import { getSessionUserId } from "@/lib/auth/session";
+import { revalidatePath } from "next/cache";
+import { verifyPassword } from "@/lib/auth/password";
+import { createPaymentIntent, type PaymentIntentView } from "@/lib/payments/service";
+import { getSePayConfig } from "@/lib/sepay-server";
+import { replacePassword } from "@/lib/auth/credentials";
+
+
 
 export async function updateUserProfile(formData: FormData) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("user_token")?.value;
+
+    const token = await getSessionUserId();
 
     if (!token) {
       return { success: false, error: "Bạn chưa đăng nhập" };
@@ -44,8 +47,8 @@ export async function updateUserProfile(formData: FormData) {
 
 export async function changeUserPassword(formData: FormData) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("user_token")?.value;
+
+    const token = await getSessionUserId();
 
     if (!token) {
       return { success: false, error: "Bạn chưa đăng nhập" };
@@ -76,53 +79,37 @@ export async function changeUserPassword(formData: FormData) {
       return { success: false, error: "Người dùng không tồn tại" };
     }
 
-    const hashedCurrent = hashPassword(currentPassword);
-    if (user.password !== hashedCurrent) {
+    if (!(await verifyPassword(currentPassword, user.password))) {
       return { success: false, error: "Mật khẩu hiện tại không chính xác" };
     }
 
-    await prisma.user.update({
-      where: { id: token },
-      data: {
-        password: hashPassword(newPassword),
-      },
-    });
+    await replacePassword(token, newPassword, user.password);
 
-    return { success: true, message: "Đổi mật khẩu thành công!" };
+    return { success: true, message: "Đổi mật khẩu thành công. Vui lòng đăng nhập lại trên các thiết bị." };
   } catch (error) {
     console.error("Error changing password:", error);
     return { success: false, error: "Đã xảy ra lỗi hệ thống khi đổi mật khẩu" };
   }
 }
 
-export async function requestVipActivation(packageType: string, amount: number) {
+export async function requestVipActivation(planId: string): Promise<{ success: boolean; intent?: PaymentIntentView; error?: string }> {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("user_token")?.value;
-
-    if (!token) {
-      return { success: false, error: "Bạn chưa đăng nhập" };
-    }
-
-    const transaction = await prisma.transaction.create({
-      data: {
-        userId: token,
-        amount: amount,
-        status: "PENDING",
-        type: `UPGRADE_VIP_${packageType}`,
-      },
-    });
-
-    revalidatePath("/profile");
-    return {
-      success: true,
-      message: "Yêu cầu nâng cấp VIP đã được ghi nhận. Vui lòng chuyển khoản đúng nội dung để hệ thống kích hoạt tự động.",
-      transactionId: transaction.id,
-    };
+    const userId = await getSessionUserId();
+    if (!userId) return { success: false, error: "Vui lòng đăng nhập để thanh toán." };
+    const intent = await createPaymentIntent(userId, planId, await getSePayConfig());
+    return { success: true, intent };
   } catch (error) {
-    console.error("Error creating VIP transaction:", error);
-    return { success: false, error: "Không thể gửi yêu cầu nâng cấp, vui lòng liên hệ admin" };
+    return { success: false, error: error instanceof Error ? error.message : "Không thể tạo yêu cầu thanh toán." };
   }
+}
+
+export async function checkPaymentIntentStatus(intentId: string): Promise<{ status: string }> {
+  const userId = await getSessionUserId();
+  if (!userId) return { status: "UNAUTHORIZED" };
+  if (typeof intentId !== "string" || intentId.length > 100) return { status: "NOT_FOUND" };
+  const intent = await prisma.transaction.findFirst({ where: { id: intentId, userId }, select: { status: true, expiresAt: true } });
+  if (!intent) return { status: "NOT_FOUND" };
+  return { status: intent.status === "PENDING" && intent.expiresAt && intent.expiresAt <= new Date() ? "EXPIRED" : intent.status };
 }
 
 /**
@@ -130,8 +117,8 @@ export async function requestVipActivation(packageType: string, amount: number) 
  */
 export async function checkCurrentUserVipStatus() {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("user_token")?.value;
+
+    const token = await getSessionUserId();
     if (!token) return { isVIP: false, vipExpiresAt: null };
 
     const user = await prisma.user.findUnique({
@@ -142,7 +129,7 @@ export async function checkCurrentUserVipStatus() {
     if (!user) return { isVIP: false, vipExpiresAt: null };
 
     return {
-      isVIP: user.isVIP,
+      isVIP: isVipActive(user),
       vipExpiresAt: user.vipExpiresAt ? user.vipExpiresAt.toISOString() : null,
     };
   } catch (error) {

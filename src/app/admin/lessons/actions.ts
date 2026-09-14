@@ -1,10 +1,13 @@
 "use server";
 
+import { requireAdmin } from "@/lib/auth/session";
+
 import { prisma } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 
 // Bật / Tắt trạng thái VIP của bài học (1-click)
 export async function toggleLessonVip(lessonId: string, newVipStatus: boolean) {
+  await requireAdmin();
   try {
     const updated = await prisma.lesson.update({
       where: { id: lessonId },
@@ -30,6 +33,7 @@ export async function createLesson(data: {
   order?: number;
   isVIP?: boolean;
 }) {
+  await requireAdmin();
   const { title, moduleName = "Phần 1", content, videoUrl, isVIP = false } = data;
 
   if (!title || !title.trim()) {
@@ -98,6 +102,7 @@ export async function updateLesson(
     courseId?: string;
   }
 ) {
+  await requireAdmin();
   const { title, moduleName, content, videoUrl, isVIP, order, courseId } = data;
 
   if (!title || !title.trim()) {
@@ -169,6 +174,7 @@ const DEFAULT_LESSONS_DATA = [
 
 // Khôi phục lại các bài học đã xóa nhầm
 export async function restoreDefaultLessons() {
+  await requireAdmin();
   try {
     let course = await prisma.course.findFirst();
     if (!course) {
@@ -231,6 +237,7 @@ export async function restoreDefaultLessons() {
 
 // Xóa bài học
 export async function deleteLesson(lessonId: string) {
+  await requireAdmin();
   try {
     await prisma.$transaction([
       prisma.progress.deleteMany({ where: { lessonId } }),
@@ -249,6 +256,7 @@ export async function deleteLesson(lessonId: string) {
 
 // Tạo khóa học mới
 export async function createCourse(data: { title: string; description?: string }) {
+  await requireAdmin();
   const { title, description } = data;
   if (!title || !title.trim()) {
     return { success: false, error: "Vui lòng nhập tên khóa học" };

@@ -14,10 +14,12 @@ export default function AdminLogin() {
     setError("");
     
     const formData = new FormData(e.currentTarget);
-    const result = await loginAdmin(formData);
-    
-    if (result?.error) {
-      setError(result.error);
+    try {
+      const result = await loginAdmin(formData);
+      if (result?.error) setError(result.error);
+    } catch {
+      setError("Không thể đăng nhập. Vui lòng thử lại.");
+    } finally {
       setLoading(false);
     }
   };
@@ -30,10 +32,14 @@ export default function AdminLogin() {
             <ShieldAlert size={32} />
           </div>
           <h1 className="text-2xl font-black text-slate-900">Admin Khu Vực Mật</h1>
-          <p className="text-slate-500 mt-2">Vui lòng nhập mật khẩu quản trị để truy cập.</p>
+          <p className="text-slate-500 mt-2">Đăng nhập bằng tài khoản có quyền quản trị.</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label htmlFor="admin-email" className="block text-sm font-bold text-slate-700 mb-2">Email quản trị</label>
+            <input id="admin-email" name="email" type="email" autoComplete="username" required className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-900" />
+          </div>
           <div>
             <label className="block text-sm font-bold text-slate-700 mb-2">
               Mật khẩu Admin
@@ -43,6 +49,7 @@ export default function AdminLogin() {
               <input 
                 type="password" 
                 name="password"
+                autoComplete="current-password"
                 required
                 className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-rose-500 focus:border-rose-500 outline-none transition-all font-medium"
                 placeholder="Nhập mật khẩu..."

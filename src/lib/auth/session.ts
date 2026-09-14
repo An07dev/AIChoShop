@@ -1,0 +1,42 @@
+import { cookies } from "next/headers";
+import { prisma } from "@/lib/prisma";
+import { hashToken, SEO_SESSION_COOKIE } from "@/lib/seo/session";
+
+export async function getSessionUser() {
+  const token = (await cookies()).get(SEO_SESSION_COOKIE)?.value;
+  if (!token || !/^[a-f0-9]{64}$/.test(token)) return null;
+  const session = await prisma.seoSession.findUnique({
+    where: { tokenHash: hashToken(token) },
+    select: {
+      expiresAt: true,
+      user: { select: { id: true, role: true, isLocked: true } },
+    },
+  });
+  if (!session || session.expiresAt <= new Date() || session.user.isLocked) return null;
+  return session.user;
+}
+
+export async function getSessionUserId() {
+  return (await getSessionUser())?.id;
+}
+
+export async function requireAdmin() {
+  const user = await getSessionUser();
+  if (!user || user.role !== "ADMIN") throw new Error("Không có quyền quản trị.");
+  return user;
+}
+
+// Route handlers return a stable denial before reading request bodies or touching data.
+export async function adminRouteGuard(request?: Request) {
+  const user = await getSessionUser();
+  if (!user || user.role !== "ADMIN") {
+    return Response.json({ success: false, error: "Không có quyền quản trị." }, { status: 403 });
+  }
+  if (request && !["GET", "HEAD"].includes(request.method)) {
+    const origin = request.headers.get("origin");
+    if ((origin && origin !== new URL(request.url).origin) || request.headers.get("sec-fetch-site") === "cross-site") {
+      return Response.json({ success: false, error: "Nguồn yêu cầu không hợp lệ." }, { status: 403 });
+    }
+  }
+  return null;
+}

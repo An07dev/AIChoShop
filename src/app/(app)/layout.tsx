@@ -1,7 +1,7 @@
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { Footer } from "@/components/layout/footer";
-import { cookies } from "next/headers";
+import { getSessionUserId } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 
 export default async function AppLayout({
@@ -10,8 +10,8 @@ export default async function AppLayout({
   children: React.ReactNode;
 }>) {
   // Get user from cookie
-  const cookieStore = await cookies();
-  const token = cookieStore.get("user_token")?.value;
+
+  const token = await getSessionUserId();
   let currentUser = null;
   if (token) {
     currentUser = await prisma.user.findUnique({

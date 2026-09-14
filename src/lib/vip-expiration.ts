@@ -12,6 +12,13 @@ export interface VipStatusInfo {
   badgeType: "lifetime" | "active" | "expired" | "free";
 }
 
+export function isVipActive(user: { isVIP: boolean; vipExpiresAt: Date | string | null } | null | undefined, now = new Date()): boolean {
+  if (!user?.isVIP) return false;
+  if (user.vipExpiresAt === null) return true;
+  const expiresAt = new Date(user.vipExpiresAt);
+  return Number.isFinite(expiresAt.getTime()) && expiresAt > now;
+}
+
 /**
  * Tính số ngày VIP còn lại.
  * - null: VIP Vĩnh viễn (hoặc chưa là VIP)

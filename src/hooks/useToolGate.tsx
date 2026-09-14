@@ -15,20 +15,8 @@ export function useToolGate() {
   const checkAccess = useCallback(async (toolId: string, isVIPOnly: boolean = false) => {
     const plan = await getUserPlan();
 
-    // Nếu Tool yêu cầu VIP
-    if (isVIPOnly) {
-      if (!plan.isLogged) {
-        setShowLoginModal(true);
-        return false;
-      }
-      if (!plan.isVIP) {
-        setVipModalReason("vip_tool");
-        setShowVIPModal(true);
-        return false;
-      }
-      return true;
-    }
-
+    if (["pricing-calculator", "tax-calculator", "koc-planner"].includes(toolId)) return true;
+    void isVIPOnly; // All AI tools share the server-enforced policy.
     // Nếu Tool miễn phí
     if (plan.isLogged) {
       if (!plan.isVIP) {
@@ -36,7 +24,7 @@ export function useToolGate() {
           const res = await fetch("/api/ai/usage");
           if (res.ok) {
             const data = await res.json();
-            if (data.dailyFreeLimit) {
+            if (data.dailyFreeLimit !== undefined) {
               setCurrentLimit(data.dailyFreeLimit);
             }
             if (data.remainingFree !== null && data.remainingFree !== undefined && data.remainingFree <= 0) {
@@ -51,22 +39,9 @@ export function useToolGate() {
       }
       return true;
     } else {
-      // Ẩn danh -> Dùng 2 lần
-      let usages = 0;
-      const key = `anon_usages_${toolId}`;
-      const storedUsages = localStorage.getItem(key);
-      if (storedUsages) {
-        usages = parseInt(storedUsages);
-      }
-
-      if (usages >= 2) {
-        setShowLoginModal(true);
-        return false;
-      }
-
-      // Tăng bộ đếm
-      localStorage.setItem(key, (usages + 1).toString());
-      return true;
+      if (toolId === "seo-optimizer") return true;
+      setShowLoginModal(true);
+      return false;
     }
   }, []);
 
@@ -89,8 +64,8 @@ export function useToolGate() {
             <div className="p-8 text-center">
               <p className="text-slate-600 mb-6 font-medium leading-relaxed text-sm">
                 {vipModalReason === "limit_reached"
-                  ? `Tài khoản miễn phí có ${currentLimit} lượt dùng mỗi ngày và bạn đã sử dụng hết lượt hôm nay. Hãy nâng cấp VIP để sử dụng không giới hạn!`
-                  : "Đây là công cụ Premium mạnh mẽ. Vui lòng nâng cấp VIP để sử dụng không giới hạn."}
+                  ? `Tài khoản miễn phí có ${currentLimit} lượt dùng mỗi ngày và bạn đã sử dụng hết lượt hôm nay. Hãy nâng cấp VIP để dùng toàn bộ công cụ với hạn mức VIP!`
+                  : "Đây là công cụ Premium mạnh mẽ. Vui lòng nâng cấp VIP để dùng toàn bộ công cụ với hạn mức VIP."}
               </p>
               <Link href="/profile#pricing-section" className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 py-4 rounded-xl font-black text-lg transition-all shadow-lg shadow-amber-500/30 mb-3">
                 <Crown size={20} className="fill-slate-950" /> Nâng cấp VIP ngay

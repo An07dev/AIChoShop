@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   User,
   Mail,
@@ -11,7 +11,6 @@ import {
   Sparkles,
   Check,
   CheckCircle2,
-  Copy,
   ExternalLink,
   Zap,
   Lock,
@@ -26,7 +25,6 @@ import {
   Clock,
   ChevronRight,
   MessageCircle,
-  QrCode,
   CreditCard,
   Star,
   Gift,
@@ -36,17 +34,17 @@ import {
   Infinity,
   Server,
   Headphones,
-  X,
 } from "lucide-react";
 import Link from "next/link";
 import {
   updateUserProfile,
   changeUserPassword,
   requestVipActivation,
-  checkCurrentUserVipStatus,
 } from "@/app/actions/profile";
 import { logoutUser } from "@/app/actions/auth";
-import { VipPlanItem, DEFAULT_VIP_PLANS } from "@/lib/vip-plans";
+import { VipPlanItem } from "@/lib/vip-plans";
+import { VipPaymentModal } from "@/components/payments/VipPaymentModal";
+import type { PaymentIntentView } from "@/lib/payments/service";
 
 interface ProfileClientProps {
   user: {
@@ -85,37 +83,13 @@ interface ProfileClientProps {
   };
 }
 
-const getBankCode = (name: string) => {
-  const lower = name.toLowerCase();
-  if (lower.includes("mb")) return "MB";
-  if (lower.includes("vietcombank") || lower.includes("vcb")) return "VCB";
-  if (lower.includes("techcombank") || lower.includes("tcb")) return "TCB";
-  if (lower.includes("acb")) return "ACB";
-  if (lower.includes("vpbank") || lower.includes("vpb")) return "VPB";
-  if (lower.includes("tpbank") || lower.includes("tpb")) return "TPB";
-  if (lower.includes("bidv")) return "BIDV";
-  if (lower.includes("agribank")) return "VBA";
-  if (lower.includes("sacombank") || lower.includes("stb")) return "STB";
-  if (lower.includes("hdbank") || lower.includes("hdb")) return "HDB";
-  if (lower.includes("vib")) return "VIB";
-  if (lower.includes("shb")) return "SHB";
-  return name.replace(/\s+/g, "");
-};
-
 export default function ProfileClient({
   user,
   totalCourses,
   totalLessons,
   vipPlans = [],
-  sePayConfig,
 }: ProfileClientProps) {
   const [activeTab, setActiveTab] = useState<"vip" | "info" | "security" | "history">("vip");
-
-  // Dynamic Bank / SePay Config
-  const bankName = sePayConfig?.bankName || "MB Bank";
-  const accountNumber = sePayConfig?.accountNumber || "0358888899";
-  const accountHolder = sePayConfig?.accountHolder || "AIChoShop Official";
-  const syntaxPrefix = sePayConfig?.syntaxPrefix || "VIP";
 
   // Form State Profile
   const [name, setName] = useState(user.name);
@@ -131,10 +105,7 @@ export default function ProfileClient({
   const [passwordMessage, setPasswordMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // VIP Package Selection (Dynamic from Database)
-  const activeVipPlans: VipPlanItem[] =
-    vipPlans && vipPlans.length > 0
-      ? vipPlans.filter((p) => p.active)
-      : (DEFAULT_VIP_PLANS as unknown as VipPlanItem[]);
+  const activeVipPlans = vipPlans.filter(plan => plan.active);
 
   const defaultSelectedSlug =
     activeVipPlans.find((p) => p.isPopular)?.slug ||
@@ -142,61 +113,23 @@ export default function ProfileClient({
     "lifetime";
 
   const [selectedPlan, setSelectedPlan] = useState<string>(defaultSelectedSlug);
-  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
-  const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [paymentIntent, setPaymentIntent] = useState<PaymentIntentView | null>(null);
   const [isRequestingVip, setIsRequestingVip] = useState(false);
-  const [vipSuccessNotice, setVipSuccessNotice] = useState<string | null>(null);
-
-  const currentPlan =
-    activeVipPlans.find((p) => p.slug === selectedPlan || p.id === selectedPlan) ||
-    activeVipPlans[0] ||
-    (DEFAULT_VIP_PLANS[0] as unknown as VipPlanItem);
-
-  const bankCode = getBankCode(bankName);
-  const transferContent = `${syntaxPrefix} ${user.phone || user.email.split("@")[0]}`;
-  const qrUrl = `https://img.vietqr.io/image/${bankCode}-${accountNumber}-compact2.png?amount=${currentPlan.price}&addInfo=${encodeURIComponent(transferContent)}&accountName=${encodeURIComponent(accountHolder)}`;
-  const sepayQrUrl = `https://qr.sepay.vn/img?bank=${bankCode}&acc=${accountNumber}&template=compact&amount=${currentPlan.price}&des=${encodeURIComponent(transferContent)}`;
-  const [qrImgSrc, setQrImgSrc] = useState(qrUrl);
-
-  useEffect(() => {
-    setQrImgSrc(qrUrl);
-  }, [qrUrl]);
-
-  // Handle escape key to close modal
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && isPaymentModalOpen) {
-        setIsPaymentModalOpen(false);
-        setVipSuccessNotice(null);
-      }
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isPaymentModalOpen]);
-
-  // Lắng nghe tự động realtime webhook SePay khi người dùng đang mở Modal thanh toán
-  useEffect(() => {
-    if (!isPaymentModalOpen || user.isVIP) return;
-
-    const interval = setInterval(async () => {
-      try {
-        const res = await checkCurrentUserVipStatus();
-        if (res.isVIP) {
-          clearInterval(interval);
-          setVipSuccessNotice(
-            "🎉 Chúc mừng bạn! Hệ thống SePay đã ghi nhận thanh toán thành công và kích hoạt VIP. Đang làm mới hệ thống..."
-          );
-          setTimeout(() => {
-            window.location.reload();
-          }, 1800);
-        }
-      } catch {
-        // ignore polling error
-      }
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [isPaymentModalOpen, user.isVIP]);
+  const [paymentError, setPaymentError] = useState("");
+  const creatingIntent = useRef(false);
+  const openPayment = async (plan: VipPlanItem) => {
+    if (creatingIntent.current) return;
+    creatingIntent.current = true;
+    setIsRequestingVip(true);
+    setPaymentError("");
+    setSelectedPlan(plan.slug || plan.id);
+    try {
+      const result = await requestVipActivation(plan.id);
+      if (result.success && result.intent) setPaymentIntent(result.intent);
+      else setPaymentError(result.error || "Không thể tạo yêu cầu thanh toán.");
+    } catch { setPaymentError("Không thể kết nối. Vui lòng thử lại."); }
+    finally { creatingIntent.current = false; setIsRequestingVip(false); }
+  };
 
   // Handle auto-scroll to pricing section if URL contains #pricing-section
   useEffect(() => {
@@ -216,34 +149,6 @@ export default function ProfileClient({
     window.addEventListener("hashchange", handleHash);
     return () => window.removeEventListener("hashchange", handleHash);
   }, []);
-
-  // Copy helper
-  const copyToClipboard = (text: string, fieldName: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedField(fieldName);
-    setTimeout(() => setCopiedField(null), 2000);
-  };
-
-  // Handle VIP Confirmation submission
-  const handleConfirmTransfer = async () => {
-    setIsRequestingVip(true);
-    setVipSuccessNotice(null);
-    try {
-      const res = await requestVipActivation(currentPlan.slug || currentPlan.name, currentPlan.price);
-      if (res.success) {
-        setVipSuccessNotice(
-          "Yêu cầu nâng cấp VIP đã được ghi nhận! Hệ thống SePay đang tự động kiểm tra giao dịch chuyển khoản. Tài khoản của bạn sẽ được kích hoạt ngay khi nhận được thanh toán."
-        );
-      } else {
-        alert(res.error || "Có lỗi xảy ra, vui lòng liên hệ admin hỗ trợ");
-      }
-    } catch (e) {
-      console.error(e);
-      alert("Đã xảy ra lỗi khi gửi yêu cầu. Vui lòng thử lại sau.");
-    } finally {
-      setIsRequestingVip(false);
-    }
-  };
 
   // Handle Profile Update
   const handleProfileSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -284,17 +189,6 @@ export default function ProfileClient({
       setConfirmPassword("");
     } else {
       setPasswordMessage({ type: "error", text: res.error || "Có lỗi xảy ra!" });
-    }
-  };
-
-  // Handle Request VIP
-  const handleRequestVip = async () => {
-    setIsRequestingVip(true);
-    setVipSuccessNotice(null);
-    const res = await requestVipActivation(selectedPlan.toUpperCase(), currentPlan.price);
-    setIsRequestingVip(false);
-    if (res.success) {
-      setVipSuccessNotice(res.message || "Yêu cầu đã được ghi nhận!");
     }
   };
 
@@ -990,7 +884,7 @@ export default function ProfileClient({
           )}
 
           {/* ── D-FREE. DÀNH RIÊNG CHO FREE: BỘ 3 GÓI NÂNG CẤP & CỔNG THANH TOÁN VIETQR ── */}
-          {!user.isVIP && (
+          {(
             <>
               {/* ── D. BỘ 3 GÓI NÂNG CẤP VIP (PRICING SECTION) ─────────────────────────── */}
               <div id="pricing-section" className="space-y-6 pt-4 scroll-mt-6">
@@ -1012,7 +906,6 @@ export default function ProfileClient({
                         key={plan.id || plan.slug}
                         onClick={() => {
                           setSelectedPlan(plan.slug || plan.id);
-                          setIsPaymentModalOpen(true);
                         }}
                         className={`relative rounded-3xl p-6 sm:p-7 transition-all cursor-pointer flex flex-col justify-between border-2 ${isSelected
                           ? "border-amber-500 bg-white dark:bg-slate-900 shadow-2xl shadow-amber-500/15 scale-[1.03] z-10"
@@ -1079,8 +972,7 @@ export default function ProfileClient({
                           type="button"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedPlan(plan.slug || plan.id);
-                            setIsPaymentModalOpen(true);
+                            void openPayment(plan);
                           }}
                           className={`w-full mt-6 py-3 rounded-xl font-black text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer ${isSelected
                             ? "bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 shadow-md shadow-amber-500/25"
@@ -1088,7 +980,7 @@ export default function ProfileClient({
                             }`}
                         >
                           <CreditCard size={15} />
-                          <span>{isSelected ? "Thanh Toán Gói Này →" : "Chọn Gói Này →"}</span>
+                          <span>{isRequestingVip ? "Đang tạo yêu cầu…" : isSelected ? "Thanh Toán Gói Này →" : "Chọn Gói Này →"}</span>
                         </button>
                       </div>
                     );
@@ -1096,282 +988,9 @@ export default function ProfileClient({
                 </div>
               </div>
 
-              {/* ── MODAL THANH TOÁN VIETQR & SEPAY GATEWAY ────────────────────────────── */}
-              {isPaymentModalOpen && (
-                <div
-                  className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-slate-950/75 backdrop-blur-sm animate-in fade-in duration-150 overflow-y-auto"
-                  onClick={() => {
-                    setIsPaymentModalOpen(false);
-                    setVipSuccessNotice(null);
-                  }}
-                >
-                  <div
-                    className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl my-auto overflow-hidden text-slate-900 dark:text-white"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    {/* Modal Header */}
-                    <div className="flex items-center justify-between p-4 sm:p-5 border-b border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-amber-500 to-yellow-400 text-slate-950 flex items-center justify-center shadow-md shadow-amber-500/20">
-                          <Crown size={20} className="fill-slate-950" />
-                        </div>
-                        <div>
-                          <h3 className="text-base sm:text-lg font-black tracking-tight">
-                            Cổng Thanh Toán Kích Hoạt VIP
-                          </h3>
-                          <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                            Hệ thống tự động kích hoạt 24/7 qua SePay Webhook
-                          </p>
-                        </div>
-                      </div>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setIsPaymentModalOpen(false);
-                          setVipSuccessNotice(null);
-                        }}
-                        className="w-8 h-8 rounded-full bg-slate-200/60 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center transition-colors cursor-pointer"
-                        title="Đóng"
-                      >
-                        <X size={18} />
-                      </button>
-                    </div>
-
-                    {/* Modal Content */}
-                    <div className="p-4 sm:p-6 space-y-5 max-h-[82vh] overflow-y-auto custom-scrollbar">
-                      {/* Gói đang chọn */}
-                      <div className="space-y-1.5">
-                        <span className="text-xs font-bold text-slate-600 dark:text-slate-400 block">
-                          Gói cước VIP đang chọn:
-                        </span>
-                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                          {activeVipPlans.map((plan) => {
-                            const isCur = currentPlan.slug === plan.slug || currentPlan.id === plan.id;
-                            return (
-                              <button
-                                key={plan.id || plan.slug}
-                                type="button"
-                                onClick={() => {
-                                  setSelectedPlan(plan.slug || plan.id);
-                                  setVipSuccessNotice(null);
-                                }}
-                                className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${isCur
-                                  ? "border-amber-500 bg-amber-50/70 dark:bg-amber-950/40 shadow-xs"
-                                  : "border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:border-slate-300 dark:hover:border-slate-700"
-                                  }`}
-                              >
-                                <div className="flex items-center justify-between gap-1 mb-1">
-                                  <span className={`text-xs font-black ${isCur ? "text-amber-800 dark:text-amber-300" : "text-slate-800 dark:text-slate-200"}`}>
-                                    {plan.name}
-                                  </span>
-                                  {plan.tag && (
-                                    <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-sm bg-amber-500/20 text-amber-800 dark:text-amber-200">
-                                      {plan.tag}
-                                    </span>
-                                  )}
-                                </div>
-                                <div className="text-xs font-black text-slate-900 dark:text-white">
-                                  {plan.price.toLocaleString("vi-VN")} đ <span className="text-[10px] font-medium text-slate-400">{plan.period}</span>
-                                </div>
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-
-                      {/* Thông báo thành công */}
-                      {vipSuccessNotice ? (
-                        <div className="p-5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 space-y-3 text-center animate-in fade-in">
-                          <div className="w-12 h-12 rounded-full bg-emerald-100 dark:bg-emerald-900/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mx-auto">
-                            <CheckCircle2 size={26} />
-                          </div>
-                          <h4 className="font-black text-emerald-900 dark:text-emerald-200 text-sm">
-                            Đã Ghi Nhận Yêu Cầu Chuyển Khoản!
-                          </h4>
-                          <p className="text-xs text-emerald-800 dark:text-emerald-300 leading-relaxed max-w-md mx-auto">
-                            {vipSuccessNotice}
-                          </p>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setIsPaymentModalOpen(false);
-                              setVipSuccessNotice(null);
-                            }}
-                            className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs transition-colors shadow-sm cursor-pointer"
-                          >
-                            Hoàn Tất & Đóng
-                          </button>
-                        </div>
-                      ) : (
-                        /* Grid QR + Info */
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-5 items-center">
-                          {/* Left: VietQR Box */}
-                          <div className="flex flex-col items-center justify-center p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/80 dark:border-slate-800 space-y-2.5 text-center">
-                            <div className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                              <QrCode size={15} className="text-brand" /> Quét mã VietQR Ngân Hàng
-                            </div>
-
-                            <div className="p-2 bg-white rounded-2xl border border-slate-200 shadow-sm">
-                              <img
-                                src={qrImgSrc}
-                                alt="VietQR Chuyển Khoản"
-                                onError={() => {
-                                  if (qrImgSrc !== sepayQrUrl) {
-                                    setQrImgSrc(sepayQrUrl);
-                                  }
-                                }}
-                                className="w-48 h-48 sm:w-52 sm:h-52 object-contain rounded-lg"
-                              />
-                            </div>
-
-                            <div className="space-y-1">
-                              <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                                Mở App ngân hàng quét mã QR để tự động điền đúng Số Tiền và Nội Dung.
-                              </p>
-                              <div className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 px-2 py-0.5 rounded-full">
-                                <Zap size={12} /> Tự động duyệt sau 1 - 3 phút
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Right: Transfer details */}
-                          <div className="space-y-2.5">
-                            {/* Ngân hàng */}
-                            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-800 flex items-center justify-between">
-                              <div>
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Ngân Hàng</span>
-                                <span className="text-xs font-black text-slate-900 dark:text-white">{bankName}</span>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => copyToClipboard(bankName, "bankName")}
-                                className="p-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 text-xs flex items-center gap-1 cursor-pointer transition-colors"
-                              >
-                                {copiedField === "bankName" ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
-                                <span className="text-[11px]">{copiedField === "bankName" ? "Đã chép" : "Sao chép"}</span>
-                              </button>
-                            </div>
-
-                            {/* Số tài khoản */}
-                            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-800 flex items-center justify-between">
-                              <div>
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Số Tài Khoản</span>
-                                <span className="text-sm font-mono font-black text-slate-900 dark:text-white">{accountNumber}</span>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => copyToClipboard(accountNumber, "accountNumber")}
-                                className="p-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 text-xs flex items-center gap-1 cursor-pointer transition-colors"
-                              >
-                                {copiedField === "accountNumber" ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
-                                <span className="text-[11px]">{copiedField === "accountNumber" ? "Đã chép" : "Sao chép"}</span>
-                              </button>
-                            </div>
-
-                            {/* Chủ tài khoản */}
-                            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-800 flex items-center justify-between">
-                              <div>
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Chủ Tài Khoản</span>
-                                <span className="text-xs font-black text-slate-900 dark:text-white uppercase">{accountHolder}</span>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => copyToClipboard(accountHolder, "accountHolder")}
-                                className="p-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 text-xs flex items-center gap-1 cursor-pointer transition-colors"
-                              >
-                                {copiedField === "accountHolder" ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
-                                <span className="text-[11px]">{copiedField === "accountHolder" ? "Đã chép" : "Sao chép"}</span>
-                              </button>
-                            </div>
-
-                            {/* Số tiền */}
-                            <div className="p-2.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/70 dark:border-slate-800 flex items-center justify-between">
-                              <div>
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Số Tiền</span>
-                                <span className="text-sm font-black text-brand">
-                                  {currentPlan.price.toLocaleString("vi-VN")} đ
-                                </span>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => copyToClipboard(currentPlan.price.toString(), "amount")}
-                                className="p-1 rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 text-xs flex items-center gap-1 cursor-pointer transition-colors"
-                              >
-                                {copiedField === "amount" ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
-                                <span className="text-[11px]">{copiedField === "amount" ? "Đã chép" : "Sao chép"}</span>
-                              </button>
-                            </div>
-
-                            {/* Nội dung chuyển khoản */}
-                            <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border-2 border-amber-400 dark:border-amber-600/60 flex items-center justify-between shadow-xs">
-                              <div>
-                                <span className="text-[10px] font-black text-amber-800 dark:text-amber-300 uppercase tracking-wider block">
-                                  Nội Dung Chuyển Khoản <span className="text-rose-500 font-bold">*</span>
-                                </span>
-                                <span className="text-sm font-mono font-black text-slate-950 dark:text-amber-200 select-all">
-                                  {transferContent}
-                                </span>
-                              </div>
-                              <button
-                                type="button"
-                                onClick={() => copyToClipboard(transferContent, "transferContent")}
-                                className="px-2.5 py-1 rounded-lg bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-bold flex items-center gap-1 cursor-pointer transition-colors shadow-xs shrink-0"
-                              >
-                                {copiedField === "transferContent" ? <Check size={13} className="stroke-[3]" /> : <Copy size={13} />}
-                                <span className="text-[11px]">{copiedField === "transferContent" ? "Đã chép!" : "Sao chép"}</span>
-                              </button>
-                            </div>
-
-                            <p className="text-[10px] text-amber-700 dark:text-amber-400 leading-relaxed font-medium">
-                              ⚠️ <strong>Lưu ý:</strong> Vui lòng giữ đúng nội dung chuyển khoản để hệ thống tự động đối soát và kích hoạt VIP.
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Modal Footer */}
-                    <div className="flex flex-col sm:flex-row items-center justify-between gap-3 p-4 sm:p-5 border-t border-slate-100 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40">
-                      <a
-                        href="https://zalo.me"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-slate-500 hover:text-brand transition-colors flex items-center gap-1.5"
-                      >
-                        <MessageCircle size={15} />
-                        <span>Hỗ trợ thanh toán Zalo 24/7</span>
-                      </a>
-
-                      <div className="flex items-center gap-2.5 w-full sm:w-auto">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setIsPaymentModalOpen(false);
-                            setVipSuccessNotice(null);
-                          }}
-                          className="w-1/2 sm:w-auto px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs transition-colors cursor-pointer"
-                        >
-                          Đóng
-                        </button>
-                        <button
-                          type="button"
-                          disabled={isRequestingVip || Boolean(vipSuccessNotice)}
-                          onClick={handleConfirmTransfer}
-                          className="w-1/2 sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-slate-950 font-black text-xs transition-all shadow-md shadow-amber-500/25 flex items-center justify-center gap-1.5 cursor-pointer disabled:opacity-50"
-                        >
-                          {isRequestingVip ? (
-                            <RefreshCw size={14} className="animate-spin" />
-                          ) : (
-                            <CheckCircle2 size={14} className="fill-slate-950 text-amber-400" />
-                          )}
-                          <span>{isRequestingVip ? "Đang gửi..." : "Tôi Đã Chuyển Khoản"}</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+              {paymentError && <p role="alert" className="text-sm text-rose-600">{paymentError}</p>}
+              {activeVipPlans.length === 0 && <p className="text-sm text-slate-500">Hiện chưa có gói VIP đang bán.</p>}
+              {paymentIntent && <VipPaymentModal key={paymentIntent.id} intent={paymentIntent} onClose={() => setPaymentIntent(null)} />}
 
             </>
           )}

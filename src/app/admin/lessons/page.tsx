@@ -1,3 +1,5 @@
+
+import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { LessonsManager } from "@/components/admin/LessonsManager";
 import type { Metadata } from "next";
@@ -10,6 +12,7 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminLessons() {
+  await requireAdmin();
   try {
     const [lessons, courses] = await Promise.all([
       prisma.lesson.findMany({

@@ -1,16 +1,27 @@
+import { AI_TOOLS, reserveAi, completeAi, releaseAi } from "@/lib/ai-quota";
+import { SeoError } from "@/lib/seo/contract";
+import { readLimitedJson, RequestBodyError } from "@/lib/http/body";
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { getSessionUserId } from "@/lib/auth/session";
 import OpenAI from "openai";
 import { getSystemSettings } from "@/lib/system-settings";
-import { recordAiUsage, getStartOfTodayVn } from "@/lib/ai-usage";
-import { prisma } from "@/lib/prisma";
+import { getAiUsageStats } from "@/lib/ai-usage";
 import { handleSeo } from "@/lib/seo/handler";
 
 export async function POST(req: Request) {
+  let lease: string | undefined;
   try {
-    const body = await req.json();
+    const origin = req.headers.get("origin");
+    if ((origin && origin !== new URL(req.url).origin) || req.headers.get("sec-fetch-site") === "cross-site") throw new SeoError("INVALID_ORIGIN", "Yêu cầu không hợp lệ.", 403);
+    const body = await readLimitedJson(req, 6 * 1024 * 1024) as { tool: string; inputs: Record<string, any> };
+    if (!body || typeof body !== "object") throw new RequestBodyError("INVALID_INPUT");
     const { tool, inputs } = body;
+    if (!AI_TOOLS.includes(tool) || !inputs || typeof inputs !== "object" || Array.isArray(inputs)) throw new RequestBodyError("INVALID_INPUT");
+    if (JSON.stringify({ ...inputs, imageBase64: undefined }).length > 32_000) throw new RequestBodyError("INPUT_TOO_LARGE", 413);
+    if (inputs.imageBase64 && (typeof inputs.imageBase64 !== "string" || !/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(inputs.imageBase64))) throw new RequestBodyError("INVALID_IMAGE");
     if (tool === "seo-optimizer") return handleSeo(req, inputs);
+    const userId = await getSessionUserId();
+    if (!userId) throw new SeoError("LOGIN_REQUIRED", "Vui lòng đăng nhập để sử dụng công cụ.", 401);
 
     // Lấy cấu hình hệ thống từ Database (ưu tiên CSDL, không phụ thuộc file .env)
     const systemConfig = await getSystemSettings();
@@ -45,89 +56,11 @@ export async function POST(req: Request) {
       );
     }
 
-    // Kiểm tra giới hạn lượt dùng AI hàng ngày đối với tài khoản FREE (mặc định 12 lượt/ngày)
-    const cookieStore = await cookies();
-    const token = cookieStore.get("user_token")?.value;
-    let currentUser: { id: string; isVIP: boolean; isLocked: boolean } | null = null;
-    if (token) {
-      currentUser = await prisma.user.findUnique({
-        where: { id: token },
-        select: { id: true, isVIP: true, isLocked: true },
-      });
-
-      if (currentUser?.isLocked) {
-        return NextResponse.json(
-          { success: false, error: "Tài khoản của bạn đã bị khóa bởi Quản trị viên." },
-          { status: 403 }
-        );
-      }
-
-      if (currentUser && !currentUser.isVIP) {
-        const userId = currentUser.id;
-        const startOfToday = getStartOfTodayVn();
-        let todayCount = 0;
-        const getTodayCountViaSql = async () => {
-          try {
-            const countRes: any = await prisma.$queryRawUnsafe(
-              'SELECT COUNT(*)::int as count FROM "AiUsageLog" WHERE "userId" = $1 AND "createdAt" >= $2',
-              userId,
-              startOfToday
-            );
-            return Number(countRes?.[0]?.count) || 0;
-          } catch {
-            return 0;
-          }
-        };
-
-        if (typeof (prisma as any).aiUsageLog?.count === "function") {
-          try {
-            todayCount = await (prisma as any).aiUsageLog.count({
-              where: {
-                userId,
-                createdAt: { gte: startOfToday },
-              },
-            });
-          } catch {
-            todayCount = await getTodayCountViaSql();
-          }
-        } else {
-          todayCount = await getTodayCountViaSql();
-        }
-
-        let dailyLimit = 12;
-        try {
-          const rawLimit: any = await (prisma as any).$queryRawUnsafe(
-            'SELECT "dailyFreeLimit" FROM "User" WHERE id = $1',
-            currentUser.id
-          );
-          if (rawLimit?.[0]?.dailyFreeLimit !== undefined) {
-            dailyLimit = Number(rawLimit[0].dailyFreeLimit) || 12;
-          }
-        } catch {
-          dailyLimit = 12;
-        }
-
-        if (todayCount >= dailyLimit) {
-          return NextResponse.json(
-            {
-              success: false,
-              code: "DAILY_LIMIT_EXCEEDED",
-              error: `Tài khoản miễn phí được sử dụng ${dailyLimit} lượt/ngày. Bạn đã dùng hết ${todayCount}/${dailyLimit} lượt hôm nay. Vui lòng nâng cấp gói VIP để sử dụng không giới hạn!`,
-              details: {
-                actionUrl: "/profile#pricing-section",
-                todayCount,
-                dailyLimit,
-              },
-            },
-            { status: 403 }
-          );
-        }
-      }
-    }
+    lease = await reserveAi(userId);
 
     const openai = new OpenAI({
       baseURL,
-      apiKey,
+      apiKey, timeout: 100_000, maxRetries: 0,
     });
 
     let systemPrompt = "Bạn là một chuyên gia thương mại điện tử xuất sắc tại Việt Nam, am hiểu thuật toán Shopee và TikTok Shop. Hãy trả về kết quả bằng tiếng Việt, định dạng Markdown rõ ràng, chuyên nghiệp.";
@@ -514,30 +447,12 @@ YÊU CẦU ĐẦU RA (MARKDOWN CHUẨN XÁC VỚI TIÊU ĐỀ VÀ PHÂN ĐOẠN 
       max_tokens: tool === "video-repurposer" ? 2500 : 1500,
     });
 
-    const outputText = completion.choices[0]?.message?.content || "";
-
-    // Tự động ghi nhận Lượt dùng hôm nay, Nội dung đã tạo và Hoạt động gần đây của học viên
-    let usageStats: { todayCount: number; totalGenerated: number } | null = null;
-    try {
-      const cookieStore = await cookies();
-      const token = cookieStore.get("user_token")?.value;
-      if (token) {
-        const recordRes = await recordAiUsage({
-          userId: token,
-          tool,
-          input: inputs,
-          output: outputText,
-        });
-        if (recordRes && recordRes.success) {
-          usageStats = {
-            todayCount: recordRes.todayCount ?? 0,
-            totalGenerated: recordRes.totalGenerated ?? 0,
-          };
-        }
-      }
-    } catch (logErr) {
-      console.error("[AI Route] Error logging AI usage:", logErr);
-    }
+    const choice = completion.choices[0];
+    const outputText = choice?.message?.content?.trim();
+    if (!outputText || choice?.message.refusal || choice.finish_reason !== "stop") throw new SeoError("INVALID_AI_OUTPUT", "AI chưa tạo được kết quả hoàn chỉnh. Lượt dùng chưa bị trừ.", 502);
+    await completeAi(lease, { userId, tool, output: outputText, model, inputTokens: completion.usage?.prompt_tokens ?? 0, outputTokens: completion.usage?.completion_tokens ?? 0 });
+    lease = undefined;
+    const usageStats = await getAiUsageStats(userId).catch(() => null);
 
     return NextResponse.json({
       success: true,
@@ -545,52 +460,9 @@ YÊU CẦU ĐẦU RA (MARKDOWN CHUẨN XÁC VỚI TIÊU ĐỀ VÀ PHÂN ĐOẠN 
       usage: usageStats,
     });
 
-  } catch (error: any) {
-    console.error("AI Error:", error);
-
-    let errorCode = "UNKNOWN_ERROR";
-    let errorMessage = error?.message || "Đã xảy ra lỗi khi gọi AI.";
-    const status = error?.status;
-    const rawMsg = error?.message || "";
-
-    // 1. Token sai hoặc không hợp lệ (401 Unauthorized)
-    if (status === 401 || rawMsg.includes("Incorrect API key") || rawMsg.includes("invalid_api_key")) {
-      errorCode = "INVALID_TOKEN";
-      errorMessage = "OpenAI API Token không chính xác hoặc đã bị thu hồi (Lỗi 401 Unauthorized). Vui lòng kiểm tra lại Token tại trang Cài đặt hệ thống.";
-    }
-    // 2. Token hết hạn mức (Quota / Credits / Rate limit) (429)
-    else if (status === 429 || rawMsg.includes("insufficient_quota") || rawMsg.includes("quota") || rawMsg.includes("rate limit")) {
-      errorCode = "EXPIRED_QUOTA";
-      errorMessage = "Tài khoản OpenAI đã hết hạn ngạch (Hết Credits/tiền) hoặc bị giới hạn lượt gọi (Lỗi 429). Vui lòng nạp thêm Credits hoặc đổi Token khác.";
-    }
-    // 3. Model không tồn tại hoặc không có quyền (404)
-    else if (status === 404 || rawMsg.includes("model")) {
-      errorCode = "MODEL_NOT_FOUND";
-      errorMessage = "Model AI không tồn tại hoặc tài khoản OpenAI chưa được cấp quyền sử dụng model này (Lỗi 404).";
-    }
-    // 4. Máy chủ OpenAI lỗi hoặc quá tải (500, 502, 503)
-    else if (status === 500 || status === 502 || status === 503) {
-      errorCode = "SERVER_OVERLOAD";
-      errorMessage = "Máy chủ OpenAI hiện đang bị quá tải hoặc bảo trì (Lỗi 500/503). Vui lòng thử lại sau vài giây.";
-    }
-    // 5. Lỗi kết nối mạng
-    else if (error.code === "ECONNREFUSED" || rawMsg.includes("fetch failed")) {
-      errorCode = "NETWORK_ERROR";
-      errorMessage = "Không thể kết nối đến máy chủ AI. Vui lòng kiểm tra kết nối mạng Internet hoặc cấu hình Base URL.";
-    }
-
-    return NextResponse.json(
-      {
-        success: false,
-        code: errorCode,
-        error: errorMessage,
-        details: {
-          rawMessage: rawMsg,
-          status: status,
-          actionUrl: "/admin/settings",
-        },
-      },
-      { status: status && status >= 400 && status < 600 ? status : 500 }
-    );
+  } catch (error) {
+    if (lease) await releaseAi(lease).catch(() => console.error("ai_lease_release_failed", { lease }));
+    const known = error instanceof SeoError || error instanceof RequestBodyError;
+    return NextResponse.json({ success: false, code: error instanceof SeoError ? error.code : "AI_UNAVAILABLE", error: known ? error.message : "Dịch vụ AI đang gián đoạn. Vui lòng thử lại; lượt dùng chưa bị trừ." }, { status: known ? error.status : 503, headers: { "Cache-Control": "no-store" } });
   }
 }

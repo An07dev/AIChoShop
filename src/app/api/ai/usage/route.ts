@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
+import { getSessionUserId } from "@/lib/auth/session";
+import { readLimitedJson, RequestBodyError } from "@/lib/http/body";
 import { prisma } from "@/lib/prisma";
 import { getAiUsageStats, recordAiUsage } from "@/lib/ai-usage";
 
@@ -11,8 +12,8 @@ export const dynamic = "force-dynamic";
  */
 export async function GET(req: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("user_token")?.value;
+
+    const token = await getSessionUserId();
 
     if (!token) {
       return NextResponse.json({
@@ -49,7 +50,7 @@ export async function GET(req: NextRequest) {
   } catch (error: any) {
     console.error("Error in GET /api/ai/usage:", error);
     return NextResponse.json(
-      { error: "Internal server error", details: error?.message },
+      { error: error instanceof RequestBodyError ? error.message : "Dịch vụ đang gián đoạn" },
       { status: 500 }
     );
   }
@@ -61,8 +62,8 @@ export async function GET(req: NextRequest) {
  */
 export async function POST(req: NextRequest) {
   try {
-    const cookieStore = await cookies();
-    const token = cookieStore.get("user_token")?.value;
+
+    const token = await getSessionUserId();
 
     if (!token) {
       return NextResponse.json(
@@ -71,10 +72,12 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const body = await req.json();
+    const origin = req.headers.get("origin");
+    if ((origin && origin !== req.nextUrl.origin) || req.headers.get("sec-fetch-site") === "cross-site") return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
+    const body = await readLimitedJson(req, 32768) as Record<string, any>;
     const { tool, toolName, action, input, output } = body;
 
-    if (!tool) {
+    if (!["pricing-calculator", "tax-calculator", "koc-planner"].includes(tool)) {
       return NextResponse.json(
         { error: "Missing required parameter: tool" },
         { status: 400 }
@@ -83,7 +86,7 @@ export async function POST(req: NextRequest) {
 
     const result = await recordAiUsage({
       userId: token,
-      tool,
+      tool: tool === "koc-planner" ? "koc-calculator" : tool,
       toolName,
       action,
       input,
@@ -94,7 +97,7 @@ export async function POST(req: NextRequest) {
   } catch (error: any) {
     console.error("Error in POST /api/ai/usage:", error);
     return NextResponse.json(
-      { error: "Internal server error", details: error?.message },
+      { error: error instanceof RequestBodyError ? error.message : "Dịch vụ đang gián đoạn" },
       { status: 500 }
     );
   }

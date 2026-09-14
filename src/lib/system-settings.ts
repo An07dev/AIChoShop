@@ -13,7 +13,7 @@ export interface SystemSettingData {
 
 export const DEFAULT_SYSTEM_SETTINGS = {
   id: "default",
-  adminPassword: "bigman123",
+  adminPassword: null,
   openaiApiKey: "",
   openaiModel: "gpt-4o-mini",
   openaiBaseUrl: "",
@@ -103,7 +103,7 @@ export async function updateSystemSettings(data: {
   const nextAdminPassword =
     data.adminPassword !== undefined
       ? data.adminPassword ? data.adminPassword.trim() : null
-      : current.adminPassword || "bigman123";
+      : current.adminPassword || null;
   const nextApiKey =
     data.openaiApiKey !== undefined
       ? data.openaiApiKey ? data.openaiApiKey.trim() : null
@@ -180,48 +180,6 @@ export async function updateSystemSettings(data: {
   };
 }
 
-/**
- * Xác thực mật khẩu Admin
- */
-export async function verifyAdminPassword(password: string): Promise<boolean> {
-  try {
-    const settings = await getSystemSettings();
-    const currentPass = settings.adminPassword || "bigman123";
-    return password === currentPass;
-  } catch {
-    return password === "bigman123";
-  }
-}
-
-/**
- * Đổi mật khẩu Admin an toàn
- */
-export async function changeAdminPassword(
-  currentPassword: string,
-  newPassword: string
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    const isCorrect = await verifyAdminPassword(currentPassword);
-    if (!isCorrect) {
-      return { success: false, error: "Mật khẩu quản trị hiện tại không chính xác!" };
-    }
-    if (!newPassword || newPassword.trim().length < 6) {
-      return { success: false, error: "Mật khẩu mới phải có tối thiểu 6 ký tự!" };
-    }
-    if (newPassword.trim() === currentPassword.trim()) {
-      return { success: false, error: "Mật khẩu mới không được trùng với mật khẩu hiện tại!" };
-    }
-
-    await updateSystemSettings({ adminPassword: newPassword.trim() });
-    return { success: true };
-  } catch (err: any) {
-    return { success: false, error: err?.message || "Không thể cập nhật mật khẩu quản trị." };
-  }
-}
-
-/**
- * Lấy nhanh OpenAI Token / API Key
- */
 export async function getOpenAiToken(): Promise<{
   token: string;
   apiKey: string;

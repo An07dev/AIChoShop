@@ -1,6 +1,8 @@
+
+import { isVipActive } from "@/lib/vip-expiration";
 import { prisma } from "@/lib/prisma";
 import LearnClient, { type Module } from "./LearnClient";
-import { cookies } from "next/headers";
+import { getSessionUserId } from "@/lib/auth/session";
 
 export const dynamic = "force-dynamic";
 
@@ -25,8 +27,8 @@ export default async function LearnPage({
   }
 
   // 2. Fetch user to check VIP status and completion progress
-  const cookieStore = await cookies();
-  const token = cookieStore.get("user_token")?.value;
+
+  const token = await getSessionUserId();
   let isUserVIP = false;
   let isLogged = false;
   let completedLessonIds: string[] = [];
@@ -34,12 +36,12 @@ export default async function LearnPage({
   if (token) {
     const user = await prisma.user.findUnique({
       where: { id: token },
-      select: { id: true, isVIP: true, isLocked: true },
+      select: { id: true, isVIP: true, vipExpiresAt: true, isLocked: true },
     });
 
     if (user && !user.isLocked) {
       isLogged = true;
-      if (user.isVIP) isUserVIP = true;
+      if (isVipActive(user)) isUserVIP = true;
 
       const userProgress = await prisma.progress.findMany({
         where: { userId: user.id, completed: true },
@@ -113,8 +115,8 @@ export default async function LearnPage({
       title: lesson.title,
       fullTitle: lesson.title,
       moduleName: moduleTitle,
-      content: lesson.content,
-      videoUrl: lesson.videoUrl,
+      content: !lesson.isVIP || isUserVIP ? lesson.content : null,
+      videoUrl: !lesson.isVIP || isUserVIP ? lesson.videoUrl : null,
       order: lesson.order,
       isVIP: lesson.isVIP,
     });

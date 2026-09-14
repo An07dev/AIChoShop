@@ -1,3 +1,4 @@
+import { adminRouteGuard } from "@/lib/auth/session";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getActiveVipPlans } from "@/lib/vip-plans-server";
@@ -9,6 +10,8 @@ export async function GET(req: Request) {
     const all = searchParams.get("all") === "true";
 
     if (all) {
+      const denial = await adminRouteGuard(req);
+      if (denial) return denial;
       const plans = await prisma.vipPlan.findMany({
         orderBy: { order: "asc" },
       });
@@ -28,6 +31,8 @@ export async function GET(req: Request) {
 
 // POST /api/vip-plans - Tạo gói VIP mới (Cấu hình bởi Admin)
 export async function POST(req: Request) {
+  const denial = await adminRouteGuard(req);
+  if (denial) return denial;
   try {
     const body = await req.json();
     const {

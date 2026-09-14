@@ -1,14 +1,11 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { requireAdmin } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/lib/prisma";
 import { getOfficialCategory } from "@/lib/pricing/registry";
 
-async function requireAdmin() {
-  const cookieStore = await cookies();
-  if (cookieStore.get("admin_token")?.value !== "authenticated") throw new Error("Không có quyền quản trị.");
-}
+
 
 function nullableNumber(formData: FormData, key: string) {
   const raw = String(formData.get(key) ?? "").trim();

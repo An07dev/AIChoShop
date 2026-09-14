@@ -1,3 +1,5 @@
+
+import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { DEFAULT_VIP_PLANS } from "@/lib/vip-plans";
 import VipPlansManager from "./VipPlansManager";
@@ -11,6 +13,7 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminVipPlansPage() {
+  await requireAdmin();
   let plans = await prisma.vipPlan.findMany({
     orderBy: { order: "asc" },
   });

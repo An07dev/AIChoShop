@@ -1,0 +1,78 @@
+[
+  {
+    "name": "Unauthenticated settings GET returns provider credential",
+    "confirmed": true,
+    "evidence": {
+      "status": 200,
+      "credentialReturned": true
+    }
+  },
+  {
+    "name": "Unauthenticated settings POST reaches mutation",
+    "confirmed": true,
+    "evidence": {
+      "status": 200,
+      "updated": true
+    }
+  },
+  {
+    "name": "Unauthenticated VIP-plan POST creates a plan",
+    "confirmed": true,
+    "evidence": {
+      "status": 201,
+      "created": true
+    }
+  },
+  {
+    "name": "Unauthenticated VIP-plan DELETE reaches deletion",
+    "confirmed": true,
+    "evidence": {
+      "status": 200,
+      "deleted": true
+    }
+  },
+  {
+    "name": "Anonymous VIP-labelled AI request calls provider",
+    "confirmed": true,
+    "evidence": {
+      "status": 200,
+      "providerCalls": 1,
+      "truncatedCompletionAccepted": true
+    }
+  },
+  {
+    "name": "SEO identity accepts legacy user-ID cookie without session",
+    "confirmed": true,
+    "evidence": {
+      "sessionProvided": false,
+      "authenticatedIdentity": "user:fake-user-id"
+    }
+  },
+  {
+    "name": "Webhook without key accepts 1 VND and wrong destination account",
+    "confirmed": true,
+    "evidence": {
+      "status": 200,
+      "activated": true,
+      "durationDays": 30
+    }
+  },
+  {
+    "name": "Admin password-reset action has no internal authorization",
+    "confirmed": true,
+    "evidence": {
+      "success": true,
+      "mutatedWithoutSessionCheck": true,
+      "limitation": "Direct action invocation; middleware/framework reachability not simulated"
+    }
+  },
+  {
+    "name": "Upload accepts a file reporting 600 MiB without authentication",
+    "confirmed": true,
+    "evidence": {
+      "status": 200,
+      "mockedWriteReached": true,
+      "realBytesWritten": 0
+    }
+  }
+]

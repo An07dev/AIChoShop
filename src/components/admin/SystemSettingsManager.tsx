@@ -36,7 +36,7 @@ import {
 interface SystemSettingsManagerProps {
   initialSettings: {
     id: string;
-    openaiApiKey: string | null;
+    configured: boolean;
     openaiModel: string;
     openaiBaseUrl: string | null;
     isOpenAiActive: boolean;
@@ -76,7 +76,8 @@ const POPULAR_MODELS = [
 
 export function SystemSettingsManager({ initialSettings }: SystemSettingsManagerProps) {
   // Form State
-  const [apiKey, setApiKey] = useState(initialSettings.openaiApiKey || "");
+  const [apiKey, setApiKey] = useState("");
+  const [configured, setConfigured] = useState(initialSettings.configured);
   const [model, setModel] = useState(initialSettings.openaiModel || "gpt-4o-mini");
   const [baseUrl, setBaseUrl] = useState(initialSettings.openaiBaseUrl || "");
   const [isOpenAiActive, setIsOpenAiActive] = useState(initialSettings.isOpenAiActive);
@@ -130,19 +131,19 @@ export function SystemSettingsManager({ initialSettings }: SystemSettingsManager
     setPasswordError("");
     setPasswordSuccess("");
 
-    if (!currentAdminPassword.trim()) {
+    if (!currentAdminPassword) {
       setPasswordError("Vui lòng nhập mật khẩu Admin hiện tại.");
       return;
     }
-    if (!newAdminPassword.trim()) {
+    if (!newAdminPassword) {
       setPasswordError("Vui lòng nhập mật khẩu mới.");
       return;
     }
-    if (newAdminPassword.trim().length < 6) {
+    if (newAdminPassword.length < 6) {
       setPasswordError("Mật khẩu mới phải có tối thiểu 6 ký tự.");
       return;
     }
-    if (newAdminPassword.trim() !== confirmAdminPassword.trim()) {
+    if (newAdminPassword !== confirmAdminPassword) {
       setPasswordError("Xác nhận mật khẩu mới không khớp!");
       return;
     }
@@ -150,9 +151,9 @@ export function SystemSettingsManager({ initialSettings }: SystemSettingsManager
     setIsChangingPassword(true);
     try {
       const res = await changeAdminPasswordAction({
-        currentPassword: currentAdminPassword.trim(),
-        newPassword: newAdminPassword.trim(),
-        confirmPassword: confirmAdminPassword.trim(),
+        currentPassword: currentAdminPassword,
+        newPassword: newAdminPassword,
+        confirmPassword: confirmAdminPassword,
       });
 
       setIsChangingPassword(false);
@@ -175,7 +176,7 @@ export function SystemSettingsManager({ initialSettings }: SystemSettingsManager
   // Kiểm tra kết nối thử nghiệm
   const handleTestConnection = async () => {
     setTestResult(null);
-    if (!apiKey || !apiKey.trim()) {
+    if (!configured && (!apiKey || !apiKey.trim())) {
       setTestResult({
         type: "error",
         message: "Vui lòng nhập OpenAI API Key vào ô bên dưới trước khi kiểm tra.",
@@ -222,7 +223,7 @@ export function SystemSettingsManager({ initialSettings }: SystemSettingsManager
 
     try {
       const res = await saveSystemSettingsAction({
-        openaiApiKey: apiKey.trim(),
+        openaiApiKey: apiKey.trim() || undefined,
         openaiModel: model.trim(),
         openaiBaseUrl: baseUrl.trim(),
         isOpenAiActive,
@@ -231,6 +232,8 @@ export function SystemSettingsManager({ initialSettings }: SystemSettingsManager
       setIsSaving(false);
       if (res.success) {
         showToast("Đã lưu cấu hình OpenAI vào CSDL thành công! 🎉");
+        setConfigured(Boolean(res.data?.configured));
+        setApiKey("");
       } else {
         showToast(res.error || "Không thể lưu cấu hình.", "error");
       }
@@ -255,7 +258,7 @@ export function SystemSettingsManager({ initialSettings }: SystemSettingsManager
     }
   };
 
-  const hasKey = Boolean(apiKey && apiKey.trim().length > 10);
+  const hasKey = configured || Boolean(apiKey && apiKey.trim().length > 10);
   const currentModelObj = POPULAR_MODELS.find(
     (m) => m.id.toLowerCase() === model.toLowerCase()
   );
@@ -395,7 +398,7 @@ export function SystemSettingsManager({ initialSettings }: SystemSettingsManager
               )}
             </div>
             <span className="text-[10px] text-slate-400 block font-mono">
-              {apiKey ? `${apiKey.slice(0, 10)}... (${apiKey.length} ký tự)` : "Vui lòng nhập Key"}
+              {apiKey ? `${apiKey.slice(0, 10)}... (${apiKey.length} ký tự)` : configured ? "Đã lưu khóa trên máy chủ" : "Vui lòng nhập Key"}
             </span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
@@ -429,7 +432,7 @@ export function SystemSettingsManager({ initialSettings }: SystemSettingsManager
 
           <button
             type="button"
-            disabled={isTesting || !apiKey}
+            disabled={isTesting || !hasKey}
             onClick={handleTestConnection}
             className="w-10 h-10 rounded-xl bg-indigo-50 hover:bg-indigo-100 text-indigo-600 flex items-center justify-center shrink-0 transition active:scale-95 disabled:opacity-40 cursor-pointer shadow-2xs"
             title="Kiểm tra kết nối OpenAI ngay"
@@ -490,7 +493,7 @@ export function SystemSettingsManager({ initialSettings }: SystemSettingsManager
                     type={showApiKey ? "text" : "password"}
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
-                    placeholder="sk-proj-..."
+                    placeholder={configured ? "Để trống để giữ khóa đã lưu" : "Nhập API Key"}
                     className="w-full pl-3.5 pr-20 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs sm:text-sm font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition"
                   />
 
@@ -517,7 +520,7 @@ export function SystemSettingsManager({ initialSettings }: SystemSettingsManager
                 </div>
 
                 <p className="text-[11px] text-slate-400 pt-0.5">
-                  Khóa bắt đầu bằng <code>sk-...</code>. Được mã hóa và lưu trực tiếp trong Database máy chủ.
+                  Khóa đã lưu chỉ được sử dụng trên máy chủ. Để trống để giữ nguyên; nhập khóa mới để thay thế.
                 </p>
               </div>
 
@@ -819,7 +822,7 @@ export function SystemSettingsManager({ initialSettings }: SystemSettingsManager
 
             <button
               type="button"
-              disabled={isTesting || !apiKey}
+              disabled={isTesting || !hasKey}
               onClick={handleTestConnection}
               className="w-full py-2.5 px-4 rounded-xl border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs flex items-center justify-center gap-2 transition cursor-pointer active:scale-98 disabled:opacity-50 disabled:cursor-not-allowed shadow-2xs"
             >

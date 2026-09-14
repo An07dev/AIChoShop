@@ -1,8 +1,13 @@
 "use server";
 
+import { requireAdmin } from "@/lib/auth/session";
+
 import { revalidatePath } from "next/cache";
 import OpenAI from "openai";
 import { updateSystemSettings, getSystemSettings } from "@/lib/system-settings";
+import { prisma } from "@/lib/prisma";
+import { verifyPassword } from "@/lib/auth/password";
+import { replacePassword } from "@/lib/auth/credentials";
 
 /**
  * Server Action: Lưu cấu hình hệ thống (OpenAI API Key, Model, Base URL, Trạng thái)
@@ -13,6 +18,7 @@ export async function saveSystemSettingsAction(formData: {
   openaiBaseUrl?: string;
   isOpenAiActive: boolean;
 }) {
+  await requireAdmin();
   try {
     const updated = await updateSystemSettings({
       openaiApiKey: formData.openaiApiKey !== undefined ? formData.openaiApiKey.trim() : undefined,
@@ -29,7 +35,7 @@ export async function saveSystemSettingsAction(formData: {
       message: "Đã lưu cấu hình OpenAI & Hệ thống thành công!",
       data: {
         id: updated.id,
-        openaiApiKey: updated.openaiApiKey,
+        configured: Boolean(updated.openaiApiKey || process.env.OPENAI_API_KEY),
         openaiModel: updated.openaiModel,
         openaiBaseUrl: updated.openaiBaseUrl,
         isOpenAiActive: updated.isOpenAiActive,
@@ -52,8 +58,10 @@ export async function testOpenAiConnectionAction(params: {
   model?: string;
   baseUrl?: string;
 }) {
+  await requireAdmin();
   try {
-    const cleanKey = params.apiKey?.trim().replace(/^["']|["']$/g, "");
+    const settings = await getSystemSettings();
+    const cleanKey = params.apiKey?.trim().replace(/^["']|["']$/g, "") || settings.openaiApiKey || process.env.OPENAI_API_KEY;
     if (!cleanKey) {
       return {
         success: false,
@@ -111,10 +119,11 @@ export async function changeAdminPasswordAction(params: {
   newPassword: string;
   confirmPassword: string;
 }) {
+  await requireAdmin();
   try {
-    const currentPassword = params.currentPassword?.trim() || "";
-    const newPassword = params.newPassword?.trim() || "";
-    const confirmPassword = params.confirmPassword?.trim() || "";
+    const currentPassword = params.currentPassword || "";
+    const newPassword = params.newPassword || "";
+    const confirmPassword = params.confirmPassword || "";
 
     if (!currentPassword) {
       return { success: false, error: "Vui lòng nhập mật khẩu Admin hiện tại." };
@@ -132,19 +141,17 @@ export async function changeAdminPasswordAction(params: {
       return { success: false, error: "Xác nhận mật khẩu mới không khớp!" };
     }
 
-    const { changeAdminPassword } = await import("@/lib/system-settings");
-    const result = await changeAdminPassword(currentPassword, newPassword);
-
-    if (!result.success) {
-      return { success: false, error: result.error || "Không thể đổi mật khẩu Admin." };
-    }
+    const admin = await requireAdmin();
+    const account = await prisma.user.findUnique({ where: { id: admin.id }, select: { password: true } });
+    if (!account || !(await verifyPassword(currentPassword, account.password))) return { success: false, error: "Mật khẩu hiện tại không chính xác." };
+    await replacePassword(admin.id, newPassword, account.password);
 
     revalidatePath("/admin/settings");
     revalidatePath("/admin");
 
     return {
       success: true,
-      message: "Đổi mật khẩu ADMIN thành công! Mật khẩu mới có hiệu lực ngay lập tức.",
+      message: "Đổi mật khẩu ADMIN thành công. Vui lòng đăng nhập lại.",
     };
   } catch (error: any) {
     console.error("Error changing admin password:", error);

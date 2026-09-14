@@ -1,3 +1,5 @@
+
+import { requireAdmin } from "@/lib/auth/session";
 import { Database, ExternalLink, PlusCircle, PowerOff } from "lucide-react";
 import { prisma } from "@/lib/prisma";
 import { FEE_DATA_VERSION, getCategoryLabel, getOfficialCategory } from "@/lib/pricing/registry";
@@ -16,6 +18,7 @@ export const metadata: Metadata = {
 const date = (value: Date | null) => value ? new Intl.DateTimeFormat("vi-VN").format(value) : "Không giới hạn";
 
 export default async function PricingFeesAdminPage() {
+  await requireAdmin();
   const overrides = await prisma.pricingFeeOverride.findMany({ where: { active: true }, orderBy: { effectiveFrom: "desc" } });
   return <div className="space-y-6">
     <AdminPageHeader

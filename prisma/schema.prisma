@@ -100,8 +100,40 @@ model Transaction {
   status    String   // PENDING, SUCCESS, FAILED
   type      String   // TOPUP, UPGRADE_VIP
   sepayId   String?  // Reference from SePay webhook
+  paymentCode String? @unique
+  planId      String?
+  planName    String?
+  durationDays Int?
+  currency    String @default("VND")
+  bankName    String?
+  accountNumber String?
+  accountHolder String?
+  expiresAt   DateTime?
+  paidAt      DateTime?
+  approvedBy  String?
+  webhookEvents PaymentWebhookEvent[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+
+  @@index([userId, status, createdAt])
+}
+
+model PaymentWebhookEvent {
+  id            String @id
+  provider      String @default("sepay")
+  amount        Int
+  accountNumber String
+  content       String @db.Text
+  transferType  String
+  status        String
+  reason        String?
+  transactionId String?
+  transaction   Transaction? @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+  receivedAt    DateTime @default(now())
+  processedAt   DateTime?
+  approvedBy    String?
+
+  @@index([status, receivedAt])
 }
 
 model PricingFeeOverride {

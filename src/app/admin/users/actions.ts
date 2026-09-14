@@ -1,17 +1,19 @@
 "use server";
 
+import { requireAdmin } from "@/lib/auth/session";
+
 import { prisma } from "@/lib/prisma";
-import crypto from "crypto";
+import { hashPassword } from "@/lib/auth/password";
+import { replacePassword } from "@/lib/auth/credentials";
 import { revalidatePath } from "next/cache";
 
-function hashPassword(password: string) {
-  return crypto.createHash("sha256").update(password).digest("hex");
-}
+
 
 import { calculateNewVipExpiration } from "@/lib/sepay-server";
 
 // Bật / Tắt trạng thái VIP nhanh
 export async function toggleUserVip(userId: string, newVipStatus: boolean) {
+  await requireAdmin();
   try {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return { success: false, error: "Người dùng không tồn tại" };
@@ -53,6 +55,7 @@ export async function updateUserVipDuration(
   days?: number,
   customDate?: string
 ) {
+  await requireAdmin();
   try {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return { success: false, error: "Người dùng không tồn tại" };
@@ -107,10 +110,12 @@ export async function updateUserVipDuration(
 
 // Khóa / Mở khóa tài khoản
 export async function toggleUserLock(userId: string, newLockStatus: boolean) {
+  await requireAdmin();
   try {
-    const updated = await prisma.user.update({
-      where: { id: userId },
-      data: { isLocked: newLockStatus },
+    const updated = await prisma.$transaction(async tx => {
+      const updated = await tx.user.update({ where: { id: userId }, data: { isLocked: newLockStatus } });
+      if (newLockStatus) await tx.seoSession.deleteMany({ where: { userId } });
+      return updated;
     });
     revalidatePath("/admin/users");
     revalidatePath("/admin");
@@ -131,9 +136,10 @@ export async function createUserByAdmin(data: {
   role?: "USER" | "ADMIN";
   dailyFreeLimit?: number;
 }) {
+  await requireAdmin();
   const { email, password, name, phone, isVIP = false, role = "USER", dailyFreeLimit = 12 } = data;
 
-  if (!email || !password) {
+  if (!email || typeof password !== "string" || password.length < 6 || password.length > 256) {
     return { success: false, error: "Vui lòng nhập đầy đủ Email và Mật khẩu" };
   }
 
@@ -149,7 +155,7 @@ export async function createUserByAdmin(data: {
     const created = await prisma.user.create({
       data: {
         email: email.trim().toLowerCase(),
-        password: hashPassword(password),
+        password: await hashPassword(password),
         name: name?.trim() || null,
         phone: phone?.trim() || null,
         isVIP: Boolean(isVIP),
@@ -184,15 +190,13 @@ export async function createUserByAdmin(data: {
 
 // Đổi mật khẩu người dùng bởi Admin
 export async function resetPasswordByAdmin(userId: string, newPassword: string) {
+  await requireAdmin();
   if (!newPassword || newPassword.length < 6) {
     return { success: false, error: "Mật khẩu mới phải có ít nhất 6 ký tự" };
   }
 
   try {
-    await prisma.user.update({
-      where: { id: userId },
-      data: { password: hashPassword(newPassword) },
-    });
+    await replacePassword(userId, newPassword);
     return { success: true };
   } catch (error) {
     console.error("Error resetting password:", error);
@@ -202,10 +206,12 @@ export async function resetPasswordByAdmin(userId: string, newPassword: string) 
 
 // Xóa tài khoản người dùng
 export async function deleteUserByAdmin(userId: string) {
+  const admin = await requireAdmin();
+  if (admin.id === userId) return { success: false, error: "Không thể xóa tài khoản quản trị đang đăng nhập." };
   try {
+    if (await prisma.transaction.count({ where: { userId } })) return { success: false, error: "Tài khoản có lịch sử giao dịch. Hãy khóa tài khoản để giữ dữ liệu đối soát." };
     await prisma.$transaction([
       prisma.progress.deleteMany({ where: { userId } }),
-      prisma.transaction.deleteMany({ where: { userId } }),
       prisma.userCredit.deleteMany({ where: { userId } }),
       prisma.user.delete({ where: { id: userId } }),
     ]);
@@ -221,6 +227,7 @@ export async function deleteUserByAdmin(userId: string) {
 
 // Cập nhật số lượt dùng Free mỗi ngày cho 1 tài khoản cụ thể
 export async function updateUserDailyFreeLimit(userId: string, newLimit: number) {
+  await requireAdmin();
   try {
     const limit = Math.max(0, Math.floor(Number(newLimit) || 0));
     try {
@@ -247,6 +254,7 @@ export async function updateUserDailyFreeLimit(userId: string, newLimit: number)
 
 // Cập nhật số lượt dùng Free mỗi ngày áp dụng CHUNG cho TẤT CẢ các tài khoản FREE
 export async function updateGlobalDailyFreeLimit(newLimit: number) {
+  await requireAdmin();
   try {
     const limit = Math.max(0, Math.floor(Number(newLimit) || 0));
 

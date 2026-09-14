@@ -1,3 +1,5 @@
+
+import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { UsersManager } from "@/components/admin/UsersManager";
 import { syncAllExpiredVipUsers } from "@/lib/sepay-server";
@@ -14,6 +16,7 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminUsers() {
+  await requireAdmin();
   try {
     // Tự động kiểm tra và hạ cấp các tài khoản đã hết hạn VIP về FREE
     await syncAllExpiredVipUsers();

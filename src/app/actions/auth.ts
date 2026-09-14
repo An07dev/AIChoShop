@@ -1,123 +1,61 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import crypto from "crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createSeoSession, deleteSeoSession } from "@/lib/seo/session";
+import { hashPassword, verifyPassword } from "@/lib/auth/password";
 
-// Utility to hash password
-function hashPassword(password: string) {
-  return crypto.createHash("sha256").update(password).digest("hex");
-}
-
-export async function registerUser(formData: FormData) {
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-  const name = formData.get("name") as string;
-  const phone = formData.get("phone") as string;
-
-  if (!email || !password) {
-    return { success: false, error: "Vui lòng nhập Email và Mật khẩu" };
+export async function registerUser(formData: FormData): Promise<{ success: boolean; error?: string }> {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const password = formData.get("password");
+  const name = String(formData.get("name") ?? "").trim();
+  const phone = String(formData.get("phone") ?? "").trim();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || email.length > 254 || typeof password !== "string" || password.length < 6 || password.length > 256 || name.length > 120 || phone.length > 30) {
+    return { success: false, error: "Thông tin không hợp lệ. Mật khẩu phải có từ 6 đến 256 ký tự." };
   }
-
   try {
-    // Check if user exists
-    const existingUser = await prisma.user.findUnique({
-      where: { email },
-    });
-
-    if (existingUser) {
-      return { success: false, error: "Email này đã được đăng ký" };
-    }
-
-    // Create user
-    const user = await prisma.user.create({
-      data: {
-        email,
-        password: hashPassword(password),
-        name: name || "Seller",
-        phone: phone || null,
-      },
-    });
-
-    // Kế thừa định mức lượt Free hiện tại từ cấu hình hệ thống
-    try {
-      const setting: any = await prisma.$queryRawUnsafe(
-        `SELECT "defaultDailyFreeLimit" FROM "SystemSetting" WHERE id = 'default' LIMIT 1;`
-      );
-      if (setting && setting[0]?.defaultDailyFreeLimit) {
-        await prisma.$executeRawUnsafe(
-          `UPDATE "User" SET "dailyFreeLimit" = $1 WHERE id = $2`,
-          Number(setting[0].defaultDailyFreeLimit) || 12,
-          user.id
-        );
-      }
-    } catch {}
-
-    await createSeoSession(user.id);
-    // Set cookie
-    const cookieStore = await cookies();
-    cookieStore.set("user_token", user.id, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 60 * 60 * 24 * 30, // 30 days
-      path: "/",
-    });
-
+    const existing = await prisma.user.findFirst({ where: { email: { equals: email, mode: "insensitive" } }, select: { id: true } });
+    if (existing) return { success: false, error: "Email này đã được đăng ký" };
+    const setting = await prisma.systemSetting.findUnique({ where: { id: "default" }, select: { defaultDailyFreeLimit: true } });
+    const user = await prisma.user.create({ data: {
+      email, password: await hashPassword(password), name: name || "Seller", phone: phone || null,
+      dailyFreeLimit: setting?.defaultDailyFreeLimit ?? 12,
+    } });
+    await createSeoSession(user.id, user.password);
     return { success: true };
-  } catch (error) {
-    console.error(error);
-    return { success: false, error: "Đã xảy ra lỗi hệ thống" };
+  } catch {
+    return { success: false, error: "Không thể đăng ký. Vui lòng thử lại hoặc đăng nhập nếu tài khoản đã được tạo." };
   }
 }
 
-export async function loginUser(formData: FormData) {
-  const email = formData.get("email") as string;
-  const password = formData.get("password") as string;
-
-  if (!email || !password) {
-    return { success: false, error: "Vui lòng nhập đầy đủ thông tin" };
-  }
-
+export async function loginUser(formData: FormData): Promise<{ success: boolean; error?: string }> {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const password = formData.get("password");
+  const denied = { success: false, error: "Email hoặc mật khẩu không đúng, hoặc tài khoản đã bị khóa." };
+  if (!email || email.length > 254 || typeof password !== "string" || !password || password.length > 256) return denied;
   try {
-    const user = await prisma.user.findUnique({
-      where: { email },
-    });
-
-    if (!user) {
-      return { success: false, error: "Email hoặc mật khẩu không đúng" };
+    // Ambiguous legacy email addresses must be reconciled before login.
+    const users = await prisma.user.findMany({ where: { email: { equals: email, mode: "insensitive" } }, take: 2 });
+    const user = users.length === 1 ? users[0] : null;
+    if (!user || user.isLocked || !(await verifyPassword(password, user.password))) return denied;
+    let verifiedPassword = user.password;
+    if (/^[a-f0-9]{64}$/.test(user.password)) {
+      verifiedPassword = await hashPassword(password);
+      const upgraded = await prisma.user.updateMany({ where: { id: user.id, password: user.password, isLocked: false }, data: { password: verifiedPassword } });
+      if (upgraded.count !== 1) return denied;
     }
-
-    const hashedPassword = hashPassword(password);
-    if (user.password !== hashedPassword) {
-      return { success: false, error: "Email hoặc mật khẩu không đúng" };
-    }
-
-    if (user.isLocked) {
-      return { success: false, error: "Tài khoản của bạn đã bị tạm khóa bởi Quản trị viên. Vui lòng liên hệ hỗ trợ." };
-    }
-
-    await createSeoSession(user.id);
-    // Set cookie
-    const cookieStore = await cookies();
-    cookieStore.set("user_token", user.id, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 60 * 60 * 24 * 30, // 30 days
-      path: "/",
-    });
-
+    await createSeoSession(user.id, verifiedPassword);
     return { success: true };
-  } catch (error) {
-    console.error(error);
-    return { success: false, error: "Đã xảy ra lỗi hệ thống" };
+  } catch {
+    return { success: false, error: "Không thể đăng nhập. Vui lòng thử lại." };
   }
 }
 
 export async function logoutUser() {
   await deleteSeoSession();
-  const cookieStore = await cookies();
-  cookieStore.delete("user_token");
+  const store = await cookies();
+  store.delete("user_token");
+  store.delete("admin_token");
   redirect("/login");
 }

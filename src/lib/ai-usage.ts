@@ -1,3 +1,6 @@
+import { AI_TOOLS, vnDayStart } from "./ai-quota";
+
+import { isVipActive } from "@/lib/vip-expiration";
 import { prisma } from "@/lib/prisma";
 
 export const TOOL_NAMES: Record<string, string> = {
@@ -118,171 +121,16 @@ export function summarizeAiAction(tool: string, inputs: any): string {
  * Lấy toàn bộ số liệu thống kê AI của người dùng
  */
 export async function getAiUsageStats(userId: string, filterTool?: string) {
-  try {
-    const startOfToday = getStartOfTodayVn();
-
-    const userPromise = prisma.user.findUnique({
-      where: { id: userId },
-      select: { id: true, isVIP: true },
-    });
-
-    let todayCount = 0;
-    let totalGenerated = 0;
-    let rawActivities: any[] = [];
-
-    const fetchStatsViaSql = async () => {
-      try {
-        const [todayRes, totalRes, actRes]: [any, any, any] = await Promise.all([
-          prisma.$queryRawUnsafe(
-            'SELECT COUNT(*)::int as count FROM "AiUsageLog" WHERE "userId" = $1 AND "createdAt" >= $2',
-            userId,
-            startOfToday
-          ),
-          filterTool
-            ? prisma.$queryRawUnsafe(
-                'SELECT COUNT(*)::int as count FROM "AiUsageLog" WHERE "userId" = $1 AND "tool" = $2',
-                userId,
-                filterTool
-              )
-            : prisma.$queryRawUnsafe(
-                'SELECT COUNT(*)::int as count FROM "AiUsageLog" WHERE "userId" = $1',
-                userId
-              ),
-          filterTool
-            ? prisma.$queryRawUnsafe(
-                'SELECT id, tool, "toolName", action, input, output, "createdAt" FROM "AiUsageLog" WHERE "userId" = $1 AND "tool" = $2 ORDER BY "createdAt" DESC LIMIT 50',
-                userId,
-                filterTool
-              )
-            : prisma.$queryRawUnsafe(
-                'SELECT id, tool, "toolName", action, input, output, "createdAt" FROM "AiUsageLog" WHERE "userId" = $1 ORDER BY "createdAt" DESC LIMIT 10',
-                userId
-              ),
-        ]);
-        todayCount = Number(todayRes?.[0]?.count) || 0;
-        totalGenerated = Number(totalRes?.[0]?.count) || 0;
-        rawActivities = actRes || [];
-      } catch (sqlErr) {
-        console.warn("SQL fallback query error:", sqlErr);
-      }
-    };
-
-    if (typeof (prisma as any).aiUsageLog?.count === "function") {
-      try {
-        const whereClause: any = { userId };
-        if (filterTool) {
-          whereClause.tool = filterTool;
-        }
-
-        [todayCount, totalGenerated, rawActivities] = await Promise.all([
-          (prisma as any).aiUsageLog.count({
-            where: {
-              userId,
-              createdAt: { gte: startOfToday },
-            },
-          }),
-          (prisma as any).aiUsageLog.count({
-            where: whereClause,
-          }),
-          (prisma as any).aiUsageLog.findMany({
-            where: whereClause,
-            orderBy: { createdAt: "desc" },
-            take: filterTool ? 50 : 10,
-            select: {
-              id: true,
-              tool: true,
-              toolName: true,
-              action: true,
-              input: true,
-              output: true,
-              createdAt: true,
-            },
-          }),
-        ]);
-      } catch (ormErr) {
-        console.warn("ORM aiUsageLog query failed, using SQL fallback:", ormErr);
-        await fetchStatsViaSql();
-      }
-    } else {
-      await fetchStatsViaSql();
-    }
-
-    const user = await userPromise;
-
-    let globalDefaultLimit = 12;
-    try {
-      const setting: any = await prisma.$queryRawUnsafe(
-        'SELECT "defaultDailyFreeLimit" FROM "SystemSetting" WHERE id = \'default\' LIMIT 1;'
-      );
-      if (setting?.[0]?.defaultDailyFreeLimit !== undefined) {
-        globalDefaultLimit = Number(setting[0].defaultDailyFreeLimit) || 12;
-      }
-    } catch {}
-
-    let dailyLimit = globalDefaultLimit;
-    try {
-      const rawUser: any = await (prisma as any).$queryRawUnsafe(
-        'SELECT "dailyFreeLimit" FROM "User" WHERE id = $1',
-        userId
-      );
-      if (rawUser && rawUser[0] && rawUser[0].dailyFreeLimit !== undefined) {
-        dailyLimit = Number(rawUser[0].dailyFreeLimit) ?? globalDefaultLimit;
-      }
-    } catch {
-      dailyLimit = globalDefaultLimit;
-    }
-
-    const remainingFree = user?.isVIP ? null : Math.max(0, dailyLimit - todayCount);
-
-    const recentActivities = rawActivities.map((act) => {
-      let parsedInput = null;
-      if (act.input) {
-        try {
-          parsedInput = typeof act.input === "string" ? JSON.parse(act.input) : act.input;
-        } catch {
-          parsedInput = act.input;
-        }
-      }
-      return {
-        id: act.id,
-        tool: act.tool,
-        toolName: act.toolName,
-        action: act.action,
-        input: parsedInput,
-        output: act.output,
-        time: formatRelativeTime(act.createdAt),
-        createdAt: act.createdAt instanceof Date ? act.createdAt.toISOString() : new Date(act.createdAt).toISOString(),
-      };
-    });
-
-    return {
-      todayCount,
-      totalGenerated,
-      dailyFreeLimit: dailyLimit,
-      remainingFree,
-      isVIP: !!user?.isVIP,
-      recentActivities,
-    };
-  } catch (error) {
-    console.error("Error fetching AI usage stats:", error);
-    let fallbackLimit = 12;
-    try {
-      const setting: any = await prisma.$queryRawUnsafe(
-        'SELECT "defaultDailyFreeLimit" FROM "SystemSetting" WHERE id = \'default\' LIMIT 1;'
-      );
-      if (setting?.[0]?.defaultDailyFreeLimit !== undefined) {
-        fallbackLimit = Number(setting[0].defaultDailyFreeLimit) || 12;
-      }
-    } catch {}
-    return {
-      todayCount: 0,
-      totalGenerated: 0,
-      dailyFreeLimit: fallbackLimit,
-      remainingFree: fallbackLimit,
-      isVIP: false,
-      recentActivities: [],
-    };
-  }
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+  const where = { userId, ...(filterTool ? { tool: filterTool } : {}) };
+  const [todayCount, totalGenerated, activities] = await Promise.all([
+    prisma.aiUsageLog.count({ where: { userId, tool: { in: AI_TOOLS }, createdAt: { gte: vnDayStart() } } }),
+    prisma.aiUsageLog.count({ where }),
+    prisma.aiUsageLog.findMany({ where, orderBy: { createdAt: "desc" }, take: filterTool ? 50 : 10 }),
+  ]);
+  return { todayCount, totalGenerated, dailyFreeLimit: user.dailyFreeLimit,
+    remainingFree: isVipActive(user) ? null : Math.max(0, user.dailyFreeLimit - todayCount), isVIP: isVipActive(user),
+    recentActivities: activities.map(act => ({ ...act, input: (() => { try { return act.input ? JSON.parse(act.input) : null; } catch { return null; } })(), time: formatRelativeTime(act.createdAt), createdAt: act.createdAt.toISOString() })) };
 }
 
 /**

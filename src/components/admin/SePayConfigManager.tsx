@@ -56,7 +56,7 @@ interface SePayConfigManagerProps {
     bankName: string;
     accountNumber: string;
     accountHolder: string;
-    apiKey: string | null;
+    configured: boolean;
     syntaxPrefix: string;
     autoActivate: boolean;
   };
@@ -66,6 +66,7 @@ interface SePayConfigManagerProps {
     status: string;
     type: string;
     sepayId: string | null;
+    paymentCode: string | null;
     createdAt: string;
     user: {
       id: string;
@@ -105,7 +106,7 @@ export function SePayConfigManager({
   // Transactions State
   const [transactions, setTransactions] = useState(initialTransactions);
   const [searchQuery, setSearchQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"ALL" | "SUCCESS" | "PENDING">("ALL");
+  const [statusFilter, setStatusFilter] = useState<"ALL" | "SUCCESS" | "PENDING" | "REVIEW">("ALL");
   const [displayLimit, setDisplayLimit] = useState<number | "ALL">(5); // Mặc định hiển thị đúng 5 bản ghi mới nhất
   const [approvingId, setApprovingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -167,13 +168,13 @@ export function SePayConfigManager({
 
   const handleDelete = async (txId: string) => {
     if (deletingId) return;
-    if (!window.confirm("Bạn có chắc chắn muốn xóa bản ghi giao dịch này không?")) return;
+    if (!window.confirm("Hủy yêu cầu chưa thanh toán này? Bản ghi vẫn được giữ để đối soát.")) return;
     setDeletingId(txId);
     try {
       const res = await deleteTransactionAction(txId);
       if (res.success) {
         showToast(res.message || "Đã xóa giao dịch thành công!");
-        setTransactions((prev) => prev.filter((t) => t.id !== txId));
+        setTransactions(prev => prev.map(t => t.id === txId ? { ...t, status: "CANCELLED" } : t));
       } else {
         showToast(res.error || "Không thể xóa giao dịch", "error");
       }
@@ -196,8 +197,8 @@ export function SePayConfigManager({
     bankName: config.bankName,
     accountNumber: config.accountNumber,
     accountHolder: config.accountHolder,
-    apiKey: config.apiKey || "",
-    syntaxPrefix: config.syntaxPrefix,
+    apiKey: "",
+    syntaxPrefix: "ACS",
     autoActivate: config.autoActivate,
   });
 
@@ -214,7 +215,8 @@ export function SePayConfigManager({
       const res = await saveSePayConfigAction(formData);
       if (res.success) {
         showToast("Đã lưu cấu hình SePay!");
-        setConfig((prev) => ({ ...prev, ...formData }));
+        setConfig((prev) => ({ ...prev, ...formData, configured: !!res.configured }));
+        setFormData(prev => ({ ...prev, apiKey: "" }));
       } else {
         showToast(res.error || "Không thể lưu cấu hình", "error");
       }
@@ -225,7 +227,7 @@ export function SePayConfigManager({
   const handleRunSimulation = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!simQuery.trim()) {
-      showToast("Vui lòng nhập SĐT hoặc Email học viên", "error");
+      showToast("Vui lòng nhập Mã thanh toán ACS", "error");
       return;
     }
 
@@ -234,31 +236,13 @@ export function SePayConfigManager({
 
     try {
       const res = await simulateSePayWebhookAction({
-        phoneOrEmailOrId: simQuery.trim(),
+        paymentCode: simQuery.trim(),
         amount: Number(simAmount),
       });
 
       setSimResult(res);
       if (res.success) {
         showToast(res.message || "Đã kích hoạt thử thành công!");
-        if (res.transactionId) {
-          const newTx = {
-            id: res.transactionId,
-            amount: Number(simAmount),
-            status: res.autoActivated ? "SUCCESS" : "PENDING",
-            type: "UPGRADE_VIP_TEST",
-            sepayId: `SIM-${Date.now()}`,
-            createdAt: new Date().toISOString(),
-            user: {
-              id: res.user?.id || "sim-user",
-              email: res.user?.email || simQuery.trim(),
-              name: res.user?.name || "Học viên giả lập",
-              phone: null,
-              isVIP: !!res.user?.isVIP,
-            },
-          };
-          setTransactions((prev) => [newTx, ...prev]);
-        }
       } else {
         showToast(res.error || "Thử nghiệm thất bại", "error");
       }
@@ -407,8 +391,8 @@ export function SePayConfigManager({
                 <input
                   type="text"
                   required
-                  value={formData.syntaxPrefix}
-                  onChange={(e) => setFormData({ ...formData, syntaxPrefix: e.target.value.toUpperCase() })}
+                  value="ACS + mã riêng cho mỗi yêu cầu"
+                  readOnly
                   placeholder="VIP"
                   className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-900 uppercase focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
@@ -425,7 +409,7 @@ export function SePayConfigManager({
                   type={showApiKey ? "text" : "password"}
                   value={formData.apiKey}
                   onChange={(e) => setFormData({ ...formData, apiKey: e.target.value })}
-                  placeholder="Bỏ trống nếu không dùng xác thực Header"
+                  placeholder={config.configured ? "Để trống để giữ khóa đã lưu" : "Bắt buộc cấu hình khóa webhook"}
                   className="w-full px-3 py-2 pr-10 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
                 />
                 <button
@@ -507,11 +491,11 @@ export function SePayConfigManager({
 
           <form onSubmit={handleRunSimulation} className="space-y-3.5 text-xs">
             <div>
-              <label className="block font-bold text-slate-700 mb-1">SĐT hoặc Email học viên</label>
+              <label className="block font-bold text-slate-700 mb-1">Mã thanh toán ACS</label>
               <input
                 type="text"
                 required
-                placeholder="0987654321 hoặc email@gmail.com"
+                placeholder="ACS0123456789ABCDEF"
                 value={simQuery}
                 onChange={(e) => setSimQuery(e.target.value)}
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-800 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -529,7 +513,7 @@ export function SePayConfigManager({
                     : "bg-slate-50 text-slate-600 border-slate-200"
                     }`}
                 >
-                  200k (Tháng)
+                  200.000đ
                 </button>
                 <button
                   type="button"
@@ -539,7 +523,7 @@ export function SePayConfigManager({
                     : "bg-slate-50 text-slate-600 border-slate-200"
                     }`}
                 >
-                  1.290k (Năm)
+                  1.290.000đ
                 </button>
                 <button
                   type="button"
@@ -549,7 +533,7 @@ export function SePayConfigManager({
                     : "bg-slate-50 text-slate-600 border-slate-200"
                     }`}
                 >
-                  1.990k (Trọn đời)
+                  1.990.000đ
                 </button>
               </div>
               <input
@@ -571,7 +555,7 @@ export function SePayConfigManager({
                 </>
               ) : (
                 <>
-                  <Play size={13} className="fill-white" /> Bắn Thử Webhook
+                  <Play size={13} className="fill-white" /> Xem trước đối soát
                 </>
               )}
             </button>
@@ -682,7 +666,8 @@ export function SePayConfigManager({
             {[
               { id: "ALL", label: `Tất cả (${totalCount})` },
               { id: "SUCCESS", label: `Thành công (${successCount})` },
-              { id: "PENDING", label: `Chờ duyệt (${pendingCount})` },
+              { id: "PENDING", label: `Chờ thanh toán (${pendingCount})` },
+              { id: "REVIEW", label: "Cần đối soát" },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -755,7 +740,7 @@ export function SePayConfigManager({
                   displayedTransactions.map((tx) => {
                     const isSuccess = tx.status === "SUCCESS";
                     const initial = (tx.user?.name || tx.user?.email || "H").charAt(0).toUpperCase();
-                    const txCode = tx.sepayId || tx.id.slice(0, 8);
+                    const txCode = tx.paymentCode || tx.sepayId || tx.id.slice(0, 8);
 
                     return (
                       <tr key={tx.id} className="hover:bg-slate-50/70 transition-colors">
@@ -833,7 +818,7 @@ export function SePayConfigManager({
                             </span>
                           ) : (
                             <span className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200/90 text-amber-800 px-2.5 py-1 rounded-full font-bold text-[11px] shadow-2xs">
-                              <Clock size={12} className="text-amber-600" /> Chờ duyệt
+                              <Clock size={12} className="text-amber-600" /> {({ PENDING: "Chờ thanh toán", REVIEW: "Cần đối soát", CANCELLED: "Đã hủy", EXPIRED: "Hết hạn" } as Record<string, string>)[tx.status] || tx.status}
                             </span>
                           )}
                         </td>
@@ -857,7 +842,7 @@ export function SePayConfigManager({
                         {/* Thao Tác */}
                         <td className="py-3.5 px-4 text-center">
                           <div className="flex items-center justify-center gap-1.5">
-                            {!isSuccess && (
+                            {tx.status === "REVIEW" && (
                               <button
                                 type="button"
                                 disabled={approvingId === tx.id}
@@ -876,10 +861,10 @@ export function SePayConfigManager({
 
                             <button
                               type="button"
-                              disabled={deletingId === tx.id}
+                              disabled={deletingId === tx.id || tx.status !== "PENDING"}
                               onClick={() => handleDelete(tx.id)}
                               className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition cursor-pointer"
-                              title="Xóa giao dịch này"
+                              title="Hủy yêu cầu này"
                             >
                               {deletingId === tx.id ? (
                                 <RefreshCw size={13} className="animate-spin text-rose-500" />

@@ -1,5 +1,7 @@
+
+import { isVipActive } from "@/lib/vip-expiration";
 import { prisma } from "@/lib/prisma";
-import { cookies } from "next/headers";
+import { getSessionUserId } from "@/lib/auth/session";
 import CoursesClient from "./CoursesClient";
 import { Metadata } from "next";
 
@@ -19,8 +21,7 @@ export default async function CoursesPage({
   const initialModule = resolvedParams?.module;
   const initialCourseId = resolvedParams?.courseId;
 
-  const cookieStore = await cookies();
-  const token = cookieStore.get("user_token")?.value;
+  const token = await getSessionUserId();
 
   let isUserVIP = false;
   let isLogged = false;
@@ -29,12 +30,12 @@ export default async function CoursesPage({
   if (token) {
     const user = await prisma.user.findUnique({
       where: { id: token },
-      select: { id: true, isVIP: true, isLocked: true },
+      select: { id: true, isVIP: true, vipExpiresAt: true, isLocked: true },
     });
 
     if (user && !user.isLocked) {
       isLogged = true;
-      if (user.isVIP) isUserVIP = true;
+      if (isVipActive(user)) isUserVIP = true;
 
       const userProgress = await prisma.progress.findMany({
         where: { userId: user.id, completed: true },
@@ -63,8 +64,8 @@ export default async function CoursesPage({
       courseId: l.courseId,
       title: l.title,
       moduleName: l.moduleName?.trim() || "Phần 1",
-      content: l.content,
-      videoUrl: l.videoUrl,
+      content: !l.isVIP || isUserVIP ? l.content : null,
+      videoUrl: !l.isVIP || isUserVIP ? l.videoUrl : null,
       order: l.order,
       isVIP: l.isVIP,
     })),

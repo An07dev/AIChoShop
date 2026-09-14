@@ -1,4 +1,4 @@
-import { cookies } from "next/headers";
+import { getSessionUserId } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import {
@@ -17,8 +17,8 @@ import { getAiUsageStats } from "@/lib/ai-usage";
 export const dynamic = "force-dynamic";
 
 export default async function DashboardPage() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get("user_token")?.value;
+
+  const token = await getSessionUserId();
 
   if (!token) {
     redirect("/login");
