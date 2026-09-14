@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test:pricing": "node --experimental-strip-types --test src/lib/pricing/engine.test.ts",
+    "test:spinner": "node --experimental-strip-types --test src/lib/spinner/spinner.test.ts",
     "test:seo": "node --experimental-strip-types --test src/lib/seo/seo.test.ts",
     "test:seo:db": "node scripts/test-seo-db.cjs",
     "db:seo": "node scripts/setup-seo.cjs",

@@ -2,12 +2,14 @@ import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { getSystemSettings } from "@/lib/system-settings";
 import { handleSeo } from "@/lib/seo/handler";
+import { handleSpinner } from "@/lib/spinner/handler";
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { tool, inputs } = body;
     if (tool === "seo-optimizer") return handleSeo(req, inputs);
+    if (tool === "title-spinner") return handleSpinner(req, { inputs });
 
     // Lấy cấu hình hệ thống từ Database (ưu tiên CSDL, không phụ thuộc file .env)
     const systemConfig = await getSystemSettings();
@@ -138,16 +140,6 @@ Yêu cầu cấu trúc:
 ## 5. DỰ PHÓNG CHỈ SỐ ROI & ĐƠN HÀNG
 
 LƯU Ý: Trả về 100% tiếng Việt chuẩn. Không chèn lời chào hay giải thích ngoài lề.`;
-        break;
-
-      case "title-spinner":
-        userPrompt = `Tôi muốn nhân bản sản phẩm trên Shopee để chống bị quét spam trùng lặp nội dung.
-Tiêu đề gốc: "${inputs.originalTitle}"
-Hãy tạo đúng 10 biến thể tiêu đề (Spin content). Yêu cầu:
-- Giữ nguyên các từ khoá chính quan trọng nhất.
-- Đảo vị trí từ ngữ, thay đổi các từ khóa phụ (như thêm: Chính hãng, Freeship, Cao cấp, Giá xưởng...).
-- Các tiêu đề không được giống nhau hoàn toàn nhưng vẫn phải tự nhiên, thu hút người click và dưới 120 ký tự.
-- Trình bày danh sách đánh số rõ ràng từ 1 đến 10 (mỗi dòng một tiêu đề theo định dạng: "1. [Nội dung tiêu đề]"), không thêm lời chào hay kết bài rườm rà.`;
         break;
 
       case "ad-copy": {

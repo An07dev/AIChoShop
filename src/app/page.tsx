@@ -166,9 +166,9 @@ export default async function LandingPage() {
             <PainCard
               icon={<Cpu size={22} />}
               iconColor="text-blue-600 bg-blue-50"
-              title="Nhân bản shop bị quét spam"
-              description="Copy tiêu đề/mô tả sang shop mới là bị Shopee, TikTok Shop quét bay ngay lập tức."
-              solution="Tool Nhân Bản Chống Spam — unique 100%"
+              title="Nội dung sản phẩm lặp lại"
+              description="Các bài đăng lặp lại cách viết khiến bạn khó lựa chọn nội dung phù hợp cho từng sản phẩm."
+              solution="AI Nhân Bản Chống Spam — kiểm tra tương đồng"
             />
           </div>
         </div>
@@ -210,7 +210,7 @@ export default async function LandingPage() {
                 <span className="text-[10px] font-bold bg-rose-100 text-rose-700 px-2 py-0.5 rounded-full">PHỔ BIẾN</span>
               </div>
               <h3 className="text-lg font-bold text-slate-900 mb-1.5">Nhân Bản Chống Spam</h3>
-              <p className="text-sm text-slate-500 leading-relaxed mb-3">Rewrite nội dung 100% unique, lách bộ lọc spam của sàn TMĐT. Mở 10 shop clone mà không lo bị phạt.</p>
+              <p className="text-sm text-slate-500 leading-relaxed mb-3">Tạo nhiều phiên bản tiêu đề và mô tả để đối chiếu, chọn nội dung phù hợp và xuất Excel.</p>
               <span className="text-sm font-semibold text-blue-600 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">Dùng ngay <ArrowRight size={14} /></span>
             </Link>
 
@@ -291,7 +291,7 @@ export default async function LandingPage() {
                 {[
                   "Viết tiêu đề SEO Shopee đánh bại đối thủ",
                   "Kịch bản Reels/TikTok viral triệu view",
-                  "Nhân bản 10 shop không bị quét spam",
+                  "Tạo và đối chiếu 10 phiên bản nội dung",
                   "Tính thuế TMĐT chuẩn xác, kháng nghị thành công 99%",
                   "Xây hệ thống bán hàng tự động bằng AI",
                 ].map((item, i) => (
@@ -366,13 +366,7 @@ export default async function LandingPage() {
               content="Kịch bản Reels từ AI quá chuẩn. Video 15 giây mà lên 2 triệu view, doanh thu tháng tăng gấp 4. Khóa học dễ hiểu, áp dụng được ngay."
               result="Doanh thu x4"
             />
-            <ReviewCard
-              name="Lê Hoàng Anh"
-              role="Seller Shopee • Gia dụng"
-              initial="A"
-              content="Bị phạt bay 2 shop vì trùng nội dung. Từ khi dùng tool Nhân Bản, mở 8 shop clone mà 0 bị phạt. Tool tính thuế cũng cứu mình khỏi bị truy thu."
-              result="8 shop an toàn"
-            />
+
           </div>
         </div>
       </section>

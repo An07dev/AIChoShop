@@ -42,10 +42,10 @@ export default function ToolsPage() {
         {
           id: "title-spinner",
           name: "Nhân Bản Chống Spam",
-          description: "Xào nấu tiêu đề, mô tả để lập nhiều shop clone đánh du kích mà không bị phạt trùng lặp.",
+          description: "Tạo 5–10 phiên bản tiêu đề hoặc mô tả, giữ từ khóa và kiểm tra độ tương đồng.",
           icon: <Cpu size={32} className="text-teal-500" />,
           color: "bg-teal-50 border-teal-100 hover:border-teal-300",
-          isFree: false,
+          isFree: true,
         }
       ]
     },
