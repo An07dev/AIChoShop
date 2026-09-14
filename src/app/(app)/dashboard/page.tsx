@@ -199,7 +199,7 @@ export default async function DashboardPage() {
             </h3>
             <span className="text-xs font-semibold text-slate-400">
               {aiStats.recentActivities.length > 0
-                ? `${aiStats.recentActivities.length} thao tác mới nhất`
+                ? `${Math.min(3, aiStats.recentActivities.length)} thao tác gần nhất`
                 : "Chưa có hoạt động"}
             </span>
           </div>
@@ -228,7 +228,7 @@ export default async function DashboardPage() {
                 </div>
               </div>
             ) : (
-              aiStats.recentActivities.map((activity) => (
+              aiStats.recentActivities.slice(0, 3).map((activity) => (
                 <div
                   key={activity.id}
                   className="p-5 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors flex gap-4 items-start"
