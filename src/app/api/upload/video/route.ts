@@ -1,16 +1,21 @@
-import { adminRouteGuard } from "@/lib/auth/session";
+import { auditOutcome } from "@/lib/auth/audit-operations";
+import { adminRouteGuard, requireAdmin } from "@/lib/auth/session";
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 import { randomUUID } from "node:crypto";
 import { privateMediaRoot } from "@/lib/media";
 import { RequestBodyError } from "@/lib/http/body";
+import { audit } from "@/lib/auth/audit";
+import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
 export async function POST(req: NextRequest) {
   const denial = await adminRouteGuard(req);
   if (denial) return denial;
+  const auditAdmin = await requireAdmin("POST /api/upload/video");
+  return auditOutcome(auditAdmin.id, "POST /api/upload/video", async () => {
   try {
     const limit = 100 * 1024 * 1024;
     if (Number(req.headers.get("content-length")) > limit) throw new RequestBodyError("Video tối đa 100 MB.", 413);
@@ -62,6 +67,8 @@ export async function POST(req: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
     await fs.promises.writeFile(filePath, buffer, { flag: "wx" });
+    try { await audit(prisma, auditAdmin.id, "VIDEO_UPLOADED", filename, { bytes: file.size }); }
+    catch (error) { await fs.promises.unlink(filePath); throw error; }
 
     // Đường dẫn tĩnh truy cập trực tiếp qua Next.js public
     const publicUrl = `/api/media/${filename}`;
@@ -78,4 +85,6 @@ export async function POST(req: NextRequest) {
       { status: error instanceof RequestBodyError ? error.status : 500 }
     );
   }
+
+  });
 }

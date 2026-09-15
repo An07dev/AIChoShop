@@ -1,5 +1,6 @@
 "use server";
 
+import { auditOutcome } from "@/lib/auth/audit-operations";
 import { requireAdmin } from "@/lib/auth/session";
 
 import { revalidatePath } from "next/cache";
@@ -18,14 +19,15 @@ export async function saveSystemSettingsAction(formData: {
   openaiBaseUrl?: string;
   isOpenAiActive: boolean;
 }) {
-  await requireAdmin();
+  const auditAdmin = await requireAdmin("saveSystemSettingsAction");
+  return auditOutcome(auditAdmin.id, "saveSystemSettingsAction", async () => {
   try {
     const updated = await updateSystemSettings({
       openaiApiKey: formData.openaiApiKey !== undefined ? formData.openaiApiKey.trim() : undefined,
       openaiModel: formData.openaiModel?.trim() || "gpt-4o-mini",
       openaiBaseUrl: formData.openaiBaseUrl ? formData.openaiBaseUrl.trim() : null,
       isOpenAiActive: formData.isOpenAiActive,
-    });
+    }, auditAdmin.id);
 
     revalidatePath("/admin/settings");
     revalidatePath("/admin");
@@ -41,13 +43,15 @@ export async function saveSystemSettingsAction(formData: {
         isOpenAiActive: updated.isOpenAiActive,
       },
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error saving system settings:", error);
     return {
       success: false,
-      error: error?.message || "Không thể lưu cấu hình hệ thống.",
+      error: error instanceof Error ? error.message : "Không thể lưu cấu hình hệ thống.",
     };
   }
+
+  });
 }
 
 /**
@@ -58,7 +62,8 @@ export async function testOpenAiConnectionAction(params: {
   model?: string;
   baseUrl?: string;
 }) {
-  await requireAdmin();
+  const auditAdmin = await requireAdmin("testOpenAiConnectionAction");
+  return auditOutcome(auditAdmin.id, "testOpenAiConnectionAction", async () => {
   try {
     const settings = await getSystemSettings();
     const cleanKey = params.apiKey?.trim().replace(/^["']|["']$/g, "") || settings.openaiApiKey || process.env.OPENAI_API_KEY;
@@ -90,17 +95,18 @@ export async function testOpenAiConnectionAction(params: {
       message: `Kết nối thành công! Key hợp lệ và Model '${testModel}' phản hồi tốt.`,
       sampleReply: response.choices[0]?.message?.content || "OK",
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error("OpenAI test connection error:", error);
 
-    let friendlyError = error?.message || "Không thể kết nối đến OpenAI.";
-    if (error?.status === 401) {
+    const info = error && typeof error === "object" ? error as { message?: string; status?: number; code?: string } : {};
+    let friendlyError = info.message || "Không thể kết nối đến OpenAI.";
+    if (info.status === 401) {
       friendlyError = "Lỗi xác thực (401): API Key không chính xác hoặc đã bị thu hồi.";
-    } else if (error?.status === 429) {
+    } else if (info.status === 429) {
       friendlyError = "Lỗi hạn ngạch (429): Tài khoản OpenAI của bạn đã hết Credits (Quota) hoặc bị giới hạn Rate Limit.";
-    } else if (error?.status === 404) {
+    } else if (info.status === 404) {
       friendlyError = `Model '${params.model || "gpt-4o-mini"}' không tồn tại hoặc tài khoản không có quyền truy cập.`;
-    } else if (error?.code === "ECONNREFUSED" || friendlyError.includes("fetch failed")) {
+    } else if (info.code === "ECONNREFUSED" || friendlyError.includes("fetch failed")) {
       friendlyError = "Lỗi kết nối mạng: Không thể liên lạc với máy chủ OpenAI hoặc Base URL không hợp lệ.";
     }
 
@@ -109,6 +115,8 @@ export async function testOpenAiConnectionAction(params: {
       error: friendlyError,
     };
   }
+
+  });
 }
 
 /**
@@ -119,7 +127,8 @@ export async function changeAdminPasswordAction(params: {
   newPassword: string;
   confirmPassword: string;
 }) {
-  await requireAdmin();
+  const auditAdmin = await requireAdmin("changeAdminPasswordAction");
+  return auditOutcome(auditAdmin.id, "changeAdminPasswordAction", async () => {
   try {
     const currentPassword = params.currentPassword || "";
     const newPassword = params.newPassword || "";
@@ -144,7 +153,7 @@ export async function changeAdminPasswordAction(params: {
     const admin = await requireAdmin();
     const account = await prisma.user.findUnique({ where: { id: admin.id }, select: { password: true } });
     if (!account || !(await verifyPassword(currentPassword, account.password))) return { success: false, error: "Mật khẩu hiện tại không chính xác." };
-    await replacePassword(admin.id, newPassword, account.password);
+    await replacePassword(admin.id, newPassword, account.password, admin.id);
 
     revalidatePath("/admin/settings");
     revalidatePath("/admin");
@@ -153,11 +162,13 @@ export async function changeAdminPasswordAction(params: {
       success: true,
       message: "Đổi mật khẩu ADMIN thành công. Vui lòng đăng nhập lại.",
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error changing admin password:", error);
     return {
       success: false,
-      error: error?.message || "Lỗi hệ thống khi đổi mật khẩu Admin.",
+      error: error instanceof Error ? error.message : "Lỗi hệ thống khi đổi mật khẩu Admin.",
     };
   }
+
+  });
 }

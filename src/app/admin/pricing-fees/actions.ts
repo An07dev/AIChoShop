@@ -1,8 +1,9 @@
 "use server";
 
+import { auditedWrite } from "@/lib/auth/audit-operations";
+import { auditOutcome } from "@/lib/auth/audit-operations";
 import { requireAdmin } from "@/lib/auth/session";
 import { revalidatePath } from "next/cache";
-import { prisma } from "@/lib/prisma";
 import { getOfficialCategory } from "@/lib/pricing/registry";
 
 
@@ -21,7 +22,8 @@ function vietnamDate(value: FormDataEntryValue | null) {
 }
 
 export async function createPricingFeeOverride(formData: FormData) {
-  await requireAdmin();
+  const admin = await requireAdmin("createPricingFeeOverride");
+  return auditOutcome(admin.id, "createPricingFeeOverride", async () => {
   const platform = String(formData.get("platform") ?? "");
   const shopType = String(formData.get("shopType") ?? "");
   const categoryId = String(formData.get("categoryId") ?? "");
@@ -40,20 +42,25 @@ export async function createPricingFeeOverride(formData: FormData) {
   const orderProcessingFee = nullableNumber(formData, "orderProcessingFee");
   if (commissionRate === null && transactionRate === null && orderProcessingFee === null) throw new Error("Cần nhập ít nhất một mức phí.");
   if ((commissionRate ?? 0) > 100 || (transactionRate ?? 0) > 100) throw new Error("Tỷ lệ phí không được vượt 100%.");
-  await prisma.pricingFeeOverride.create({ data: {
+  await auditedWrite(admin.id, "PRICING_FEE_CREATED", tx => tx.pricingFeeOverride.create({ data: {
     platform, shopType, categoryId, commissionRate, transactionRate,
     orderProcessingFee: orderProcessingFee === null ? null : Math.round(orderProcessingFee),
     effectiveFrom, effectiveTo, sourceName, sourceUrl, note,
-  } });
+  } }));
   revalidatePath("/admin/pricing-fees");
   revalidatePath("/tools/pricing-calculator");
+
+  });
 }
 
 export async function deactivatePricingFeeOverride(formData: FormData) {
-  await requireAdmin();
+  const admin = await requireAdmin("deactivatePricingFeeOverride");
+  return auditOutcome(admin.id, "deactivatePricingFeeOverride", async () => {
   const id = String(formData.get("id") ?? "");
   if (!id) throw new Error("Thiếu mã biểu phí.");
-  await prisma.pricingFeeOverride.update({ where: { id }, data: { active: false } });
+  await auditedWrite(admin.id, "PRICING_FEE_UPDATED", tx => tx.pricingFeeOverride.update({ where: { id }, data: { active: false } }));
   revalidatePath("/admin/pricing-fees");
   revalidatePath("/tools/pricing-calculator");
+
+  });
 }

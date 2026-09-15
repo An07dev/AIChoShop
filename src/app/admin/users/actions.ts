@@ -1,6 +1,7 @@
 "use server";
 
 import { audit, auditedUserUpdate } from "@/lib/auth/audit";
+import { auditOutcome } from "@/lib/auth/audit-operations";
 import { requireAdmin } from "@/lib/auth/session";
 import { guardAdminAccountChange } from "@/lib/auth/admin-account";
 
@@ -15,7 +16,8 @@ import { calculateNewVipExpiration } from "@/lib/sepay-server";
 
 // Bật / Tắt trạng thái VIP nhanh
 export async function toggleUserVip(userId: string, newVipStatus: boolean) {
-  const admin = await requireAdmin();
+  const admin = await requireAdmin("toggleUserVip");
+  return auditOutcome(admin.id, "toggleUserVip", async () => {
   try {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return { success: false, error: "Người dùng không tồn tại" };
@@ -45,6 +47,8 @@ export async function toggleUserVip(userId: string, newVipStatus: boolean) {
     console.error("Error toggling VIP:", error);
     return { success: false, error: "Không thể cập nhật trạng thái VIP" };
   }
+
+  });
 }
 
 // Điều chỉnh thời hạn VIP (Thêm ngày, Trọn đời, Hạ FREE, hoặc ngày tùy chỉnh)
@@ -54,7 +58,8 @@ export async function updateUserVipDuration(
   days?: number,
   customDate?: string
 ) {
-  const admin = await requireAdmin();
+  const admin = await requireAdmin("updateUserVipDuration");
+  return auditOutcome(admin.id, "updateUserVipDuration", async () => {
   try {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return { success: false, error: "Người dùng không tồn tại" };
@@ -98,15 +103,18 @@ export async function updateUserVipDuration(
         vipExpiresAt: updated.vipExpiresAt ? updated.vipExpiresAt.toISOString() : null,
       },
     };
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error updating VIP duration:", error);
-    return { success: false, error: error?.message || "Không thể cập nhật thời hạn VIP" };
+    return { success: false, error: error instanceof Error ? error.message : "Không thể cập nhật thời hạn VIP" };
   }
+
+  });
 }
 
 // Khóa / Mở khóa tài khoản
 export async function toggleUserLock(userId: string, newLockStatus: boolean) {
-  const admin = await requireAdmin();
+  const admin = await requireAdmin("toggleUserLock");
+  return auditOutcome(admin.id, "toggleUserLock", async () => {
   if (typeof newLockStatus !== "boolean") return { success: false, error: "Trạng thái khóa không hợp lệ." };
   if (admin.id === userId) return { success: false, error: "Không thể tự khóa tài khoản quản trị đang đăng nhập." };
   try {
@@ -124,6 +132,8 @@ export async function toggleUserLock(userId: string, newLockStatus: boolean) {
     console.error("Error toggling Lock:", error);
     return { success: false, error: "Không thể cập nhật trạng thái khóa" };
   }
+
+  });
 }
 
 // Tạo người dùng thủ công bởi Admin
@@ -136,7 +146,8 @@ export async function createUserByAdmin(data: {
   role?: "USER" | "ADMIN";
   dailyFreeLimit?: number;
 }) {
-  const admin = await requireAdmin();
+  const admin = await requireAdmin("createUserByAdmin");
+  return auditOutcome(admin.id, "createUserByAdmin", async () => {
   const { email, password, name, phone, isVIP = false, role = "USER", dailyFreeLimit = 12 } = data;
 
   if (!email || typeof password !== "string" || password.length < 6 || password.length > 256) {
@@ -181,11 +192,14 @@ export async function createUserByAdmin(data: {
     console.error("Error creating user:", error);
     return { success: false, error: "Lỗi hệ thống khi tạo người dùng" };
   }
+
+  });
 }
 
 // Đổi mật khẩu người dùng bởi Admin
 export async function resetPasswordByAdmin(userId: string, newPassword: string) {
-  const admin = await requireAdmin();
+  const admin = await requireAdmin("resetPasswordByAdmin");
+  return auditOutcome(admin.id, "resetPasswordByAdmin", async () => {
   if (!newPassword || newPassword.length < 6) {
     return { success: false, error: "Mật khẩu mới phải có ít nhất 6 ký tự" };
   }
@@ -197,11 +211,14 @@ export async function resetPasswordByAdmin(userId: string, newPassword: string) 
     console.error("Error resetting password:", error);
     return { success: false, error: "Không thể đặt lại mật khẩu" };
   }
+
+  });
 }
 
 // Xóa tài khoản người dùng
 export async function deleteUserByAdmin(userId: string) {
-  const admin = await requireAdmin();
+  const admin = await requireAdmin("deleteUserByAdmin");
+  return auditOutcome(admin.id, "deleteUserByAdmin", async () => {
   if (admin.id === userId) return { success: false, error: "Không thể xóa tài khoản quản trị đang đăng nhập." };
   try {
     await prisma.$transaction(async tx => {
@@ -221,11 +238,14 @@ export async function deleteUserByAdmin(userId: string) {
     console.error("Error deleting user:", error);
     return { success: false, error: "Không thể xóa tài khoản này" };
   }
+
+  });
 }
 
 // Cập nhật số lượt dùng Free mỗi ngày cho 1 tài khoản cụ thể
 export async function updateUserDailyFreeLimit(userId: string, newLimit: number) {
-  const admin = await requireAdmin();
+  const admin = await requireAdmin("updateUserDailyFreeLimit");
+  return auditOutcome(admin.id, "updateUserDailyFreeLimit", async () => {
   try {
     const limit = Number(newLimit);
     if (!Number.isInteger(limit) || limit < 0 || limit > 10000) throw new Error("Invalid limit");
@@ -234,15 +254,18 @@ export async function updateUserDailyFreeLimit(userId: string, newLimit: number)
     revalidatePath("/admin");
     revalidatePath("/dashboard");
     return { success: true, dailyFreeLimit: limit };
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error updating user free limit:", error);
-    return { success: false, error: error?.message || "Không thể cập nhật số lượt free" };
+    return { success: false, error: error instanceof Error ? error.message : "Không thể cập nhật số lượt free" };
   }
+
+  });
 }
 
 // Cập nhật số lượt dùng Free mỗi ngày áp dụng CHUNG cho TẤT CẢ các tài khoản FREE
 export async function updateGlobalDailyFreeLimit(newLimit: number) {
-  const admin = await requireAdmin();
+  const admin = await requireAdmin("updateGlobalDailyFreeLimit");
+  return auditOutcome(admin.id, "updateGlobalDailyFreeLimit", async () => {
   try {
     const limit = Number(newLimit);
     if (!Number.isInteger(limit) || limit < 0 || limit > 10000) throw new Error("Invalid limit");
@@ -257,8 +280,10 @@ export async function updateGlobalDailyFreeLimit(newLimit: number) {
     revalidatePath("/profile");
 
     return { success: true, defaultDailyFreeLimit: limit };
-  } catch (error: any) {
+  } catch (error) {
     console.error("Error updating global daily free limit:", error);
-    return { success: false, error: error?.message || "Không thể cập nhật số lượt Free chung" };
+    return { success: false, error: error instanceof Error ? error.message : "Không thể cập nhật số lượt Free chung" };
   }
+
+  });
 }

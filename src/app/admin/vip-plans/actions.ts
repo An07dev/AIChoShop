@@ -1,5 +1,7 @@
 "use server";
 
+import { auditedWrite } from "@/lib/auth/audit-operations";
+import { auditOutcome } from "@/lib/auth/audit-operations";
 import { requireAdmin } from "@/lib/auth/session";
 
 import { prisma } from "@/lib/prisma";
@@ -8,7 +10,8 @@ import { DEFAULT_VIP_PLANS } from "@/lib/vip-plans";
 
 // Lấy danh sách toàn bộ gói VIP (cho Admin)
 export async function getAdminVipPlans() {
-  await requireAdmin();
+  const admin = await requireAdmin("getAdminVipPlans");
+  return auditOutcome(admin.id, "getAdminVipPlans", async () => {
   try {
     const plans = await prisma.vipPlan.findMany({
       orderBy: { order: "asc" },
@@ -18,16 +21,19 @@ export async function getAdminVipPlans() {
     console.error("Error fetching admin VIP plans:", error);
     return { success: false, error: "Không thể lấy danh sách gói VIP" };
   }
+
+  });
 }
 
 // Bật / Tắt trạng thái hiển thị của gói VIP (1-click)
 export async function toggleVipPlanActive(planId: string, currentActive: boolean) {
-  await requireAdmin();
+  const admin = await requireAdmin("toggleVipPlanActive");
+  return auditOutcome(admin.id, "toggleVipPlanActive", async () => {
   try {
-    const updated = await prisma.vipPlan.update({
+    const updated = await auditedWrite(admin.id, "VIP_PLAN_UPDATED", tx => tx.vipPlan.update({
       where: { id: planId },
       data: { active: !currentActive },
-    });
+    }));
 
     revalidatePath("/admin/vip-plans");
     revalidatePath("/profile");
@@ -38,16 +44,19 @@ export async function toggleVipPlanActive(planId: string, currentActive: boolean
     console.error("Error toggling VIP plan active:", error);
     return { success: false, error: "Không thể cập nhật trạng thái gói VIP" };
   }
+
+  });
 }
 
 // Đặt gói VIP làm Best Seller (Phổ biến nhất)
 export async function toggleVipPlanPopular(planId: string, currentPopular: boolean) {
-  await requireAdmin();
+  const admin = await requireAdmin("toggleVipPlanPopular");
+  return auditOutcome(admin.id, "toggleVipPlanPopular", async () => {
   try {
-    const updated = await prisma.vipPlan.update({
+    const updated = await auditedWrite(admin.id, "VIP_PLAN_UPDATED", tx => tx.vipPlan.update({
       where: { id: planId },
       data: { isPopular: !currentPopular },
-    });
+    }));
 
     revalidatePath("/admin/vip-plans");
     revalidatePath("/profile");
@@ -58,6 +67,8 @@ export async function toggleVipPlanPopular(planId: string, currentPopular: boole
     console.error("Error toggling VIP plan popular:", error);
     return { success: false, error: "Không thể cập nhật nhãn nổi bật" };
   }
+
+  });
 }
 
 // Thêm gói VIP mới
@@ -75,7 +86,8 @@ export async function createVipPlan(data: {
   order?: number;
   active?: boolean;
 }) {
-  await requireAdmin();
+  const admin = await requireAdmin("createVipPlan");
+  return auditOutcome(admin.id, "createVipPlan", async () => {
   try {
     if (!data.name || !data.name.trim()) {
       return { success: false, error: "Vui lòng nhập tên gói VIP" };
@@ -105,7 +117,7 @@ export async function createVipPlan(data: {
       order = (highest?.order || 0) + 1;
     }
 
-    const newPlan = await prisma.vipPlan.create({
+    const newPlan = await auditedWrite(admin.id, "VIP_PLAN_CREATED", tx => tx.vipPlan.create({
       data: {
         name: data.name.trim(),
         slug: cleanSlug,
@@ -122,7 +134,7 @@ export async function createVipPlan(data: {
         order,
         active: data.active !== undefined ? Boolean(data.active) : true,
       },
-    });
+    }));
 
     revalidatePath("/admin/vip-plans");
     revalidatePath("/profile");
@@ -133,6 +145,8 @@ export async function createVipPlan(data: {
     console.error("Error creating VIP plan:", error);
     return { success: false, error: "Lỗi hệ thống khi tạo gói VIP mới" };
   }
+
+  });
 }
 
 // Cập nhật thông tin gói VIP
@@ -153,7 +167,8 @@ export async function updateVipPlan(
     active?: boolean;
   }
 ) {
-  await requireAdmin();
+  const admin = await requireAdmin("updateVipPlan");
+  return auditOutcome(admin.id, "updateVipPlan", async () => {
   try {
     const existing = await prisma.vipPlan.findUnique({ where: { id } });
     if (!existing) {
@@ -174,7 +189,7 @@ export async function updateVipPlan(
       }
     }
 
-    const updated = await prisma.vipPlan.update({
+    const updated = await auditedWrite(admin.id, "VIP_PLAN_UPDATED", tx => tx.vipPlan.update({
       where: { id },
       data: {
         name: data.name !== undefined ? data.name.trim() : existing.name,
@@ -200,7 +215,7 @@ export async function updateVipPlan(
         order: data.order !== undefined ? Number(data.order) : existing.order,
         active: data.active !== undefined ? Boolean(data.active) : existing.active,
       },
-    });
+    }));
 
     revalidatePath("/admin/vip-plans");
     revalidatePath("/profile");
@@ -211,18 +226,21 @@ export async function updateVipPlan(
     console.error("Error updating VIP plan:", error);
     return { success: false, error: "Lỗi hệ thống khi cập nhật gói VIP" };
   }
+
+  });
 }
 
 // Xóa gói VIP
 export async function deleteVipPlan(id: string) {
-  await requireAdmin();
+  const admin = await requireAdmin("deleteVipPlan");
+  return auditOutcome(admin.id, "deleteVipPlan", async () => {
   try {
     const existing = await prisma.vipPlan.findUnique({ where: { id } });
     if (!existing) {
       return { success: false, error: "Không tìm thấy gói VIP để xóa" };
     }
 
-    await prisma.vipPlan.delete({ where: { id } });
+    await auditedWrite(admin.id, "VIP_PLAN_DELETED", tx => tx.vipPlan.delete({ where: { id } }));
 
     revalidatePath("/admin/vip-plans");
     revalidatePath("/profile");
@@ -233,18 +251,21 @@ export async function deleteVipPlan(id: string) {
     console.error("Error deleting VIP plan:", error);
     return { success: false, error: "Lỗi hệ thống khi xóa gói VIP" };
   }
+
+  });
 }
 
 // Khôi phục 3 gói VIP mặc định
 export async function seedDefaultVipPlans() {
-  await requireAdmin();
+  const admin = await requireAdmin("seedDefaultVipPlans");
+  return auditOutcome(admin.id, "seedDefaultVipPlans", async () => {
   try {
     for (const plan of DEFAULT_VIP_PLANS) {
-      await prisma.vipPlan.upsert({
+      await auditedWrite(admin.id, "VIP_PLAN_SEEDED", tx => tx.vipPlan.upsert({
         where: { slug: plan.slug },
         update: {},
         create: plan,
-      });
+      }));
     }
 
     revalidatePath("/admin/vip-plans");
@@ -256,4 +277,6 @@ export async function seedDefaultVipPlans() {
     console.error("Error seeding default VIP plans:", error);
     return { success: false, error: "Không thể khởi tạo gói VIP mặc định" };
   }
+
+  });
 }

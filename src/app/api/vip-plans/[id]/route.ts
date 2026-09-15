@@ -1,4 +1,5 @@
-import { adminRouteGuard } from "@/lib/auth/session";
+import { auditOutcome, auditedWrite } from "@/lib/auth/audit-operations";
+import { adminRouteGuard, requireAdmin } from "@/lib/auth/session";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -37,6 +38,8 @@ export async function GET(req: Request, { params }: Params) {
 export async function PUT(req: Request, { params }: Params) {
   const denial = await adminRouteGuard(req);
   if (denial) return denial;
+  const auditAdmin = await requireAdmin("PUT /api/vip-plans/[id]");
+  return auditOutcome(auditAdmin.id, "PUT /api/vip-plans/[id]", async () => {
   try {
     const { id } = await params;
     const body = await req.json();
@@ -87,7 +90,7 @@ export async function PUT(req: Request, { params }: Params) {
           .filter(Boolean)
       : existing.features;
 
-    const updated = await prisma.vipPlan.update({
+    const updated = await auditedWrite(auditAdmin.id, "VIP_PLAN_UPDATED", tx => tx.vipPlan.update({
       where: { id },
       data: {
         name: name !== undefined ? String(name).trim() : existing.name,
@@ -107,7 +110,7 @@ export async function PUT(req: Request, { params }: Params) {
         order: order !== undefined ? Number(order) : existing.order,
         active: active !== undefined ? Boolean(active) : existing.active,
       },
-    });
+    }));
 
     return NextResponse.json({
       success: true,
@@ -121,12 +124,16 @@ export async function PUT(req: Request, { params }: Params) {
       { status: 500 }
     );
   }
+
+  });
 }
 
 // PATCH /api/vip-plans/[id] - Cập nhật nhanh một số trường (Bật/Tắt active, isPopular)
 export async function PATCH(req: Request, { params }: Params) {
   const denial = await adminRouteGuard(req);
   if (denial) return denial;
+  const auditAdmin = await requireAdmin("PATCH /api/vip-plans/[id]");
+  return auditOutcome(auditAdmin.id, "PATCH /api/vip-plans/[id]", async () => {
   try {
     const { id } = await params;
     const body = await req.json();
@@ -139,14 +146,14 @@ export async function PATCH(req: Request, { params }: Params) {
       );
     }
 
-    const updated = await prisma.vipPlan.update({
+    const updated = await auditedWrite(auditAdmin.id, "VIP_PLAN_UPDATED", tx => tx.vipPlan.update({
       where: { id },
       data: {
         ...(body.active !== undefined && { active: Boolean(body.active) }),
         ...(body.isPopular !== undefined && { isPopular: Boolean(body.isPopular) }),
         ...(body.order !== undefined && { order: Number(body.order) }),
       },
-    });
+    }));
 
     return NextResponse.json({
       success: true,
@@ -160,12 +167,16 @@ export async function PATCH(req: Request, { params }: Params) {
       { status: 500 }
     );
   }
+
+  });
 }
 
 // DELETE /api/vip-plans/[id] - Xóa gói VIP
 export async function DELETE(req: Request, { params }: Params) {
   const denial = await adminRouteGuard(req);
   if (denial) return denial;
+  const auditAdmin = await requireAdmin("DELETE /api/vip-plans/[id]");
+  return auditOutcome(auditAdmin.id, "DELETE /api/vip-plans/[id]", async () => {
   try {
     const { id } = await params;
     const existing = await prisma.vipPlan.findUnique({ where: { id } });
@@ -176,7 +187,7 @@ export async function DELETE(req: Request, { params }: Params) {
       );
     }
 
-    await prisma.vipPlan.delete({ where: { id } });
+    await auditedWrite(auditAdmin.id, "VIP_PLAN_DELETED", tx => tx.vipPlan.delete({ where: { id } }));
 
     return NextResponse.json({
       success: true,
@@ -189,4 +200,6 @@ export async function DELETE(req: Request, { params }: Params) {
       { status: 500 }
     );
   }
+
+  });
 }

@@ -1,4 +1,5 @@
-import { adminRouteGuard } from "@/lib/auth/session";
+import { auditOutcome } from "@/lib/auth/audit-operations";
+import { adminRouteGuard, requireAdmin } from "@/lib/auth/session";
 import { NextResponse } from "next/server";
 import { getSystemSettings, updateSystemSettings } from "@/lib/system-settings";
 
@@ -19,7 +20,7 @@ export async function GET() {
       baseURL: settings.openaiBaseUrl || null,
       configured: Boolean(token && token.length > 5),
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("GET /api/settings/openai error:", error);
     return NextResponse.json(
       {
@@ -37,6 +38,9 @@ export async function GET() {
 export async function POST(req: Request) {
   const denial = await adminRouteGuard(req);
   if (denial) return denial;
+  const auditAdmin = await requireAdmin("POST /api/settings/openai");
+  return auditOutcome(auditAdmin.id, "POST /api/settings/openai", async () => {
+
   try {
     const body = await req.json();
     const {
@@ -61,7 +65,7 @@ export async function POST(req: Request) {
       ...(resolvedModel !== undefined && { openaiModel: resolvedModel }),
       ...(resolvedBaseUrl !== undefined && { openaiBaseUrl: resolvedBaseUrl }),
       ...(isOpenAiActive !== undefined && { isOpenAiActive: Boolean(isOpenAiActive) }),
-    });
+    }, auditAdmin.id);
 
     const finalToken = updated.openaiApiKey || "";
 
@@ -75,7 +79,7 @@ export async function POST(req: Request) {
       baseURL: updated.openaiBaseUrl,
       configured: Boolean(finalToken && finalToken.length > 5),
     });
-  } catch (error: any) {
+  } catch (error) {
     console.error("POST /api/settings/openai error:", error);
     return NextResponse.json(
       {
@@ -85,4 +89,6 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
+
+  });
 }

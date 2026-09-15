@@ -6,6 +6,8 @@ import { redirect } from "next/navigation";
 import { createSeoSession, deleteSeoSession } from "@/lib/seo/session";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { AuthRateLimitError, limitAuthAttempts } from "@/lib/auth/rate-limit";
+import { securityEvent } from "@/lib/auth/audit-operations";
+import { createHash } from "node:crypto";
 
 export async function registerUser(formData: FormData): Promise<{ success: boolean; error?: string }> {
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
@@ -36,22 +38,30 @@ export async function loginUser(formData: FormData): Promise<{ success: boolean;
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
   const password = formData.get("password");
   const denied = { success: false, error: "Email hoặc mật khẩu không đúng, hoặc tài khoản đã bị khóa." };
-  if (!email || email.length > 254 || typeof password !== "string" || !password || password.length > 256) return denied;
+  const subject = `email:${createHash("sha256").update(email.slice(0, 254)).digest("hex")}`;
+  if (!email || email.length > 254 || typeof password !== "string" || !password || password.length > 256) {
+    await securityEvent("anonymous", "LOGIN_FAILED", subject);
+    return denied;
+  }
   try {
     await limitAuthAttempts("login", email);
     // Ambiguous legacy email addresses must be reconciled before login.
     const users = await prisma.user.findMany({ where: { email: { equals: email, mode: "insensitive" } }, take: 2 });
     const user = users.length === 1 ? users[0] : null;
-    if (!user || user.isLocked || !(await verifyPassword(password, user.password))) return denied;
+    if (!user || user.isLocked || !(await verifyPassword(password, user.password))) {
+      await securityEvent("anonymous", "LOGIN_FAILED", subject);
+      return denied;
+    }
     let verifiedPassword = user.password;
     if (/^[a-f0-9]{64}$/.test(user.password)) {
       verifiedPassword = await hashPassword(password);
       const upgraded = await prisma.user.updateMany({ where: { id: user.id, password: user.password, isLocked: false }, data: { password: verifiedPassword } });
-      if (upgraded.count !== 1) return denied;
+      if (upgraded.count !== 1) { await securityEvent("anonymous", "LOGIN_FAILED", subject); return denied; }
     }
     await createSeoSession(user.id, verifiedPassword);
     return { success: true };
   } catch (error) {
+    await securityEvent("anonymous", error instanceof AuthRateLimitError ? "LOGIN_RATE_LIMITED" : "LOGIN_FAILED", subject);
     if (error instanceof AuthRateLimitError) return { success: false, error: error.message };
     return { success: false, error: "Không thể đăng nhập. Vui lòng thử lại." };
   }
