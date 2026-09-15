@@ -18,7 +18,8 @@
     "db:push": "prisma db push",
     "db:seed": "npx tsx prisma/seed.ts",
     "test:ai:db": "node --test scripts/test-ai-quota-db.cjs",
-    "test:media": "node --test scripts/test-media.cjs"
+    "test:media": "node --test scripts/test-media.cjs",
+    "test:accounts:db": "node --test scripts/test-account-security-db.cjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

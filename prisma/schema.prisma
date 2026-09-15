@@ -238,6 +238,13 @@ model SeoRun {
   @@index([createdAt])
 }
 
+model AuthRateLimit {
+  id        String @id
+  attempts  Int @default(0)
+  expiresAt DateTime
+  @@index([expiresAt])
+}
+
 model SeoSession {
   tokenHash String @id
   userId    String

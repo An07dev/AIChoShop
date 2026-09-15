@@ -1,6 +1,7 @@
 "use server";
 
 import { requireAdmin } from "@/lib/auth/session";
+import { guardAdminAccountChange } from "@/lib/auth/admin-account";
 
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth/password";
@@ -110,9 +111,12 @@ export async function updateUserVipDuration(
 
 // Khóa / Mở khóa tài khoản
 export async function toggleUserLock(userId: string, newLockStatus: boolean) {
-  await requireAdmin();
+  const admin = await requireAdmin();
+  if (typeof newLockStatus !== "boolean") return { success: false, error: "Trạng thái khóa không hợp lệ." };
+  if (admin.id === userId) return { success: false, error: "Không thể tự khóa tài khoản quản trị đang đăng nhập." };
   try {
     const updated = await prisma.$transaction(async tx => {
+      await guardAdminAccountChange(tx, admin.id, userId);
       const updated = await tx.user.update({ where: { id: userId }, data: { isLocked: newLockStatus } });
       if (newLockStatus) await tx.seoSession.deleteMany({ where: { userId } });
       return updated;
@@ -209,12 +213,14 @@ export async function deleteUserByAdmin(userId: string) {
   const admin = await requireAdmin();
   if (admin.id === userId) return { success: false, error: "Không thể xóa tài khoản quản trị đang đăng nhập." };
   try {
-    if (await prisma.transaction.count({ where: { userId } })) return { success: false, error: "Tài khoản có lịch sử giao dịch. Hãy khóa tài khoản để giữ dữ liệu đối soát." };
-    await prisma.$transaction([
-      prisma.progress.deleteMany({ where: { userId } }),
-      prisma.userCredit.deleteMany({ where: { userId } }),
-      prisma.user.delete({ where: { id: userId } }),
-    ]);
+    await prisma.$transaction(async tx => {
+      await guardAdminAccountChange(tx, admin.id, userId);
+      await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
+      if (await tx.transaction.count({ where: { userId } })) throw new Error("Tài khoản có lịch sử giao dịch. Hãy khóa tài khoản để giữ dữ liệu đối soát.");
+      await tx.progress.deleteMany({ where: { userId } });
+      await tx.userCredit.deleteMany({ where: { userId } });
+      await tx.user.delete({ where: { id: userId } });
+    });
 
     revalidatePath("/admin/users");
     revalidatePath("/admin");

@@ -245,6 +245,15 @@ CREATE TABLE "SeoRun" (
 );
 
 -- CreateTable
+CREATE TABLE "AuthRateLimit" (
+    "id" TEXT NOT NULL,
+    "attempts" INTEGER NOT NULL DEFAULT 0,
+    "expiresAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "AuthRateLimit_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "SeoSession" (
     "tokenHash" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
@@ -285,6 +294,9 @@ CREATE INDEX "AiUsageLog_userId_createdAt_idx" ON "AiUsageLog"("userId", "create
 
 -- CreateIndex
 CREATE INDEX "SeoRun_createdAt_idx" ON "SeoRun"("createdAt");
+
+-- CreateIndex
+CREATE INDEX "AuthRateLimit_expiresAt_idx" ON "AuthRateLimit"("expiresAt");
 
 -- CreateIndex
 CREATE INDEX "SeoSession_expiresAt_idx" ON "SeoSession"("expiresAt");
