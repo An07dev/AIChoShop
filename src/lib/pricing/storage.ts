@@ -1,4 +1,5 @@
 import type { PricingInput, PricingResult } from "./types";
+import { safeSpreadsheetCell } from "./csv";
 
 export const PRICING_STORAGE_KEY = "aichoshop_pricing_calculations_v1";
 
@@ -13,6 +14,8 @@ export type PricingCalculationSnapshot = {
   targetValue: number;
   roundingStep: number;
   result: PricingResult;
+  feeVersion?: string;
+  feeSource?: string;
 };
 
 export function readPricingHistory(storage: Pick<Storage, "getItem">): PricingCalculationSnapshot[] {
@@ -32,7 +35,7 @@ export function writePricingHistory(storage: Pick<Storage, "setItem">, history: 
 }
 
 function csvCell(value: string | number | null) {
-  const text = value === null ? "" : String(value);
+  const text = value === null ? "" : String(safeSpreadsheetCell(value));
   return /[",\r\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 }
 
@@ -40,7 +43,7 @@ export function pricingHistoryToCsv(history: PricingCalculationSnapshot[]) {
   const header = [
     "Thời gian", "Tên sản phẩm", "Sàn/kênh", "Kênh đơn ngoài", "Loại shop", "Mã ngành", "Giá vốn",
     "Giá đề xuất", "Giá hòa vốn", "Thực thu", "Lãi đơn thành công",
-    "Lãi kỳ vọng/đơn", "Biên lợi nhuận (%)", "ROI (%)", "Ads tối đa", "ROAS hòa vốn",
+    "Lãi kỳ vọng/đơn", "Biên lợi nhuận (%)", "ROI (%)", "Ads tối đa", "ROAS hòa vốn", "Phiên bản phí", "Nguồn phí",
   ];
   const rows = history.map((item) => {
     const evaluation = item.result.evaluation;
@@ -49,7 +52,7 @@ export function pricingHistoryToCsv(history: PricingCalculationSnapshot[]) {
       item.input.categoryId, item.input.costPerUnit, evaluation.listPrice,
       item.result.breakEvenPrice, evaluation.payout, evaluation.profitOnSuccess,
       evaluation.expectedProfitPerOrder, evaluation.expectedMargin, evaluation.roiOnCogs,
-      evaluation.maximumMarketingCost, evaluation.breakEvenRoas,
+      evaluation.maximumMarketingCost, evaluation.breakEvenRoas, item.feeVersion ?? "legacy", item.feeSource ?? "",
     ];
   });
   return [header, ...rows].map((row) => row.map(csvCell).join(",")).join("\r\n");

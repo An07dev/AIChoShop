@@ -1,12 +1,16 @@
 import officialFeeData from "./data/official-fees.json" with { type: "json" };
 import type { FeeProgram, OfficialFeeCategory, Platform, PlatformFeeProfile, ShopType } from "./types.ts";
 
-export const FEE_DATA_VERSION = "2026-09-11";
+export const FEE_DATA_VERSION = "2026-09-15";
 export const SOURCES = {
   shopeeMarketplace: "https://mms.file.susercontent.com/api/v4/11195002/mms/vn-11195002-bmlg8-mo82ohg4qz2aff",
   shopeeMall: "https://mms.file.susercontent.com/api/v4/11195002/mms/vn-11195002-bmlg9-mo7yb9mp42rkab",
+  shopeeTerms: "https://help.shopee.vn/portal/4/article/77243",
+  shopeeMallTerms: "https://help.shopee.vn/portal/4/article/77262",
+  shopeeFreeship: "https://help.shopee.vn/portal/4/article/77263",
   tiktok: "https://seller-vn.tiktok.com/university/essay?knowledge_id=8858869405370113&lang=en",
   tiktokTransaction: "https://seller-vn.tiktok.com/university/essay?knowledge_id=753295858337537&lang=en",
+  tiktokOrderProcessing: "https://seller-vn.tiktok.com/university/essay?knowledge_id=2968734088120080&lang=en",
   tiktokVxp: "https://seller-vn.tiktok.com/university/essay?knowledge_id=5776954021037841&lang=vi-VN",
   tax: "https://vanban.chinhphu.vn/?classid=1&docid=217111&orggroupid=2&pageid=27160",
 } as const;
@@ -49,7 +53,7 @@ function searchable(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }
 
-export function detectCategory(productName: string, platform: Platform, shopType: ShopType) {
+export function detectCategoryMatch(productName: string, platform: Platform, shopType: ShopType) {
   const query = searchable(productName.trim());
   if (query.length < 3) return null;
   const words = query.split(/\s+/).filter((word) => word.length > 1);
@@ -57,7 +61,7 @@ export function detectCategory(productName: string, platform: Platform, shopType
   for (const category of getAvailableCategories(platform, shopType)) {
     const level3 = searchable(category.level3);
     const fullPath = searchable(getCategoryLabel(category));
-    let score = level3 === searchable(category.level2) ? 50 : 0;
+    let score = 0;
     const exactIndex = query.indexOf(level3);
     if (exactIndex >= 0 || level3.includes(query)) {
       score += 30 + Math.min(level3.length, query.length) + Math.max(0, 100 - Math.max(0, exactIndex) * 5);
@@ -70,21 +74,27 @@ export function detectCategory(productName: string, platform: Platform, shopType
     score += words.filter((word) => fullPath.includes(word)).length * 30;
     if (score > (best?.score ?? 0)) best = { category, score };
   }
-  return best?.category ?? null;
+  if (!best || best.score < 60) return null;
+  return { category: best.category, score: best.score, confidence: best.score >= 130 ? "high" as const : "medium" as const };
+}
+
+export function detectCategory(productName: string, platform: Platform, shopType: ShopType) {
+  return detectCategoryMatch(productName, platform, shopType)?.category ?? null;
 }
 
 export const PROGRAMS: Record<Platform, FeeProgram[]> = {
   shopee: [
-    { id: "shopee_freeship", name: "Freeship Xtra", rate: 6, cap: 50000, defaultEnabled: false, note: "Chỉ bật sau khi đối chiếu điều khoản chương trình trong Seller Center." },
-    { id: "shopee_voucher", name: "Voucher Xtra", rate: 2, cap: 50000, defaultEnabled: false, note: "Chỉ bật khi sao kê của shop có khoản phí này." },
-    { id: "shopee_content", name: "Content Xtra", rate: 3, cap: 50000, defaultEnabled: false, note: "Chỉ bật khi sao kê của shop có khoản phí này." },
+    { id: "shopee_freeship", name: "Ưu đãi phí vận chuyển", rate: 6, cap: 50000, defaultEnabled: false, shopTypes: ["mall"], effectiveFrom: FEE_DATA_VERSION, verifiedAt: FEE_DATA_VERSION, sourceUrl: SOURCES.shopeeFreeship, note: "Chỉ dành cho Shopee Mall đủ điều kiện và đã tham gia; phí tính trên giá bán từng sản phẩm trước ưu đãi của sàn." },
   ],
   tiktok: [
-    { id: "tiktok_sfp", name: "SFP/Freeship", rate: 4.5, cap: 40000, defaultEnabled: false, note: "Kiểm tra tỷ lệ theo hợp đồng của shop trước khi bật." },
-    { id: "tiktok_vxp", name: "Voucher Extra cơ bản", rate: 5, cap: 50000, defaultEnabled: false, note: "Mức VXP cơ bản công bố ngày 21/08/2026; một số ngành bị hạn chế không áp dụng." },
+    { id: "tiktok_vxp", name: "Voucher Extra cơ bản", rate: 5, cap: 50000, defaultEnabled: false, shopTypes: ["marketplace", "mall"], effectiveFrom: "2026-08-21", verifiedAt: FEE_DATA_VERSION, sourceUrl: SOURCES.tiktokVxp, note: "Chỉ bật khi shop đủ điều kiện và đã tham gia. Không áp dụng cho sữa công thức dưới 2 tuổi, vàng và sản phẩm bị quản lý khác." },
   ],
   external: [],
 };
+
+export function getAvailablePrograms(platform: Platform, shopType: ShopType) {
+  return PROGRAMS[platform].filter((program) => program.shopTypes.includes(shopType));
+}
 
 export function getFeeProfile(platform: Platform, shopType: ShopType, categoryId: string): PlatformFeeProfile {
   if (platform === "external") return {
@@ -102,7 +112,7 @@ export function getFeeProfile(platform: Platform, shopType: ShopType, categoryId
   const isShopeeMall = platform === "shopee" && shopType === "mall";
   return {
     platform, shopType, categoryId: category.id, commissionRate,
-    transactionRate: 6, orderProcessingFee: 3000,
+    transactionRate: 6, orderProcessingFee: platform === "tiktok" ? 3000 : 0,
     effectiveFrom: platform === "shopee"
       ? (isShopeeMall ? "2026-05-29" : "2026-05-23")
       : (shopType === "mall" ? "2026-08-03" : "2026-07-03"),
@@ -114,6 +124,8 @@ export function getFeeProfile(platform: Platform, shopType: ShopType, categoryId
       ? (isShopeeMall ? SOURCES.shopeeMall : SOURCES.shopeeMarketplace)
       : SOURCES.tiktok,
     specificity: "exact",
-    note: `Ngành cấp 3 chính thức: ${getCategoryLabel(category)}.`,
+    note: platform === "shopee"
+      ? `Ngành cấp 3 chính thức: ${getCategoryLabel(category)}. Shopee không công bố phí cố định theo đơn trong điều khoản hiện hành.`
+      : `Ngành cấp 3 chính thức: ${getCategoryLabel(category)}. Phí 3.000đ áp dụng cho mỗi đơn giao thành công.`,
   };
 }

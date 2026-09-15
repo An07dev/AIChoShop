@@ -3,7 +3,9 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { Calculator, ChevronDown, ChevronUp, Download, FileSpreadsheet, Plus, Save, Settings2, Trash2, Upload } from "lucide-react";
 import { calculatePricing } from "@/lib/pricing/engine";
-import { detectCategory, getAvailableCategories, getCategoryLabel, getDefaultCategoryId, getFeeProfile, getOfficialCategory, PROGRAMS } from "@/lib/pricing/registry";
+import { resolveFeeProfile } from "@/lib/pricing/fee-resolver";
+import { csvNumber, MAX_CSV_ROWS, parseCsv, safeSpreadsheetRows } from "@/lib/pricing/csv";
+import { detectCategory, getAvailableCategories, getAvailablePrograms, getCategoryLabel, getDefaultCategoryId, getFeeProfile, getOfficialCategory } from "@/lib/pricing/registry";
 import { downloadTextFile, type PricingCalculationSnapshot } from "@/lib/pricing/storage";
 import type { CostMode, FeeOverrideRecord, Platform, PricingInput, ShopType, TaxMode } from "@/lib/pricing/types";
 
@@ -17,6 +19,7 @@ type BatchRow = {
   cost: number;
   packaging: number;
   currentPrice: number;
+  needsCategoryReview?: boolean;
 };
 
 type CommonSettings = {
@@ -67,39 +70,27 @@ function makeRow(platform: Platform, id = rowId()): BatchRow {
   };
 }
 
-function parseCsvLine(line: string) {
-  const cells: string[] = [];
-  let cell = "";
-  let quoted = false;
-  for (let index = 0; index < line.length; index += 1) {
-    const character = line[index];
-    if (character === '"' && quoted && line[index + 1] === '"') {
-      cell += '"';
-      index += 1;
-    } else if (character === '"') quoted = !quoted;
-    else if (character === "," && !quoted) {
-      cells.push(cell.trim());
-      cell = "";
-    } else cell += character;
-  }
-  cells.push(cell.trim());
-  return cells;
-}
-
-function parseCsv(text: string, settings: Record<Platform, PlatformSettings>, worksheet: Platform) {
-  const lines = text.replace(/^\uFEFF/, "").split(/\r?\n/).filter(Boolean);
-  if (lines.length < 2) return [];
-  return lines
-    .slice(1)
-    .map(parseCsvLine)
-    .filter((cells) => cells[0])
-    .map((cells) => {
+function parseBatchCsv(text: string, settings: Record<Platform, PlatformSettings>, worksheet: Platform) {
+  const parsed = parseCsv(text);
+  if (parsed.errors.length) return { rows: [] as BatchRow[], errors: parsed.errors, warnings: [] as { id: string; message: string }[] };
+  const errors: string[] = [];
+  const warnings: { id: string; message: string }[] = [];
+  const rows = parsed.records.slice(1).filter(({ cells }) => cells[0]).map(({ cells, line }) => {
       const platform = worksheet;
       const shopType = settings[platform].shopType;
       const detected = detectCategory(cells[0], platform, shopType);
       const columnOffset = platform === "external" ? 1 : 0;
+      const quantity = csvNumber(cells[1 + columnOffset] ?? "1");
+      const cost = csvNumber(cells[2 + columnOffset] ?? "0");
+      const packaging = csvNumber(cells[3 + columnOffset] ?? "0");
+      const currentPrice = csvNumber(cells[4 + columnOffset] ?? "0");
+      if (quantity === null || !Number.isInteger(quantity) || quantity < 1) errors.push(`Dòng ${line}: số lượng phải là số nguyên từ 1 trở lên.`);
+      if (cost === null || cost < 0) errors.push(`Dòng ${line}: giá vốn không hợp lệ.`);
+      if (packaging === null || packaging < 0 || currentPrice === null || currentPrice < 0) errors.push(`Dòng ${line}: chi phí hoặc giá bán không hợp lệ.`);
+      const id = rowId();
+      if (!detected && platform !== "external") warnings.push({ id, message: `Dòng ${line}: chưa nhận diện chắc chắn ngành; hãy chọn thủ công.` });
       return {
-        id: rowId(),
+        id,
         name: cells[0],
         platform,
         externalChannel:
@@ -107,12 +98,15 @@ function parseCsv(text: string, settings: Record<Platform, PlatformSettings>, wo
             ? (cells[1].toLowerCase() as BatchRow["externalChannel"])
             : "facebook",
         categoryId: detected?.id ?? getDefaultCategoryId(platform, shopType),
-        quantity: Math.max(1, parseMoney(cells[1 + columnOffset] ?? "1")),
-        cost: parseMoney(cells[2 + columnOffset] ?? "0"),
-        packaging: parseMoney(cells[3 + columnOffset] ?? "0"),
-        currentPrice: parseMoney(cells[4 + columnOffset] ?? "0"),
+        quantity: quantity ?? 0,
+        cost: cost ?? 0,
+        packaging: packaging ?? 0,
+        currentPrice: currentPrice ?? 0,
+        needsCategoryReview: !detected && platform !== "external",
       } satisfies BatchRow;
     });
+  if (!rows.length) errors.push("CSV không có dòng dữ liệu.");
+  return { rows, errors, warnings };
 }
 
 function MoneyInput({ value, onChange, label }: { value: number; onChange: (value: number) => void; label: string }) {
@@ -221,7 +215,7 @@ export default function BulkPricing({
   };
 
   const updateRow = (id: string, update: Partial<BatchRow>) => {
-    setRows((current) => current.map((row) => (row.id === id ? { ...row, ...update } : row)));
+    setRows((current) => current.map((row) => (row.id === id ? { ...row, ...update, ...(update.categoryId ? { needsCategoryReview: false } : {}) } : row)));
     setRowErrors((current) => {
       const next = { ...current };
       delete next[id];
@@ -242,18 +236,13 @@ export default function BulkPricing({
   const results = useMemo<(BatchResult | null)[]>(
     () =>
       rows.map((row) => {
-        if (!row.name.trim() || row.cost <= 0) return null;
+        if (!row.name.trim() || row.cost <= 0 || row.needsCategoryReview) return null;
         const platformConfig = platformSettings[row.platform];
         const available = getAvailableCategories(row.platform, platformConfig.shopType);
         const categoryId = available.some((category) => category.id === row.categoryId)
           ? row.categoryId
           : getDefaultCategoryId(row.platform, platformConfig.shopType);
-        const adminOverride = feeOverrides.find(
-          (item) =>
-            item.platform === row.platform &&
-            item.shopType === platformConfig.shopType &&
-            item.categoryId === categoryId
-        );
+        const resolvedFee = resolveFeeProfile(row.platform, platformConfig.shopType, categoryId, feeOverrides);
         const input: PricingInput = {
           ...baseInput,
           platform: row.platform,
@@ -273,14 +262,14 @@ export default function BulkPricing({
           deliveryFailureRate: common.deliveryFailureRate,
           returnRate: common.returnRate,
           enabledProgramIds: platformConfig.enabledProgramIds,
-          commissionOverride: row.platform === "external" ? platformConfig.paymentFeeRate : adminOverride?.commissionRate ?? null,
+          commissionOverride: row.platform === "external" ? platformConfig.paymentFeeRate : resolvedFee.commissionRate,
           transactionOverride:
             row.platform === "external"
               ? platformConfig.codFeeRate
               : platformConfig.tiktokGmvMax && row.platform === "tiktok"
               ? 5
-              : adminOverride?.transactionRate ?? null,
-          fixedFeeOverride: row.platform === "external" ? platformConfig.fixedOrderFee : adminOverride?.orderProcessingFee ?? null,
+              : resolvedFee.transactionRate,
+          fixedFeeOverride: row.platform === "external" ? platformConfig.fixedOrderFee : resolvedFee.orderProcessingFee,
         };
         const result = calculatePricing(input, "target", 0, {
           mode: common.targetMode,
@@ -309,6 +298,8 @@ export default function BulkPricing({
             targetValue: common.targetValue,
             roundingStep: common.roundingStep,
             result,
+            feeVersion: resolvedFee.dataVersion,
+            feeSource: resolvedFee.sourceName,
           },
         };
       }),
@@ -328,6 +319,7 @@ export default function BulkPricing({
     visibleRows.forEach((row) => {
       if (!row.name.trim()) errors[row.id] = "Nhập tên sản phẩm";
       else if (row.cost <= 0) errors[row.id] = "Giá vốn phải lớn hơn 0";
+      else if (row.needsCategoryReview) errors[row.id] = "Hãy chọn ngành thủ công";
     });
     setRowErrors(errors);
     setHasCalculated(true);
@@ -382,7 +374,7 @@ export default function BulkPricing({
       return;
     }
     const XLSX = await import("xlsx");
-    const sheet = XLSX.utils.json_to_sheet(exportRows());
+    const sheet = XLSX.utils.json_to_sheet(safeSpreadsheetRows(exportRows()));
     if (format === "xlsx") {
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, sheet, "Định giá hàng loạt");
@@ -403,15 +395,16 @@ export default function BulkPricing({
 
   const upload = async (file?: File) => {
     if (!file) return;
-    const parsed = parseCsv(await file.text(), platformSettings, activeSheet);
-    if (!parsed.length) {
-      setNotice("Không đọc được sản phẩm. Hãy dùng đúng file CSV mẫu.");
+    const parsed = parseBatchCsv(await file.text(), platformSettings, activeSheet);
+    if (parsed.errors.length || !parsed.rows.length) {
+      setNotice(parsed.errors.slice(0, 5).join(" ") || "Không đọc được sản phẩm. Hãy dùng đúng file CSV mẫu.");
       return;
     }
-    setRows((current) => [...current.filter((row) => row.platform !== activeSheet), ...parsed]);
+    if (parsed.rows.length > MAX_CSV_ROWS) { setNotice(`Chỉ hỗ trợ tối đa ${MAX_CSV_ROWS} sản phẩm.`); return; }
+    setRows((current) => [...current.filter((row) => row.platform !== activeSheet), ...parsed.rows]);
     setHasCalculated(false);
-    setRowErrors({});
-    setNotice(`Đã nhập ${parsed.length} sản phẩm vào trang ${platformNames[activeSheet]}. Nhấn “Tính toán hàng loạt” để xem kết quả.`);
+    setRowErrors(Object.fromEntries(parsed.warnings.map((item) => [item.id, item.message])));
+    setNotice(`Đã nhập ${parsed.rows.length} sản phẩm vào trang ${platformNames[activeSheet]}.${parsed.warnings.length ? ` Có ${parsed.warnings.length} dòng cần chọn ngành thủ công.` : ""} Nhấn “Tính toán hàng loạt” để xem kết quả.`);
   };
 
   return (
@@ -740,7 +733,7 @@ export default function BulkPricing({
                                   </span>
                                 </label>
                               )}
-                              {PROGRAMS[platform].map((program) => (
+                              {getAvailablePrograms(platform, setting.shopType).map((program) => (
                                 <label
                                   key={program.id}
                                   className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 p-3 text-xs"

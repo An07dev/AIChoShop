@@ -37,16 +37,27 @@ export async function createPricingFeeOverride(formData: FormData) {
   const applicableRate = shopType === "mall" ? category?.mallRate : category?.marketplaceRate;
   if (!category || category.platform !== platform || applicableRate === null) throw new Error("Ngành hàng không hợp lệ với sàn hoặc loại shop.");
   if (!sourceName || !effectiveFrom || Number.isNaN(effectiveFrom.getTime()) || (effectiveTo && Number.isNaN(effectiveTo.getTime()))) throw new Error("Nguồn và ngày hiệu lực là bắt buộc.");
+  if (effectiveTo && effectiveTo < effectiveFrom) throw new Error("Ngày kết thúc không được trước ngày bắt đầu.");
+  if (sourceName.length > 160 || (sourceUrl?.length ?? 0) > 500 || (note?.length ?? 0) > 2_000) throw new Error("Thông tin nguồn hoặc ghi chú quá dài.");
+  if (sourceUrl) { const url = new URL(sourceUrl); if (url.protocol !== "https:") throw new Error("URL nguồn phải dùng HTTPS."); }
   const commissionRate = nullableNumber(formData, "commissionRate");
   const transactionRate = nullableNumber(formData, "transactionRate");
   const orderProcessingFee = nullableNumber(formData, "orderProcessingFee");
   if (commissionRate === null && transactionRate === null && orderProcessingFee === null) throw new Error("Cần nhập ít nhất một mức phí.");
   if ((commissionRate ?? 0) > 100 || (transactionRate ?? 0) > 100) throw new Error("Tỷ lệ phí không được vượt 100%.");
-  await auditedWrite(admin.id, "PRICING_FEE_CREATED", tx => tx.pricingFeeOverride.create({ data: {
+  await auditedWrite(admin.id, "PRICING_FEE_CREATED", async tx => {
+    const overlap = await tx.pricingFeeOverride.findFirst({ where: {
+      active: true, platform, shopType, categoryId,
+      effectiveFrom: { lte: effectiveTo ?? new Date("9999-12-31T00:00:00.000Z") },
+      OR: [{ effectiveTo: null }, { effectiveTo: { gte: effectiveFrom } }],
+    }, select: { id: true } });
+    if (overlap) throw new Error("Khoảng hiệu lực bị chồng với một biểu phí đang hoạt động.");
+    return tx.pricingFeeOverride.create({ data: {
     platform, shopType, categoryId, commissionRate, transactionRate,
     orderProcessingFee: orderProcessingFee === null ? null : Math.round(orderProcessingFee),
     effectiveFrom, effectiveTo, sourceName, sourceUrl, note,
-  } }));
+  } });
+  });
   revalidatePath("/admin/pricing-fees");
   revalidatePath("/tools/pricing-calculator");
 

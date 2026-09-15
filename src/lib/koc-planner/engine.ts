@@ -1,9 +1,29 @@
 import { evaluatePrice } from "../pricing/engine.ts";
+import { getAvailableCategories, PROGRAMS } from "../pricing/registry.ts";
 import type { PricingInput } from "../pricing/types.ts";
 import type { KocPlanInput, KocPlanResult } from "./types.ts";
 
 const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, Number.isFinite(value) ? value : 0));
 const nonNegative = (value: number) => Math.max(0, Number.isFinite(value) ? value : 0);
+
+export function validateKocPlanInput(input: KocPlanInput) {
+  if (!input.campaignName.trim() || input.campaignName.length > 160) return "Tên chiến dịch phải có từ 1 đến 160 ký tự.";
+  const numbers = Object.entries(input).filter(([, value]) => typeof value === "number") as [string, number][];
+  if (numbers.some(([, value]) => !Number.isFinite(value))) return "Các giá trị phải là số hữu hạn.";
+  if (!["marketplace", "mall"].includes(input.shopType) || !getAvailableCategories("tiktok", input.shopType).some((item) => item.id === input.categoryId)) return "Ngành TikTok hoặc loại shop không hợp lệ.";
+  const programIds = new Set(PROGRAMS.tiktok.map((item) => item.id));
+  if (new Set(input.enabledProgramIds).size !== input.enabledProgramIds.length || input.enabledProgramIds.some((id) => !programIds.has(id))) return "Chương trình phí TikTok không hợp lệ hoặc bị trùng.";
+  const rates = [input.effectiveKocRate, input.sellerDiscountRate, input.organicCommissionRate,
+    input.adsBudgetRate, input.adsCommissionRate, input.platformCommissionRate, input.transactionFeeRate,
+    input.taxRate, input.cancellationRate, input.deliveryFailureRate, input.returnRate,
+    input.returnedInventoryRecoveryRate, input.damageRate, input.extraKocCostRate];
+  if (rates.some((value) => value < 0 || value > 100)) return "Các tỷ lệ phải nằm trong khoảng 0–100%.";
+  if (numbers.some(([key, value]) => !key.endsWith("Rate") && value < 0)) return "Chi phí, số lượng và ngân sách không được âm.";
+  if (input.totalBudget <= 0) return "Tổng ngân sách phải lớn hơn 0.";
+  if (input.averageSellingPrice <= 0) return "Giá bán trung bình phải lớn hơn 0.";
+  if (!Number.isInteger(input.videosPerKoc)) return "Số video mỗi KOC phải là số nguyên.";
+  return null;
+}
 
 function orderInput(input: KocPlanInput, affiliateRate: number): PricingInput {
   return {

@@ -12,7 +12,8 @@ export type OfficialFeeCategory = {
 
 export type FeeProgram = {
   id: string; name: string; rate: number; cap: number | null;
-  defaultEnabled: boolean; note: string;
+  defaultEnabled: boolean; note: string; shopTypes: ShopType[];
+  effectiveFrom: string; verifiedAt: string; sourceUrl: string;
 };
 
 export type PlatformFeeProfile = {
@@ -62,4 +63,9 @@ export type FeeOverrideRecord = {
   commissionRate: number | null; transactionRate: number | null;
   orderProcessingFee: number | null; effectiveFrom: string; effectiveTo: string | null;
   sourceName: string; sourceUrl: string | null; note: string | null;
+};
+
+export type ResolvedFeeProfile = PlatformFeeProfile & {
+  overrideId: string | null;
+  dataVersion: string;
 };

@@ -33,15 +33,16 @@ import {
 } from "lucide-react";
 import { useToolGate } from "@/hooks/useToolGate";
 import { calculatePricing } from "@/lib/pricing/engine";
+import { isFeeProfileStale, resolveFeeProfile, selectFeeOverride } from "@/lib/pricing/fee-resolver";
 import {
-  detectCategory,
+  detectCategoryMatch,
   FEE_DATA_VERSION,
   getAvailableCategories,
+  getAvailablePrograms,
   getCategoryLabel,
   getDefaultCategoryId,
   getFeeProfile,
   getOfficialCategory,
-  PROGRAMS,
   SOURCES,
 } from "@/lib/pricing/registry";
 import { readPricingHistory, writePricingHistory, type PricingCalculationSnapshot } from "@/lib/pricing/storage";
@@ -281,7 +282,7 @@ function Metric({
   );
 }
 
-export default function PricingCalculatorClient({ feeOverrides }: { feeOverrides: FeeOverrideRecord[] }) {
+export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning = false }: { feeOverrides: FeeOverrideRecord[]; feeLoadWarning?: boolean }) {
   const { checkAccess, GateModals } = useToolGate();
   const [workspaceMode, setWorkspaceMode] = useState<"single" | "bulk">("single");
   const [mode, setMode] = useState<"target" | "audit">("target");
@@ -295,6 +296,7 @@ export default function PricingCalculatorClient({ feeOverrides }: { feeOverrides
   const [roundingStep, setRoundingStep] = useState(1_000);
   const [copied, setCopied] = useState(false);
   const [suggestedCategoryId, setSuggestedCategoryId] = useState<string | null>(null);
+  const [suggestionConfidence, setSuggestionConfidence] = useState<"high" | "medium" | null>(null);
   const [appliedCalculation, setAppliedCalculation] = useState<{
     result: PricingResult;
     evaluation: PriceEvaluation;
@@ -365,19 +367,8 @@ export default function PricingCalculatorClient({ feeOverrides }: { feeOverrides
   const availableCategories = getAvailableCategories(input.platform, input.shopType);
   const selectedCategory =
     availableCategories.find((category) => category.id === input.categoryId) ?? availableCategories[0];
-  const baseFeeProfile = getFeeProfile(input.platform, input.shopType, input.categoryId);
-  const adminOverride = feeOverrides.find(
-    (item) => item.platform === input.platform && item.shopType === input.shopType && item.categoryId === input.categoryId
-  );
-  const feeProfile = {
-    ...baseFeeProfile,
-    commissionRate: adminOverride?.commissionRate ?? baseFeeProfile.commissionRate,
-    transactionRate: adminOverride?.transactionRate ?? baseFeeProfile.transactionRate,
-    orderProcessingFee: adminOverride?.orderProcessingFee ?? baseFeeProfile.orderProcessingFee,
-    sourceName: adminOverride?.sourceName ?? baseFeeProfile.sourceName,
-    sourceUrl: adminOverride?.sourceUrl ?? baseFeeProfile.sourceUrl,
-    note: adminOverride?.note ?? baseFeeProfile.note,
-  };
+  const feeProfile = resolveFeeProfile(input.platform, input.shopType, input.categoryId, feeOverrides);
+  const adminOverride = selectFeeOverride(feeOverrides, input.platform, input.shopType, feeProfile.categoryId);
 
   const calculationInput = useMemo(
     () => ({
@@ -435,8 +426,9 @@ export default function PricingCalculatorClient({ feeOverrides }: { feeOverrides
   const handleName = (name: string) => {
     setProductName(name);
     setProductNameError("");
-    const found = detectCategory(name, input.platform, input.shopType);
-    setSuggestedCategoryId(found && found.id !== input.categoryId ? found.id : null);
+    const found = detectCategoryMatch(name, input.platform, input.shopType);
+    setSuggestedCategoryId(found && found.category.id !== input.categoryId ? found.category.id : null);
+    setSuggestionConfidence(found?.confidence ?? null);
   };
 
   const reset = () => {
@@ -453,6 +445,7 @@ export default function PricingCalculatorClient({ feeOverrides }: { feeOverrides
     setTargetValue(20);
     setRoundingStep(1_000);
     setSuggestedCategoryId(null);
+    setSuggestionConfidence(null);
     setAppliedCalculation(null);
     setSaveNotice("");
     setEditingId(null);
@@ -497,6 +490,8 @@ export default function PricingCalculatorClient({ feeOverrides }: { feeOverrides
       targetValue,
       roundingStep,
       result: computedResult,
+      feeVersion: feeProfile.dataVersion,
+      feeSource: feeProfile.sourceName,
     };
 
     setEditingId(snapshotId);
@@ -582,6 +577,7 @@ export default function PricingCalculatorClient({ feeOverrides }: { feeOverrides
     setTargetValue(item.targetValue);
     setRoundingStep(item.roundingStep);
     setSuggestedCategoryId(null);
+    setSuggestionConfidence(null);
 
     const computedResult = item.result || calculatePricing(item.input, item.mode, item.auditPrice, {
       mode: item.targetMode,
@@ -640,6 +636,8 @@ export default function PricingCalculatorClient({ feeOverrides }: { feeOverrides
   return (
     <div className="mx-auto max-w-7xl pb-16 px-2 sm:px-4">
       <GateModals />
+      {feeLoadWarning && <div role="alert" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">Không tải được biểu phí quản trị. Kết quả đang dùng bộ phí tích hợp; hãy kiểm tra lại trước khi quyết định giá.</div>}
+      {isFeeProfileStale(feeProfile) && <div role="alert" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">Biểu phí này đã quá 90 ngày kể từ lần xác minh hoặc ngày hiệu lực. Hãy đối chiếu Seller Center trước khi chốt giá.</div>}
 
       {/* Modal Lịch Sử Định Giá Gần Đây (Giống trang Chat Broadcast & Zalo) */}
       {isHistoryModalOpen && (
@@ -1067,6 +1065,7 @@ export default function PricingCalculatorClient({ feeOverrides }: { feeOverrides
                     <div className="flex items-center justify-between gap-3 rounded-2xl border border-brand/30 bg-brand-light/40 dark:bg-brand-light/10 p-3 text-xs text-brand transition-colors">
                       <span className="flex items-center gap-1.5 font-medium">
                         <Sparkles size={15} /> Gợi ý ngành: <strong>{getCategoryLabel(suggestion)}</strong>
+                        <span className="rounded-full bg-white/70 px-2 py-0.5">Độ chắc chắn {suggestionConfidence === "high" ? "cao" : "trung bình"}</span>
                       </span>
                       <button
                         type="button"
@@ -1635,7 +1634,7 @@ function AdvancedFields({
             Sử dụng lại mức mặc định sàn
           </button>
           <div className="mt-3 space-y-2.5">
-            {PROGRAMS[input.platform].map((p) => (
+            {getAvailablePrograms(input.platform, input.shopType).map((p) => (
               <label
                 key={p.id}
                 className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:border-brand/40 p-3.5 transition-colors"
