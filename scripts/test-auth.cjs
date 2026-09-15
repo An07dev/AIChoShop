@@ -9,7 +9,7 @@ const ts = require('typescript');
 const crypto = require('node:crypto');
 const root = path.join(__dirname, '..');
 
-function fixture({ role = 'ADMIN', locked = false, expired = false, token = 'a'.repeat(64), legacy = false } = {}) {
+function fixture({ role = 'ADMIN', locked = false, expired = false, token = 'a'.repeat(64), legacy = false, rateLimitUnavailable = false } = {}) {
   let reads = 0;
   const jar = new Map(legacy ? [['user_token', 'victim'], ['admin_token', 'authenticated']] : token ? [['seo_session', token]] : []);
   const store = { get: key => jar.has(key) ? { value: jar.get(key) } : undefined, set: (key, value) => jar.set(key,value), delete: key => jar.delete(key) };
@@ -20,6 +20,7 @@ function fixture({ role = 'ADMIN', locked = false, expired = false, token = 'a'.
   } } };
   const cache = new Map();
   const mocks = {
+    '@/lib/auth/rate-limit': { limitAuthAttempts: async () => { if (rateLimitUnavailable) throw new Error('Rate limit storage unavailable'); }, AuthRateLimitError: class extends Error {} },
     '@/lib/prisma': { prisma: db },
     'next/headers': { cookies: async () => store },
     'next/cache': { revalidatePath() {} },
@@ -160,6 +161,17 @@ test('wrong password and ambiguous email never create a session',async()=>{
     f.db.user={findMany:async()=>duplicate?[account,account]:[account]};
     const form=new FormData();form.set('email','person@example.test');form.set('password',duplicate?'correct':'incorrect');
     assert.equal((await f.load('src/app/actions/auth.ts').loginUser(form)).success,false);
+    assert.equal(f.jar.has('seo_session'),false);
+  }
+});
+test('login and registration fail closed when shared rate limit storage is unavailable',async()=>{
+  for (const action of ['loginUser', 'registerUser']) {
+    const f=fixture({token:null,rateLimitUnavailable:true});
+    let userAccess=false;
+    f.db.user={findMany:async()=>{userAccess=true;throw new Error('Unexpected lookup');},findFirst:async()=>{userAccess=true;throw new Error('Unexpected lookup');}};
+    const form=new FormData();form.set('email','person@example.test');form.set('password','new-password');
+    assert.equal((await f.load('src/app/actions/auth.ts')[action](form)).success,false);
+    assert.equal(userAccess,false);
     assert.equal(f.jar.has('seo_session'),false);
   }
 });
