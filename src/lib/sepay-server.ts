@@ -1,3 +1,4 @@
+import { audit } from "@/lib/auth/audit";
 import { isVipActive } from "@/lib/vip-expiration";
 import { prisma } from "@/lib/prisma";
 
@@ -42,8 +43,9 @@ export async function updateSePayConfig(data: {
   apiKey?: string;
   syntaxPrefix?: string;
   autoActivate?: boolean;
-}): Promise<SePayConfigData> {
-  return await prisma.sePayConfig.upsert({
+}, actorId: string): Promise<SePayConfigData> {
+  return prisma.$transaction(async tx => {
+  const updated = await tx.sePayConfig.upsert({
     where: { id: "default" },
     update: {
       ...(data.bankName !== undefined && { bankName: data.bankName }),
@@ -63,6 +65,9 @@ export async function updateSePayConfig(data: {
       autoActivate: data.autoActivate ?? DEFAULT_SEPAY_CONFIG.autoActivate,
     },
   });
+  await audit(tx, actorId, "BANK_SETTINGS_UPDATED", "default", { keyChanged: data.apiKey !== undefined, bankChanged: data.bankName !== undefined, accountChanged: data.accountNumber !== undefined, holderChanged: data.accountHolder !== undefined, autoActivate: updated.autoActivate });
+  return updated;
+  });
 }
 
 /**
@@ -81,8 +86,13 @@ export async function syncUserVipExpiration(user: {
  */
 export async function syncAllExpiredVipUsers(): Promise<number> {
   try {
-    const result = await prisma.user.updateMany({
+    const result = await prisma.$transaction(async tx => {
+    const expired = await tx.user.findMany({ where: { isVIP: true, vipExpiresAt: { lte: new Date() } }, select: { id: true } });
+    let count = 0;
+    for (const user of expired) {
+    const changed = await tx.user.updateMany({
       where: {
+        id: user.id,
         isVIP: true,
         vipExpiresAt: {
           lte: new Date(),
@@ -91,6 +101,10 @@ export async function syncAllExpiredVipUsers(): Promise<number> {
       data: {
         isVIP: false,
       },
+    });
+    if (changed.count) { await audit(tx, "system", "VIP_EXPIRED", user.id); count++; }
+    }
+    return { count };
     });
     return result.count;
   } catch (error) {

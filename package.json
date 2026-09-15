@@ -21,7 +21,9 @@
     "test:media": "node --test scripts/test-media.cjs",
     "test:accounts:db": "node --test scripts/test-account-security-db.cjs",
     "test:recovery": "node --test scripts/test-recovery-mail.cjs",
-    "test:recovery:db": "node --test scripts/test-recovery-db.cjs"
+    "test:recovery:db": "node --test scripts/test-recovery-db.cjs",
+    "test:audit": "node --test scripts/test-audit.cjs",
+    "test:audit:db": "node --test scripts/test-audit-db.cjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

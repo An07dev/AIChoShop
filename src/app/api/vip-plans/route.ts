@@ -1,4 +1,5 @@
-import { adminRouteGuard } from "@/lib/auth/session";
+import { auditOutcome, auditedWrite } from "@/lib/auth/audit-operations";
+import { adminRouteGuard, requireAdmin } from "@/lib/auth/session";
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getActiveVipPlans } from "@/lib/vip-plans-server";
@@ -33,6 +34,8 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const denial = await adminRouteGuard(req);
   if (denial) return denial;
+  const auditAdmin = await requireAdmin("POST /api/vip-plans");
+  return auditOutcome(auditAdmin.id, "POST /api/vip-plans", async () => {
   try {
     const body = await req.json();
     const {
@@ -85,7 +88,7 @@ export async function POST(req: Request) {
           .filter(Boolean)
       : [];
 
-    const newPlan = await prisma.vipPlan.create({
+    const newPlan = await auditedWrite(auditAdmin.id, "VIP_PLAN_CREATED", tx => tx.vipPlan.create({
       data: {
         name: name.trim(),
         slug: cleanSlug,
@@ -100,7 +103,7 @@ export async function POST(req: Request) {
         order: Number(order) || 0,
         active: Boolean(active),
       },
-    });
+    }));
 
     return NextResponse.json(
       { success: true, message: "Tạo gói VIP thành công", data: newPlan },
@@ -113,4 +116,6 @@ export async function POST(req: Request) {
       { status: 500 }
     );
   }
+
+  });
 }

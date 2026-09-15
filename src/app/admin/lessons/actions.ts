@@ -1,5 +1,7 @@
 "use server";
 
+import { auditedWrite } from "@/lib/auth/audit-operations";
+import { auditOutcome } from "@/lib/auth/audit-operations";
 import { requireAdmin } from "@/lib/auth/session";
 
 import { prisma } from "@/lib/prisma";
@@ -7,12 +9,13 @@ import { revalidatePath } from "next/cache";
 
 // Bật / Tắt trạng thái VIP của bài học (1-click)
 export async function toggleLessonVip(lessonId: string, newVipStatus: boolean) {
-  await requireAdmin();
+  const admin = await requireAdmin("toggleLessonVip");
+  return auditOutcome(admin.id, "toggleLessonVip", async () => {
   try {
-    const updated = await prisma.lesson.update({
+    const updated = await auditedWrite(admin.id, "LESSON_UPDATED", tx => tx.lesson.update({
       where: { id: lessonId },
       data: { isVIP: newVipStatus },
-    });
+    }));
     revalidatePath("/admin/lessons");
     revalidatePath("/learn");
     revalidatePath("/courses");
@@ -21,6 +24,8 @@ export async function toggleLessonVip(lessonId: string, newVipStatus: boolean) {
     console.error("Error toggling Lesson VIP:", error);
     return { success: false, error: "Không thể cập nhật trạng thái VIP của bài học" };
   }
+
+  });
 }
 
 // Thêm bài học mới
@@ -33,7 +38,8 @@ export async function createLesson(data: {
   order?: number;
   isVIP?: boolean;
 }) {
-  await requireAdmin();
+  const admin = await requireAdmin("createLesson");
+  return auditOutcome(admin.id, "createLesson", async () => {
   const { title, moduleName = "Phần 1", content, videoUrl, isVIP = false } = data;
 
   if (!title || !title.trim()) {
@@ -46,12 +52,12 @@ export async function createLesson(data: {
     if (!courseId) {
       let defaultCourse = await prisma.course.findFirst();
       if (!defaultCourse) {
-        defaultCourse = await prisma.course.create({
+        defaultCourse = await auditedWrite(admin.id, "COURSE_CREATED", tx => tx.course.create({
           data: {
             title: "Masterclass Ứng Dụng AI Vào Bán Hàng Đa Nền Tảng",
             description: "Khóa học thực chiến giúp bạn gia tăng doanh số và tối ưu vận hành bằng AI",
           },
-        });
+        }));
       }
       courseId = defaultCourse.id;
     }
@@ -67,7 +73,7 @@ export async function createLesson(data: {
       order = (highestOrderLesson?.order || 0) + 1;
     }
 
-    const newLesson = await prisma.lesson.create({
+    const newLesson = await auditedWrite(admin.id, "LESSON_CREATED", tx => tx.lesson.create({
       data: {
         courseId,
         title: title.trim(),
@@ -77,7 +83,7 @@ export async function createLesson(data: {
         order,
         isVIP: Boolean(isVIP),
       },
-    });
+    }));
 
     revalidatePath("/admin/lessons");
     revalidatePath("/learn");
@@ -87,6 +93,8 @@ export async function createLesson(data: {
     console.error("Error creating lesson:", error);
     return { success: false, error: "Lỗi hệ thống khi tạo bài học mới" };
   }
+
+  });
 }
 
 // Cập nhật thông tin bài học
@@ -102,7 +110,8 @@ export async function updateLesson(
     courseId?: string;
   }
 ) {
-  await requireAdmin();
+  const admin = await requireAdmin("updateLesson");
+  return auditOutcome(admin.id, "updateLesson", async () => {
   const { title, moduleName, content, videoUrl, isVIP, order, courseId } = data;
 
   if (!title || !title.trim()) {
@@ -110,7 +119,7 @@ export async function updateLesson(
   }
 
   try {
-    const updated = await prisma.lesson.update({
+    const updated = await auditedWrite(admin.id, "LESSON_UPDATED", tx => tx.lesson.update({
       where: { id: lessonId },
       data: {
         title: title.trim(),
@@ -121,7 +130,7 @@ export async function updateLesson(
         ...(isVIP !== undefined ? { isVIP: Boolean(isVIP) } : {}),
         ...(courseId ? { courseId } : {}),
       },
-    });
+    }));
 
     revalidatePath("/admin/lessons");
     revalidatePath("/learn");
@@ -131,6 +140,8 @@ export async function updateLesson(
     console.error("Error updating lesson:", error);
     return { success: false, error: "Lỗi khi cập nhật bài học" };
   }
+
+  });
 }
 
 // Danh sách 25 bài học mẫu chuẩn của Masterclass (biến nội bộ, không export)
@@ -174,16 +185,17 @@ const DEFAULT_LESSONS_DATA = [
 
 // Khôi phục lại các bài học đã xóa nhầm
 export async function restoreDefaultLessons() {
-  await requireAdmin();
+  const admin = await requireAdmin("restoreDefaultLessons");
+  return auditOutcome(admin.id, "restoreDefaultLessons", async () => {
   try {
     let course = await prisma.course.findFirst();
     if (!course) {
-      course = await prisma.course.create({
+      course = await auditedWrite(admin.id, "COURSE_CREATED", tx => tx.course.create({
         data: {
           title: "Masterclass Ứng Dụng AI Vào Bán Hàng Đa Nền Tảng",
           description: "Huấn luyện Seller sử dụng toàn bộ hệ sinh thái AI thay thế 1 team In-house 5 người trên Shopee, TikTok, FB.",
         },
-      });
+      }));
     }
 
     const existingLessons = await prisma.lesson.findMany({
@@ -204,13 +216,13 @@ export async function restoreDefaultLessons() {
 
       if (match) {
         // Cập nhật lại số thứ tự và moduleName cho chuẩn xác
-        await prisma.lesson.update({
+        await auditedWrite(admin.id, "LESSON_UPDATED", tx => tx.lesson.update({
           where: { id: match.id },
           data: { order: i + 1, moduleName },
-        });
+        }));
       } else {
         // Tạo lại bài học bị xóa
-        await prisma.lesson.create({
+        await auditedWrite(admin.id, "LESSON_CREATED", tx => tx.lesson.create({
           data: {
             courseId: course.id,
             title: def.title,
@@ -220,7 +232,7 @@ export async function restoreDefaultLessons() {
             isVIP: def.isVIP,
             order: i + 1,
           },
-        });
+        }));
         restoredCount++;
       }
     }
@@ -233,16 +245,19 @@ export async function restoreDefaultLessons() {
     console.error("Error restoring default lessons:", error);
     return { success: false, error: "Không thể khôi phục danh sách bài học" };
   }
+
+  });
 }
 
 // Xóa bài học
 export async function deleteLesson(lessonId: string) {
-  await requireAdmin();
+  const admin = await requireAdmin("deleteLesson");
+  return auditOutcome(admin.id, "deleteLesson", async () => {
   try {
-    await prisma.$transaction([
-      prisma.progress.deleteMany({ where: { lessonId } }),
-      prisma.lesson.delete({ where: { id: lessonId } }),
-    ]);
+    await auditedWrite(admin.id, "LESSON_DELETED", async tx => {
+      await tx.progress.deleteMany({ where: { lessonId } });
+      return tx.lesson.delete({ where: { id: lessonId } });
+    });
 
     revalidatePath("/admin/lessons");
     revalidatePath("/learn");
@@ -252,23 +267,26 @@ export async function deleteLesson(lessonId: string) {
     console.error("Error deleting lesson:", error);
     return { success: false, error: "Không thể xóa bài học này" };
   }
+
+  });
 }
 
 // Tạo khóa học mới
 export async function createCourse(data: { title: string; description?: string }) {
-  await requireAdmin();
+  const admin = await requireAdmin("createCourse");
+  return auditOutcome(admin.id, "createCourse", async () => {
   const { title, description } = data;
   if (!title || !title.trim()) {
     return { success: false, error: "Vui lòng nhập tên khóa học" };
   }
 
   try {
-    const newCourse = await prisma.course.create({
+    const newCourse = await auditedWrite(admin.id, "COURSE_CREATED", tx => tx.course.create({
       data: {
         title: title.trim(),
         description: description?.trim() || null,
       },
-    });
+    }));
 
     revalidatePath("/admin/lessons");
     revalidatePath("/courses");
@@ -278,6 +296,8 @@ export async function createCourse(data: { title: string; description?: string }
     console.error("Error creating course:", error);
     return { success: false, error: "Lỗi hệ thống khi tạo khóa học mới" };
   }
+
+  });
 }
 
 
