@@ -338,6 +338,9 @@ export function TaxCalculatorOutput({ input, result }: { input: TaxCalculatorInp
               hint={`Thuế suất ${result.incomeTaxRate}%`}
             />
             <Row label={`Thuế ${incomeName} dự toán`} value={money(result.incomeTax)} />
+            {result.deductiblePlatformFees > 0 && (
+              <Row label="Phí sàn được tính vào chi phí được trừ" value={`-${money(result.deductiblePlatformFees)}`} tone="green" />
+            )}
             <div className="border-t-2 border-slate-200 dark:border-slate-700 pt-1.5">
               <Row label="Tổng nghĩa vụ thuế phát sinh" value={money(result.totalTax)} strong tone="rose" />
             </div>
