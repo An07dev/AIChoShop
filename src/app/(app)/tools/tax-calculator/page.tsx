@@ -25,7 +25,7 @@ import {
 import { useToolGate } from "@/hooks/useToolGate";
 import { TaxCalculatorOutput } from "@/components/tools/TaxCalculatorOutput";
 import { ACTIVITY_RATES, calculateEcommerceTax } from "@/lib/tax-calculator/engine";
-import type { TaxCalculatorInput, TaxCalculatorResult, TaxPayerType } from "@/lib/tax-calculator/types";
+import type { BusinessActivity, TaxCalculatorInput, TaxCalculatorResult, TaxPayerType } from "@/lib/tax-calculator/types";
 
 const moneyFormat = new Intl.NumberFormat("vi-VN", { maximumFractionDigits: 0 });
 const parseMoney = (value: string) => Number(value.replace(/[^0-9]/g, "")) || 0;
@@ -73,7 +73,11 @@ const initialInput: TaxCalculatorInput = {
   taxYear: 2026,
   payerType: "household",
   activity: "goods",
+  activityRevenues: { goods: 1_000_000_000, services: 0, production: 0, digital: 0, other: 0 },
   personalIncomeMethod: "revenue",
+  residencyStatus: "resident",
+  personalPreviousYearRevenue: 0,
+  profitMethodStartYear: null,
   shopeeRevenue: 500_000_000,
   tiktokRevenue: 500_000_000,
   otherPlatformRevenue: 0,
@@ -85,9 +89,18 @@ const initialInput: TaxCalculatorInput = {
   withheldVat: 0,
   withheldIncomeTax: 0,
   companyPreviousYearRevenue: 0,
+  companyPreviousYearOperatingMonths: 12,
+  companyHasPreviousYearData: false,
+  companyIsNewThisYear: false,
+  companyHasDisqualifyingRelatedParty: false,
   companyVatRate: 10,
   deductibleInputVat: 0,
-  applyIncomeTaxReduction: true,
+  companyIsSme: false,
+  companyFirstRegistrationYear: null,
+  companyCreatedFromReorganization: false,
+  companyControllerHasPriorBusiness: false,
+  companyHasExcludedIncome: false,
+  companyUsesOtherTaxIncentive: false,
 };
 
 function MoneyInput({
@@ -208,17 +221,31 @@ export default function TaxCalculator() {
     (Number(input.directRevenue) || 0);
 
   const isPersonal = input.payerType !== "company";
+  const activityRevenueTotal = Object.values(input.activityRevenues || {}).reduce((sum, value) => sum + (Number(value) || 0), 0);
 
-  const update = <K extends keyof TaxCalculatorInput>(key: K, value: TaxCalculatorInput[K]) =>
+  const update = <K extends keyof TaxCalculatorInput>(key: K, value: TaxCalculatorInput[K]) => {
     setInput((current) => ({ ...current, [key]: value }));
+    setHasCalculated(false);
+    setCalculatedResult(null);
+  };
+
+  const updateActivityRevenue = (activity: BusinessActivity, value: number) => {
+    setInput((current) => ({
+      ...current,
+      activityRevenues: { ...current.activityRevenues, [activity]: value },
+    }));
+    setHasCalculated(false);
+    setCalculatedResult(null);
+  };
 
   const changePayer = (payerType: TaxPayerType) => {
     setInput((current) => ({
       ...current,
       payerType,
-      personalIncomeMethod:
-        payerType !== "company" && liveTotalRevenue > 3_000_000_000 ? "profit" : current.personalIncomeMethod,
+      personalIncomeMethod: current.personalIncomeMethod,
     }));
+    setHasCalculated(false);
+    setCalculatedResult(null);
   };
 
   const handleCalculate = async (overrideInput?: TaxCalculatorInput) => {
@@ -229,6 +256,10 @@ export default function TaxCalculator() {
     const result = calculateEcommerceTax(currentInput);
     setCalculatedResult(result);
     setHasCalculated(true);
+    if (result.validationErrors.length > 0) {
+      setSaveNotice("Chưa lưu dự toán: hãy sửa các dữ liệu chưa khớp được hiển thị trong kết quả.");
+      return;
+    }
 
     const isCompany = currentInput.payerType === "company";
     const payerLabel = payerLabels[currentInput.payerType];
@@ -237,13 +268,11 @@ export default function TaxCalculator() {
     const summaryText = [
       `BẢNG DỰ TOÁN THUẾ TMĐT ${currentInput.taxYear}`,
       `Loại người nộp thuế: ${payerLabel}`,
-      `Nhóm ngành: ${ACTIVITY_RATES[currentInput.activity]?.label || "Kinh doanh hàng hóa"}`,
+      `Doanh thu đã tách theo ${result.activityBreakdown.filter((row) => row.revenue > 0).length} nhóm hoạt động`,
       `Tổng doanh thu đa kênh: ${moneyFormat.format(result.totalRevenue)} ₫`,
       `Thuế GTGT: ${moneyFormat.format(result.vat)} ₫ (${result.vatRate}%)`,
       `Thuế ${incomeName}: ${moneyFormat.format(result.incomeTax)} ₫ (${result.incomeTaxRate}%)`,
-      result.incomeTaxReduction > 0
-        ? `Ưu đãi giảm 30% ${incomeName}: -${moneyFormat.format(result.incomeTaxReduction)} ₫`
-        : null,
+      `Bộ quy tắc: ${result.ruleVersion}`,
       `Tổng thuế phát sinh: ${moneyFormat.format(result.totalTax)} ₫`,
       `Thuế sàn đã khấu trừ / nộp thay: ${moneyFormat.format(
         currentInput.withheldVat + currentInput.withheldIncomeTax
@@ -317,6 +346,7 @@ export default function TaxCalculator() {
       deductibleCosts: 0,
       withheldVat: 0,
       withheldIncomeTax: 0,
+      activityRevenues: { goods: 0, services: 0, production: 0, digital: 0, other: 0 },
     });
     setHasCalculated(false);
     setCalculatedResult(null);
@@ -331,8 +361,20 @@ export default function TaxCalculator() {
   };
 
   const openSavedSnapshot = (snapshot: TaxCalculationSnapshot) => {
-    setInput(snapshot.input);
-    const res = calculateEcommerceTax(snapshot.input);
+    const migratedInput: TaxCalculatorInput = {
+      ...initialInput,
+      ...snapshot.input,
+      activityRevenues: snapshot.input.activityRevenues || {
+        goods: snapshot.input.activity === "goods" ? snapshot.totalRevenue : 0,
+        services: snapshot.input.activity === "services" ? snapshot.totalRevenue : 0,
+        production: snapshot.input.activity === "production" ? snapshot.totalRevenue : 0,
+        digital: snapshot.input.activity === "digital" ? snapshot.totalRevenue : 0,
+        other: snapshot.input.activity === "other" ? snapshot.totalRevenue : 0,
+      },
+      applyIncomeTaxReduction: false,
+    };
+    setInput(migratedInput);
+    const res = calculateEcommerceTax(migratedInput);
     setCalculatedResult(res);
     setHasCalculated(true);
     setEditingId(snapshot.id);
@@ -630,7 +672,7 @@ export default function TaxCalculator() {
                   </span>
                 </div>
                 <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                  Dự toán chuẩn xác nghĩa vụ thuế GTGT và TNCN/TNDN cho người bán hàng Shopee, TikTok Shop và đa kênh.
+                  Dự toán tham khảo nghĩa vụ thuế GTGT và TNCN/TNDN cho người bán hàng Shopee, TikTok Shop và đa kênh theo bộ quy tắc 2026.
                 </p>
               </div>
             </div>
@@ -721,24 +763,20 @@ export default function TaxCalculator() {
                   onChange={(event) => update("taxYear", Number(event.target.value))}
                   className="w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800/80 px-3.5 py-2.5 text-sm font-bold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
                 >
-                  <option value={2026} className="dark:bg-slate-900">Kỳ tính thuế 2026</option>
-                  <option value={2027} className="dark:bg-slate-900">Kỳ tính thuế 2027</option>
-                  <option value={2028} className="dark:bg-slate-900">Kỳ tính thuế 2028 trở đi</option>
+                  <option value={2026} className="dark:bg-slate-900">Kỳ tính thuế 2026 (được hỗ trợ)</option>
                 </select>
               </Field>
 
               {isPersonal ? (
-                <Field label="Nhóm ngành hoạt động">
+                <Field label="Tình trạng cư trú">
                   <select
-                    value={input.activity}
-                    onChange={(event) => update("activity", event.target.value as TaxCalculatorInput["activity"])}
+                    value={input.residencyStatus}
+                    onChange={(event) => update("residencyStatus", event.target.value as TaxCalculatorInput["residencyStatus"])}
                     className="w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800/80 px-3 py-2.5 text-xs font-bold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
                   >
-                    {Object.entries(ACTIVITY_RATES).map(([id, item]) => (
-                      <option key={id} value={id} className="dark:bg-slate-900">
-                        {item.label} ({item.vat}% GTGT + {item.pitRevenue}% TNCN)
-                      </option>
-                    ))}
+                    <option value="resident" className="dark:bg-slate-900">Cá nhân cư trú tại Việt Nam</option>
+                    <option value="nonresident" className="dark:bg-slate-900">Cá nhân không cư trú</option>
+                    <option value="unknown" className="dark:bg-slate-900">Chưa xác định</option>
                   </select>
                 </Field>
               ) : (
@@ -762,17 +800,16 @@ export default function TaxCalculator() {
                 <Field
                   label="Phương pháp tính thuế TNCN"
                   hint={
-                    liveTotalRevenue > 3_000_000_000
-                      ? "Trên 3 tỷ: Bắt buộc theo thu nhập ròng"
-                      : "Dưới 3 tỷ: Được chọn khoán hoặc thu nhập"
+                    input.personalPreviousYearRevenue > 3_000_000_000
+                      ? "Năm trước trên 3 tỷ: theo thu nhập"
+                      : "Phụ thuộc doanh thu tham chiếu và lựa chọn trước đó"
                   }
                 >
                   <select
-                    value={liveTotalRevenue > 3_000_000_000 ? "profit" : input.personalIncomeMethod}
+                    value={input.personalIncomeMethod}
                     onChange={(event) =>
                       update("personalIncomeMethod", event.target.value as TaxCalculatorInput["personalIncomeMethod"])
                     }
-                    disabled={liveTotalRevenue > 3_000_000_000}
                     className="w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-bold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand disabled:opacity-60"
                   >
                     <option value="revenue" className="dark:bg-slate-900">
@@ -783,6 +820,18 @@ export default function TaxCalculator() {
                     </option>
                   </select>
                 </Field>
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <Field label="Doanh thu năm trước" hint="Xác định phương pháp">
+                    <MoneyInput value={input.personalPreviousYearRevenue} onChange={(value) => update("personalPreviousYearRevenue", value)} />
+                  </Field>
+                  {input.personalIncomeMethod === "profit" && (
+                    <Field label="Năm bắt đầu theo thu nhập" hint="Duy trì 2 năm">
+                      <input type="number" min={2024} max={2026} value={input.profitMethodStartYear ?? ""}
+                        onChange={(event) => update("profitMethodStartYear", event.target.value ? Number(event.target.value) : null)}
+                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm font-bold" />
+                    </Field>
+                  )}
+                </div>
               </div>
             )}
           </Section>
@@ -834,6 +883,27 @@ export default function TaxCalculator() {
                 <strong>Căn cứ Luật Thuế 2026:</strong> Ngưỡng 1 tỷ đồng/năm xét trên <strong>tổng doanh thu toàn bộ hoạt động kinh doanh</strong>, không xét riêng từng sàn hay từng tài khoản.
               </span>
             </div>
+
+            {isPersonal && (
+              <div className="space-y-3 border-t border-slate-100 pt-4 dark:border-slate-800">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-black text-slate-800 dark:text-slate-200">Phân bổ theo nhóm hoạt động</p>
+                    <p className="text-[11px] text-slate-500">Mỗi nhóm được tính đúng tỷ lệ GTGT và TNCN riêng.</p>
+                  </div>
+                  <span className={`text-[11px] font-black ${Math.abs(activityRevenueTotal - liveTotalRevenue) <= 1 ? "text-emerald-600" : "text-rose-600"}`}>
+                    {moneyFormat.format(activityRevenueTotal)} / {moneyFormat.format(liveTotalRevenue)} ₫
+                  </span>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {(Object.entries(ACTIVITY_RATES) as [BusinessActivity, (typeof ACTIVITY_RATES)[BusinessActivity]][]).map(([id, item]) => (
+                    <Field key={id} label={item.label} hint={`${item.vat}% GTGT · ${item.pitRevenue}% TNCN`}>
+                      <MoneyInput value={input.activityRevenues[id]} onChange={(value) => updateActivityRevenue(id, value)} />
+                    </Field>
+                  ))}
+                </div>
+              </div>
+            )}
           </Section>
 
           {/* Section 3: Costs, Deductions & Fees */}
@@ -878,12 +948,17 @@ export default function TaxCalculator() {
 
               {!isPersonal && (
                 <>
-                  <Field label="Doanh thu năm trước" hint="">
+                  <Field label="Tổng doanh thu năm trước" hint="Gồm tài chính, thu nhập khác">
                     <MoneyInput
                       value={input.companyPreviousYearRevenue}
                       onChange={(value) => update("companyPreviousYearRevenue", value)}
                       placeholder="0"
                     />
+                  </Field>
+                  <Field label="Số tháng hoạt động năm trước" hint="Quy đổi đủ 12 tháng">
+                    <input type="number" min={1} max={12} value={input.companyPreviousYearOperatingMonths}
+                      onChange={(event) => update("companyPreviousYearOperatingMonths", Number(event.target.value))}
+                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800/80 px-3.5 py-2.5 text-right font-mono text-sm font-bold" />
                   </Field>
                   <Field label="GTGT đầu vào được khấu trừ" hint="">
                     <MoneyInput
@@ -895,11 +970,36 @@ export default function TaxCalculator() {
                 </>
               )}
             </div>
+
+            {!isPersonal && (
+              <div className="space-y-3 rounded-2xl border border-blue-200 bg-blue-50/50 p-4 dark:border-blue-900/60 dark:bg-blue-950/20">
+                <p className="text-xs font-black text-blue-900 dark:text-blue-200">Điều kiện miễn TNDN và ưu đãi doanh nghiệp nhỏ</p>
+                <label className="flex gap-2 text-xs"><input type="checkbox" checked={input.companyIsNewThisYear} onChange={(e) => update("companyIsNewThisYear", e.target.checked)} /> Doanh nghiệp mới thành lập trong năm 2026</label>
+                <label className="flex gap-2 text-xs"><input type="checkbox" checked={input.companyHasPreviousYearData} onChange={(e) => update("companyHasPreviousYearData", e.target.checked)} /> Đã nhập đủ doanh thu tham chiếu của năm trước</label>
+                <label className="flex gap-2 text-xs"><input type="checkbox" checked={input.companyHasDisqualifyingRelatedParty} onChange={(e) => update("companyHasDisqualifyingRelatedParty", e.target.checked)} /> Có doanh nghiệp liên kết không đáp ứng điều kiện miễn theo doanh thu</label>
+                <label className="flex gap-2 text-xs"><input type="checkbox" checked={input.companyIsSme} onChange={(e) => update("companyIsSme", e.target.checked)} /> Là doanh nghiệp nhỏ và vừa đăng ký lần đầu</label>
+                {input.companyIsSme && (
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field label="Năm đăng ký lần đầu">
+                      <input type="number" min={2024} max={2026} value={input.companyFirstRegistrationYear ?? ""}
+                        onChange={(e) => update("companyFirstRegistrationYear", e.target.value ? Number(e.target.value) : null)}
+                        className="w-full rounded-xl border border-blue-200 bg-white px-3 py-2 text-sm font-bold dark:border-blue-900 dark:bg-slate-900" />
+                    </Field>
+                    <div className="space-y-2 text-[11px]">
+                      <label className="flex gap-2"><input type="checkbox" checked={input.companyCreatedFromReorganization} onChange={(e) => update("companyCreatedFromReorganization", e.target.checked)} /> Hình thành do chia, tách, sáp nhập hoặc chuyển đổi</label>
+                      <label className="flex gap-2"><input type="checkbox" checked={input.companyControllerHasPriorBusiness} onChange={(e) => update("companyControllerHasPriorBusiness", e.target.checked)} /> Người kiểm soát có doanh nghiệp trước đó thuộc diện loại trừ</label>
+                      <label className="flex gap-2"><input type="checkbox" checked={input.companyHasExcludedIncome} onChange={(e) => update("companyHasExcludedIncome", e.target.checked)} /> Có thu nhập không được hưởng miễn</label>
+                      <label className="flex gap-2"><input type="checkbox" checked={input.companyUsesOtherTaxIncentive} onChange={(e) => update("companyUsesOtherTaxIncentive", e.target.checked)} /> Đang áp dụng ưu đãi TNDN khác</label>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
           </Section>
 
-          {/* Section 4: Withheld Tax & 30% Reduction */}
+          {/* Section 4: Withheld Tax */}
           <Section
-            title="Thuế sàn đã khấu trừ & Ưu đãi giảm thuế"
+            title="Thuế đã khấu trừ, tạm nộp"
             icon={<ShieldCheck size={18} className="text-emerald-500" />}
           >
             <div className="grid gap-3 sm:grid-cols-2">
@@ -922,20 +1022,10 @@ export default function TaxCalculator() {
               </Field>
             </div>
 
-            <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-emerald-200 dark:border-emerald-800/60 bg-emerald-50/70 dark:bg-emerald-950/30 p-3.5 transition hover:border-emerald-300">
-              <input
-                type="checkbox"
-                checked={input.applyIncomeTaxReduction}
-                onChange={(event) => update("applyIncomeTaxReduction", event.target.checked)}
-                className="mt-0.5 h-4 w-4 rounded border-emerald-400 accent-emerald-600"
-              />
-              <span className="text-xs text-emerald-900 dark:text-emerald-300 leading-relaxed">
-                <strong className="block font-black">
-                  Áp dụng giảm 30% thuế thu nhập ({isPersonal ? "TNCN" : "TNDN"}) nếu đủ điều kiện
-                </strong>
-                Chính sách hỗ trợ theo nghị định cho kỳ 2026–2027 đối với cơ sở kinh doanh có tổng doanh thu năm không quá 10 tỷ đồng.
-              </span>
-            </label>
+            <div className="flex items-start gap-2 rounded-2xl border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200">
+              <Info size={15} className="mt-0.5 shrink-0" />
+              Công cụ không tự áp dụng đề xuất giảm 30% khi chưa có văn bản xác định chính sách có hiệu lực. Số đã khấu trừ hoặc tạm nộp chỉ dùng để đối chiếu số còn phải nộp và nộp thừa.
+            </div>
           </Section>
 
           {/* ACTION BUTTON & NOTICES: NÚT TÍNH TOÁN THEO YÊU CẦU */}
@@ -990,8 +1080,8 @@ export default function TaxCalculator() {
                   <p className="text-[10px] text-slate-400 mt-0.5">Áp dụng Luật 2026 trên tổng doanh thu đa sàn</p>
                 </div>
                 <div className="p-3 rounded-xl bg-emerald-50/60 dark:bg-emerald-950/30 border border-emerald-200/70 dark:border-emerald-800/50">
-                  <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300">Giảm 30% Thuế</p>
-                  <p className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70 mt-0.5">Tự động áp dụng nếu doanh thu dưới 10 tỷ</p>
+                  <p className="text-[11px] font-bold text-emerald-700 dark:text-emerald-300">Đa hoạt động</p>
+                  <p className="text-[10px] text-emerald-600/70 dark:text-emerald-400/70 mt-0.5">Tách doanh thu theo từng mức thuế suất</p>
                 </div>
                 <div className="p-3 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200/70 dark:border-blue-800/50">
                   <p className="text-[11px] font-bold text-blue-700 dark:text-blue-300">Khấu Trừ Sàn</p>

@@ -137,11 +137,11 @@ Phần mã chính: [API AI](/D:/AIChoShop/src/app/api/ai/route.ts), [SEO](/D:/AI
 
 ### Thuế
 
-- [ ] **TAX-01 — Bổ sung nhánh doanh nghiệp nhỏ.** Mô hình hóa điều kiện miễn TNDN được nêu trong báo cáo; không miễn nhầm GTGT hoặc tự kết luận chỉ dựa doanh thu hiện tại.
-- [ ] **TAX-02 — Điều kiện giảm thuế.** Bổ sung hoặc nêu rõ các giả định về cư trú, chia/tách, liên kết, doanh thu tham chiếu và ưu đãi khác. Checkbox không thay toàn bộ kiểm tra điều kiện.
-- [ ] **TAX-03 — Phạm vi kỳ thuế.** Chỉ cho chọn năm được hỗ trợ hoặc tải bộ quy tắc theo năm; không áp một ngưỡng viết cứng cho mọi năm.
-- [ ] **TAX-04 — Đa hoạt động/doanh thu.** Làm rõ doanh thu từng ngành, tổng doanh thu, chi phí/thu nhập khác, khấu trừ và nộp thừa; không gộp khác thuế suất thành một tỷ lệ mà không cảnh báo.
-- [ ] **TAX-05 — Nghiệm thu nghiệp vụ.** Đối chiếu bộ ca boundary và ngoại lệ với người phụ trách thuế/kế toán; liên kết căn cứ trong UI, version trong kết quả. Unit test đúng công thức hiện tại chưa đủ chứng minh đúng quy định.
+- [x] **TAX-01 — Bổ sung nhánh doanh nghiệp nhỏ.** Mô hình hóa điều kiện miễn TNDN được nêu trong báo cáo; không miễn nhầm GTGT hoặc tự kết luận chỉ dựa doanh thu hiện tại.
+- [x] **TAX-02 — Điều kiện giảm thuế.** Bổ sung hoặc nêu rõ các giả định về cư trú, chia/tách, liên kết, doanh thu tham chiếu và ưu đãi khác. Checkbox không thay toàn bộ kiểm tra điều kiện.
+- [x] **TAX-03 — Phạm vi kỳ thuế.** Chỉ cho chọn năm được hỗ trợ hoặc tải bộ quy tắc theo năm; không áp một ngưỡng viết cứng cho mọi năm.
+- [x] **TAX-04 — Đa hoạt động/doanh thu.** Làm rõ doanh thu từng ngành, tổng doanh thu, chi phí/thu nhập khác, khấu trừ và nộp thừa; không gộp khác thuế suất thành một tỷ lệ mà không cảnh báo.
+- [ ] **TAX-05 — Nghiệm thu nghiệp vụ.** Đã có bộ ca boundary, liên kết căn cứ và version kết quả trong [hồ sơ nghiệm thu thuế 2026](./nghiem-thu-thue-2026.md); còn cần chữ ký đối chiếu của người phụ trách thuế/kế toán trước khi coi kết quả là căn cứ kê khai.
 
 ### KOC
 

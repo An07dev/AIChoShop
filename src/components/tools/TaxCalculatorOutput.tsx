@@ -3,15 +3,12 @@
 import { useMemo, useState, type ReactNode } from "react";
 import {
   AlertTriangle,
-  ArrowUpRight,
   Check,
   CircleDollarSign,
   Copy,
   Download,
   ExternalLink,
-  Layers,
   Percent,
-  PieChart,
   ReceiptText,
   Scale,
   ShieldAlert,
@@ -20,19 +17,11 @@ import {
   TrendingUp,
   Wallet,
 } from "lucide-react";
-import { ACTIVITY_RATES, TAX_EXEMPT_REVENUE_2026 } from "@/lib/tax-calculator/engine";
 import type { TaxCalculatorInput, TaxCalculatorResult } from "@/lib/tax-calculator/types";
 
 const currency = new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND", maximumFractionDigits: 0 });
 const money = (value: number) => currency.format(Math.round(value));
 const formatMoney = money;
-
-const SOURCES = {
-  threshold: "https://vanban.chinhphu.vn/?classid=0&docid=217960&pageid=27160",
-  household: "https://vanban.chinhphu.vn/?classid=1&docid=217111&orggroupid=2&pageid=27160",
-  reduction: "https://vanban.chinhphu.vn/?docid=219330&orggroupid=1&pageid=27160",
-  company: "https://xaydungchinhsach.chinhphu.vn/thue-suat-thue-thu-nhap-doanh-nghiep-moi-ap-dung-tu-1-10-2025-119250730082233732.htm",
-};
 
 function Row({
   label,
@@ -124,15 +113,15 @@ export function TaxCalculatorOutput({ input, result }: { input: TaxCalculatorInp
         `Tổng doanh thu đa kênh: ${money(result.totalRevenue)}`,
         `Thuế GTGT: ${money(result.vat)} (${result.vatRate}%)`,
         `Thuế ${incomeName}: ${money(result.incomeTax)} (${result.incomeTaxRate}%)`,
-        `Ưu đãi giảm 30% ${incomeName}: -${money(result.incomeTaxReduction)}`,
+        result.incomeTaxExemptionReason ? `Căn cứ miễn ${incomeName}: ${result.incomeTaxExemptionReason}` : null,
         `Tổng nghĩa vụ thuế phát sinh: ${money(result.totalTax)}`,
         `Đã được sàn khấu trừ / nộp thay: ${money(input.withheldVat + input.withheldIncomeTax)}`,
         `Số thuế còn phải nộp: ${money(result.remainingPayable)}`,
         `Số có thể bù trừ hoặc hoàn: ${money(result.potentialRefundOrOffset)}`,
         `Dòng tiền ròng sau phí sàn & thuế: ${money(result.netCashAfterTaxAndPlatformFees)}`,
         `Tỷ lệ thuế hiệu dụng: ${result.effectiveTaxRate.toFixed(2)}%`,
-        `Căn cứ pháp lý: Nghị định 68/2026 & Luật Thuế TMĐT mới`,
-      ].join("\n"),
+        `Phiên bản bộ quy tắc: ${result.ruleVersion}`,
+      ].filter(Boolean).join("\n"),
     [incomeName, input, result]
   );
 
@@ -276,10 +265,10 @@ export function TaxCalculatorOutput({ input, result }: { input: TaxCalculatorInp
           icon={<Percent size={15} />}
         />
         <Metric
-          label="Ưu đãi giảm 30%"
-          value={`-${money(result.incomeTaxReduction)}`}
-          tone={result.incomeTaxReduction > 0 ? "green" : "slate"}
-          subtext={result.reductionEligible ? "Áp dụng kỳ 2026-2027" : "Không đủ điều kiện"}
+          label={`Trạng thái ${incomeName}`}
+          value={result.incomeTaxExempt ? "Được miễn" : "Có phát sinh"}
+          tone={result.incomeTaxExempt ? "green" : "slate"}
+          subtext={result.incomeTaxExempt ? "Theo dữ liệu điều kiện đã nhập" : `Thuế suất ${result.incomeTaxRate.toFixed(2)}%`}
           icon={<TrendingDown size={15} />}
         />
         <Metric
@@ -344,30 +333,30 @@ export function TaxCalculatorOutput({ input, result }: { input: TaxCalculatorInp
             </h3>
             <Row label={`Thuế Giá trị gia tăng (GTGT)`} value={money(result.vat)} hint={`${result.vatRate}% doanh thu`} />
             <Row
-              label={`Thuế ${incomeName} trước khi giảm`}
+              label={`Thuế ${incomeName} theo công thức`}
               value={money(result.incomeTaxBeforeReduction)}
               hint={`Thuế suất ${result.incomeTaxRate}%`}
             />
-            {result.incomeTaxReduction > 0 && (
-              <Row
-                label="Ưu đãi giảm 30% thuế thu nhập"
-                value={`-${money(result.incomeTaxReduction)}`}
-                tone="green"
-                hint="Nghị định 2026"
-              />
-            )}
-            <Row label={`Thuế ${incomeName} thực tế sau giảm`} value={money(result.incomeTax)} />
+            <Row label={`Thuế ${incomeName} dự toán`} value={money(result.incomeTax)} />
             <div className="border-t-2 border-slate-200 dark:border-slate-700 pt-1.5">
               <Row label="Tổng nghĩa vụ thuế phát sinh" value={money(result.totalTax)} strong tone="rose" />
             </div>
-            {!isCompany && (
-              <p className="mt-3 text-[11px] text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-slate-800/60 p-3 rounded-xl leading-relaxed">
-                {result.effectivePersonalMethod === "revenue"
-                  ? `Áp dụng phương pháp khoán tỷ lệ: ${ACTIVITY_RATES[input.activity].label}. Thuế TNCN tính trên phần doanh thu vượt ngưỡng 1 tỷ đồng.`
-                  : `Áp dụng phương pháp thu nhập: Doanh thu trừ chi phí hợp lệ có hóa đơn. Thu nhập chịu thuế: ${money(
-                      result.taxableIncomeBase
-                    )}.`}
+            {result.incomeTaxExemptionReason && (
+              <p className="mt-3 rounded-xl bg-emerald-50 p-3 text-[11px] leading-relaxed text-emerald-800 dark:bg-emerald-950/30 dark:text-emerald-300">
+                <strong>Căn cứ miễn {incomeName}:</strong> {result.incomeTaxExemptionReason}
+                {isCompany && " Miễn TNDN không đồng nghĩa miễn GTGT."}
               </p>
+            )}
+            {!isCompany && result.effectivePersonalMethod === "revenue" && (
+              <div className="mt-3 space-y-2 rounded-xl bg-slate-50 p-3 text-[11px] dark:bg-slate-800/60">
+                <p className="font-black text-slate-700 dark:text-slate-200">Chi tiết theo nhóm hoạt động</p>
+                {result.activityBreakdown.filter((row) => row.revenue > 0).map((row) => (
+                  <div key={row.activity} className="flex justify-between gap-3 text-slate-600 dark:text-slate-300">
+                    <span>{row.label}<br/><span className="text-[10px] text-slate-400">GTGT {row.vatRate}% · TNCN {row.pitRate}%</span></span>
+                    <span className="text-right font-mono">{money(row.revenue)}<br/><span className="text-[10px]">Thuế {money(row.vat + row.pit)}</span></span>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
         )}
@@ -434,6 +423,19 @@ export function TaxCalculatorOutput({ input, result }: { input: TaxCalculatorInp
         )}
       </section>
 
+      {result.validationErrors.map((error) => (
+        <div key={error} className="flex gap-2.5 rounded-2xl border border-rose-300 bg-rose-50 px-4 py-3 text-xs font-semibold text-rose-900 dark:border-rose-800/50 dark:bg-rose-950/30 dark:text-rose-300">
+          <ShieldAlert size={16} className="mt-0.5 shrink-0" /><span>{error} Kết quả thuế đang được để bằng 0 để tránh sử dụng sai.</span>
+        </div>
+      ))}
+
+      {result.requiresProfessionalReview && result.validationErrors.length === 0 && (
+        <div className="flex gap-2.5 rounded-2xl border border-blue-300 bg-blue-50 px-4 py-3 text-xs font-semibold text-blue-900 dark:border-blue-800/50 dark:bg-blue-950/30 dark:text-blue-300">
+          <ShieldAlert size={16} className="mt-0.5 shrink-0" />
+          <span>Kết quả có điều kiện hoặc cách phân bổ cần đối chiếu với hồ sơ thực tế và người phụ trách thuế trước khi kê khai.</span>
+        </div>
+      )}
+
       {/* 4. Warning Messages */}
       {result.warnings.map((warning) => (
         <div
@@ -451,41 +453,15 @@ export function TaxCalculatorOutput({ input, result }: { input: TaxCalculatorInp
           <ShieldCheck size={16} className="text-brand" /> Căn cứ pháp lý & Cổng văn bản chính phủ
         </div>
         <p className="leading-relaxed mb-3">
-          Công cụ hỗ trợ dự toán nghĩa vụ tài chính theo quy định mới nhất. Quyết toán thực tế căn cứ theo hồ sơ khai thuế và chứng từ hợp lệ.
+          Phiên bản quy tắc <strong>{result.ruleVersion}</strong>. Công cụ hỗ trợ dự toán cho kỳ 2026; quyết toán thực tế căn cứ hồ sơ, hóa đơn và xác nhận của người phụ trách thuế.
         </p>
         <div className="flex flex-wrap gap-2">
-          <a
-            href={SOURCES.threshold}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold text-brand hover:border-brand transition"
-          >
-            Ngưỡng 1 Tỷ <ExternalLink size={10} />
-          </a>
-          <a
-            href={SOURCES.household}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold text-brand hover:border-brand transition"
-          >
-            Nghị Định 68/2026 <ExternalLink size={10} />
-          </a>
-          <a
-            href={SOURCES.reduction}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold text-brand hover:border-brand transition"
-          >
-            Giảm 30% Thuế <ExternalLink size={10} />
-          </a>
-          <a
-            href={SOURCES.company}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold text-brand hover:border-brand transition"
-          >
-            Thuế TNDN 2026 <ExternalLink size={10} />
-          </a>
+          {result.sources.map((source) => (
+            <a key={source.url} href={source.url} target="_blank" rel="noreferrer"
+              className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold text-brand hover:border-brand transition">
+              {source.label} <ExternalLink size={10} />
+            </a>
+          ))}
         </div>
       </section>
     </aside>
