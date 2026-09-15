@@ -8,6 +8,7 @@ import { getAiUsageStats } from "@/lib/ai-usage";
 import { SeoError, SEO_SCHEMA, validateSeoInputs } from "./contract";
 import { generateSeo } from "./generate";
 import { finishSeo, reserveSeo, seoIdentity, type RunMetrics } from "./usage";
+import { isAllowedOrigin } from "@/lib/http/origin";
 
 function publicError(error: unknown): SeoError {
   if (error instanceof SeoError) return error;
@@ -28,8 +29,7 @@ export async function handleSeo(req: Request, rawInputs: unknown) {
   let lease: string | undefined;
   const metrics: RunMetrics = { model: "", provider: "", inputTokens: 0, outputTokens: 0, durationMs: 0 };
   try {
-    const origin = req.headers.get("origin");
-    if ((origin && origin !== new URL(req.url).origin) || req.headers.get("sec-fetch-site") === "cross-site") {
+    if (!isAllowedOrigin(req)) {
       throw new SeoError("INVALID_ORIGIN", "Yêu cầu không hợp lệ.", 403);
     }
     const inputs = validateSeoInputs(rawInputs);

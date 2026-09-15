@@ -7,12 +7,12 @@ import OpenAI from "openai";
 import { getSystemSettings } from "@/lib/system-settings";
 import { getAiUsageStats } from "@/lib/ai-usage";
 import { handleSeo } from "@/lib/seo/handler";
+import { isAllowedOrigin } from "@/lib/http/origin";
 
 export async function POST(req: Request) {
   let lease: string | undefined;
   try {
-    const origin = req.headers.get("origin");
-    if ((origin && origin !== new URL(req.url).origin) || req.headers.get("sec-fetch-site") === "cross-site") throw new SeoError("INVALID_ORIGIN", "Yêu cầu không hợp lệ.", 403);
+    if (!isAllowedOrigin(req)) throw new SeoError("INVALID_ORIGIN", "Yêu cầu không hợp lệ.", 403);
     const body = await readLimitedJson(req, 6 * 1024 * 1024) as { tool: string; inputs: Record<string, any> };
     if (!body || typeof body !== "object") throw new RequestBodyError("INVALID_INPUT");
     const { tool, inputs } = body;
