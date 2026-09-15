@@ -108,11 +108,13 @@ function MoneyInput({
   onChange,
   placeholder,
   className = "",
+  max,
 }: {
   value: number;
   onChange: (value: number) => void;
   placeholder?: string;
   className?: string;
+  max?: number;
 }) {
   return (
     <div className="relative flex items-center">
@@ -120,7 +122,10 @@ function MoneyInput({
         inputMode="numeric"
         placeholder={placeholder}
         value={value ? moneyFormat.format(value) : ""}
-        onChange={(event) => onChange(parseMoney(event.target.value))}
+        onChange={(event) => {
+          const parsed = parseMoney(event.target.value);
+          onChange(max === undefined ? parsed : Math.min(parsed, Math.max(0, max)));
+        }}
         className={`w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800/80 px-3.5 py-2.5 pr-8 text-right font-mono text-sm font-bold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 dark:focus:border-brand ${className}`}
       />
       <span className="pointer-events-none absolute right-3 text-xs font-bold text-slate-400 dark:text-slate-500">
@@ -236,6 +241,14 @@ export default function TaxCalculator() {
     }));
     setHasCalculated(false);
     setCalculatedResult(null);
+  };
+
+  const maxActivityRevenue = (activity: BusinessActivity) => {
+    const otherActivities = Object.entries(input.activityRevenues || {}).reduce(
+      (sum, [key, value]) => sum + (key === activity ? 0 : Number(value) || 0),
+      0
+    );
+    return Math.max(0, liveTotalRevenue - otherActivities);
   };
 
   const changePayer = (payerType: TaxPayerType) => {
@@ -889,7 +902,11 @@ export default function TaxCalculator() {
                 <div className="flex items-center justify-between gap-3">
                   <div>
                     <p className="text-xs font-black text-slate-800 dark:text-slate-200">Phân bổ theo nhóm hoạt động</p>
-                    <p className="text-[11px] text-slate-500">Mỗi nhóm được tính đúng tỷ lệ GTGT và TNCN riêng.</p>
+                    <p className="text-[11px] text-slate-500">
+                      {activityRevenueTotal < liveTotalRevenue
+                        ? `Còn cần phân bổ ${moneyFormat.format(liveTotalRevenue - activityRevenueTotal)} ₫.`
+                        : "Đã phân bổ đủ toàn bộ doanh thu."}
+                    </p>
                   </div>
                   <span className={`text-[11px] font-black ${Math.abs(activityRevenueTotal - liveTotalRevenue) <= 1 ? "text-emerald-600" : "text-rose-600"}`}>
                     {moneyFormat.format(activityRevenueTotal)} / {moneyFormat.format(liveTotalRevenue)} ₫
@@ -898,7 +915,11 @@ export default function TaxCalculator() {
                 <div className="grid gap-3 sm:grid-cols-2">
                   {(Object.entries(ACTIVITY_RATES) as [BusinessActivity, (typeof ACTIVITY_RATES)[BusinessActivity]][]).map(([id, item]) => (
                     <Field key={id} label={item.label} hint={`${item.vat}% GTGT · ${item.pitRevenue}% TNCN`}>
-                      <MoneyInput value={input.activityRevenues[id]} onChange={(value) => updateActivityRevenue(id, value)} />
+                      <MoneyInput
+                        value={input.activityRevenues[id]}
+                        max={maxActivityRevenue(id)}
+                        onChange={(value) => updateActivityRevenue(id, value)}
+                      />
                     </Field>
                   ))}
                 </div>
