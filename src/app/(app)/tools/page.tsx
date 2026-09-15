@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Calculator, ShieldAlert, Video, MessageSquareWarning, Megaphone, Presentation, ArrowRight, Cpu, Layers, Flame, Send, Share2 } from "lucide-react";
+import { Calculator, ShieldAlert, Video, MessageSquareWarning, Megaphone, Presentation, ArrowRight, Cpu, Layers, Flame, Send, Share2, Sparkles } from "lucide-react";
 
 export default function ToolsPage() {
   const toolStages = [
@@ -31,6 +31,14 @@ export default function ToolsPage() {
       stage: "Giai đoạn 2: Tối ưu SEO & Phủ sóng",
       description: "Đăng sản phẩm chuẩn thuật toán Sàn để lên Top 1 tìm kiếm tự nhiên.",
       tools: [
+        {
+          id: "vision-listing",
+          name: "AI Phân Tích Ảnh (Vision)",
+          description: "Upload ảnh sản phẩm, AI tự động quét nhận diện và sinh toàn bộ tiêu đề SEO, bảng thông số và bài mô tả AIDA.",
+          icon: <Sparkles size={32} className="text-amber-500" />,
+          color: "bg-amber-50 border-amber-100 hover:border-amber-300",
+          isFree: false,
+        },
         {
           id: "seo-optimizer",
           name: "AI Tối Ưu SEO",
@@ -92,6 +100,14 @@ export default function ToolsPage() {
       description: "Chăm sóc khách hàng, kéo khách cũ mua lại và giải quyết các biến cố vi phạm.",
       tools: [
         {
+          id: "policy-checker",
+          name: "AI Soi Từ Cấm & Vi Phạm Sàn",
+          description: "Rà soát từ cấm theo luật kiểm duyệt TikTok Shop, Shopee, chấm điểm rủi ro và tự động viết lại bản an toàn.",
+          icon: <ShieldAlert size={32} className="text-red-500" />,
+          color: "bg-red-50 border-red-100 hover:border-red-300",
+          isFree: true,
+        },
+        {
           id: "chat-broadcast",
           name: "Chat Broadcast & Zalo",
           description: "Soạn tin nhắn Shopee Chat Broadcast dưới 350 ký tự và Zalo OA đắc nhân tâm kéo khách mua lại không bị spam.",
@@ -123,7 +139,7 @@ export default function ToolsPage() {
     <div className="max-w-7xl mx-auto space-y-12 pb-12">
       <div>
         <h1 className="text-3xl font-black text-slate-900 mb-2">Hành Trình Tự Động Hóa E-commerce</h1>
-        <p className="text-slate-500 text-lg max-w-3xl">Lộ trình 11 công cụ được sắp xếp từ A-Z theo vòng đời kinh doanh của một nhà bán hàng chuyên nghiệp. Khám phá và sử dụng theo thứ tự để đạt hiệu quả cao nhất.</p>
+        <p className="text-slate-500 text-lg max-w-3xl">Lộ trình 13 công cụ được sắp xếp từ A-Z theo vòng đời kinh doanh của một nhà bán hàng chuyên nghiệp. Khám phá và sử dụng theo thứ tự để đạt hiệu quả cao nhất.</p>
       </div>
 
       <div className="space-y-12">

@@ -79,22 +79,24 @@ export function Sidebar({
     { 
       id: 3, 
       name: 'Kho Công Cụ AI', 
-      desc: '11 Tools bứt phá doanh số',
+      desc: '13 Tools bứt phá doanh số',
       href: '/tools', 
       icon: Wrench,
       viewAllHref: '/tools',
       subItems: [
         { name: '1. Tính Giá Bán', href: '/tools/pricing-calculator' },
         { name: '2. Tính Thuế TMĐT', href: '/tools/tax-calculator' },
-        { name: '3. AI Tối Ưu SEO', href: '/tools/seo-optimizer' },
-        { name: '4. Nhân Bản Chống Spam', href: '/tools/title-spinner' },
-        { name: '5. AI Mẫu Quảng Cáo Ads', href: '/tools/ad-copy' },
-        { name: '6. AI Kịch Bản Video', href: '/tools/script-writer' },
-        { name: '7. AI Lập Kế Hoạch KOC', href: '/tools/koc-planner' },
-        { name: '8. AI Biến Video 5 Kênh', href: '/tools/video-repurposer' },
-        { name: '9. Chat Broadcast & Zalo', href: '/tools/chat-broadcast' },
-        { name: '10. AI Xử Lý Khủng Hoảng', href: '/tools/review-replier' },
-        { name: '11. AI Kháng Nghị', href: '/tools/appeal-generator' }
+        { name: '3. AI Phân Tích Ảnh (Vision)', href: '/tools/vision-listing' },
+        { name: '4. AI Tối Ưu SEO', href: '/tools/seo-optimizer' },
+        { name: '5. Nhân Bản Chống Spam', href: '/tools/title-spinner' },
+        { name: '6. AI Mẫu Quảng Cáo Ads', href: '/tools/ad-copy' },
+        { name: '7. AI Kịch Bản Video', href: '/tools/script-writer' },
+        { name: '8. AI Lập Kế Hoạch KOC', href: '/tools/koc-planner' },
+        { name: '9. AI Biến Video 5 Kênh', href: '/tools/video-repurposer' },
+        { name: '10. Chat Broadcast & Zalo', href: '/tools/chat-broadcast' },
+        { name: '11. AI Xử Lý Khủng Hoảng', href: '/tools/review-replier' },
+        { name: '12. AI Kháng Nghị', href: '/tools/appeal-generator' },
+        { name: '13. AI Soi Từ Cấm Sàn', href: '/tools/policy-checker' }
       ]
     },
     { 

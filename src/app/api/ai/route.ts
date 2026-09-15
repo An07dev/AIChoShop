@@ -7,12 +7,12 @@ import OpenAI from "openai";
 import { getSystemSettings } from "@/lib/system-settings";
 import { getAiUsageStats } from "@/lib/ai-usage";
 import { handleSeo } from "@/lib/seo/handler";
+import { isAllowedOrigin } from "@/lib/http/origin";
 
 export async function POST(req: Request) {
   let lease: string | undefined;
   try {
-    const origin = req.headers.get("origin");
-    if ((origin && origin !== new URL(req.url).origin) || req.headers.get("sec-fetch-site") === "cross-site") throw new SeoError("INVALID_ORIGIN", "Yêu cầu không hợp lệ.", 403);
+    if (!isAllowedOrigin(req)) throw new SeoError("INVALID_ORIGIN", "Yêu cầu không hợp lệ.", 403);
     const body = await readLimitedJson(req, 6 * 1024 * 1024) as { tool: string; inputs: Record<string, any> };
     if (!body || typeof body !== "object") throw new RequestBodyError("INVALID_INPUT");
     const { tool, inputs } = body;
@@ -413,6 +413,129 @@ YÊU CẦU ĐẦU RA (MARKDOWN CHUẨN XÁC VỚI TIÊU ĐỀ VÀ PHÂN ĐOẠN 
         break;
       }
 
+      case "vision-listing": {
+        const platform = inputs.platform || "Shopee và TikTok Shop";
+        const categoryHint = inputs.categoryHint ? `Ngành hàng dự kiến: ${inputs.categoryHint}` : "";
+        const targetAudience = inputs.targetAudience ? `Khách hàng mục tiêu: ${inputs.targetAudience}` : "";
+        const shopNote = inputs.shopNote ? `Ghi chú / Ưu đãi của Shop: ${inputs.shopNote}` : "";
+
+        userPrompt = `Bạn là chuyên gia Listing & Tối ưu chuyển đổi sản phẩm E-commerce (Shopee, TikTok Shop, Lazada).
+Hãy quan sát thật kỹ hình ảnh sản phẩm được cung cấp (chất liệu, màu sắc, chi tiết đường may/phụ kiện, kiểu dáng, tính năng nổi bật) và thông tin sau:
+- Nền tảng đích: ${platform}
+${categoryHint}
+${targetAudience}
+${shopNote}
+
+Hãy sinh nội dung Listing hoàn chỉnh và chuyên nghiệp theo ĐÚNG định dạng Markdown sau:
+
+---
+
+## 🏷️ 1. TIÊU ĐỀ CHUẨN SEO (3 BIẾN THỂ TỐI ƯU CẠNH TRANH)
+> Công thức chuẩn: [Tên Sản Phẩm] + [Thương hiệu/Chất liệu] + [Công năng/Tính năng vượt trội] + [Kiểu dáng/Mã phân loại] (dưới 120 ký tự)
+
+- **Biến thể 1 (Chuẩn SEO Tìm kiếm tự nhiên - Shopee/Lazada):**
+  [Viết tiêu đề dài, chứa từ khóa chính + từ khóa phụ + mã kích thước/màu sắc]
+- **Biến thể 2 (Kéo Click & Bắt Trend - TikTok Shop/Live):**
+  [Viết tiêu đề giật tít, kèm icon bắt mắt, kích thích bấm vào xem ngay]
+- **Biến thể 3 (Tối ưu Chạy Ads đấu thầu từ khóa):**
+  [Tiêu đề ngắn gọn, tập trung chính xác vào Search Intent của người có nhu cầu mua ngay]
+
+---
+
+## 📋 2. BẢNG THÔNG SỐ KỸ THUẬT (ATTRIBUTES CHO SELLER CENTER)
+*(Copy/paste nhanh vào các trường thuộc tính bắt buộc khi đăng sản phẩm)*
+
+| Thuộc tính | Giá trị chi tiết từ ảnh |
+| :--- | :--- |
+| **Loại sản phẩm** | [Tên loại sản phẩm chính xác] |
+| **Chất liệu** | [Phân tích chất liệu quan sát được từ ảnh] |
+| **Màu sắc / Họa tiết** | [Tất cả phối màu quan sát thấy] |
+| **Phong cách** | [Trẻ trung, công sở, sang trọng, streetwear...] |
+| **Xuất xứ** | [Việt Nam / Quảng Châu / Tùy chọn] |
+| **Tính năng nổi bật** | [Chống nước, thoáng khí, co giãn, đa năng...] |
+| **Đối tượng phù hợp** | [Nam/Nữ, học sinh, sinh viên, văn phòng...] |
+
+---
+
+## 📝 3. BÀI VIẾT MÔ TẢ CHUYỂN ĐỔI CAO (CÔNG THỨC AIDA)
+
+### ✨ [ĐIỂM NHẤN ĐẶC QUYỀN CỦA SẢN PHẨM - USP]
+[Mở đầu 2-3 câu khơi gợi sự quan tâm và nêu bật giải pháp giải quyết nỗi đau của khách hàng]
+
+### 💎 CHI TIẾT TÍNH NĂNG & THIẾT KẾ
+- **Chất liệu & Độ hoàn thiện:** [Mô tả chi tiết cảm giác sờ, bề mặt chất liệu, độ bền từ ảnh]
+- **Kiểu dáng & Tiện ích:** [Mô tả form dáng, khả năng phối đồ hoặc công dụng thực tế]
+- **Độ ứng dụng:** [Dùng khi nào, ở đâu, tình huống thực tế]
+
+### 📏 BẢNG QUY ĐỔI KÍCH CỠ / HƯỚNG DẪN CHỌN SIZE
+- Size S / M / L / XL hoặc kích thước chi tiết phù hợp với cân nặng/chiều cao tiêu chuẩn Việt Nam.
+
+### 🛡️ CAM KẾT VÀNG TỪ SHOP
+- Đổi trả trong 7 ngày nếu lỗi từ nhà sản xuất hoặc không đúng hình ảnh.
+- Hàng luôn có sẵn, đóng gói kỹ càng và giao nhanh trong 24h.
+- Tư vấn nhiệt tình 24/7 qua khung chat của sàn.
+
+---
+
+## 🔍 4. BỘ HASHTAG & TỪ KHÓA TÌM KIẾM
+- **Từ khóa hạt nhân (Search Intent cao):** [5-7 từ khóa chính]
+- **Hashtag chuẩn SEO Sàn:** #[TừKhóa1] #[TừKhóa2] #[TừKhóa3] #[TừKhóa4] #[TừKhóa5] #[TừKhóa6] #[TừKhóa7] #[TừKhóa8]
+`;
+        break;
+      }
+
+      case "policy-checker": {
+        const platform = inputs.platform || "TikTok Shop và Shopee";
+        const contentType = inputs.contentType || "Mô tả sản phẩm";
+        const contentText = inputs.text || "";
+
+        userPrompt = `Bạn là Trưởng ban Kiểm duyệt Chính sách Nội dung & Tuân thủ Sàn E-commerce hàng đầu (Shopee, TikTok Shop, Facebook Ads) tại Việt Nam.
+Hãy kiểm tra và rà soát kỹ lưỡng đoạn nội dung sau:
+- Nền tảng: ${platform}
+- Loại nội dung: ${contentType}
+- Nội dung cần quét:
+"""
+${contentText}
+"""
+
+Nhiệm vụ của bạn:
+1. Đánh giá Mức độ rủi ro (AN TOÀN / CẢNH BÁO NHẸ / NGUY HIỂM - CHẮC CHẮN ĂN GẬY).
+2. Liệt kê chi tiết mọi từ ngữ, câu văn vi phạm hoặc tiềm ẩn nguy cơ dính quét thuật toán AI của sàn (Lôi kéo ngoài sàn, SĐT, Zalo, cam kết 100%, trị dứt điểm, từ ngữ so sánh nhất 'số 1', thương hiệu quốc tế chưa ủy quyền, chiêu trò giật gân, v.v.).
+3. Giải thích LÝ DO TẠI SAO thuật toán quét của sàn sẽ phạt.
+4. **ĐẶC BIỆT QUAN TRỌNG:** Viết lại toàn bộ đoạn văn bản thành một BẢN HOÀN CHỈNH AN TOÀN 100% (Safe Version), vừa giữ nguyên ý nghĩa thuyết phục, cuốn hút, vừa né hoàn toàn mọi từ ngữ nhạy cảm để Seller chỉ cần bấm Copy là đăng ngay không sợ bị khóa sản phẩm!
+
+Hãy trình bày theo ĐÚNG cấu trúc Markdown chuẩn xác sau:
+
+---
+
+## 🛡️ 1. TỔNG QUAN ĐÁNH GIÁ RỦI RO
+- **Mức độ rủi ro:** [AN TOÀN / CẢNH BÁO NHẸ / NGUY HIỂM - RỦI RO CAO]
+- **Tóm tắt tình trạng:** [1-2 câu kết luận tổng quát về khả năng bị phạt]
+- **Các chính sách bị vi phạm:** [Liệt kê các điều khoản sàn có liên quan]
+
+---
+
+## ⚠️ 2. DANH SÁCH CÁC ĐIỂM VI PHẠM CẦN GỠ BỎ
+| Từ ngữ / Đoạn văn vi phạm | Nhóm chính sách | Lý do thuật toán sàn gắn cờ | Giải pháp khắc phục |
+| :--- | :--- | :--- | :--- |
+| "[Từ vi phạm 1]" | [Nhóm vi phạm] | [Giải thích ngắn gọn] | [Từ thay thế an toàn] |
+| "[Từ vi phạm 2]" | [Nhóm vi phạm] | [Giải thích ngắn gọn] | [Từ thay thế an toàn] |
+
+---
+
+## ✅ 3. BẢN VIẾT LẠI AN TOÀN 100% (READY TO USE)
+*(Nội dung đã được biên tập lại an toàn, xóa bỏ từ cấm nhưng vẫn giữ trọn sức hút bán hàng. Bấm Sao Chép để dùng ngay!)*
+
+[Nội dung bản viết lại hoàn chỉnh ở đây]
+
+---
+
+## 💡 4. LỜI KHUYÊN TỪ CHUYÊN GIA
+- [3 lời khuyên thực chiến cho Seller khi đăng sản phẩm thuộc ngành hàng này trên ${platform}]
+`;
+        break;
+      }
+
       default:
         return NextResponse.json({ success: false, error: "Công cụ không hợp lệ." }, { status: 400 });
     }
@@ -420,7 +543,7 @@ YÊU CẦU ĐẦU RA (MARKDOWN CHUẨN XÁC VỚI TIÊU ĐỀ VÀ PHÂN ĐOẠN 
     let userMessageContent: any = userPrompt;
 
     // Xử lý ảnh nếu có
-    if (tool === "appeal-generator" && inputs.imageBase64) {
+    if ((tool === "appeal-generator" || tool === "vision-listing") && inputs.imageBase64) {
       const isVisionModel = model.includes("vision") || model.includes("vl") || model.includes("llava") || model.includes("gpt-4");
       if (isVisionModel) {
         userMessageContent = [
@@ -444,7 +567,7 @@ YÊU CẦU ĐẦU RA (MARKDOWN CHUẨN XÁC VỚI TIÊU ĐỀ VÀ PHÂN ĐOẠN 
         { role: "user", content: userMessageContent }
       ],
       temperature: 0.7,
-      max_tokens: tool === "video-repurposer" ? 2500 : 1500,
+      max_tokens: tool === "video-repurposer" || tool === "vision-listing" ? 2500 : 1500,
     });
 
     const choice = completion.choices[0];

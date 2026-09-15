@@ -3,6 +3,7 @@ import { getSessionUserId } from "@/lib/auth/session";
 import { readLimitedJson, RequestBodyError } from "@/lib/http/body";
 import { prisma } from "@/lib/prisma";
 import { getAiUsageStats, recordAiUsage } from "@/lib/ai-usage";
+import { isAllowedOrigin } from "@/lib/http/origin";
 
 export const dynamic = "force-dynamic";
 
@@ -72,8 +73,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const origin = req.headers.get("origin");
-    if ((origin && origin !== req.nextUrl.origin) || req.headers.get("sec-fetch-site") === "cross-site") return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
+    if (!isAllowedOrigin(req)) return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
     const body = await readLimitedJson(req, 32768) as Record<string, any>;
     const { tool, toolName, action, input, output } = body;
 

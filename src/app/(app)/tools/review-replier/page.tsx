@@ -12,6 +12,7 @@ import {
   Clock,
   HeartHandshake,
   ShieldCheck,
+  Send,
 } from "lucide-react";
 import Link from "next/link";
 import { useToolGate } from "@/hooks/useToolGate";
@@ -47,25 +48,6 @@ export default function ReviewReplier() {
     dailyFreeLimit: number;
   } | null>(null);
 
-  // Khóa cuộn trang chính trên desktop, chỉ cho phép cuộn nội bộ phần input và output
-  useEffect(() => {
-    const main = document.querySelector("main");
-    if (!main) return;
-    const handleResize = () => {
-      if (window.innerWidth >= 1024) {
-        main.style.overflow = "hidden";
-      } else {
-        main.style.overflow = "auto";
-      }
-    };
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => {
-      main.style.overflow = "";
-      window.removeEventListener("resize", handleResize);
-    };
-  }, []);
-
   useEffect(() => {
     fetch("/api/ai/usage")
       .then((res) => res.json())
@@ -94,6 +76,7 @@ export default function ReviewReplier() {
     setSelectedTag("");
     setReviewContent("");
     setNote("");
+    setResult("");
   };
 
   const handleUseSample = () => {
@@ -146,20 +129,20 @@ export default function ReviewReplier() {
   };
 
   return (
-    <div className="w-full max-w-7xl mx-auto flex-1 flex flex-col min-h-0 overflow-hidden">
+    <div className="max-w-7xl mx-auto space-y-6 pb-12">
       <GateModals />
 
-      {/* 1. Header & Breadcrumb thu gọn */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 shrink-0">
+      {/* Header & Breadcrumb */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
-            <Link href="/tools" className="hover:text-amber-600 transition-colors flex items-center gap-1">
+            <Link href="/tools" className="hover:text-emerald-600 transition-colors flex items-center gap-1">
               <ArrowLeft size={12} /> Kho Công Cụ AI
             </Link>
             <span>/</span>
             <span className="text-slate-600 dark:text-slate-300">Xử Lý Khiếu Nại & Khủng Hoảng</span>
           </div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex flex-wrap items-center gap-2 sm:gap-3">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white flex flex-wrap items-center gap-2 sm:gap-3">
             AI Xử Lý Khủng Hoảng
             <span className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shadow-xs uppercase tracking-wider">
               <Sparkles size={11} className="text-emerald-600 dark:text-emerald-400" />
@@ -169,15 +152,18 @@ export default function ReviewReplier() {
               Phản Hồi Đánh Giá 1-3 Sao
             </span>
           </h1>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Biến đánh giá tiêu cực thành cơ hội bán hàng, xoa dịu khách hàng và bảo vệ uy tín shop với 3 phong cách phản hồi.
+          </p>
         </div>
 
         {/* Nút hành động nhanh */}
-        <div className="flex items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2">
           <AiUsageBadge tool="review-replier" refreshTrigger={refreshTrigger} />
           <button
             type="button"
             onClick={handleUseSample}
-            className="px-3 py-1.5 rounded-xl border border-amber-200 dark:border-amber-900/60 bg-amber-50/50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 text-xs font-bold hover:bg-amber-100/50 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+            className="px-3 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold hover:bg-emerald-100/50 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
           >
             <Sparkles size={14} /> Thử Mẫu 1 Sao
           </button>
@@ -191,40 +177,28 @@ export default function ReviewReplier() {
         </div>
       </div>
 
-      {/* 2. Khu vực thao tác chính 2 cột: Cả 2 cuộn độc lập, trang ngoài không cuộn */}
-      <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 overflow-hidden">
+      {/* Grid 2 Cột: Cấu hình bên trái & Output bên phải */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* CỘT TRÁI: FORM NHẬP ĐÁNH GIÁ */}
-        <div className="w-full lg:w-[460px] xl:w-[480px] shrink-0 flex flex-col h-full min-h-0 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden">
-          {/* Header cột trái */}
-          <div className="px-4 py-2.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-800/50 shrink-0">
-            <div className="flex items-center gap-2">
-              <MessageSquareWarning size={15} className="text-amber-500" />
-              <h2 className="font-bold text-slate-800 dark:text-slate-200 text-sm">Đánh Giá Cần Xử Lý</h2>
-            </div>
-            <span className="text-[11px] font-mono text-slate-400 font-semibold">
-              {reviewContent.length} ký tự
-            </span>
-          </div>
-
-          {/* Form inputs cuộn nội bộ */}
-          <div className="p-3.5 sm:p-4 flex-1 min-h-0 overflow-y-auto custom-scrollbar overscroll-contain space-y-3.5">
+        <div className="lg:col-span-5 space-y-5">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
             {/* 3 Thẻ tóm tắt tính năng */}
             <div className="grid grid-cols-3 gap-2">
-              <div className="p-2 rounded-xl border border-amber-200/70 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-950/20">
+              <div className="p-2.5 rounded-xl border border-amber-200/70 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-950/20">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900 dark:text-amber-300">
                   <Star size={13} className="text-amber-500 shrink-0 fill-amber-500" />
                   3 Style
                 </div>
                 <p className="text-[10px] text-amber-700/80 dark:text-amber-400/80 mt-0.5">Chân thành, Khéo léo</p>
               </div>
-              <div className="p-2 rounded-xl border border-emerald-200/70 dark:border-emerald-900/40 bg-emerald-50/40 dark:bg-emerald-950/20">
+              <div className="p-2.5 rounded-xl border border-emerald-200/70 dark:border-emerald-900/40 bg-emerald-50/40 dark:bg-emerald-950/20">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-900 dark:text-emerald-300">
                   <HeartHandshake size={13} className="text-emerald-500 shrink-0" />
                   Xoa Dịu
                 </div>
                 <p className="text-[10px] text-emerald-700/80 dark:text-emerald-400/80 mt-0.5">Giảm bức xúc ngay</p>
               </div>
-              <div className="p-2 rounded-xl border border-orange-200/70 dark:border-orange-900/40 bg-orange-50/40 dark:bg-orange-950/20">
+              <div className="p-2.5 rounded-xl border border-orange-200/70 dark:border-orange-900/40 bg-orange-50/40 dark:bg-orange-950/20">
                 <div className="flex items-center gap-1.5 text-xs font-bold text-orange-900 dark:text-orange-300">
                   <ShieldCheck size={13} className="text-orange-500 shrink-0" />
                   Cứu Uy Tín
@@ -250,7 +224,7 @@ export default function ReviewReplier() {
                     onClick={() => setRating(item.value)}
                     className={`py-2 px-2.5 rounded-xl border text-center transition-all cursor-pointer ${
                       rating === item.value
-                        ? "border-amber-500 bg-amber-50/80 dark:bg-amber-950/40 text-amber-900 dark:text-amber-200 shadow-xs ring-1 ring-amber-500/20"
+                        ? "border-emerald-500 bg-emerald-50/80 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200 shadow-xs ring-1 ring-emerald-500/20"
                         : "border-slate-200 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 text-slate-600 dark:text-slate-400"
                     }`}
                   >
@@ -282,7 +256,7 @@ export default function ReviewReplier() {
                       onClick={() => handleSelectTag(item)}
                       className={`text-[11px] font-medium px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
                         isSelected
-                          ? "bg-amber-500 text-white border-amber-500 shadow-xs"
+                          ? "bg-emerald-600 text-white border-emerald-600 shadow-xs"
                           : "bg-slate-50 dark:bg-slate-800/80 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700/80 hover:bg-slate-100 dark:hover:bg-slate-800"
                       }`}
                     >
@@ -306,8 +280,8 @@ export default function ReviewReplier() {
                 onChange={(e) => setReviewContent(e.target.value)}
                 rows={4}
                 placeholder="Dán nguyên văn câu chê bai hoặc nhận xét của khách vào đây...&#10;VD: Áo vải xấu quá, giao hàng chậm 5 ngày, nhắn tin không thèm rep, shop làm ăn lừa đảo..."
-                className="w-full px-3 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all resize-none placeholder:text-slate-400 leading-relaxed"
-              ></textarea>
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-emerald-500 transition-all resize-none placeholder:text-slate-400 leading-relaxed"
+              />
             </div>
 
             {/* Ghi chú thêm cho AI (Tùy chọn) */}
@@ -320,27 +294,16 @@ export default function ReviewReplier() {
                 value={note}
                 onChange={(e) => setNote(e.target.value)}
                 placeholder="VD: Hàng bị bưu tá làm ướt hộp, shop đồng ý đổi mới hoặc bù mã 50k..."
-                className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 transition-all placeholder:text-slate-400"
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-slate-100 focus:outline-hidden focus:ring-2 focus:ring-emerald-500 transition-all placeholder:text-slate-400"
               />
             </div>
 
-            {/* Tips Card */}
-            <div className="bg-slate-100 dark:bg-slate-900/60 rounded-xl p-3 border border-slate-200/80 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
-              <p className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <Clock size={13} className="text-amber-500" /> Bí quyết phản hồi đánh giá 1 sao thành công:
-              </p>
-              <p>• <strong>Tốc độ là vàng:</strong> Phản hồi trong 1-2h giúp giảm 80% tỷ lệ khách giữ nguyên đánh giá xấu.</p>
-              <p>• <strong>Luôn đưa giải pháp:</strong> Nhận lỗi cầu thị & đề xuất đền bù (đổi mới/voucher) trước khi phân trần lý do.</p>
-            </div>
-          </div>
-
-          {/* Sticky footer submit button */}
-          <div className="p-3 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0 space-y-1.5">
+            {/* Nút Submit */}
             <button
               type="button"
               onClick={handleGenerate}
               disabled={loading || !reviewContent.trim()}
-              className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-500 via-amber-600 to-orange-600 hover:from-amber-600 hover:via-amber-700 hover:to-orange-700 text-white font-bold text-xs sm:text-sm shadow-md shadow-amber-500/25 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99]"
+              className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 text-white font-bold text-sm shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99]"
             >
               {loading ? (
                 <>
@@ -348,12 +311,12 @@ export default function ReviewReplier() {
                 </>
               ) : (
                 <>
-                  <Sparkles size={16} /> Phản Hồi Đắc Nhân Tâm Bằng AI
+                  <Send size={16} /> Phản Hồi Đắc Nhân Tâm Bằng AI
                 </>
               )}
             </button>
 
-            {/* Thông tin quota tài khoản */}
+            {/* Quota info */}
             <p aria-live="polite" className="text-[10px] text-center text-slate-400">
               {userQuota?.isLogged ? (
                 userQuota.isVIP ? (
@@ -362,7 +325,7 @@ export default function ReviewReplier() {
                   </span>
                 ) : (
                   <span>
-                    ⚡ Còn <strong className={userQuota.remainingFree === 0 ? "text-rose-500" : "text-emerald-500"}>{userQuota.remainingFree ?? 0}</strong>/{userQuota.dailyFreeLimit} lượt hôm nay · <Link href="/profile#pricing-section" className="text-amber-600 dark:text-amber-400 font-bold hover:underline">Nâng cấp VIP</Link>
+                    ⚡ Còn <strong className={userQuota.remainingFree === 0 ? "text-rose-500" : "text-emerald-500"}>{userQuota.remainingFree ?? 0}</strong>/{userQuota.dailyFreeLimit} lượt hôm nay · <Link href="/profile#pricing-section" className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline">Nâng cấp VIP</Link>
                   </span>
                 )
               ) : (
@@ -370,10 +333,19 @@ export default function ReviewReplier() {
               )}
             </p>
           </div>
+
+          {/* Tips Card */}
+          <div className="bg-slate-100 dark:bg-slate-900/60 rounded-xl p-3.5 border border-slate-200/80 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
+            <p className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+              <Clock size={13} className="text-emerald-500" /> Bí quyết phản hồi đánh giá 1 sao thành công:
+            </p>
+            <p>• <strong>Tốc độ là vàng:</strong> Phản hồi trong 1-2h giúp giảm 80% tỷ lệ khách giữ nguyên đánh giá xấu.</p>
+            <p>• <strong>Luôn đưa giải pháp:</strong> Nhận lỗi cầu thị & đề xuất đền bù (đổi mới/voucher) trước khi phân trần lý do.</p>
+          </div>
         </div>
 
         {/* CỘT PHẢI: HIỂN THỊ KẾT QUẢ */}
-        <div className="flex-1 min-h-0 h-full flex flex-col overflow-hidden">
+        <div className="lg:col-span-7 min-h-[520px]">
           <ReviewReplierOutput
             result={result}
             loading={loading}

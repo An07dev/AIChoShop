@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import { hashToken, SEO_SESSION_COOKIE } from "@/lib/seo/session";
 import { securityEvent } from "./audit-operations";
+import { isAllowedOrigin } from "@/lib/http/origin";
 
 export async function getSessionUser() {
   const token = (await cookies()).get(SEO_SESSION_COOKIE)?.value;
@@ -38,8 +39,7 @@ export async function adminRouteGuard(request?: Request) {
     return Response.json({ success: false, error: "Không có quyền quản trị." }, { status: 403 });
   }
   if (request && !["GET", "HEAD"].includes(request.method)) {
-    const origin = request.headers.get("origin");
-    if ((origin && origin !== new URL(request.url).origin) || request.headers.get("sec-fetch-site") === "cross-site") {
+    if (!isAllowedOrigin(request)) {
       await securityEvent(user.id, "ADMIN_ORIGIN_DENIED", `${request.method} ${new URL(request.url).pathname}`);
       return Response.json({ success: false, error: "Nguồn yêu cầu không hợp lệ." }, { status: 403 });
     }
