@@ -28,7 +28,7 @@ export default async function PricingFeesAdminPage() {
   return <div className="space-y-6">
     <AdminPageHeader
       title="Quản Trị Biểu Phí Sàn Thương Mại Điện Tử"
-      subtitle={`Cập nhật tỷ lệ hoa hồng, phí thanh toán và phí cố định cho Shopee, TikTok Shop, Lazada. Dữ liệu tích hợp phiên bản ${FEE_DATA_VERSION}.`}
+      subtitle={`Cập nhật tỷ lệ hoa hồng, phí giao dịch và phí theo đơn cho Shopee, TikTok Shop. Dữ liệu tích hợp phiên bản ${FEE_DATA_VERSION}.`}
       icon={Database}
       iconGradient="from-blue-600 to-indigo-600"
       badge={

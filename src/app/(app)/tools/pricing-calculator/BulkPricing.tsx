@@ -5,7 +5,7 @@ import { Calculator, ChevronDown, ChevronUp, Download, FileSpreadsheet, Plus, Sa
 import { calculatePricing } from "@/lib/pricing/engine";
 import { resolveFeeProfile } from "@/lib/pricing/fee-resolver";
 import { csvNumber, MAX_CSV_ROWS, parseCsv, safeSpreadsheetRows } from "@/lib/pricing/csv";
-import { detectCategory, getAvailableCategories, getCategoryLabel, getDefaultCategoryId, getFeeProfile, getOfficialCategory, PROGRAMS } from "@/lib/pricing/registry";
+import { detectCategory, getAvailableCategories, getAvailablePrograms, getCategoryLabel, getDefaultCategoryId, getFeeProfile, getOfficialCategory } from "@/lib/pricing/registry";
 import { downloadTextFile, type PricingCalculationSnapshot } from "@/lib/pricing/storage";
 import type { CostMode, FeeOverrideRecord, Platform, PricingInput, ShopType, TaxMode } from "@/lib/pricing/types";
 
@@ -733,7 +733,7 @@ export default function BulkPricing({
                                   </span>
                                 </label>
                               )}
-                              {PROGRAMS[platform].map((program) => (
+                              {getAvailablePrograms(platform, setting.shopType).map((program) => (
                                 <label
                                   key={program.id}
                                   className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 p-3 text-xs"

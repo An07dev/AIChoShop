@@ -49,8 +49,18 @@ test("đơn ngoài chỉ tính các phí thanh toán, COD và xử lý do ngư�
 });
 
 test("phí chương trình không vượt mức trần", () => {
-  const evaluation = evaluatePrice({ ...baseInput, enabledProgramIds: ["shopee_freeship"] }, 2_000_000);
+  const evaluation = evaluatePrice({ ...baseInput, shopType: "mall", enabledProgramIds: ["shopee_freeship"] }, 2_000_000);
   assert.equal(evaluation.fees.find((fee) => fee.id === "shopee_freeship")?.amount, 50_000);
+});
+
+test("không cho áp chương trình Shopee Mall vào shop thường", () => {
+  assert.match(calculatePricing({ ...baseInput, enabledProgramIds: ["shopee_freeship"] }, "target", 0,
+    { mode: "margin", value: 20, roundingStep: 1000 }).error ?? "", /Chương trình/);
+});
+
+test("phí theo đơn mặc định chỉ áp dụng cho TikTok Shop", () => {
+  assert.equal(getFeeProfile("shopee", "marketplace", baseInput.categoryId).orderProcessingFee, 0);
+  assert.equal(getFeeProfile("tiktok", "marketplace", "tiktok-e629d438d811").orderProcessingFee, 3000);
 });
 
 test("giữ nguyên số âm khi giá bán gây lỗ", () => {

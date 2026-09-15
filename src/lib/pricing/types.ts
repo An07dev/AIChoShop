@@ -12,7 +12,8 @@ export type OfficialFeeCategory = {
 
 export type FeeProgram = {
   id: string; name: string; rate: number; cap: number | null;
-  defaultEnabled: boolean; note: string;
+  defaultEnabled: boolean; note: string; shopTypes: ShopType[];
+  effectiveFrom: string; verifiedAt: string; sourceUrl: string;
 };
 
 export type PlatformFeeProfile = {

@@ -14,7 +14,7 @@ Nhánh `codex/hoan-thien-pricing-koc`. Phạm vi: CALC-01, CALC-03, CALC-04, CAL
 
 ## Database
 
-SQL bổ sung: `prisma/manual/guard_pricing_fee_periods.sql`. Cần kiểm tra dữ liệu chồng lấn và backup trước khi chạy production. Chưa áp dụng SQL này lên database production trong đợt mã nguồn này.
+SQL bổ sung: `prisma/manual/guard_pricing_fee_periods.sql`. Đã sao lưu, phục hồi thử và áp dụng lên Supabase production ngày 15/09/2026; xem `docs/cap-nhat-supabase-pricing-20260915.md`.
 
 ## Kiểm thử
 

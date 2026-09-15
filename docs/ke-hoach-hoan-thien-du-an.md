@@ -129,7 +129,7 @@ Phần mã chính: [API AI](/D:/AIChoShop/src/app/api/ai/route.ts), [SEO](/D:/AI
 ### Giá bán
 
 - [x] **CALC-01 — Sửa gợi ý ngành.** Không khớp phải trả null; hiển thị độ chắc chắn và cho chọn thủ công. Chuỗi vô nghĩa không tự ra “Laptop”.
-- [ ] **CALC-02 — Quản trị biểu phí.** Mỗi tập phí có nguồn, ngày hiệu lực, ngày đối chiếu, phạm vi shop và chương trình. Kiểm chứng các mức thực sự dùng khi phát hành, không chỉ dựa nhãn “official”.
+- [x] **CALC-02 — Quản trị biểu phí.** Mỗi tập phí có nguồn, ngày hiệu lực, ngày đối chiếu, phạm vi shop và chương trình. Kiểm chứng các mức thực sự dùng khi phát hành, không chỉ dựa nhãn “official”.
 - [x] **CALC-03 — Fee resolver dùng chung.** Áp dụng cùng thứ tự ưu tiên dữ liệu tích hợp/admin override/manual input cho pricing, bulk và KOC. Snapshot lưu mức phí và version đã sử dụng.
 - [x] **CALC-04 — Validation đầy đủ.** Chặn NaN/Infinity, số âm không hợp lệ, phần trăm ngoài miền, số lượng không hợp lệ, target/rounding sai. Kiểm tra kết quả solver vẫn đạt mục tiêu sau làm tròn.
 - [x] **CALC-05 — CSV/XLSX.** Parser hỗ trợ dấu nháy, dấu phẩy, ô xuống dòng, BOM và định dạng số; báo lỗi theo dòng. Bảo vệ export khỏi formula injection; giới hạn file/dòng để không treo trình duyệt.

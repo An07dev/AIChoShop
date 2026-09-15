@@ -38,11 +38,11 @@ import {
   detectCategoryMatch,
   FEE_DATA_VERSION,
   getAvailableCategories,
+  getAvailablePrograms,
   getCategoryLabel,
   getDefaultCategoryId,
   getFeeProfile,
   getOfficialCategory,
-  PROGRAMS,
   SOURCES,
 } from "@/lib/pricing/registry";
 import { readPricingHistory, writePricingHistory, type PricingCalculationSnapshot } from "@/lib/pricing/storage";
@@ -1634,7 +1634,7 @@ function AdvancedFields({
             Sử dụng lại mức mặc định sàn
           </button>
           <div className="mt-3 space-y-2.5">
-            {PROGRAMS[input.platform].map((p) => (
+            {getAvailablePrograms(input.platform, input.shopType).map((p) => (
               <label
                 key={p.id}
                 className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 hover:border-brand/40 p-3.5 transition-colors"

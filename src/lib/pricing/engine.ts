@@ -1,4 +1,4 @@
-import { getAvailableCategories, getFeeProfile, PROGRAMS } from "./registry.ts";
+import { getAvailableCategories, getAvailablePrograms, getFeeProfile } from "./registry.ts";
 import type { AppliedFee, PriceEvaluation, PricingInput, PricingResult, ScenarioWeights, Target } from "./types.ts";
 
 const clamp = (value: number, min: number, max: number) =>
@@ -38,7 +38,7 @@ export function validatePricingInput(input: PricingInput) {
   if (overrideRates.some((value) => value < 0 || value > 100)) return "Phí sàn phải nằm trong khoảng 0–100%.";
   if (input.fixedFeeOverride !== null && input.fixedFeeOverride < 0) return "Phí cố định không được âm.";
   if (input.marketingMode === "percent" && input.marketingValue > 100) return "Chi phí marketing theo phần trăm không được vượt 100%.";
-  const allowedPrograms = new Set(PROGRAMS[input.platform].map((item) => item.id));
+  const allowedPrograms = new Set(getAvailablePrograms(input.platform, input.shopType).map((item) => item.id));
   if (new Set(input.enabledProgramIds).size !== input.enabledProgramIds.length || input.enabledProgramIds.some((id) => !allowedPrograms.has(id))) return "Chương trình phí không hợp lệ hoặc bị trùng.";
   return null;
 }
@@ -64,7 +64,7 @@ export function evaluatePrice(input: PricingInput, listPrice: number): PriceEval
     { id: "transaction", name: input.platform === "external" ? "Phí COD/đối tác" : "Phí xử lý giao dịch", base: transactionBase, rate: transactionRate, amount: feeAmount(transactionBase, transactionRate, null) },
     { id: "order", name: input.platform === "external" ? "Phí xử lý đơn" : "Phí xử lý/hạ tầng theo đơn", base: 1, rate: null, amount: Math.max(0, fixedFee) },
   ];
-  for (const program of PROGRAMS[input.platform].filter((item) => input.enabledProgramIds.includes(item.id))) {
+  for (const program of getAvailablePrograms(input.platform, input.shopType).filter((item) => input.enabledProgramIds.includes(item.id))) {
     fees.push({ id: program.id, name: program.name, base: productRevenue, rate: program.rate,
       amount: feeAmount(productRevenue, program.rate, program.cap), note: program.note });
   }

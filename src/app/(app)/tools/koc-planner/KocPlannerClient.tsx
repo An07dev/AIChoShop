@@ -60,9 +60,9 @@ import type { KocPlanInput, KocPlanResult } from "@/lib/koc-planner/types";
 import {
   FEE_DATA_VERSION,
   getAvailableCategories,
+  getAvailablePrograms,
   getCategoryLabel,
   getDefaultCategoryId,
-  PROGRAMS,
   SOURCES,
 } from "@/lib/pricing/registry";
 import { readPricingHistory, type PricingCalculationSnapshot } from "@/lib/pricing/storage";
@@ -1318,7 +1318,7 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                         Chương trình dịch vụ sàn bổ sung
                       </span>
                       <div className="grid gap-2">
-                        {PROGRAMS.tiktok.map((prog) => {
+                        {getAvailablePrograms("tiktok", input.shopType).map((prog) => {
                           const isChecked = input.enabledProgramIds.includes(prog.id);
                           return (
                             <label
