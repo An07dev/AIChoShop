@@ -1664,7 +1664,7 @@ function AdvancedFields({
             onChange={(e) => update("taxMode", e.target.value as TaxMode)}
             className="w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800/80 px-3.5 py-2.5 text-sm font-semibold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
           >
-            <option value="household_exempt" className="dark:bg-slate-900">Hộ/cá nhân — doanh thu năm ≤ 500 triệu (Miễn thuế)</option>
+            <option value="household_exempt" className="dark:bg-slate-900">Hộ/cá nhân — đủ điều kiện miễn thuế năm 2026</option>
             <option value="household_revenue" className="dark:bg-slate-900">Hộ/cá nhân — tính theo tỷ lệ doanh thu</option>
             <option value="profit_based" className="dark:bg-slate-900">Doanh nghiệp/hộ — tính trên lợi nhuận ròng</option>
             <option value="manual" className="dark:bg-slate-900">Tự nhập tỷ lệ thuế theo doanh thu</option>

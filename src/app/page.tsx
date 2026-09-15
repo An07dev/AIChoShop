@@ -228,7 +228,7 @@ export default async function LandingPage() {
             </Link>
 
             <SmallToolCard href="/tools/pricing-calculator" icon={<TrendingUp size={20} />} iconBg="bg-teal-50 text-teal-600" title="Tính Giá Bán" desc="Không bao giờ bán lỗ" />
-            <SmallToolCard href="/tools/tax-calculator" icon={<Calculator size={20} />} iconBg="bg-rose-50 text-rose-600" title="Tính Thuế TMĐT" desc="Thuế GTGT, TNCN chuẩn xác" />
+            <SmallToolCard href="/tools/tax-calculator" icon={<Calculator size={20} />} iconBg="bg-rose-50 text-rose-600" title="Tính Thuế TMĐT" desc="Dự toán GTGT, TNCN theo quy tắc 2026" />
 
             {/* Row 3: Large card 4 + 2 Small cards */}
             <Link href="/tools/video-repurposer" className="col-span-2 bg-white border border-slate-200 rounded-2xl p-6 hover:border-blue-200 hover:shadow-md transition-all group">

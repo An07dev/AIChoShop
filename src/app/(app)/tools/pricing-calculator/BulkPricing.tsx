@@ -594,7 +594,7 @@ export default function BulkPricing({
                         onChange={(event) => updateCommon("taxMode", event.target.value as TaxMode)}
                         className="w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 px-3 py-2 text-sm font-semibold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
                       >
-                        <option value="household_exempt" className="dark:bg-slate-900">Hộ/cá nhân ≤ 500 triệu/năm</option>
+                        <option value="household_exempt" className="dark:bg-slate-900">Hộ/cá nhân đủ điều kiện miễn thuế 2026</option>
                         <option value="household_revenue" className="dark:bg-slate-900">Hộ/cá nhân tính trên doanh thu</option>
                         <option value="profit_based" className="dark:bg-slate-900">Tính trên lợi nhuận ròng</option>
                         <option value="manual" className="dark:bg-slate-900">Tỷ lệ doanh thu tự nhập</option>
