@@ -60,7 +60,7 @@ async function activate(tx: Prisma.TransactionClient, intent: Transaction, event
 }
 
 export async function processBankEvent(event: BankEvent, autoActivate: boolean) {
-  return prisma.$transaction(async tx => {
+  const result = await prisma.$transaction(async tx => {
     const inserted = await tx.paymentWebhookEvent.createMany({ data: [{ ...event, status: "RECEIVED" }], skipDuplicates: true });
     if (inserted.count === 0) {
       const previous = await tx.paymentWebhookEvent.findUniqueOrThrow({ where: { id: event.id } });
@@ -77,12 +77,16 @@ export async function processBankEvent(event: BankEvent, autoActivate: boolean) 
     const intent = candidate ? await lockIntent(tx, candidate.id) : null;
     let reason = intent ? paymentReviewReason(intent, event, now) : "UNKNOWN_PAYMENT_CODE";
     if (!reason && !autoActivate) reason = "AUTO_ACTIVATION_DISABLED";
-    if (intent && !reason && await activate(tx, intent, event.id, null, now)) return { status: "APPLIED", duplicate: false };
+    if (intent && !reason && await activate(tx, intent, event.id, null, now)) {
+      return { status: "APPLIED", duplicate: false };
+    }
     if (!reason) reason = "ACCOUNT_LOCKED";
     await tx.paymentWebhookEvent.update({ where: { id: event.id }, data: { status: "REVIEW", reason, transactionId: intent?.id ?? null, processedAt: now } });
     if (intent && ["PENDING", "EXPIRED"].includes(intent.status)) await tx.transaction.update({ where: { id: intent.id }, data: { status: "REVIEW" } });
     return { status: "REVIEW", duplicate: false };
   }, { maxWait: 5000, timeout: 15000 });
+
+  return result;
 }
 
 export async function approvePaymentIntent(intentId: string, adminId: string) {
@@ -92,7 +96,7 @@ export async function approvePaymentIntent(intentId: string, adminId: string) {
   if (!snapshot) throw new Error("Không tìm thấy yêu cầu thanh toán.");
   const event = events.find(item => item.transferType === "in" && !paymentReviewReason(snapshot, { ...item, transferType: "in" }, new Date(), true));
   if (!event) throw new Error("Chưa có giao dịch ngân hàng khớp mã, tài khoản và số tiền để duyệt.");
-  return prisma.$transaction(async tx => {
+  await prisma.$transaction(async tx => {
     await tx.$queryRaw`SELECT id FROM "PaymentWebhookEvent" WHERE id = ${event.id} FOR UPDATE`;
     const currentEvent = await tx.paymentWebhookEvent.findUniqueOrThrow({ where: { id: event.id } });
     const intent = await lockIntent(tx, intentId);

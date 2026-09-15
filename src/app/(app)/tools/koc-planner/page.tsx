@@ -405,24 +405,7 @@ export default function KocPlanner() {
   const [searchFilter, setSearchFilter] = useState("");
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
-  // Khóa cuộn trang chính trên desktop, chỉ cho phép cuộn nội bộ phần input và output
-  useEffect(() => {
-    const main = document.querySelector("main");
-    if (!main) return;
-    const handleResize = () => {
-      if (window.innerWidth >= 1024) {
-        main.style.overflow = "hidden";
-      } else {
-        main.style.overflow = "auto";
-      }
-    };
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => {
-      main.style.overflow = "";
-      window.removeEventListener("resize", handleResize);
-    };
-  }, []);
+  // Không khóa cuộn trang để đồng bộ trải nghiệm cuộn tự nhiên với các công cụ khác
 
   const categories = useMemo(() => getAvailableCategories("tiktok", shopType), [shopType]);
   const category = categories.find((item) => item.id === categoryId) ?? categories[0];
@@ -678,7 +661,7 @@ export default function KocPlanner() {
   const singleKocCost = input.sampleCost + input.sampleShippingCost + input.castFee;
 
   return (
-    <div className="w-full max-w-7xl mx-auto flex-1 flex flex-col min-h-0 overflow-hidden">
+    <div className="max-w-7xl mx-auto space-y-6 pb-12">
       <GateModals />
 
       {/* Modal Lịch Sử Phương Án Đã Lưu */}
@@ -877,16 +860,16 @@ export default function KocPlanner() {
       )}
 
       {/* 1. Header Navigation & Quick Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 shrink-0">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
-            <Link href="/tools" className="hover:text-brand transition-colors flex items-center gap-1">
-              <ArrowLeft size={12} /> Kho Công Cụ
+            <Link href="/tools" className="hover:text-emerald-600 transition-colors flex items-center gap-1">
+              <ArrowLeft size={12} /> Kho Công Cụ AI
             </Link>
             <span>/</span>
             <span className="text-slate-600 dark:text-slate-300">Tăng Trưởng Doanh Số</span>
           </div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex flex-wrap items-center gap-2 sm:gap-3">
+          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white flex flex-wrap items-center gap-2 sm:gap-3">
             Lập Kế Hoạch KOC Campaign TikTok Shop
             <span className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 shadow-xs uppercase tracking-wider">
               <Crown size={11} className="text-amber-600 dark:text-amber-400" />
@@ -896,10 +879,13 @@ export default function KocPlanner() {
               PHÍ TIKTOK {FEE_DATA_VERSION}
             </span>
           </h1>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Lập kế hoạch chiến dịch KOC TikTok Shop, tính toán điểm hòa vốn và dự phóng dòng tiền P&L chính xác.
+          </p>
         </div>
 
         {/* Quick Actions Bar */}
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
+        <div className="flex items-center gap-2">
           {saveNotice && (
             <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-800">
               <Check size={13} /> {saveNotice}
@@ -916,7 +902,7 @@ export default function KocPlanner() {
           <button
             type="button"
             onClick={runSample}
-            className="px-3 py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 text-xs font-bold hover:bg-indigo-100/50 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+            className="px-3 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold hover:bg-emerald-100/50 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
           >
             <Sparkles size={14} /> Dữ Liệu Mẫu
           </button>
@@ -930,10 +916,11 @@ export default function KocPlanner() {
         </div>
       </div>
 
-      {/* 2. Main 2-Column Core Architecture: Cả 2 cuộn độc lập, trang ngoài không cuộn */}
-      <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 overflow-hidden">
+      {/* 2. Main 2-Column Core Architecture: Grid 12 cột chuẩn Chat Broadcast */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* CỘT TRÁI: FORM NHẬP LIỆU */}
-        <div className="w-full lg:w-[480px] xl:w-[500px] shrink-0 flex flex-col h-full min-h-0 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden">
+        <div className="lg:col-span-5 space-y-5">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden">
           {/* Header cột trái */}
           <div className="px-4 py-2.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-800/50 shrink-0">
             <div className="flex items-center gap-2">
@@ -1460,9 +1447,10 @@ export default function KocPlanner() {
             </button>
           </div>
         </div>
+      </div>
 
-        {/* CỘT PHẢI: KẾT QUẢ DỰ PHÓNG TÀI CHÍNH */}
-        <div className="flex-1 min-h-0 h-full flex flex-col overflow-hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl relative">
+      {/* CỘT PHẢI: KẾT QUẢ DỰ PHÓNG TÀI CHÍNH */}
+      <div className="lg:col-span-7 min-h-[520px] flex flex-col bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl relative overflow-hidden">
           {/* Header cột phải */}
           <div className="px-4 py-2.5 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2.5 relative z-10 bg-slate-50/70 dark:bg-slate-800/50 backdrop-blur-md shrink-0">
             <div className="flex items-center gap-2">

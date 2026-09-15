@@ -4,7 +4,19 @@ import { prisma } from "./prisma";
 import { isVipActive } from "./vip-expiration";
 import { SeoError } from "./seo/contract";
 
-export const AI_TOOLS = ["seo-optimizer", "script-writer", "appeal-generator", "ad-copy", "review-replier", "chat-broadcast", "title-spinner", "video-repurposer", "koc-planner"];
+export const AI_TOOLS = [
+  "seo-optimizer",
+  "script-writer",
+  "appeal-generator",
+  "ad-copy",
+  "review-replier",
+  "chat-broadcast",
+  "title-spinner",
+  "video-repurposer",
+  "koc-planner",
+  "vision-listing",
+  "policy-checker",
+];
 export function vnDayStart(now = new Date()) {
   return new Date(Math.floor((now.getTime() + 25_200_000) / 86_400_000) * 86_400_000 - 25_200_000);
 }
