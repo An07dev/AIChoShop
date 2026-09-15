@@ -44,9 +44,9 @@ export async function approveTransactionAction(txId: string) {
 }
 
 export async function deleteTransactionAction(txId: string) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   try {
-    await cancelUnpaidIntent(txId);
+    await cancelUnpaidIntent(txId, admin.id);
     revalidatePath("/admin/sepay");
     return { success: true, message: "Đã hủy yêu cầu chưa thanh toán; bản ghi vẫn được giữ để đối soát." };
   } catch (error) { return { success: false, error: error instanceof Error ? error.message : "Không thể hủy yêu cầu." }; }

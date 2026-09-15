@@ -70,7 +70,7 @@ export default function LoginPage() {
                   <label className="block text-sm font-bold text-slate-700">
                     Mật khẩu
                   </label>
-                  <Link href="#" className="text-xs font-bold text-blue-600 hover:text-blue-700">
+                  <Link href="/forgot-password" className="text-xs font-bold text-blue-600 hover:text-blue-700">
                     Quên mật khẩu?
                   </Link>
                 </div>

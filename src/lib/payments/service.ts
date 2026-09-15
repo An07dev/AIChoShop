@@ -1,6 +1,7 @@
 import { randomBytes } from "node:crypto";
 import type { Prisma, Transaction } from "@prisma/client";
 import { prisma } from "@/lib/prisma";
+import { audit } from "@/lib/auth/audit";
 import { extractPaymentCode, nextVipExpiry, normalizeAccount, paymentReviewReason, type BankEvent } from "./policy";
 
 type PaymentConfig = { bankName: string; accountNumber: string; accountHolder: string; apiKey: string | null; autoActivate: boolean };
@@ -97,15 +98,17 @@ export async function approvePaymentIntent(intentId: string, adminId: string) {
     const intent = await lockIntent(tx, intentId);
     if (!intent || currentEvent.status !== "REVIEW" || paymentReviewReason(intent, { ...currentEvent, transferType: "in" }, new Date(), true)) throw new Error("Giao dịch đã thay đổi hoặc đã được xử lý.");
     if (!await activate(tx, intent, event.id, adminId, new Date())) throw new Error("Tài khoản đang bị khóa.");
+    await audit(tx, adminId, "PAYMENT_APPROVED", intent.id, { amount: intent.amount });
   });
 }
 
-export async function cancelUnpaidIntent(intentId: string) {
+export async function cancelUnpaidIntent(intentId: string, adminId?: string) {
   return prisma.$transaction(async tx => {
     const intent = await lockIntent(tx, intentId);
     if (!intent || intent.status !== "PENDING" || intent.paidAt || intent.sepayId || await tx.paymentWebhookEvent.count({ where: { transactionId: intentId } })) {
       throw new Error("Chỉ được hủy yêu cầu chưa nhận tiền. Giao dịch đã ghi nhận phải được giữ để đối soát.");
     }
     await tx.transaction.update({ where: { id: intentId }, data: { status: "CANCELLED" } });
+    if (adminId) await audit(tx, adminId, "PAYMENT_CANCELLED", intentId);
   });
 }

@@ -1,5 +1,6 @@
 "use server";
 
+import { audit, auditedUserUpdate } from "@/lib/auth/audit";
 import { requireAdmin } from "@/lib/auth/session";
 import { guardAdminAccountChange } from "@/lib/auth/admin-account";
 
@@ -14,7 +15,7 @@ import { calculateNewVipExpiration } from "@/lib/sepay-server";
 
 // Bật / Tắt trạng thái VIP nhanh
 export async function toggleUserVip(userId: string, newVipStatus: boolean) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   try {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return { success: false, error: "Người dùng không tồn tại" };
@@ -27,13 +28,10 @@ export async function toggleUserVip(userId: string, newVipStatus: boolean) {
       }
     }
 
-    const updated = await prisma.user.update({
-      where: { id: userId },
-      data: {
+    const updated = await auditedUserUpdate(admin.id, userId, "VIP_CHANGED", {
         isVIP: newVipStatus,
         vipExpiresAt: newVipStatus ? newExpiresAt : null,
-      },
-    });
+      });
 
     revalidatePath("/admin/users");
     revalidatePath("/admin");
@@ -56,7 +54,7 @@ export async function updateUserVipDuration(
   days?: number,
   customDate?: string
 ) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   try {
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (!user) return { success: false, error: "Người dùng không tồn tại" };
@@ -83,13 +81,10 @@ export async function updateUserVipDuration(
       newIsVIP = parsed.getTime() > Date.now();
     }
 
-    const updated = await prisma.user.update({
-      where: { id: userId },
-      data: {
+    const updated = await auditedUserUpdate(admin.id, userId, "VIP_CHANGED", {
         isVIP: newIsVIP,
         vipExpiresAt: newExpiresAt,
-      },
-    });
+      });
 
     revalidatePath("/admin/users");
     revalidatePath("/admin");
@@ -119,6 +114,7 @@ export async function toggleUserLock(userId: string, newLockStatus: boolean) {
       await guardAdminAccountChange(tx, admin.id, userId);
       const updated = await tx.user.update({ where: { id: userId }, data: { isLocked: newLockStatus } });
       if (newLockStatus) await tx.seoSession.deleteMany({ where: { userId } });
+      await audit(tx, admin.id, "USER_LOCK_CHANGED", userId, { isLocked: newLockStatus });
       return updated;
     });
     revalidatePath("/admin/users");
@@ -140,7 +136,7 @@ export async function createUserByAdmin(data: {
   role?: "USER" | "ADMIN";
   dailyFreeLimit?: number;
 }) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   const { email, password, name, phone, isVIP = false, role = "USER", dailyFreeLimit = 12 } = data;
 
   if (!email || typeof password !== "string" || password.length < 6 || password.length > 256) {
@@ -156,13 +152,16 @@ export async function createUserByAdmin(data: {
       return { success: false, error: "Email này đã tồn tại trong hệ thống" };
     }
 
-    const created = await prisma.user.create({
+    if (!Number.isInteger(dailyFreeLimit) || dailyFreeLimit < 0 || dailyFreeLimit > 10000) throw new Error("Invalid limit");
+    await prisma.$transaction(async tx => {
+    const created = await tx.user.create({
       data: {
         email: email.trim().toLowerCase(),
         password: await hashPassword(password),
         name: name?.trim() || null,
         phone: phone?.trim() || null,
         isVIP: Boolean(isVIP),
+        dailyFreeLimit,
         role: role === "ADMIN" ? "ADMIN" : "USER",
         userCredit: {
           create: {
@@ -172,16 +171,8 @@ export async function createUserByAdmin(data: {
       },
     });
 
-    const limit = Number(dailyFreeLimit) || 12;
-    try {
-      await (prisma as any).$executeRawUnsafe(
-        'UPDATE "User" SET "dailyFreeLimit" = $1 WHERE id = $2',
-        limit,
-        created.id
-      );
-    } catch (e) {
-      console.warn("Could not set dailyFreeLimit on create:", e);
-    }
+    await audit(tx, admin.id, "USER_CREATED", created.id, { isAdmin: created.role === "ADMIN" });
+    });
 
     revalidatePath("/admin/users");
     revalidatePath("/admin");
@@ -194,13 +185,13 @@ export async function createUserByAdmin(data: {
 
 // Đổi mật khẩu người dùng bởi Admin
 export async function resetPasswordByAdmin(userId: string, newPassword: string) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   if (!newPassword || newPassword.length < 6) {
     return { success: false, error: "Mật khẩu mới phải có ít nhất 6 ký tự" };
   }
 
   try {
-    await replacePassword(userId, newPassword);
+    await replacePassword(userId, newPassword, undefined, admin.id);
     return { success: true };
   } catch (error) {
     console.error("Error resetting password:", error);
@@ -220,6 +211,7 @@ export async function deleteUserByAdmin(userId: string) {
       await tx.progress.deleteMany({ where: { userId } });
       await tx.userCredit.deleteMany({ where: { userId } });
       await tx.user.delete({ where: { id: userId } });
+      await audit(tx, admin.id, "USER_DELETED", userId);
     });
 
     revalidatePath("/admin/users");
@@ -233,21 +225,11 @@ export async function deleteUserByAdmin(userId: string) {
 
 // Cập nhật số lượt dùng Free mỗi ngày cho 1 tài khoản cụ thể
 export async function updateUserDailyFreeLimit(userId: string, newLimit: number) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   try {
-    const limit = Math.max(0, Math.floor(Number(newLimit) || 0));
-    try {
-      await (prisma.user as any).update({
-        where: { id: userId },
-        data: { dailyFreeLimit: limit },
-      });
-    } catch {
-      await (prisma as any).$executeRawUnsafe(
-        'UPDATE "User" SET "dailyFreeLimit" = $1 WHERE id = $2',
-        limit,
-        userId
-      );
-    }
+    const limit = Number(newLimit);
+    if (!Number.isInteger(limit) || limit < 0 || limit > 10000) throw new Error("Invalid limit");
+    await auditedUserUpdate(admin.id, userId, "USER_QUOTA_CHANGED", { dailyFreeLimit: limit });
     revalidatePath("/admin/users");
     revalidatePath("/admin");
     revalidatePath("/dashboard");
@@ -260,22 +242,15 @@ export async function updateUserDailyFreeLimit(userId: string, newLimit: number)
 
 // Cập nhật số lượt dùng Free mỗi ngày áp dụng CHUNG cho TẤT CẢ các tài khoản FREE
 export async function updateGlobalDailyFreeLimit(newLimit: number) {
-  await requireAdmin();
+  const admin = await requireAdmin();
   try {
-    const limit = Math.max(0, Math.floor(Number(newLimit) || 0));
-
-    // 1. Lưu cấu hình chung vào SystemSetting
-    await prisma.$executeRawUnsafe(
-      `UPDATE "SystemSetting" SET "defaultDailyFreeLimit" = $1 WHERE id = 'default'`,
-      limit
-    );
-
-    // 2. Cập nhật đồng loạt cho TẤT CẢ tài khoản trong bảng User
-    await prisma.$executeRawUnsafe(
-      `UPDATE "User" SET "dailyFreeLimit" = $1`,
-      limit
-    );
-
+    const limit = Number(newLimit);
+    if (!Number.isInteger(limit) || limit < 0 || limit > 10000) throw new Error("Invalid limit");
+    await prisma.$transaction(async tx => {
+      await tx.systemSetting.upsert({ where: { id: "default" }, create: { id: "default", defaultDailyFreeLimit: limit }, update: { defaultDailyFreeLimit: limit } });
+      await tx.user.updateMany({ data: { dailyFreeLimit: limit } });
+      await audit(tx, admin.id, "GLOBAL_QUOTA_CHANGED", "default", { limit });
+    });
     revalidatePath("/admin/users");
     revalidatePath("/admin");
     revalidatePath("/dashboard");
