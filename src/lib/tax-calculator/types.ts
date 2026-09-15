@@ -14,7 +14,8 @@ export type TaxCalculatorInput = {
   personalPreviousYearRevenue: number;
   profitMethodStartYear: number | null;
   shopeeRevenue: number; tiktokRevenue: number; otherPlatformRevenue: number; directRevenue: number;
-  platformFees: number; deductibleCosts: number; otherTaxableIncome: number; carriedLoss: number;
+  platformFees: number; platformFeesDeductible: boolean;
+  deductibleCosts: number; otherTaxableIncome: number; carriedLoss: number;
   withheldVat: number; withheldIncomeTax: number;
   companyPreviousYearRevenue: number; companyPreviousYearOperatingMonths: number; companyHasPreviousYearData: boolean;
   companyIsNewThisYear: boolean; companyHasDisqualifyingRelatedParty: boolean;
@@ -43,6 +44,7 @@ export type TaxCalculatorResult = {
   overpaidVat: number; overpaidIncomeTax: number; potentialRefundOrOffset: number;
   netCashAfterTaxAndPlatformFees: number; effectiveTaxRate: number; platformFeeRate: number; netRate: number;
   reductionEligible: boolean; annualizedCompanyReferenceRevenue: number;
+  deductiblePlatformFees: number;
   activityBreakdown: ActivityTaxBreakdown[]; ruleVersion: string; sources: TaxSource[];
   validationErrors: string[]; warnings: string[]; requiresProfessionalReview: boolean;
 };

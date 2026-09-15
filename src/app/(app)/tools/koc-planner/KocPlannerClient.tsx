@@ -53,10 +53,10 @@ import {
   Crown,
 } from "lucide-react";
 import { useToolGate } from "@/hooks/useToolGate";
-import { calculateKocPlan, validateKocPlanInput } from "@/lib/koc-planner/engine";
+import { calculateKocForecast, calculateKocPlan, validateKocPlanInput } from "@/lib/koc-planner/engine";
 import { isFeeProfileStale, resolveFeeProfile } from "@/lib/pricing/fee-resolver";
 import type { FeeOverrideRecord } from "@/lib/pricing/types";
-import type { KocPlanInput, KocPlanResult } from "@/lib/koc-planner/types";
+import type { KocForecast, KocPlanInput, KocPlanResult } from "@/lib/koc-planner/types";
 import {
   FEE_DATA_VERSION,
   getAvailableCategories,
@@ -65,9 +65,10 @@ import {
   getDefaultCategoryId,
   SOURCES,
 } from "@/lib/pricing/registry";
-import { readPricingHistory, type PricingCalculationSnapshot } from "@/lib/pricing/storage";
+import type { PricingCalculationSnapshot } from "@/lib/pricing/storage";
 import type { ShopType } from "@/lib/pricing/types";
 import { safeSpreadsheetCell } from "@/lib/pricing/csv";
+import { extractAccountPricingSnapshots, inspectPricingSnapshotVersion, type PricingHistoryPayload } from "@/lib/koc-planner/pricing-import";
 
 const currency = new Intl.NumberFormat("vi-VN", {
   style: "currency",
@@ -120,6 +121,10 @@ const initialInput: KocPlanInput = {
   damageRate: 5,
   extraKocCostRate: 10,
   otherOperatingCost: 0,
+  sourcePricingSnapshotId: null,
+  sourcePricingProductName: null,
+  sourcePricingCreatedAt: null,
+  sourcePricingFeeVersion: null,
 };
 
 type SavedPlan = {
@@ -359,8 +364,8 @@ function download(filename: string, content: string) {
   URL.revokeObjectURL(url);
 }
 
-function exportRows(campaignName: string, category: string, result: KocPlanResult): (string | number)[][] {
-  return [
+function exportRows(campaignName: string, category: string, result: KocPlanResult, forecast?: KocForecast | null): (string | number)[][] {
+  const rows: (string | number)[][] = [
     ["Chỉ số", "Giá trị"],
     ["Chiến dịch", campaignName],
     ["Ngành hàng TikTok Shop", category],
@@ -388,7 +393,15 @@ function exportRows(campaignName: string, category: string, result: KocPlanResul
     ["Đơn hòa vốn", result.breakEvenOrders ?? ""],
     ["CPA hòa vốn", result.breakEvenCpa ?? ""],
     ["Biên lợi nhuận ròng (%)", result.netMargin],
+    ["Phiên bản mô hình", result.modelVersion],
   ];
+  if (forecast) {
+    rows.push(["", ""], ["Kịch bản", "Lợi nhuận ròng"]);
+    for (const scenario of forecast.scenarios) rows.push([scenario.label, scenario.result.netProfit]);
+    rows.push(["", ""], ["Yếu tố độ nhạy", "Chênh lệch lợi nhuận"]);
+    for (const driver of forecast.sensitivity) rows.push([`${driver.label} (${driver.adverseChange})`, driver.netProfitDelta]);
+  }
+  return rows;
 }
 
 export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { feeOverrides: FeeOverrideRecord[]; feeLoadWarning?: boolean }) {
@@ -404,6 +417,8 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
   const [copied, setCopied] = useState(false);
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>([]);
   const [savedProducts, setSavedProducts] = useState<PricingCalculationSnapshot[]>([]);
+  const [pricingSourceStatus, setPricingSourceStatus] = useState<"loading" | "account" | "login" | "error">("loading");
+  const [pricingImportWarning, setPricingImportWarning] = useState("");
   const [saveNotice, setSaveNotice] = useState("");
   const [activeTab, setActiveTab] = useState<"budget" | "funnel" | "pnl">("budget");
   const [searchFilter, setSearchFilter] = useState("");
@@ -449,8 +464,19 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
   );
 
   const result = calculatedResult;
-  const update = <K extends keyof KocPlanInput>(key: K, value: KocPlanInput[K]) =>
+  const forecast = useMemo(
+    () => (lastCalculatedInput && calculatedResult ? calculateKocForecast(lastCalculatedInput) : null),
+    [calculatedResult, lastCalculatedInput]
+  );
+  const invalidateResult = () => {
+    setHasCalculated(false);
+    setCalculatedResult(null);
+    setLastCalculatedInput(null);
+  };
+  const update = <K extends keyof KocPlanInput>(key: K, value: KocPlanInput[K]) => {
     setInput((current) => ({ ...current, [key]: value }));
+    invalidateResult();
+  };
 
   useEffect(() => {
     checkAccess("koc-planner", false);
@@ -467,22 +493,49 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
     } catch {
       setSavedPlans([]);
     }
-    setSavedProducts(readPricingHistory(localStorage).filter((item) => item.input.platform === "tiktok"));
+    let cancelled = false;
+    fetch("/api/ai/usage?tool=pricing-calculator")
+      .then(async (response) => {
+        if (!response.ok) throw new Error("pricing history unavailable");
+        return response.json();
+      })
+      .then((data: PricingHistoryPayload) => {
+        if (cancelled) return;
+        if (!data.isLogged) {
+          setSavedProducts([]);
+          setPricingSourceStatus("login");
+          return;
+        }
+        setSavedProducts(extractAccountPricingSnapshots(data));
+        setPricingSourceStatus("account");
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setSavedProducts([]);
+          setPricingSourceStatus("error");
+        }
+      });
+    return () => { cancelled = true; };
   }, []);
 
   const changeShopType = (next: ShopType) => {
     setShopType(next);
     setCategoryId(getDefaultCategoryId("tiktok", next));
+    invalidateResult();
   };
 
   const chooseCategory = (matches: (item: typeof category) => boolean) => {
     const next = categories.find(matches);
-    if (next) setCategoryId(next.id);
+    if (next) {
+      setCategoryId(next.id);
+      invalidateResult();
+    }
   };
 
   const applySavedProduct = (id: string) => {
     const saved = savedProducts.find((item) => item.id === id);
     if (!saved) return;
+    invalidateResult();
     setShopType(saved.input.shopType);
     setCategoryId(saved.input.categoryId);
     setInput((current) => ({
@@ -512,8 +565,17 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
       returnCostPerOrder: saved.input.returnShippingCost,
       nonRefundableReturnFee: saved.input.nonRefundableReturnFee,
       damageRate: saved.input.damageRate,
+      sourcePricingSnapshotId: saved.id,
+      sourcePricingProductName: saved.productName,
+      sourcePricingCreatedAt: saved.createdAt,
+      sourcePricingFeeVersion: saved.feeVersion ?? "legacy",
     }));
-    setSaveNotice(`Đã nạp dữ liệu từ sản phẩm "${saved.productName}"`);
+    const savedProfile = resolveFeeProfile("tiktok", saved.input.shopType, saved.input.categoryId, feeOverrides);
+    const inspection = inspectPricingSnapshotVersion(saved, savedProfile.dataVersion);
+    setPricingImportWarning(inspection.requiresReview
+      ? `Bản tính giá được tạo với phí ${saved.feeVersion ?? "legacy"}; KOC sẽ dùng phí hiện tại ${savedProfile.dataVersion}. Hãy kiểm tra lại chênh lệch.`
+      : "");
+    setSaveNotice(`Đã nạp dữ liệu thuộc tài khoản hiện tại từ sản phẩm "${saved.productName}"`);
     setTimeout(() => setSaveNotice(""), 3000);
   };
 
@@ -562,6 +624,7 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
     setHasCalculated(false);
     setCalculatedResult(null);
     setLastCalculatedInput(null);
+    setPricingImportWarning("");
   };
 
   const save = () => {
@@ -638,7 +701,7 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
         calculatedResult.netRevenue
       )}\nTổng chi phí: ${money(calculatedResult.totalCost)}\nLợi nhuận ròng: ${money(
         calculatedResult.netProfit
-      )}\nROI: ${calculatedResult.roi.toFixed(1)}%`
+      )}\nROI: ${calculatedResult.roi.toFixed(1)}%${forecast ? `\nKịch bản thận trọng: ${money(forecast.scenarios[0].result.netProfit)}\nKịch bản thuận lợi: ${money(forecast.scenarios[2].result.netProfit)}\nMô hình: ${forecast.modelVersion}` : ""}`
     );
     setCopied(true);
     setTimeout(() => setCopied(false), 1800);
@@ -646,7 +709,7 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
 
   const exportCsv = () => {
     if (!calculatedResult || !lastCalculatedInput) return;
-    const rows = exportRows(lastCalculatedInput.campaignName || "Chien-dich-KOC", getCategoryLabel(category), calculatedResult);
+    const rows = exportRows(lastCalculatedInput.campaignName || "Chien-dich-KOC", getCategoryLabel(category), calculatedResult, forecast);
     download(
       `koc-plan-${Date.now()}.csv`,
       `\uFEFF${rows.map((row) => row.map((cell) => `"${String(safeSpreadsheetCell(cell)).replaceAll('"', '""')}"`).join(",")).join("\r\n")}`
@@ -660,7 +723,7 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
     XLSX.utils.book_append_sheet(
       workbook,
       XLSX.utils.aoa_to_sheet(
-        exportRows(lastCalculatedInput.campaignName || "Chien-dich-KOC", getCategoryLabel(category), calculatedResult)
+        exportRows(lastCalculatedInput.campaignName || "Chien-dich-KOC", getCategoryLabel(category), calculatedResult, forecast)
           .map((row) => row.map(safeSpreadsheetCell))
       ),
       "Kế hoạch KOC"
@@ -966,27 +1029,34 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
               </p>
 
               {/* Quick Load from Pricing History */}
-              {savedProducts.length > 0 && (
-                <div className="rounded-2xl border border-brand/20 bg-brand-light/30 dark:bg-brand-light/10 p-3.5 space-y-2">
+              <div className="rounded-2xl border border-brand/20 bg-brand-light/30 dark:bg-brand-light/10 p-3.5 space-y-2">
                   <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-brand">
-                    <Sparkles size={13} /> Nạp nhanh từ sản phẩm TikTok đã tính giá
+                    <Sparkles size={13} /> Nạp sản phẩm TikTok từ tài khoản
                   </span>
-                  <select
-                    defaultValue=""
-                    onChange={(event) => applySavedProduct(event.target.value)}
-                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-bold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 cursor-pointer"
-                  >
-                    <option value="" disabled>
-                      Chọn sản phẩm để tự động điền giá bán & chi phí...
-                    </option>
-                    {savedProducts.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.productName} — {money(item.result.evaluation.listPrice)}
-                      </option>
-                    ))}
-                  </select>
+                  {pricingSourceStatus === "loading" ? (
+                    <p className="text-xs text-slate-500">Đang tải lịch sử định giá của tài khoản…</p>
+                  ) : pricingSourceStatus === "login" ? (
+                    <p className="text-xs text-amber-700 dark:text-amber-300">Cần đăng nhập để nạp lịch sử đúng tài khoản.</p>
+                  ) : pricingSourceStatus === "error" ? (
+                    <p className="text-xs text-rose-700 dark:text-rose-300">Không tải được lịch sử phía máy chủ. Dữ liệu trong trình duyệt không được dùng thay thế để tránh lẫn tài khoản.</p>
+                  ) : savedProducts.length === 0 ? (
+                    <p className="text-xs text-slate-500">Tài khoản chưa có bản tính giá TikTok chứa snapshot có thể nhập.</p>
+                  ) : (
+                    <select defaultValue="" onChange={(event) => applySavedProduct(event.target.value)}
+                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-bold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 cursor-pointer">
+                      <option value="" disabled>Chọn sản phẩm để tự động điền giá bán & chi phí...</option>
+                      {savedProducts.map((item) => (
+                        <option key={item.id} value={item.id}>{item.productName} — {money(item.result.evaluation.listPrice)} · phí {item.feeVersion ?? "legacy"}</option>
+                      ))}
+                    </select>
+                  )}
+                  {pricingImportWarning && (
+                    <p className="rounded-xl border border-amber-200 bg-amber-50 p-2 text-[11px] font-semibold text-amber-800 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-300">{pricingImportWarning}</p>
+                  )}
+                  {input.sourcePricingSnapshotId && (
+                    <p className="text-[11px] text-slate-500">Nguồn: <strong>{input.sourcePricingProductName}</strong> · {new Date(input.sourcePricingCreatedAt ?? "").toLocaleDateString("vi-VN")} · phí {input.sourcePricingFeeVersion}</p>
+                  )}
                 </div>
-              )}
 
               {/* Campaign Name */}
               <Field label="Tên chiến dịch KOC" hint="Bắt buộc">
@@ -1073,7 +1143,10 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                   <Field label="Ngành cấp 3 (Chi tiết theo biểu phí)">
                     <select
                       value={category.id}
-                      onChange={(event) => setCategoryId(event.target.value)}
+                      onChange={(event) => {
+                        setCategoryId(event.target.value);
+                        invalidateResult();
+                      }}
                       className="w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand"
                     >
                       {level3Categories.map((item) => (
@@ -1712,6 +1785,46 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                   </div>
                 </div>
 
+                {forecast && (
+                  <section className="space-y-4 rounded-3xl border border-slate-200/80 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900">
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <div>
+                        <h3 className="flex items-center gap-2 text-sm font-black text-slate-900 dark:text-white"><TrendingUp size={16} className="text-brand" /> Ba kịch bản dự phóng</h3>
+                        <p className="mt-1 text-[11px] text-slate-500">So sánh khoảng kết quả khi hiệu suất KOC, đơn tự nhiên, CPA và hoàn hàng thay đổi.</p>
+                      </div>
+                      <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500 dark:bg-slate-800">{forecast.modelVersion}</span>
+                    </div>
+                    <div className="grid gap-3 sm:grid-cols-3">
+                      {forecast.scenarios.map((scenario) => (
+                        <div key={scenario.key} className={`rounded-2xl border p-3 ${scenario.key === "base" ? "border-brand/40 bg-brand-light/20" : "border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50"}`}>
+                          <p className="text-xs font-black text-slate-800 dark:text-slate-100">{scenario.label}</p>
+                          <p className={`mt-1 font-mono text-base font-black ${scenario.result.netProfit < 0 ? "text-rose-600" : "text-emerald-600"}`}>{money(scenario.result.netProfit)}</p>
+                          <p className="mt-1 text-[10px] text-slate-500">{number(scenario.result.successfulOrders, 1)} đơn thành công · ROI {scenario.result.roi.toFixed(1)}%</p>
+                          <p className="mt-2 text-[10px] leading-relaxed text-slate-400">{scenario.adjustments.join(" · ")}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div>
+                      <p className="mb-2 text-xs font-black text-slate-700 dark:text-slate-200">Yếu tố ảnh hưởng mạnh đến lợi nhuận</p>
+                      <div className="space-y-2">
+                        {forecast.sensitivity.map((driver, index) => (
+                          <div key={driver.key} className="grid grid-cols-[1fr_auto] items-center gap-3 text-[11px]">
+                            <div>
+                              <div className="flex justify-between gap-2"><span className="font-bold text-slate-700 dark:text-slate-200">{index + 1}. {driver.label}</span><span className="text-slate-400">{driver.adverseChange}</span></div>
+                              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800"><div className="h-full rounded-full bg-rose-400" style={{ width: `${Math.min(100, driver.impactPercent)}%` }} /></div>
+                            </div>
+                            <span className={`font-mono font-black ${driver.netProfitDelta <= 0 ? "text-rose-600" : "text-emerald-600"}`}>{driver.netProfitDelta > 0 ? "+" : ""}{money(driver.netProfitDelta)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <details className="rounded-xl bg-slate-50 p-3 text-[11px] text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+                      <summary className="cursor-pointer font-black">Các giả định của kịch bản cơ sở</summary>
+                      <ul className="mt-2 list-disc space-y-1 pl-4">{(result.assumptions ?? ["Bản lưu cũ chưa có mô tả giả định; hãy tính lại để cập nhật."]).map((assumption) => <li key={assumption}>{assumption}</li>)}</ul>
+                    </details>
+                  </section>
+                )}
+
                 {/* 3. Deep Analytical Tabs */}
                 <section className="overflow-hidden rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
                   {/* Tab Header Buttons */}
@@ -2010,6 +2123,10 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                   <p className="text-[11px] leading-relaxed">
                     Tỷ lệ hoa hồng được tham chiếu trực tiếp từ biểu phí TikTok Shop Seller University mới nhất. Thuế
                     áp dụng theo chính sách kê khai TMĐT hiện hành.
+                  </p>
+                  <p className="text-[11px] leading-relaxed">
+                    Mô hình dự phóng: <strong>{result.modelVersion ?? "legacy"}</strong> · Biểu phí tính toán: <strong>{feeProfile.dataVersion}</strong>
+                    {lastCalculatedInput?.sourcePricingSnapshotId ? ` · Nguồn định giá: ${lastCalculatedInput.sourcePricingProductName} (${lastCalculatedInput.sourcePricingFeeVersion})` : " · Dữ liệu sản phẩm nhập trực tiếp"}.
                   </p>
                   <div className="flex flex-wrap gap-2.5 pt-1">
                     <a

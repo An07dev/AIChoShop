@@ -1,7 +1,9 @@
 import { evaluatePrice } from "../pricing/engine.ts";
 import { getAvailableCategories, PROGRAMS } from "../pricing/registry.ts";
 import type { PricingInput } from "../pricing/types.ts";
-import type { KocPlanInput, KocPlanResult } from "./types.ts";
+import type { KocForecast, KocPlanInput, KocPlanResult, KocSensitivityDriver } from "./types.ts";
+
+export const KOC_MODEL_VERSION = "KOC-FORECAST-2026-v1";
 
 const clamp = (value: number, min = 0, max = 100) => Math.min(max, Math.max(min, Number.isFinite(value) ? value : 0));
 const nonNegative = (value: number) => Math.max(0, Number.isFinite(value) ? value : 0);
@@ -110,6 +112,57 @@ export function calculateKocPlan(input: KocPlanInput): KocPlanResult {
     costPerSuccessfulOrder: successfulOrders > 0 ? campaignInvestment / successfulOrders : null,
     breakEvenOrders, breakEvenCpa,
     netMargin: netRevenue > 0 ? netProfit / netRevenue * 100 : 0,
-    unusedBudget: Math.max(0, creatorBudget - sampleAndCastCost - extraKocCost), warnings,
+    unusedBudget: Math.max(0, creatorBudget - sampleAndCastCost - extraKocCost),
+    modelVersion: KOC_MODEL_VERSION,
+    assumptions: [
+      `Tỷ lệ KOC lên clip ${clamp(input.effectiveKocRate)}% do người dùng cung cấp.`,
+      `Mỗi KOC hiệu quả tạo ${nonNegative(input.organicOrdersPerEffectiveKoc)} đơn tự nhiên dự kiến.`,
+      input.useAds ? `CPA quảng cáo dự kiến ${Math.round(nonNegative(input.adsCostPerOrder)).toLocaleString("vi-VN")} đồng/đơn.` : "Không sử dụng quảng cáo trả phí.",
+      `Tỷ lệ hủy ${clamp(input.cancellationRate)}%, giao thất bại ${clamp(input.deliveryFailureRate)}%, hoàn ${clamp(input.returnRate)}%.`,
+    ],
+    warnings,
   };
+}
+
+export function calculateKocForecast(input: KocPlanInput): KocForecast {
+  const base = calculateKocPlan(input);
+  const cautiousInput: KocPlanInput = {
+    ...input,
+    effectiveKocRate: clamp(input.effectiveKocRate * 0.8),
+    organicOrdersPerEffectiveKoc: nonNegative(input.organicOrdersPerEffectiveKoc) * 0.7,
+    adsCostPerOrder: input.useAds ? nonNegative(input.adsCostPerOrder) * 1.25 : input.adsCostPerOrder,
+    returnRate: clamp(input.returnRate * 1.3 + 2),
+  };
+  const favorableInput: KocPlanInput = {
+    ...input,
+    effectiveKocRate: clamp(input.effectiveKocRate * 1.1),
+    organicOrdersPerEffectiveKoc: nonNegative(input.organicOrdersPerEffectiveKoc) * 1.25,
+    adsCostPerOrder: input.useAds ? nonNegative(input.adsCostPerOrder) * 0.85 : input.adsCostPerOrder,
+    returnRate: clamp(input.returnRate * 0.75),
+  };
+  const scenarios = [
+    { key: "cautious" as const, label: "Thận trọng", description: "Hiệu suất KOC và đơn tự nhiên thấp hơn, CPA và hoàn hàng cao hơn.",
+      adjustments: ["KOC hiệu quả −20%", "Đơn tự nhiên/KOC −30%", "CPA +25%", "Tỷ lệ hoàn tăng"], result: calculateKocPlan(cautiousInput) },
+    { key: "base" as const, label: "Cơ sở", description: "Giữ nguyên toàn bộ giả định bạn đã nhập.",
+      adjustments: ["Theo dữ liệu hiện tại"], result: base },
+    { key: "favorable" as const, label: "Thuận lợi", description: "Hiệu suất KOC và đơn tự nhiên tốt hơn, CPA và hoàn hàng thấp hơn.",
+      adjustments: ["KOC hiệu quả +10%", "Đơn tự nhiên/KOC +25%", "CPA −15%", "Tỷ lệ hoàn −25%"], result: calculateKocPlan(favorableInput) },
+  ];
+
+  const variants: Array<Omit<KocSensitivityDriver, "netProfitDelta" | "impactPercent"> & { input: KocPlanInput }> = [
+    { key: "sellingPrice", label: "Giá bán trung bình", adverseChange: "giảm 5%", input: { ...input, averageSellingPrice: input.averageSellingPrice * 0.95 } },
+    { key: "effectiveKocRate", label: "Tỷ lệ KOC lên clip", adverseChange: "giảm 10%", input: { ...input, effectiveKocRate: input.effectiveKocRate * 0.9 } },
+    { key: "organicOrders", label: "Đơn tự nhiên/KOC", adverseChange: "giảm 10%", input: { ...input, organicOrdersPerEffectiveKoc: input.organicOrdersPerEffectiveKoc * 0.9 } },
+    { key: "adsCpa", label: "CPA quảng cáo", adverseChange: "tăng 10%", input: { ...input, adsCostPerOrder: input.adsCostPerOrder * 1.1 } },
+    { key: "returnRate", label: "Tỷ lệ hoàn", adverseChange: "tăng 2 điểm %", input: { ...input, returnRate: clamp(input.returnRate + 2) } },
+  ];
+  const denominator = Math.max(1, Math.abs(base.netProfit));
+  const sensitivity = variants.map((variant) => {
+    const changed = calculateKocPlan(variant.input);
+    const netProfitDelta = changed.netProfit - base.netProfit;
+    return { key: variant.key, label: variant.label, adverseChange: variant.adverseChange,
+      netProfitDelta, impactPercent: Math.abs(netProfitDelta) / denominator * 100 };
+  }).sort((a, b) => Math.abs(b.netProfitDelta) - Math.abs(a.netProfitDelta));
+
+  return { modelVersion: KOC_MODEL_VERSION, scenarios, sensitivity };
 }

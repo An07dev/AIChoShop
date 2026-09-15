@@ -8,7 +8,8 @@ const base: TaxCalculatorInput = {
   activityRevenues: { goods: 0, services: 0, production: 0, digital: 0, other: 0 },
   personalIncomeMethod: "revenue", residencyStatus: "resident", personalPreviousYearRevenue: 0,
   profitMethodStartYear: null, shopeeRevenue: 0, tiktokRevenue: 0, otherPlatformRevenue: 0,
-  directRevenue: 0, platformFees: 0, deductibleCosts: 0, otherTaxableIncome: 0, carriedLoss: 0,
+  directRevenue: 0, platformFees: 0, platformFeesDeductible: false,
+  deductibleCosts: 0, otherTaxableIncome: 0, carriedLoss: 0,
   withheldVat: 0, withheldIncomeTax: 0, companyPreviousYearRevenue: 2_000_000_000,
   companyPreviousYearOperatingMonths: 12, companyHasPreviousYearData: false, companyIsNewThisYear: false,
   companyHasDisqualifyingRelatedParty: false, companyVatRate: 10, deductibleInputVat: 0,
@@ -57,6 +58,16 @@ test("phương pháp TNCN dùng doanh thu tham chiếu năm trước", () => {
   assert.equal(result.effectivePersonalMethod, "profit");
   assert.equal(result.incomeTaxRate, 15);
   assert.equal(result.incomeTax, 150_000_000);
+});
+
+test("phí sàn chỉ giảm thu nhập chịu thuế khi có xác nhận chứng từ và chưa tính trùng", () => {
+  const withoutInvoice = calculateEcommerceTax({ ...goodsRevenue(1_500_000_000), personalIncomeMethod: "profit",
+    deductibleCosts: 700_000_000, platformFees: 140_000_000 });
+  const deductible = calculateEcommerceTax({ ...goodsRevenue(1_500_000_000), personalIncomeMethod: "profit",
+    deductibleCosts: 700_000_000, platformFees: 140_000_000, platformFeesDeductible: true });
+  assert.equal(withoutInvoice.incomeTax, 120_000_000);
+  assert.equal(deductible.incomeTax, 99_000_000);
+  assert.equal(deductible.deductiblePlatformFees, 140_000_000);
 });
 
 test("vượt 3 tỷ trong năm hiện tại không tự đổi sai phương pháp ngay trong năm", () => {

@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { calculateKocPlan, validateKocPlanInput } from "./engine.ts";
+import { calculateKocForecast, calculateKocPlan, validateKocPlanInput } from "./engine.ts";
 import type { KocPlanInput } from "./types.ts";
 import { getDefaultCategoryId } from "../pricing/registry.ts";
 
@@ -18,6 +18,8 @@ const input: KocPlanInput = {
   cancellationRate: 0, cancellationCost: 0, deliveryFailureRate: 0, returnRate: 5,
   returnedInventoryRecoveryRate: 95, returnCostPerOrder: 25_000, nonRefundableReturnFee: 0, damageRate: 0,
   extraKocCostRate: 10, otherOperatingCost: 0,
+  sourcePricingSnapshotId: null, sourcePricingProductName: null,
+  sourcePricingCreatedAt: null, sourcePricingFeeVersion: null,
 };
 
 test("phân bổ ngân sách và dự phóng đơn KOC không vượt ngân sách", () => {
@@ -74,4 +76,21 @@ test("validation KOC từ chối NaN, tỷ lệ vượt miền và ngân sách �
   assert.match(validateKocPlanInput({ ...input, sampleCost: Number.NaN }) ?? "", /hữu hạn/);
   assert.match(validateKocPlanInput({ ...input, returnRate: 101 }) ?? "", /0–100/);
   assert.match(validateKocPlanInput({ ...input, totalBudget: -1 }) ?? "", /không được âm/);
+});
+
+test("ba kịch bản có thứ tự lợi nhuận thận trọng, cơ sở, thuận lợi", () => {
+  const forecast = calculateKocForecast(input);
+  const [cautious, base, favorable] = forecast.scenarios;
+  assert.equal(forecast.scenarios.length, 3);
+  assert.ok(cautious.result.netProfit < base.result.netProfit);
+  assert.ok(favorable.result.netProfit > base.result.netProfit);
+  assert.equal(forecast.modelVersion, base.result.modelVersion);
+});
+
+test("phân tích độ nhạy xếp yếu tố theo mức tác động tuyệt đối", () => {
+  const drivers = calculateKocForecast(input).sensitivity;
+  assert.equal(drivers.length, 5);
+  for (let index = 1; index < drivers.length; index += 1) {
+    assert.ok(Math.abs(drivers[index - 1].netProfitDelta) >= Math.abs(drivers[index].netProfitDelta));
+  }
 });

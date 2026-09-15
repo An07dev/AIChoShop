@@ -94,6 +94,7 @@ export function calculateEcommerceTax(input: TaxCalculatorInput): TaxCalculatorR
       && input.taxYear < input.profitMethodStartYear + 2) warnings.push("Phương pháp tính trên thu nhập phải được duy trì liên tục 2 năm; hãy đối chiếu năm bắt đầu trước khi đổi phương pháp.");
 
   let vatRate = 0, vat = 0, incomeTaxRate = 0, taxableIncomeBase = 0, incomeTaxBeforeReduction = 0;
+  const deductiblePlatformFees = input.platformFeesDeductible ? amount(input.platformFees) : 0;
   const excessRatio = totalRevenue > 0 ? Math.max(0, totalRevenue - TAX_EXEMPT_REVENUE_2026) / totalRevenue : 0;
   const activityBreakdown = activities.map((activity) => {
     const revenue = revenueByActivity[activity], rate = ACTIVITY_RATES[activity];
@@ -117,14 +118,16 @@ export function calculateEcommerceTax(input: TaxCalculatorInput): TaxCalculatorR
         incomeTaxRate = taxableIncomeBase > 0 ? incomeTaxBeforeReduction / taxableIncomeBase * 100 : 0;
       } else if (!incomeTaxExempt) {
         incomeTaxRate = personalProfitRate(totalRevenue);
-        taxableIncomeBase = Math.max(0, totalRevenue + amount(input.otherTaxableIncome) - amount(input.deductibleCosts) - amount(input.carriedLoss));
+        taxableIncomeBase = Math.max(0, totalRevenue + amount(input.otherTaxableIncome) - amount(input.deductibleCosts)
+          - deductiblePlatformFees - amount(input.carriedLoss));
         incomeTaxBeforeReduction = rateOf(taxableIncomeBase, incomeTaxRate);
       }
     } else {
       vatRate = Math.max(0, input.companyVatRate);
       vat = Math.max(0, rateOf(totalRevenue, vatRate) - amount(input.deductibleInputVat));
       incomeTaxRate = companyIncomeRate(annualizedCompanyReferenceRevenue);
-      taxableIncomeBase = Math.max(0, totalRevenue + amount(input.otherTaxableIncome) - amount(input.deductibleCosts) - amount(input.carriedLoss));
+      taxableIncomeBase = Math.max(0, totalRevenue + amount(input.otherTaxableIncome) - amount(input.deductibleCosts)
+        - deductiblePlatformFees - amount(input.carriedLoss));
       incomeTaxBeforeReduction = incomeTaxExempt ? 0 : rateOf(taxableIncomeBase, incomeTaxRate);
     }
   }
@@ -157,6 +160,7 @@ export function calculateEcommerceTax(input: TaxCalculatorInput): TaxCalculatorR
     platformFeeRate: totalRevenue > 0 ? amount(input.platformFees) / totalRevenue * 100 : 0,
     netRate: totalRevenue > 0 ? netCashAfterTaxAndPlatformFees / totalRevenue * 100 : 0,
     reductionEligible: false, annualizedCompanyReferenceRevenue, activityBreakdown,
+    deductiblePlatformFees,
     ruleVersion: TAX_RULE_VERSION, sources: TAX_SOURCES, validationErrors, warnings,
     requiresProfessionalReview: validationErrors.length > 0 || (isPersonal && activeActivityCount > 1)
       || (!isPersonal && (!companyHasReference || input.companyHasExcludedIncome

@@ -146,8 +146,8 @@ Phần mã chính: [API AI](/D:/AIChoShop/src/app/api/ai/route.ts), [SEO](/D:/AI
 ### KOC
 
 - [x] **KOC-01 — Nhất quán công thức.** Đối chiếu CPA hòa vốn, chi phí giữ lại khi hoàn, affiliate và thuế với pricing. Kiểm tra số tiền giải ngân/tiền ròng và vốn chiến dịch không bị tính trùng.
-- [ ] **KOC-02 — Làm rõ dự phóng.** Gắn nhãn giả định cho CPA, đơn/KOC, tỷ lệ hiệu quả; đưa kịch bản thận trọng/cơ sở/thuận lợi và giải thích biến tác động mạnh.
-- [ ] **KOC-03 — Luồng liên thông.** Đọc hồ sơ sản phẩm/lịch sử pricing có quyền và phiên bản; không âm thầm dùng snapshot cũ hoặc dữ liệu của tài khoản khác.
+- [x] **KOC-02 — Làm rõ dự phóng.** Gắn nhãn giả định cho CPA, đơn/KOC, tỷ lệ hiệu quả; đưa kịch bản thận trọng/cơ sở/thuận lợi và giải thích biến tác động mạnh.
+- [x] **KOC-03 — Luồng liên thông.** Đọc hồ sơ sản phẩm/lịch sử pricing có quyền và phiên bản; không âm thầm dùng snapshot cũ hoặc dữ liệu của tài khoản khác. Xem [hồ sơ nghiệm thu KOC](./nghiem-thu-koc.md).
 
 **Nghiệm thu:** có bộ kết quả chuẩn có thể giải thích; cùng input/phiên bản phí cho cùng output; import/export không đổi nghĩa số; các ngoại lệ thuế đã được biểu diễn hoặc giới hạn minh bạch.
 

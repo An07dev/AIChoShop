@@ -40,6 +40,10 @@ export type KocPlanInput = {
   damageRate: number;
   extraKocCostRate: number;
   otherOperatingCost: number;
+  sourcePricingSnapshotId: string | null;
+  sourcePricingProductName: string | null;
+  sourcePricingCreatedAt: string | null;
+  sourcePricingFeeVersion: string | null;
 };
 
 export type KocPlanResult = {
@@ -76,5 +80,28 @@ export type KocPlanResult = {
   breakEvenCpa: number | null;
   netMargin: number;
   unusedBudget: number;
+  modelVersion: string;
+  assumptions: string[];
   warnings: string[];
+};
+
+export type KocScenarioKey = "cautious" | "base" | "favorable";
+export type KocScenario = {
+  key: KocScenarioKey;
+  label: string;
+  description: string;
+  adjustments: string[];
+  result: KocPlanResult;
+};
+export type KocSensitivityDriver = {
+  key: "sellingPrice" | "effectiveKocRate" | "organicOrders" | "adsCpa" | "returnRate";
+  label: string;
+  adverseChange: string;
+  netProfitDelta: number;
+  impactPercent: number;
+};
+export type KocForecast = {
+  modelVersion: string;
+  scenarios: KocScenario[];
+  sensitivity: KocSensitivityDriver[];
 };
