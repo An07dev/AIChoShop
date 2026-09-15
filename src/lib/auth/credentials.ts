@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { hashPassword } from "@/lib/auth/password";
+import { audit } from "./audit";
 
-export async function replacePassword(userId: string, password: string, expectedPassword?: string) {
+export async function replacePassword(userId: string, password: string, expectedPassword?: string, adminId?: string) {
   if (typeof password !== "string" || password.length < 6 || password.length > 256) throw new Error("Mật khẩu phải có từ 6 đến 256 ký tự.");
   const next = await hashPassword(password);
   await prisma.$transaction(async tx => {
@@ -11,5 +12,6 @@ export async function replacePassword(userId: string, password: string, expected
     });
     if (updated.count !== 1) throw new Error("Tài khoản đã thay đổi. Vui lòng thử lại.");
     await tx.seoSession.deleteMany({ where: { userId } });
+    if (adminId) await audit(tx, adminId, "ADMIN_PASSWORD_RESET", userId);
   });
 }

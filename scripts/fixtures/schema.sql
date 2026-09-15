@@ -254,6 +254,33 @@ CREATE TABLE "AuthRateLimit" (
 );
 
 -- CreateTable
+CREATE TABLE "PasswordReset" (
+    "id" TEXT NOT NULL,
+    "userId" TEXT NOT NULL,
+    "tokenHash" TEXT,
+    "passwordVersion" TEXT,
+    "expiresAt" TIMESTAMP(3),
+    "consumedAt" TIMESTAMP(3),
+    "issuedBy" TEXT,
+    "deliveryStatus" TEXT NOT NULL DEFAULT 'PENDING',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "PasswordReset_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "AdminAuditLog" (
+    "id" TEXT NOT NULL,
+    "actorId" TEXT NOT NULL,
+    "action" TEXT NOT NULL,
+    "targetId" TEXT NOT NULL,
+    "details" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "AdminAuditLog_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "SeoSession" (
     "tokenHash" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
@@ -299,6 +326,15 @@ CREATE INDEX "SeoRun_createdAt_idx" ON "SeoRun"("createdAt");
 CREATE INDEX "AuthRateLimit_expiresAt_idx" ON "AuthRateLimit"("expiresAt");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "PasswordReset_tokenHash_key" ON "PasswordReset"("tokenHash");
+
+-- CreateIndex
+CREATE INDEX "PasswordReset_userId_createdAt_idx" ON "PasswordReset"("userId", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "AdminAuditLog_createdAt_idx" ON "AdminAuditLog"("createdAt");
+
+-- CreateIndex
 CREATE INDEX "SeoSession_expiresAt_idx" ON "SeoSession"("expiresAt");
 
 -- AddForeignKey
@@ -321,6 +357,9 @@ ALTER TABLE "PaymentWebhookEvent" ADD CONSTRAINT "PaymentWebhookEvent_transactio
 
 -- AddForeignKey
 ALTER TABLE "AiUsageLog" ADD CONSTRAINT "AiUsageLog_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "PasswordReset" ADD CONSTRAINT "PasswordReset_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "SeoSession" ADD CONSTRAINT "SeoSession_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;

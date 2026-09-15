@@ -7,6 +7,7 @@ import { ChevronRight, ExternalLink, ShieldCheck } from "lucide-react";
 const ROUTE_TITLES: Record<string, { title: string; category: string }> = {
   "/admin": { title: "Tổng quan Dashboard", category: "Thống kê" },
   "/admin/users": { title: "Quản lý Người dùng & Học viên", category: "Tài khoản" },
+  "/admin/audit": { title: "Nhật ký quản trị", category: "Hệ thống" },
   "/admin/lessons": { title: "Nội dung Khóa học & Video", category: "Đào tạo" },
   "/admin/vip-plans": { title: "Cấu hình Gói VIP & Bảng giá", category: "Gói cước" },
   "/admin/pricing-fees": { title: "Biểu phí bán hàng sàn TMĐT", category: "Dữ liệu" },

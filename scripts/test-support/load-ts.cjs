@@ -3,7 +3,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const ts = require('typescript');
-module.exports = function loader(mocks) {
+module.exports = function loader(mocks, globals = {}) {
   const cache=new Map();
   function load(file) {
     const full=path.resolve(__dirname,'../..',file);
@@ -16,6 +16,7 @@ module.exports = function loader(mocks) {
       if(local) return load(local.endsWith('.ts')?local:local+'.ts');
       throw new Error('Unmocked dependency: '+name);
     }};
+    Object.assign(context, globals);
     vm.runInNewContext(ts.transpileModule(fs.readFileSync(full,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022,esModuleInterop:true}}).outputText,context,{filename:full});
     return context.module.exports;
   }

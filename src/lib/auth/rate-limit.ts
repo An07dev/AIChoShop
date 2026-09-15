@@ -7,7 +7,7 @@ export class AuthRateLimitError extends Error {
 
 // Database counters are shared by every app instance. Do not trust arbitrary
 // X-Forwarded-For headers or fall back to process-local counters on DB failure.
-export async function limitAuthAttempts(action: "login" | "register", email: string) {
+export async function limitAuthAttempts(action: "login" | "register" | "recovery", email: string) {
   const subject = createHash("sha256").update(email.trim().toLowerCase()).digest("hex");
   const windowMs = 15 * 60 * 1000;
   const start = Math.floor(Date.now() / windowMs) * windowMs;
