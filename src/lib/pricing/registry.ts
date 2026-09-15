@@ -49,7 +49,7 @@ function searchable(value: string) {
   return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }
 
-export function detectCategory(productName: string, platform: Platform, shopType: ShopType) {
+export function detectCategoryMatch(productName: string, platform: Platform, shopType: ShopType) {
   const query = searchable(productName.trim());
   if (query.length < 3) return null;
   const words = query.split(/\s+/).filter((word) => word.length > 1);
@@ -57,7 +57,7 @@ export function detectCategory(productName: string, platform: Platform, shopType
   for (const category of getAvailableCategories(platform, shopType)) {
     const level3 = searchable(category.level3);
     const fullPath = searchable(getCategoryLabel(category));
-    let score = level3 === searchable(category.level2) ? 50 : 0;
+    let score = 0;
     const exactIndex = query.indexOf(level3);
     if (exactIndex >= 0 || level3.includes(query)) {
       score += 30 + Math.min(level3.length, query.length) + Math.max(0, 100 - Math.max(0, exactIndex) * 5);
@@ -70,7 +70,12 @@ export function detectCategory(productName: string, platform: Platform, shopType
     score += words.filter((word) => fullPath.includes(word)).length * 30;
     if (score > (best?.score ?? 0)) best = { category, score };
   }
-  return best?.category ?? null;
+  if (!best || best.score < 60) return null;
+  return { category: best.category, score: best.score, confidence: best.score >= 130 ? "high" as const : "medium" as const };
+}
+
+export function detectCategory(productName: string, platform: Platform, shopType: ShopType) {
+  return detectCategoryMatch(productName, platform, shopType)?.category ?? null;
 }
 
 export const PROGRAMS: Record<Platform, FeeProgram[]> = {

@@ -95,3 +95,19 @@ test("dùng đúng hoa hồng ngành cấp 3 chính thức", () => {
   assert.equal(getFeeProfile("tiktok", "marketplace", tiktokCase.id).commissionRate, 13.5);
   assert.equal(getFeeProfile("tiktok", "mall", tiktokCase.id).commissionRate, 15.7);
 });
+
+test("từ chối dữ liệu không hữu hạn, tỷ lệ quá miền và mục tiêu không hợp lệ", () => {
+  assert.match(calculatePricing({ ...baseInput, costPerUnit: Number.NaN }, "target", 0, { mode:"margin",value:20,roundingStep:1000 }).error ?? "", /hữu hạn/);
+  assert.match(calculatePricing({ ...baseInput, commissionOverride: 101 }, "target", 0, { mode:"margin",value:20,roundingStep:1000 }).error ?? "", /0–100/);
+  assert.match(calculatePricing(baseInput, "target", 0, { mode:"margin",value:100,roundingStep:1000 }).error ?? "", /Mục tiêu/);
+});
+
+test("tên vô nghĩa không tự chọn ngành", () => {
+  assert.equal(detectCategory("xyz qqq 123", "shopee", "marketplace"), null);
+});
+
+test("từ chối ngành sai sàn, số lượng lẻ và chương trình không thuộc sàn", () => {
+  assert.match(calculatePricing({ ...baseInput, categoryId:"tiktok-468" },"target",0,{mode:"margin",value:20,roundingStep:1000}).error ?? "",/Ngành/);
+  assert.match(calculatePricing({ ...baseInput, quantity:1.5 },"target",0,{mode:"margin",value:20,roundingStep:1000}).error ?? "",/số nguyên/);
+  assert.match(calculatePricing({ ...baseInput, enabledProgramIds:["tiktok_sfp"] },"target",0,{mode:"margin",value:20,roundingStep:1000}).error ?? "",/Chương trình/);
+});

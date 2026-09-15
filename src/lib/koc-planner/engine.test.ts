@@ -1,10 +1,11 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { calculateKocPlan } from "./engine.ts";
+import { calculateKocPlan, validateKocPlanInput } from "./engine.ts";
 import type { KocPlanInput } from "./types.ts";
+import { getDefaultCategoryId } from "../pricing/registry.ts";
 
 const input: KocPlanInput = {
-  campaignName: "Kiểm thử", shopType: "marketplace", categoryId: "tiktok-468",
+  campaignName: "Kiểm thử", shopType: "marketplace", categoryId: getDefaultCategoryId("tiktok", "marketplace"),
   totalBudget: 50_000_000, sampleCost: 100_000,
   sampleShippingCost: 30_000, castFee: 50_000, effectiveKocRate: 80,
   videosPerKoc: 3, organicOrdersPerEffectiveKoc: 10, averageSellingPrice: 500_000,
@@ -67,4 +68,10 @@ test("tách giải ngân trước Affiliate và tiền ròng sau Affiliate, thu�
     transactionFeeRate: 6, fixedOrderFee: 3_000 });
   assert.equal(result.expectedNetSettlement,
     result.expectedPayoutBeforeAffiliate - result.organicCommission - result.adsCommission - result.taxes);
+});
+
+test("validation KOC từ chối NaN, tỷ lệ vượt miền và ngân sách âm", () => {
+  assert.match(validateKocPlanInput({ ...input, sampleCost: Number.NaN }) ?? "", /hữu hạn/);
+  assert.match(validateKocPlanInput({ ...input, returnRate: 101 }) ?? "", /0–100/);
+  assert.match(validateKocPlanInput({ ...input, totalBudget: -1 }) ?? "", /không được âm/);
 });

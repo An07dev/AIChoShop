@@ -1,4 +1,4 @@
-import { getFeeProfile, PROGRAMS } from "./registry.ts";
+import { getAvailableCategories, getFeeProfile, PROGRAMS } from "./registry.ts";
 import type { AppliedFee, PriceEvaluation, PricingInput, PricingResult, ScenarioWeights, Target } from "./types.ts";
 
 const clamp = (value: number, min: number, max: number) =>
@@ -18,15 +18,28 @@ function scenarioWeights(input: PricingInput): ScenarioWeights {
 }
 
 export function validatePricingInput(input: PricingInput) {
+  if (!["shopee", "tiktok", "external"].includes(input.platform) || !["marketplace", "mall"].includes(input.shopType)) return "Sàn hoặc loại shop không hợp lệ.";
+  if (!getAvailableCategories(input.platform, input.shopType).some((item) => item.id === input.categoryId)) return "Ngành hàng không hợp lệ với sàn và loại shop.";
+  const numericValues = Object.entries(input).filter(([, value]) => typeof value === "number") as [string, number][];
+  if (numericValues.some(([, value]) => !Number.isFinite(value))) return "Các giá trị số phải là số hữu hạn.";
   const rates = [input.sellerDiscountRate, input.affiliateRate, input.taxableRevenueShare,
+    input.manualRevenueTaxRate, input.profitTaxRate,
     input.cancellationRate, input.deliveryFailureRate, input.returnRate,
     input.returnedInventoryRecoveryRate, input.damageRate];
   if (rates.some((rate) => !Number.isFinite(rate) || rate < 0 || rate > 100)) {
     return "Các tỷ lệ phải nằm trong khoảng 0–100%.";
   }
-  if (input.quantity < 1 || !Number.isFinite(input.quantity)) return "Số lượng sản phẩm trong đơn phải từ 1 trở lên.";
-  if (input.costPerUnit < 0) return "Giá vốn không được âm.";
-  if ((input.commissionOverride ?? 0) < 0 || (input.transactionOverride ?? 0) < 0) return "Phí sàn không được âm.";
+  if (input.quantity < 1 || !Number.isInteger(input.quantity)) return "Số lượng sản phẩm trong đơn phải là số nguyên từ 1 trở lên.";
+  const costs = [input.costPerUnit, input.packagingCost, input.handlingCost, input.overheadCost,
+    input.sellerShippingCost, input.buyerShippingFee, input.platformDiscount, input.marketingValue,
+    input.cancellationCost, input.returnShippingCost, input.nonRefundableReturnFee];
+  if (costs.some((value) => value < 0)) return "Chi phí, giảm giá và vận chuyển không được âm.";
+  const overrideRates = [input.commissionOverride, input.transactionOverride].filter((value): value is number => value !== null);
+  if (overrideRates.some((value) => value < 0 || value > 100)) return "Phí sàn phải nằm trong khoảng 0–100%.";
+  if (input.fixedFeeOverride !== null && input.fixedFeeOverride < 0) return "Phí cố định không được âm.";
+  if (input.marketingMode === "percent" && input.marketingValue > 100) return "Chi phí marketing theo phần trăm không được vượt 100%.";
+  const allowedPrograms = new Set(PROGRAMS[input.platform].map((item) => item.id));
+  if (new Set(input.enabledProgramIds).size !== input.enabledProgramIds.length || input.enabledProgramIds.some((id) => !allowedPrograms.has(id))) return "Chương trình phí không hợp lệ hoặc bị trùng.";
   return null;
 }
 
@@ -146,11 +159,20 @@ export function solvePrice(input: PricingInput, target: Target): number | null {
 }
 
 export function calculatePricing(input: PricingInput, mode: "target" | "audit", auditPrice: number, target: Target): PricingResult {
-  const error = validatePricingInput(input) ?? undefined;
+  const targetError = !Number.isFinite(target.value) || target.value < 0 || (target.mode === "margin" && target.value >= 100)
+    ? "Mục tiêu phải hợp lệ; biên lợi nhuận phải từ 0% đến dưới 100%."
+    : !Number.isFinite(target.roundingStep) || target.roundingStep < 1
+      ? "Bước làm tròn phải là số từ 1 trở lên."
+      : mode === "audit" && (!Number.isFinite(auditPrice) || auditPrice < 0)
+        ? "Giá kiểm tra phải là số không âm."
+        : null;
+  const error = validatePricingInput(input) ?? targetError ?? undefined;
+  const safeInput = Object.fromEntries(Object.entries(input).map(([key, value]) =>
+    [key, typeof value === "number" && !Number.isFinite(value) ? 0 : value])) as PricingInput;
   const breakEvenPrice = error ? null : solvePrice(input, { mode: "fixed", value: 0, roundingStep: target.roundingStep });
   const targetPrice = error || mode === "audit" ? null : solvePrice(input, target);
   const evaluatedPrice = mode === "audit" ? Math.max(0, auditPrice) : targetPrice ?? 0;
-  const evaluation = evaluatePrice(input, evaluatedPrice);
+  const evaluation = evaluatePrice(error ? safeInput : input, evaluatedPrice);
   const feasible = !error && (mode === "audit" || targetPrice !== null);
   return { evaluation, breakEvenPrice, targetPrice, feasible,
     error: error ?? (!feasible ? "Không tìm được giá khả thi dưới 1 tỷ đồng. Hãy giảm tỷ lệ chi phí hoặc mục tiêu lợi nhuận." : undefined) };

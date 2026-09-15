@@ -63,3 +63,8 @@ export type FeeOverrideRecord = {
   orderProcessingFee: number | null; effectiveFrom: string; effectiveTo: string | null;
   sourceName: string; sourceUrl: string | null; note: string | null;
 };
+
+export type ResolvedFeeProfile = PlatformFeeProfile & {
+  overrideId: string | null;
+  dataVersion: string;
+};

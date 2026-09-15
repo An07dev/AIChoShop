@@ -11,6 +11,8 @@
     "test:payments": "node --test scripts/test-payments.cjs && node --experimental-strip-types --test src/lib/payments/policy.test.ts",
     "test:payments:db": "node --test scripts/test-payments-db.cjs",
     "test:pricing": "node --experimental-strip-types --test src/lib/pricing/engine.test.ts",
+    "test:pricing:full": "node --experimental-strip-types --test src/lib/pricing/engine.test.ts src/lib/pricing/csv.test.ts src/lib/pricing/fee-resolver.test.ts src/lib/koc-planner/engine.test.ts",
+    "test:pricing:db": "node --test scripts/test-pricing-fees-db.cjs",
     "test:seo": "node --experimental-strip-types --test src/lib/seo/seo.test.ts",
     "test:seo:db": "node scripts/test-seo-db.cjs",
     "db:seo": "node scripts/setup-seo.cjs",
