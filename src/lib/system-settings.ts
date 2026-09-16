@@ -18,7 +18,7 @@ export const DEFAULT_SYSTEM_SETTINGS = {
   openaiApiKey: "",
   openaiModel: "gpt-4o-mini",
   openaiBaseUrl: "",
-  isOpenAiActive: true,
+    isOpenAiActive: false,
 };
 
 /**
@@ -50,7 +50,7 @@ export async function getSystemSettings(): Promise<SystemSettingData> {
       openaiApiKey: process.env.OPENAI_API_KEY?.trim().replace(/^["']|["']$/g, "") || null,
       openaiModel: process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini",
       openaiBaseUrl: null,
-      isOpenAiActive: true,
+      isOpenAiActive: false,
       createdAt: new Date(),
       updatedAt: new Date(),
     };

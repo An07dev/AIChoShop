@@ -225,24 +225,24 @@ model VipPlan {
 
 model SePayConfig {
   id            String   @id @default("default")
-  bankName      String   @default("")
-  accountNumber String   @default("")
-  accountHolder String   @default("")
+  bankName      String   @default("MB Bank")
+  accountNumber String   @default("0358888899")
+  accountHolder String   @default("AIChoShop Official")
   apiKey        String?
-  syntaxPrefix  String   @default("ACS")
-  autoActivate  Boolean  @default(false)
+  syntaxPrefix  String   @default("VIP")
+  autoActivate  Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 }
 
 model SystemSetting {
   id                    String   @id @default("default")
-  adminPassword         String?
+  adminPassword         String?  @default("bigman123")
   openaiApiKey          String?  @db.Text
   openaiModel           String   @default("gpt-4o-mini")
   openaiBaseUrl         String?
   defaultDailyFreeLimit Int      @default(12)
-  isOpenAiActive        Boolean  @default(false)
+  isOpenAiActive        Boolean  @default(true)
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 }
