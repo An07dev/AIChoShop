@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getSessionUser } from "@/lib/auth/session";
 import { isVipActive } from "@/lib/vip-expiration";
 import { byteRange, mediaName, privateMediaRoot } from "@/lib/media";
+import { storageAdmin } from "@/lib/supabase-storage";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,6 +14,7 @@ export async function GET(req: Request, context: { params: Promise<{ filename: s
   if (!mediaName(filename)) return new Response(null, { status: 404 });
   try {
     const user = await getSessionUser();
+    const asset = await prisma.mediaAsset.findUnique({ where: { filename } });
     const lessons = await prisma.lesson.findMany({
       where: { OR: [
         { videoUrl: { in: [`/api/media/${filename}`, `/uploads/videos/${filename}`] } },
@@ -28,6 +30,17 @@ export async function GET(req: Request, context: { params: Promise<{ filename: s
         const member = user ? await prisma.user.findUnique({ where: { id: user.id } }) : null;
         if (!isVipActive(member)) return new Response(null, { status: 403 });
       }
+    }
+    if (asset?.storageProvider === "SUPABASE") {
+      if (!asset.storageBucket || !asset.storagePath) return new Response(null, { status: 404 });
+      const ttl = Math.min(Math.max(Number(process.env.VIDEO_SIGNED_URL_TTL_SECONDS || 3600), 60), 14_400);
+      const { client } = storageAdmin();
+      const { data, error } = await client.storage.from(asset.storageBucket).createSignedUrl(asset.storagePath, ttl);
+      if (error || !data?.signedUrl) return new Response(null, { status: 503 });
+      return new Response(null, {
+        status: 307,
+        headers: { Location: data.signedUrl, "Cache-Control": "private, no-store" },
+      });
     }
     let file;
     try { file = await open(path.join(privateMediaRoot(), filename), "r"); }

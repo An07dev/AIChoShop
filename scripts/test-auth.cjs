@@ -28,6 +28,7 @@ function fixture({ role = 'ADMIN', locked = false, expired = false, token = 'a'.
     'next/navigation': { redirect: () => { throw new Error('REDIRECT'); } },
     '@/lib/system-settings': {}, '@/lib/vip-plans-server': {}, '@/lib/sepay-server': {},
     '@/lib/pricing/registry': {}, '@/lib/vip-plans': {}, openai: {},
+    '@supabase/supabase-js': { createClient: () => { throw new Error('Unexpected Supabase access'); } },
   };
   function load(file) {
     const full = path.resolve(root,file);

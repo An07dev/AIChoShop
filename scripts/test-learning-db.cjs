@@ -26,8 +26,8 @@ test('PostgreSQL learning schema preserves publishing, playback and media owners
     await pool.query(`INSERT INTO "Lesson" (id,"courseId",title,"videoUrl","mediaAssetId","order","isVIP",status,"updatedAt") VALUES ('lesson','course','Lesson','/api/media/video.mp4','asset',1,false,'PUBLISHED',$1)`, [now]);
     await pool.query(`INSERT INTO "Progress" (id,"userId","lessonId",completed,"positionSeconds","durationSeconds","completedAt","updatedAt") VALUES ('progress','student','lesson',true,90,120,$1,$1)`, [now]);
 
-    const row = (await pool.query(`SELECT c.status AS course_status,l.status AS lesson_status,p.completed,p."positionSeconds",m.status AS media_status FROM "Course" c JOIN "Lesson" l ON l."courseId"=c.id JOIN "Progress" p ON p."lessonId"=l.id JOIN "MediaAsset" m ON m.id=l."mediaAssetId"`)).rows[0];
-    assert.deepEqual(row, { course_status: 'PUBLISHED', lesson_status: 'PUBLISHED', completed: true, positionSeconds: 90, media_status: 'ATTACHED' });
+    const row = (await pool.query(`SELECT c.status AS course_status,l.status AS lesson_status,p.completed,p."positionSeconds",m.status AS media_status,m."storageProvider" AS storage_provider FROM "Course" c JOIN "Lesson" l ON l."courseId"=c.id JOIN "Progress" p ON p."lessonId"=l.id JOIN "MediaAsset" m ON m.id=l."mediaAssetId"`)).rows[0];
+    assert.deepEqual(row, { course_status: 'PUBLISHED', lesson_status: 'PUBLISHED', completed: true, positionSeconds: 90, media_status: 'ATTACHED', storage_provider: 'LOCAL' });
     await assert.rejects(() => pool.query(`DELETE FROM "User" WHERE id='admin'`), /foreign key/i);
     await pool.query(`UPDATE "Course" SET status='HIDDEN' WHERE id='course'`);
     assert.equal((await pool.query(`SELECT status FROM "Course" WHERE id='course'`)).rows[0].status, 'HIDDEN');
