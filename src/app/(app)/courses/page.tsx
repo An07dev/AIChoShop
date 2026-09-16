@@ -47,8 +47,10 @@ export default async function CoursesPage({
 
   // Lấy toàn bộ khóa học và các bài học tương ứng từ Database
   const rawCourses = await prisma.course.findMany({
+    where: { status: "PUBLISHED" },
     include: {
       lessons: {
+        where: { status: "PUBLISHED" },
         orderBy: { order: "asc" },
       },
     },
@@ -71,12 +73,9 @@ export default async function CoursesPage({
     })),
   }));
 
-  console.log("=== [SERVER LOG] /courses Page ===");
-  console.log(`Loaded ${serializedCourses.length} courses with total ${serializedCourses.reduce((a, c) => a + c.lessons.length, 0)} lessons.`);
-  console.log("==================================");
-
   return (
     <CoursesClient
+      key={`${initialCourseId || "all"}:${initialModule || "all"}`}
       courses={serializedCourses}
       isUserVIP={isUserVIP}
       isLogged={isLogged}

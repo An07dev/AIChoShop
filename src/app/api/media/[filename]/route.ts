@@ -13,9 +13,16 @@ export async function GET(req: Request, context: { params: Promise<{ filename: s
   if (!mediaName(filename)) return new Response(null, { status: 404 });
   try {
     const user = await getSessionUser();
-    const lessons = await prisma.lesson.findMany({ where: { videoUrl: { in: [`/api/media/${filename}`, `/uploads/videos/${filename}`] } }, select: { isVIP: true } });
+    const lessons = await prisma.lesson.findMany({
+      where: { OR: [
+        { videoUrl: { in: [`/api/media/${filename}`, `/uploads/videos/${filename}`] } },
+        { mediaAsset: { is: { filename } } },
+      ] },
+      select: { isVIP: true, status: true, course: { select: { status: true } } },
+    });
     if (user?.role !== "ADMIN") {
       if (!lessons.length) return new Response(null, { status: 404 });
+      if (lessons.some(lesson => lesson.status !== "PUBLISHED" || lesson.course.status !== "PUBLISHED")) return new Response(null, { status: 404 });
       // If a file is shared with a VIP lesson, apply the stricter entitlement.
       if (lessons.some(lesson => lesson.isVIP)) {
         const member = user ? await prisma.user.findUnique({ where: { id: user.id } }) : null;

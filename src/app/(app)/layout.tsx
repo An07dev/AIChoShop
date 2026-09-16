@@ -1,6 +1,5 @@
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
-import { Footer } from "@/components/layout/footer";
 import { getSessionUserId } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 
@@ -23,17 +22,23 @@ export default async function AppLayout({
   // Lấy danh sách các học phần thực tế và số lượng bài học từ Database
   const [rawLessons, rawCourses] = await Promise.all([
     prisma.lesson.findMany({
+      where: {
+        status: "PUBLISHED",
+        course: { status: "PUBLISHED" },
+      },
       select: { moduleName: true, order: true },
       orderBy: { order: "asc" },
     }),
     prisma.course.findMany({
+      where: { status: "PUBLISHED" },
       select: {
         id: true,
         title: true,
         _count: {
-          select: { lessons: true },
+          select: { lessons: { where: { status: "PUBLISHED" } } },
         },
         lessons: {
+          where: { status: "PUBLISHED" },
           select: { id: true },
           orderBy: { order: "asc" },
           take: 1,

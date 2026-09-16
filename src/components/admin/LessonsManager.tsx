@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useMemo, useTransition, useEffect } from "react";
+import { useState, useMemo, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import {
   BookOpen,
@@ -13,13 +14,11 @@ import {
   CheckCircle2,
   AlertCircle,
   X,
-  ExternalLink,
   Sparkles,
   Filter,
   Layers,
   Video,
   Film,
-  Eye,
   RotateCcw,
   UploadCloud,
   Loader2,
@@ -35,8 +34,11 @@ import {
   toggleLessonVip,
   restoreDefaultLessons,
   createCourse,
+  setLessonStatus,
+  cleanupOrphanMedia,
 } from "@/app/admin/lessons/actions";
 import { parseVideoUrl } from "@/lib/video";
+import type { LearningContentStatus } from "@/lib/learning/policy";
 
 
 export interface AdminLessonItem {
@@ -47,6 +49,9 @@ export interface AdminLessonItem {
   videoUrl: string | null;
   order: number;
   isVIP: boolean;
+  status: LearningContentStatus;
+  durationSeconds: number | null;
+  mediaAssetId: string | null;
   createdAt: Date | string;
   course: {
     id: string;
@@ -65,9 +70,16 @@ interface LessonsManagerProps {
 }
 
 export function LessonsManager({ initialLessons, courses }: LessonsManagerProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedCourseId = searchParams.get("courseId");
   const [lessons, setLessons] = useState<AdminLessonItem[]>(initialLessons);
   const [coursesList, setCoursesList] = useState<AdminCourseItem[]>(courses);
-  const [selectedCourseId, setSelectedCourseId] = useState<string>("all");
+  const [selectedCourseId, setSelectedCourseId] = useState<string>(
+    requestedCourseId && courses.some((course) => course.id === requestedCourseId)
+      ? requestedCourseId
+      : "all"
+  );
   const [searchTerm, setSearchTerm] = useState("");
   const [vipFilter, setVipFilter] = useState<"all" | "vip" | "free">("all");
   const [selectedModule, setSelectedModule] = useState<string>("all");
@@ -96,13 +108,11 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
     videoUrl: "",
     order: 1,
     isVIP: false,
+    status: "DRAFT" as LearningContentStatus,
+    durationSeconds: 0,
+    mediaAssetId: null as string | null,
     courseId: courses[0]?.id || "",
   });
-
-  // Đồng bộ courses khi props thay đổi
-  useEffect(() => {
-    setCoursesList(courses);
-  }, [courses]);
 
   // Notification Toast
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -116,24 +126,15 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
     setTimeout(() => setToast(null), 3500);
   };
 
-  // Log dữ liệu ra Browser Console (F12)
-  useEffect(() => {
-    console.group("🛠️ [ADMIN AIChoShop] DỮ LIỆU BÀI HỌC LOAD TỪ DATABASE:");
-    console.log("Tổng số bài học:", initialLessons.length);
-    console.log("Khóa học:", coursesList.map((c) => c.title).join(", "));
-    console.log("Số bài VIP PRO:", initialLessons.filter((l) => l.isVIP).length);
-    console.log("Số bài FREE:", initialLessons.filter((l) => !l.isVIP).length);
-    console.table(
-      initialLessons.map((l) => ({
-        STT: l.order,
-        "Tiêu Đề": l.title,
-        "Phân Quyền": l.isVIP ? "👑 VIP PRO" : "✨ FREE",
-        "Video URL": l.videoUrl ? l.videoUrl.slice(0, 45) + "..." : "(Chưa có link)",
-        "Khóa Học": l.course.title,
-      }))
-    );
-    console.groupEnd();
-  }, [initialLessons, coursesList]);
+  const selectCourse = (courseId: string) => {
+    setSelectedCourseId(courseId);
+    setSelectedModule("all");
+    const params = new URLSearchParams(searchParams.toString());
+    if (courseId === "all") params.delete("courseId");
+    else params.set("courseId", courseId);
+    const query = params.toString();
+    router.replace(query ? `/admin/lessons?${query}` : "/admin/lessons", { scroll: false });
+  };
 
 
   // Danh sách các Module lấy từ field moduleName của các bài học
@@ -221,6 +222,9 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
       videoUrl: "",
       order: maxOrder + 1,
       isVIP: false,
+      status: "DRAFT",
+      durationSeconds: 0,
+      mediaAssetId: null,
       courseId: targetCourseId,
     });
     setModalError("");
@@ -250,8 +254,7 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
           title: res.course.title,
         };
         setCoursesList((prev) => [...prev, newCourse]);
-        setSelectedCourseId(newCourse.id);
-        setSelectedModule("all");
+        selectCourse(newCourse.id);
         setShowCourseModal(false);
         setNewCourseTitle("");
         setNewCourseDesc("");
@@ -259,7 +262,7 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
       } else {
         setCourseModalError(res.error || "Không thể tạo khóa học mới");
       }
-    } catch (err: any) {
+    } catch {
       setCourseModalError("Lỗi kết nối khi tạo khóa học");
     } finally {
       setIsCreatingCourse(false);
@@ -270,7 +273,7 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
   const handleOpenEditModal = (lesson: AdminLessonItem) => {
     setEditingLesson(lesson);
     const isExisting = allModules.includes(lesson.moduleName);
-    const isLocalFile = lesson.videoUrl?.startsWith("/uploads/");
+    const isLocalFile = lesson.videoUrl?.startsWith("/uploads/") || lesson.videoUrl?.startsWith("/api/media/");
     setVideoMode(isLocalFile ? "upload" : "url");
     setFormData({
       title: lesson.title,
@@ -281,6 +284,9 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
       videoUrl: lesson.videoUrl || "",
       order: lesson.order,
       isVIP: lesson.isVIP,
+      status: lesson.status,
+      durationSeconds: lesson.durationSeconds || 0,
+      mediaAssetId: lesson.mediaAssetId,
       courseId: lesson.course.id,
     });
     setModalError("");
@@ -291,8 +297,8 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 500 * 1024 * 1024) {
-      setModalError("File video quá lớn (tối đa 500MB). Vui lòng chọn file nhỏ hơn hoặc nén video.");
+    if (file.size > 100 * 1024 * 1024) {
+      setModalError("File video quá lớn (tối đa 100MB). Vui lòng chọn file nhỏ hơn hoặc nén video.");
       return;
     }
 
@@ -310,17 +316,27 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
 
       const data = await res.json();
       if (data.success && data.url) {
-        setFormData((prev) => ({ ...prev, videoUrl: data.url }));
+        setFormData((prev) => ({ ...prev, videoUrl: data.url, mediaAssetId: data.mediaAssetId || null }));
         showToast(`Đã tải lên video "${file.name}" thành công!`);
       } else {
         setModalError(data.error || "Không thể tải video lên server");
       }
-    } catch (err: any) {
-      console.error("Upload error:", err);
+    } catch {
       setModalError("Lỗi kết nối khi tải video lên server");
     } finally {
       setIsUploading(false);
     }
+  };
+
+  const handleTogglePublished = (lesson: AdminLessonItem) => {
+    const status: LearningContentStatus = lesson.status === "PUBLISHED" ? "HIDDEN" : "PUBLISHED";
+    startTransition(async () => {
+      const res = await setLessonStatus(lesson.id, status);
+      if (res.success) {
+        setLessons(prev => prev.map(item => item.id === lesson.id ? { ...item, status } : item));
+        showToast(status === "PUBLISHED" ? "Đã xuất bản bài học." : "Đã ẩn bài học.");
+      } else showToast(res.error || "Không thể đổi trạng thái bài học.", "error");
+    });
   };
 
   // Xử lý bật/tắt VIP 1-click
@@ -363,7 +379,15 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
     startTransition(async () => {
       const res = await deleteLesson(lesson.id);
       if (res.success) {
-        setLessons((prev) => prev.filter((l) => l.id !== lesson.id));
+        setLessons((prev) =>
+          prev
+            .filter((item) => item.id !== lesson.id)
+            .map((item) =>
+              item.course.id === lesson.course.id && item.order > lesson.order
+                ? { ...item, order: item.order - 1 }
+                : item
+            )
+        );
         showToast(`Đã xóa bài học #${lesson.order} thành công!`);
       } else {
         showToast(res.error || "Không thể xóa bài học", "error");
@@ -391,6 +415,14 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
       } else {
         showToast(res.error || "Không thể khôi phục dữ liệu", "error");
       }
+    });
+  };
+
+  const handleCleanupMedia = () => {
+    if (!confirm("Dọn các video đã tải lên hơn 24 giờ nhưng không còn gắn với bài học nào?")) return;
+    startTransition(async () => {
+      const res = await cleanupOrphanMedia();
+      showToast(res.success ? `Đã dọn ${res.removed} video không còn sử dụng.` : "Không thể dọn video.", res.success ? "success" : "error");
     });
   };
 
@@ -430,7 +462,14 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
           createdAt: res.lesson.createdAt || new Date(),
         };
 
-        setLessons((prev) => [...prev, createdItem]);
+        setLessons((prev) => [
+          ...prev.map((item) =>
+            item.course.id === createdItem.course.id && item.order >= createdItem.order
+              ? { ...item, order: item.order + 1 }
+              : item
+          ),
+          createdItem,
+        ]);
         setShowAddModal(false);
         showToast(`Đã thêm bài học "${formData.title}" vào ${finalModuleName} thành công!`);
       } else {
@@ -468,18 +507,29 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
 
       if (res.success && res.lesson) {
         const course = coursesList.find((c) => c.id === formData.courseId) || editingLesson.course;
-        setLessons((prev) =>
-          prev.map((l) =>
-            l.id === editingLesson.id
-              ? {
-                ...l,
-                ...res.lesson,
-                moduleName: res.lesson.moduleName || finalModuleName,
-                course: { id: course.id, title: course.title },
-              }
-              : l
-          )
-        );
+        const oldCourseId = editingLesson.course.id;
+        const newCourseId = course.id;
+        const oldOrder = editingLesson.order;
+        const newOrder = res.lesson.order;
+        setLessons((prev) => prev.map((item) => {
+          if (item.id === editingLesson.id) {
+            return {
+              ...item,
+              ...res.lesson,
+              moduleName: res.lesson.moduleName || finalModuleName,
+              course: { id: course.id, title: course.title },
+            };
+          }
+          if (oldCourseId === newCourseId && item.course.id === oldCourseId) {
+            if (newOrder < oldOrder && item.order >= newOrder && item.order < oldOrder) return { ...item, order: item.order + 1 };
+            if (newOrder > oldOrder && item.order > oldOrder && item.order <= newOrder) return { ...item, order: item.order - 1 };
+          }
+          if (oldCourseId !== newCourseId) {
+            if (item.course.id === oldCourseId && item.order > oldOrder) return { ...item, order: item.order - 1 };
+            if (item.course.id === newCourseId && item.order >= newOrder) return { ...item, order: item.order + 1 };
+          }
+          return item;
+        }));
         setEditingLesson(null);
         showToast(`Đã cập nhật bài học #${formData.order} thành công!`);
       } else {
@@ -619,6 +669,14 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
               <RotateCcw size={14} className={isPending ? "animate-spin" : ""} />
               <span>Khôi Phục Bài Mẫu</span>
             </button>
+            <button
+              onClick={handleCleanupMedia}
+              disabled={isPending}
+              title="Xóa video tải lên quá 24 giờ nhưng không gắn với bài học"
+              className="px-3.5 py-2.5 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer whitespace-nowrap disabled:opacity-50"
+            >
+              <Trash2 size={14} /> Dọn Video Thừa
+            </button>
 
             {/* Nút Thêm Khóa Học Mới */}
             <button
@@ -661,8 +719,7 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
             <select
               value={selectedCourseId}
               onChange={(e) => {
-                setSelectedCourseId(e.target.value);
-                setSelectedModule("all");
+                selectCourse(e.target.value);
               }}
               className="bg-white border border-indigo-200 text-slate-800 font-bold rounded px-2 py-0.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer max-w-[200px] truncate"
             >
@@ -733,8 +790,7 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
               onClick={() => {
                 setSearchTerm("");
                 setVipFilter("all");
-                setSelectedModule("all");
-                setSelectedCourseId("all");
+                selectCourse("all");
               }}
               className="text-xs text-rose-600 hover:underline font-semibold ml-auto cursor-pointer"
             >
@@ -789,10 +845,7 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
                       <td className="p-4">
                         <button
                           type="button"
-                          onClick={() => {
-                            setSelectedCourseId(lesson.course?.id || "all");
-                            setSelectedModule("all");
-                          }}
+                          onClick={() => selectCourse(lesson.course?.id || "all")}
                           title={`Click để lọc chỉ xem các bài của khóa "${lesson.course?.title}"`}
                           className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-all cursor-pointer group text-left max-w-[190px]"
                         >
@@ -807,6 +860,9 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
                           <div className="flex items-center gap-1.5 mb-1.5 flex-wrap">
                             <span className="inline-flex items-center gap-1 bg-slate-100 text-slate-700 text-[10px] font-black px-2 py-0.5 rounded border border-slate-200 shadow-2xs">
                               <Layers size={10} /> {lesson.moduleName || "Phần 1"}
+                            </span>
+                            <span className={`text-[10px] font-black px-2 py-0.5 rounded border ${lesson.status === "PUBLISHED" ? "bg-emerald-50 text-emerald-700 border-emerald-200" : lesson.status === "DRAFT" ? "bg-slate-100 text-slate-600 border-slate-200" : "bg-amber-50 text-amber-700 border-amber-200"}`}>
+                              {lesson.status === "PUBLISHED" ? "ĐÃ XUẤT BẢN" : lesson.status === "DRAFT" ? "BẢN NHÁP" : "ĐÃ ẨN"}
                             </span>
                           </div>
                           <div className="font-bold text-slate-900 line-clamp-2 leading-snug">
@@ -859,6 +915,14 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
                       {/* Cột 5: Thao tác */}
                       <td className="p-4 text-right">
                         <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => handleTogglePublished(lesson)}
+                            disabled={isPending}
+                            title={lesson.status === "PUBLISHED" ? "Ẩn bài học khỏi học viên" : "Xuất bản bài học"}
+                            className={`text-xs font-bold px-2.5 py-1.5 rounded-lg border ${lesson.status === "PUBLISHED" ? "bg-white text-slate-600 border-slate-200" : "bg-emerald-600 text-white border-emerald-600"}`}
+                          >
+                            {lesson.status === "PUBLISHED" ? "Ẩn" : "Xuất bản"}
+                          </button>
                           {/* Nút Đổi VIP 1-click */}
                           <button
                             onClick={() => handleToggleVip(lesson)}
@@ -1035,6 +1099,15 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
                 </div>
 
                 {/* Checkbox Phân Quyền VIP */}
+                <label className="flex items-center justify-between p-3.5 rounded-xl border border-blue-200 bg-blue-50/60 cursor-pointer">
+                  <div>
+                    <span className="text-xs font-black text-slate-900 block">Xuất bản cho học viên</span>
+                    <span className="text-[11px] text-slate-500">Tắt để lưu bản nháp; bản nháp không xuất hiện ở danh mục hoặc trình học.</span>
+                  </div>
+                  <input type="checkbox" checked={formData.status === "PUBLISHED"} onChange={e => setFormData({ ...formData, status: e.target.checked ? "PUBLISHED" : "DRAFT" })} className="w-4 h-4" />
+                </label>
+
+                {/* Checkbox Phân Quyền VIP */}
                 <div
                   onClick={() => setFormData({ ...formData, isVIP: !formData.isVIP })}
                   className={`flex items-center justify-between p-3.5 rounded-xl border cursor-pointer transition-all ${formData.isVIP
@@ -1145,7 +1218,7 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
                       <input
                         type="text"
                         value={formData.videoUrl}
-                        onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value })}
+                        onChange={(e) => setFormData({ ...formData, videoUrl: e.target.value, mediaAssetId: null })}
                         placeholder="https://www.youtube.com/watch?v=... hoặc https://youtu.be/... hoặc Vimeo"
                         className="w-full px-3 py-2 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-medium font-mono bg-white"
                       />

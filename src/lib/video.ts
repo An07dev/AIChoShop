@@ -51,6 +51,7 @@ export function parseVideoUrl(url?: string | null): VideoInfo {
   if (
     /\.(mp4|webm|ogg|mov|m4v|mkv)(\?.*)?$/i.test(cleanUrl) ||
     cleanUrl.startsWith("/uploads/videos/") ||
+    cleanUrl.startsWith("/api/media/") ||
     cleanUrl.startsWith("blob:") ||
     cleanUrl.startsWith("data:video/")
   ) {

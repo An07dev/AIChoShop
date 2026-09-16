@@ -25,7 +25,9 @@
     "test:recovery": "node --test scripts/test-recovery-mail.cjs",
     "test:recovery:db": "node --test scripts/test-recovery-db.cjs",
     "test:audit": "node --test scripts/test-audit.cjs",
-    "test:audit:db": "node --test scripts/test-audit-db.cjs"
+    "test:audit:db": "node --test scripts/test-audit-db.cjs",
+    "test:learning": "node --experimental-strip-types --test src/lib/learning/policy.test.ts && node --test scripts/test-media.cjs",
+    "test:learning:db": "node --test scripts/test-learning-db.cjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

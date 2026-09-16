@@ -4,6 +4,12 @@ CREATE SCHEMA IF NOT EXISTS "public";
 -- CreateEnum
 CREATE TYPE "Role" AS ENUM ('USER', 'ADMIN');
 
+-- CreateEnum
+CREATE TYPE "ContentStatus" AS ENUM ('DRAFT', 'PUBLISHED', 'HIDDEN');
+
+-- CreateEnum
+CREATE TYPE "MediaAssetStatus" AS ENUM ('UPLOADED', 'ATTACHED', 'ORPHANED');
+
 -- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
@@ -28,6 +34,8 @@ CREATE TABLE "Course" (
     "title" TEXT NOT NULL,
     "description" TEXT,
     "thumbnail" TEXT,
+    "status" "ContentStatus" NOT NULL DEFAULT 'PUBLISHED',
+    "publishedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -41,8 +49,11 @@ CREATE TABLE "Lesson" (
     "title" TEXT NOT NULL,
     "content" TEXT,
     "videoUrl" TEXT,
+    "mediaAssetId" TEXT,
     "order" INTEGER NOT NULL,
     "isVIP" BOOLEAN NOT NULL DEFAULT false,
+    "status" "ContentStatus" NOT NULL DEFAULT 'PUBLISHED',
+    "durationSeconds" INTEGER,
     "moduleName" TEXT NOT NULL DEFAULT 'Phần 1',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -56,10 +67,30 @@ CREATE TABLE "Progress" (
     "userId" TEXT NOT NULL,
     "lessonId" TEXT NOT NULL,
     "completed" BOOLEAN NOT NULL DEFAULT false,
+    "positionSeconds" INTEGER NOT NULL DEFAULT 0,
+    "durationSeconds" INTEGER,
+    "startedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "lastViewedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "completedAt" TIMESTAMP(3),
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
     CONSTRAINT "Progress_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "MediaAsset" (
+    "id" TEXT NOT NULL,
+    "filename" TEXT NOT NULL,
+    "originalName" TEXT NOT NULL,
+    "mimeType" TEXT NOT NULL,
+    "sizeBytes" INTEGER NOT NULL,
+    "uploadedBy" TEXT NOT NULL,
+    "status" "MediaAssetStatus" NOT NULL DEFAULT 'UPLOADED',
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "MediaAsset_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -293,7 +324,28 @@ CREATE TABLE "SeoSession" (
 CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
 
 -- CreateIndex
+CREATE INDEX "Course_status_createdAt_idx" ON "Course"("status", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "Lesson_courseId_status_order_idx" ON "Lesson"("courseId", "status", "order");
+
+-- CreateIndex
+CREATE INDEX "Lesson_mediaAssetId_idx" ON "Lesson"("mediaAssetId");
+
+-- CreateIndex
+CREATE INDEX "Progress_userId_lastViewedAt_idx" ON "Progress"("userId", "lastViewedAt");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "Progress_userId_lessonId_key" ON "Progress"("userId", "lessonId");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "MediaAsset_filename_key" ON "MediaAsset"("filename");
+
+-- CreateIndex
+CREATE INDEX "MediaAsset_status_createdAt_idx" ON "MediaAsset"("status", "createdAt");
+
+-- CreateIndex
+CREATE INDEX "MediaAsset_uploadedBy_createdAt_idx" ON "MediaAsset"("uploadedBy", "createdAt");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "UserCredit_userId_key" ON "UserCredit"("userId");
@@ -341,10 +393,16 @@ CREATE INDEX "SeoSession_expiresAt_idx" ON "SeoSession"("expiresAt");
 ALTER TABLE "Lesson" ADD CONSTRAINT "Lesson_courseId_fkey" FOREIGN KEY ("courseId") REFERENCES "Course"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "Lesson" ADD CONSTRAINT "Lesson_mediaAssetId_fkey" FOREIGN KEY ("mediaAssetId") REFERENCES "MediaAsset"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "Progress" ADD CONSTRAINT "Progress_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Progress" ADD CONSTRAINT "Progress_lessonId_fkey" FOREIGN KEY ("lessonId") REFERENCES "Lesson"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "MediaAsset" ADD CONSTRAINT "MediaAsset_uploadedBy_fkey" FOREIGN KEY ("uploadedBy") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "UserCredit" ADD CONSTRAINT "UserCredit_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
