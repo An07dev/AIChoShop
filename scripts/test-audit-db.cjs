@@ -18,7 +18,7 @@ test('PostgreSQL audit: actual admin actions, secret exclusion and rollback', {s
     pool=new Pool({connectionString:url.toString(),options:`-c search_path=${schema}`});
     await pool.query(fs.readFileSync('scripts/fixtures/schema.sql','utf8').replaceAll('"public".',`"${schema}".`).replace('CREATE SCHEMA IF NOT EXISTS "public";',''));
     db=new PrismaClient({adapter:new PrismaPg(pool,{schema})});
-    const load=loader({'@/lib/prisma':{prisma:db},'@/lib/auth/session':{requireAdmin:async()=>({id:'admin'})},'next/cache':{revalidatePath:()=>{}},'@supabase/supabase-js':{createClient:()=>{throw Error('Unexpected Supabase access');}}});
+    const load=loader({'@/lib/prisma':{prisma:db},'@/lib/auth/session':{requireAdmin:async()=>({id:'admin'})},'next/cache':{revalidatePath:()=>{}}});
     const plans=load('src/app/admin/vip-plans/actions.ts');
     assert.equal((await plans.createVipPlan({name:'Test',slug:'test',price:100,features:[]})).success,true);
     const plan=await db.vipPlan.findUnique({where:{slug:'test'}});

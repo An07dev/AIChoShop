@@ -4,7 +4,7 @@
 
 - Danh mục học viên chỉ đọc khóa học và bài học có trạng thái `PUBLISHED`.
 - Bài VIP chỉ trả nội dung và URL video cho VIP còn hạn; admin vẫn xem được nội dung nháp để quản trị.
-- Media mới được upload trực tiếp bằng TUS vào bucket Supabase Storage private. `/api/media/[filename]` kiểm tra session, trạng thái khóa/bài và quyền VIP trước khi chuyển tới signed URL có hạn; media local cũ vẫn được đọc trong giai đoạn chuyển đổi.
+- Media tải lên nằm ngoài `public`, được phát qua `/api/media/[filename]`; mỗi yêu cầu và mỗi lần tua đều kiểm tra lại session, trạng thái khóa/bài và quyền VIP.
 - YouTube/Vimeo là nguồn công khai của nhà cung cấp. Ứng dụng có thể ẩn URL khỏi người chưa có quyền nhưng không tuyên bố bảo vệ tệp nguồn bên ngoài.
 
 ## Quản trị nội dung
@@ -18,13 +18,11 @@
 
 - Tiến độ có trạng thái hoàn thành, `completedAt`, vị trí video, thời lượng và lần xem gần nhất.
 - Video MP4/WebM nội bộ tự khôi phục vị trí đã xem; trình nhúng bên ngoài không cung cấp sự kiện phát chuẩn nên chỉ lưu trạng thái hoàn thành.
-- Upload tạo `MediaAsset` có người tải, tên file ngẫu nhiên, MIME, kích thước, storage provider, bucket, object path và trạng thái. File bỏ dở hoặc không còn liên kết được dọn sau 24 giờ bằng thao tác admin, kể cả object trên Supabase.
-- Trình duyệt upload thẳng tới hostname Storage bằng TUS, có tiến độ, retry và tiếp tục upload; service role key chỉ tồn tại phía server.
+- Upload tạo `MediaAsset` có người tải, tên file ngẫu nhiên, MIME, kích thước và trạng thái. File bỏ dở hoặc không còn liên kết được dọn sau 24 giờ bằng thao tác admin.
 
 ## Database và kiểm thử
 
 - Schema Prisma được bổ sung bằng script cộng dồn [complete_learning.sql](../prisma/manual/complete_learning.sql); script không xóa Course, Lesson hoặc Progress.
-- Phần Storage có migration riêng [supabase_video_storage.sql](../prisma/manual/supabase_video_storage.sql) và bucket private [setup_course_video_bucket.sql](../prisma/manual/setup_course_video_bucket.sql).
 - PostgreSQL local kiểm tra script nâng cấp chạy lặp hai lần, giữ nguyên bản ghi cũ, backfill trạng thái xuất bản/completedAt và thực thi ownership media.
 - Kiểm thử thuần kiểm tra ma trận quyền, validation URL/nội dung và chuẩn hóa vị trí video.
 - Kết quả vòng nghiệm thu ngày 16/09/2026: 56/56 kiểm thử logic đạt, 3/3 kiểm thử PostgreSQL đạt, TypeScript và ESLint sạch, `next build --webpack` thành công.

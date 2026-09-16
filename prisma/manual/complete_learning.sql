@@ -11,11 +11,6 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
-DO $$ BEGIN
-  CREATE TYPE "MediaStorageProvider" AS ENUM ('LOCAL', 'SUPABASE');
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;
-
 ALTER TABLE "Course" ADD COLUMN IF NOT EXISTS "status" "ContentStatus" NOT NULL DEFAULT 'PUBLISHED';
 ALTER TABLE "Course" ADD COLUMN IF NOT EXISTS "publishedAt" TIMESTAMP(3);
 UPDATE "Course" SET "publishedAt" = COALESCE("publishedAt", "createdAt") WHERE "status" = 'PUBLISHED';
@@ -39,20 +34,12 @@ CREATE TABLE IF NOT EXISTS "MediaAsset" (
   "sizeBytes" INTEGER NOT NULL,
   "uploadedBy" TEXT NOT NULL,
   "status" "MediaAssetStatus" NOT NULL DEFAULT 'UPLOADED',
-  "storageProvider" "MediaStorageProvider" NOT NULL DEFAULT 'LOCAL',
-  "storageBucket" TEXT,
-  "storagePath" TEXT,
   "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT "MediaAsset_pkey" PRIMARY KEY ("id")
 );
 
-ALTER TABLE "MediaAsset" ADD COLUMN IF NOT EXISTS "storageProvider" "MediaStorageProvider" NOT NULL DEFAULT 'LOCAL';
-ALTER TABLE "MediaAsset" ADD COLUMN IF NOT EXISTS "storageBucket" TEXT;
-ALTER TABLE "MediaAsset" ADD COLUMN IF NOT EXISTS "storagePath" TEXT;
-
 CREATE UNIQUE INDEX IF NOT EXISTS "MediaAsset_filename_key" ON "MediaAsset"("filename");
-CREATE UNIQUE INDEX IF NOT EXISTS "MediaAsset_storagePath_key" ON "MediaAsset"("storagePath");
 CREATE INDEX IF NOT EXISTS "Course_status_createdAt_idx" ON "Course"("status", "createdAt");
 CREATE INDEX IF NOT EXISTS "Lesson_courseId_status_order_idx" ON "Lesson"("courseId", "status", "order");
 CREATE INDEX IF NOT EXISTS "Lesson_mediaAssetId_idx" ON "Lesson"("mediaAssetId");
@@ -84,8 +71,3 @@ DO $$ BEGIN
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 
-DO $$ BEGIN
-  ALTER TABLE "MediaAsset" ADD CONSTRAINT "MediaAsset_remote_location_check"
-    CHECK ("storageProvider" = 'LOCAL' OR ("storageBucket" IS NOT NULL AND "storagePath" IS NOT NULL));
-EXCEPTION WHEN duplicate_object THEN NULL;
-END $$;

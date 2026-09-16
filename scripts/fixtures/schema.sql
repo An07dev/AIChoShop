@@ -10,9 +10,6 @@ CREATE TYPE "ContentStatus" AS ENUM ('DRAFT', 'PUBLISHED', 'HIDDEN');
 -- CreateEnum
 CREATE TYPE "MediaAssetStatus" AS ENUM ('UPLOADED', 'ATTACHED', 'ORPHANED');
 
--- CreateEnum
-CREATE TYPE "MediaStorageProvider" AS ENUM ('LOCAL', 'SUPABASE');
-
 -- CreateTable
 CREATE TABLE "User" (
     "id" TEXT NOT NULL,
@@ -90,9 +87,6 @@ CREATE TABLE "MediaAsset" (
     "sizeBytes" INTEGER NOT NULL,
     "uploadedBy" TEXT NOT NULL,
     "status" "MediaAssetStatus" NOT NULL DEFAULT 'UPLOADED',
-    "storageProvider" "MediaStorageProvider" NOT NULL DEFAULT 'LOCAL',
-    "storageBucket" TEXT,
-    "storagePath" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -346,9 +340,6 @@ CREATE UNIQUE INDEX "Progress_userId_lessonId_key" ON "Progress"("userId", "less
 
 -- CreateIndex
 CREATE UNIQUE INDEX "MediaAsset_filename_key" ON "MediaAsset"("filename");
-
--- CreateIndex
-CREATE UNIQUE INDEX "MediaAsset_storagePath_key" ON "MediaAsset"("storagePath");
 
 -- CreateIndex
 CREATE INDEX "MediaAsset_status_createdAt_idx" ON "MediaAsset"("status", "createdAt");

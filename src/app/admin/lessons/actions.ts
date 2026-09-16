@@ -12,7 +12,6 @@ import type { Prisma } from "@prisma/client";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { mediaName, privateMediaRoot } from "@/lib/media";
-import { storageAdmin } from "@/lib/supabase-storage";
 
 function refreshLearningPages() {
   revalidatePath("/admin/lessons");
@@ -392,21 +391,14 @@ export async function cleanupOrphanMedia() {
     const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000);
     const assets = await prisma.mediaAsset.findMany({
       where: { status: { in: ["UPLOADED", "ORPHANED"] }, createdAt: { lt: cutoff }, lessons: { none: {} } },
-      select: { id: true, filename: true, storageProvider: true, storageBucket: true, storagePath: true },
+      select: { id: true, filename: true },
       take: 100,
     });
     let removed = 0;
     for (const asset of assets) {
       if (!mediaName(asset.filename)) continue;
-      if (asset.storageProvider === "SUPABASE") {
-        if (!asset.storageBucket || !asset.storagePath) continue;
-        const { client } = storageAdmin();
-        const { error } = await client.storage.from(asset.storageBucket).remove([asset.storagePath]);
-        if (error) continue;
-      } else {
-        try { await fs.unlink(path.join(privateMediaRoot(), asset.filename)); }
-        catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") continue; }
-      }
+      try { await fs.unlink(path.join(privateMediaRoot(), asset.filename)); }
+      catch (error) { if ((error as NodeJS.ErrnoException).code !== "ENOENT") continue; }
       await prisma.$transaction(async tx => {
         const deleted = await tx.mediaAsset.deleteMany({ where: { id: asset.id, lessons: { none: {} } } });
         if (deleted.count) await audit(tx, admin.id, "VIDEO_ORPHAN_DELETED", asset.id);

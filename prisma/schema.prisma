@@ -48,11 +48,6 @@ enum MediaAssetStatus {
   ORPHANED
 }
 
-enum MediaStorageProvider {
-  LOCAL
-  SUPABASE
-}
-
 model Course {
   id          String        @id @default(cuid())
   title       String
@@ -109,20 +104,17 @@ model Progress {
 }
 
 model MediaAsset {
-  id              String               @id @default(cuid())
-  filename        String               @unique
-  originalName    String
-  mimeType        String
-  sizeBytes       Int
-  uploadedBy      String
-  uploader        User                 @relation(fields: [uploadedBy], references: [id], onDelete: Restrict)
-  status          MediaAssetStatus     @default(UPLOADED)
-  storageProvider MediaStorageProvider @default(LOCAL)
-  storageBucket   String?
-  storagePath     String?              @unique
-  lessons         Lesson[]
-  createdAt       DateTime             @default(now())
-  updatedAt       DateTime             @updatedAt
+  id           String           @id @default(cuid())
+  filename     String           @unique
+  originalName String
+  mimeType     String
+  sizeBytes    Int
+  uploadedBy   String
+  uploader     User             @relation(fields: [uploadedBy], references: [id], onDelete: Restrict)
+  status       MediaAssetStatus @default(UPLOADED)
+  lessons      Lesson[]
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
 
   @@index([status, createdAt])
   @@index([uploadedBy, createdAt])

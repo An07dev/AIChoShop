@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import * as tus from "tus-js-client";
 
 import {
   BookOpen,
@@ -121,7 +120,6 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
   // Video Upload States
   const [videoMode, setVideoMode] = useState<"upload" | "url">("upload");
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
 
   const showToast = (message: string, type: "success" | "error" = "success") => {
     setToast({ message, type });
@@ -294,68 +292,39 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
     setModalError("");
   };
 
-  // Upload trực tiếp lên Supabase Storage bằng TUS; server chỉ cấp token và xác nhận kết quả.
+  // Xử lý Upload Video từ máy tính lên Server
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    if (file.size > 100 * 1024 * 1024) {
+      setModalError("File video quá lớn (tối đa 100MB). Vui lòng chọn file nhỏ hơn hoặc nén video.");
+      return;
+    }
+
     setIsUploading(true);
-    setUploadProgress(0);
     setModalError("");
 
     try {
-      const prepareResponse = await fetch("/api/upload/video", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "prepare", file: { name: file.name, type: file.type, size: file.size } }),
-      });
-      const prepared = await prepareResponse.json();
-      if (!prepareResponse.ok || !prepared.success) throw new Error(prepared.error || "Không thể chuẩn bị upload.");
+      const uploadData = new FormData();
+      uploadData.append("video", file);
 
-      await new Promise<void>((resolve, reject) => {
-        const upload = new tus.Upload(file, {
-          endpoint: prepared.tusEndpoint,
-          headers: { "x-signature": prepared.token },
-          chunkSize: 6 * 1024 * 1024,
-          retryDelays: [0, 3000, 5000, 10_000, 20_000],
-          uploadDataDuringCreation: true,
-          removeFingerprintOnSuccess: true,
-          metadata: {
-            bucketName: prepared.bucket,
-            objectName: prepared.objectPath,
-            contentType: file.type || "application/octet-stream",
-            cacheControl: "3600",
-          },
-          onError: reject,
-          onProgress: (uploaded, total) => setUploadProgress(total ? Math.round((uploaded / total) * 100) : 0),
-          onSuccess: () => resolve(),
-        });
-        upload.findPreviousUploads()
-          .then((previous) => {
-            if (previous.length) upload.resumeFromPreviousUpload(previous[0]);
-            upload.start();
-          })
-          .catch(reject);
+      const res = await fetch("/api/upload/video", {
+        method: "POST",
+        body: uploadData,
       });
 
-      const finalizeResponse = await fetch("/api/upload/video", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "finalize", mediaAssetId: prepared.mediaAssetId }),
-      });
-      const data = await finalizeResponse.json();
+      const data = await res.json();
       if (data.success && data.url) {
         setFormData((prev) => ({ ...prev, videoUrl: data.url, mediaAssetId: data.mediaAssetId || null }));
         showToast(`Đã tải lên video "${file.name}" thành công!`);
       } else {
-        throw new Error(data.error || "Không thể xác nhận video đã tải lên.");
+        setModalError(data.error || "Không thể tải video lên server");
       }
-    } catch (error) {
-      setModalError(error instanceof Error ? error.message : "Lỗi kết nối khi tải video lên Supabase Storage.");
+    } catch {
+      setModalError("Lỗi kết nối khi tải video lên server");
     } finally {
       setIsUploading(false);
-      setUploadProgress(0);
-      e.target.value = "";
     }
   };
 
@@ -1211,7 +1180,7 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
                       <label className="relative flex flex-col items-center justify-center border-2 border-dashed border-blue-300 hover:border-blue-500 rounded-xl p-5 bg-blue-50/40 hover:bg-blue-50/80 transition-all cursor-pointer group">
                         <input
                           type="file"
-                          accept="video/mp4,video/webm,.mp4,.webm"
+                          accept="video/mp4,video/webm,video/ogg,video/quicktime,video/x-matroska"
                           onChange={handleFileUpload}
                           disabled={isUploading}
                           className="sr-only"
@@ -1220,11 +1189,8 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
                         {isUploading ? (
                           <div className="flex flex-col items-center gap-2 text-blue-600 py-3">
                             <Loader2 size={32} className="animate-spin" />
-                            <span className="text-xs font-bold">Đang tải trực tiếp lên Supabase Storage: {uploadProgress}%</span>
-                            <div className="h-2 w-56 overflow-hidden rounded-full bg-blue-100">
-                              <div className="h-full bg-blue-600 transition-[width]" style={{ width: `${uploadProgress}%` }} />
-                            </div>
-                            <span className="text-[11px] text-slate-500">Có thể tiếp tục nếu mạng bị gián đoạn</span>
+                            <span className="text-xs font-bold">Đang tải video lên server, vui lòng đợi...</span>
+                            <span className="text-[11px] text-slate-500">File đang được lưu trực tiếp vào hệ thống</span>
                           </div>
                         ) : (
                           <div className="flex flex-col items-center gap-1.5 text-center py-2">
@@ -1235,9 +1201,9 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
                               Bấm để chọn file video từ máy tính của bạn
                             </span>
                             <span className="text-[11px] text-slate-500 font-medium">
-                              Hỗ trợ MP4/WebM; giới hạn theo cấu hình Supabase Storage
+                              Hỗ trợ file .mp4, .webm, .mov, .mkv (tối đa 500MB)
                             </span>
-                            {formData.videoUrl && (formData.videoUrl.startsWith("/uploads/") || formData.videoUrl.startsWith("/api/media/")) && (
+                            {formData.videoUrl && formData.videoUrl.startsWith("/uploads/") && (
                               <span className="mt-2 inline-flex items-center gap-1 text-[11px] font-mono font-bold text-emerald-700 bg-emerald-100/90 px-3 py-1 rounded-md border border-emerald-200">
                                 <CheckCircle2 size={13} /> File hiện tại: {formData.videoUrl.split("/").pop()}
                               </span>
