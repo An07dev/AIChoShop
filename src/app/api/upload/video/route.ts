@@ -60,7 +60,10 @@ export async function POST(req: NextRequest) {
           success: true,
           mediaAssetId: asset.id,
           filename,
-          signedUploadUrl: data.signedUrl,
+          bucket: config.bucket,
+          objectPath,
+          token: data.token,
+          tusEndpoint: config.tusEndpoint,
         });
       }
 
