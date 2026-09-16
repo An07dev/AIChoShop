@@ -362,7 +362,15 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
     startTransition(async () => {
       const res = await deleteLesson(lesson.id);
       if (res.success) {
-        setLessons((prev) => prev.filter((l) => l.id !== lesson.id));
+        setLessons((prev) =>
+          prev
+            .filter((item) => item.id !== lesson.id)
+            .map((item) =>
+              item.course.id === lesson.course.id && item.order > lesson.order
+                ? { ...item, order: item.order - 1 }
+                : item
+            )
+        );
         showToast(`Đã xóa bài học #${lesson.order} thành công!`);
       } else {
         showToast(res.error || "Không thể xóa bài học", "error");
