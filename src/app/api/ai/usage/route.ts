@@ -86,7 +86,7 @@ export async function POST(req: NextRequest) {
 
     const result = await recordAiUsage({
       userId: token,
-      tool: tool === "koc-planner" ? "koc-calculator" : tool,
+      tool,
       toolName,
       action,
       input,

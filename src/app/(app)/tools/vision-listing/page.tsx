@@ -206,13 +206,10 @@ export default function VisionListingPage() {
             <span className="text-slate-600 dark:text-slate-300">Tối Ưu SEO & Đăng Bán</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white flex flex-wrap items-center gap-2 sm:gap-3">
-            AI Phân Tích Ảnh Sản Phẩm (Vision)
+            AI Phân Tích Ảnh Sản Phẩm
             <span className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 shadow-xs uppercase tracking-wider">
               <Crown size={11} className="text-amber-600 dark:text-amber-400" />
               VIP TOOL
-            </span>
-            <span className="hidden sm:inline-flex text-[10px] font-black px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 uppercase tracking-wide border border-emerald-200 dark:border-emerald-800">
-              Vision-to-Listing
             </span>
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -249,147 +246,147 @@ export default function VisionListingPage() {
               {/* 1. UPLOAD ẢNH SẢN PHẨM */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
-                Ảnh Chụp Sản Phẩm <span className="text-rose-500">*</span>
-              </label>
+                  Ảnh Chụp Sản Phẩm <span className="text-rose-500">*</span>
+                </label>
 
-              {!imageBase64 ? (
-                <div
-                  onClick={() => fileInputRef.current?.click()}
-                  className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-400 rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all bg-slate-50/50 dark:bg-slate-950/50 hover:bg-emerald-50/20 dark:hover:bg-emerald-950/10 group"
-                >
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/png, image/jpeg, image/webp"
-                    className="hidden"
-                    onChange={handleImageFileChange}
-                  />
-                  <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                    <Upload size={22} />
-                  </div>
-                  <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                    Bấm để tải ảnh lên hoặc kéo thả vào đây
-                  </p>
-                  <p className="text-[11px] text-slate-400 mt-1">
-                    Hỗ trợ PNG, JPG, WebP (Tối đa 5MB)
-                  </p>
-                </div>
-              ) : (
-                <div className="relative rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-50 dark:bg-slate-950 p-2.5 flex items-center gap-3">
-                  <img
-                    src={imageBase64}
-                    alt="Preview"
-                    className="w-16 h-16 object-cover rounded-xl border border-slate-200 dark:border-slate-800"
-                  />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
-                      {imageFileName || "Ảnh sản phẩm"}
-                    </p>
-                    <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5 flex items-center gap-1">
-                      <ImageIcon size={11} /> Đã sẵn sàng phân tích Vision
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={handleRemoveImage}
-                    className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
-                    title="Xóa ảnh và chọn ảnh khác"
+                {!imageBase64 ? (
+                  <div
+                    onClick={() => fileInputRef.current?.click()}
+                    className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-emerald-500 dark:hover:border-emerald-400 rounded-2xl p-6 flex flex-col items-center justify-center text-center cursor-pointer transition-all bg-slate-50/50 dark:bg-slate-950/50 hover:bg-emerald-50/20 dark:hover:bg-emerald-950/10 group"
                   >
-                    <X size={16} />
-                  </button>
-                </div>
-              )}
-            </div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/png, image/jpeg, image/webp"
+                      className="hidden"
+                      onChange={handleImageFileChange}
+                    />
+                    <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                      <Upload size={22} />
+                    </div>
+                    <p className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                      Bấm để tải ảnh lên hoặc kéo thả vào đây
+                    </p>
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Hỗ trợ PNG, JPG, WebP (Tối đa 5MB)
+                    </p>
+                  </div>
+                ) : (
+                  <div className="relative rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden bg-slate-50 dark:bg-slate-950 p-2.5 flex items-center gap-3">
+                    <img
+                      src={imageBase64}
+                      alt="Preview"
+                      className="w-16 h-16 object-cover rounded-xl border border-slate-200 dark:border-slate-800"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-slate-900 dark:text-white truncate">
+                        {imageFileName || "Ảnh sản phẩm"}
+                      </p>
+                      <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5 flex items-center gap-1">
+                        <ImageIcon size={11} /> Đã sẵn sàng phân tích Vision
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer"
+                      title="Xóa ảnh và chọn ảnh khác"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                )}
+              </div>
 
-            {/* 2. SÀN THƯƠNG MẠI ĐIỆN TỬ */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                Nền Tảng Đăng Bán
-              </label>
-              <select
-                value={platform}
-                onChange={(e) => setPlatform(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition-all cursor-pointer"
+              {/* 2. SÀN THƯƠNG MẠI ĐIỆN TỬ */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Nền Tảng Đăng Bán
+                </label>
+                <select
+                  value={platform}
+                  onChange={(e) => setPlatform(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition-all cursor-pointer"
+                >
+                  {PLATFORMS.map((p) => (
+                    <option key={p} value={p}>
+                      {p}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 3. GỢI Ý NGÀNH HÀNG */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Gợi Ý Ngành Hàng / Tên Loại Sản Phẩm (Tùy chọn)
+                </label>
+                <input
+                  type="text"
+                  value={categoryHint}
+                  onChange={(e) => setCategoryHint(e.target.value)}
+                  placeholder="VD: Gia dụng nhà bếp - Lò vi sóng..."
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition-all"
+                />
+              </div>
+
+              {/* 4. KHÁCH HÀNG MỤC TIÊU */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Khách Hàng Mục Tiêu (Tùy chọn)
+                </label>
+                <input
+                  type="text"
+                  value={targetAudience}
+                  onChange={(e) => setTargetAudience(e.target.value)}
+                  placeholder="VD: Gia đình 2-5 người, người bận rộn..."
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition-all"
+                />
+              </div>
+
+              {/* 5. GHI CHÚ / ƯU ĐÃI RIÊNG CỦA SHOP */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Ưu Đãi & Quà Tặng Kèm Riêng Của Shop (Tùy chọn)
+                </label>
+                <textarea
+                  rows={2}
+                  value={shopNote}
+                  onChange={(e) => setShopNote(e.target.value)}
+                  placeholder="VD: Tặng đĩa thủy tinh cường lực, bảo hành 12 tháng 1 đổi 1..."
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition-all resize-none leading-relaxed"
+                />
+              </div>
+
+              {/* NÚT SUBMIT */}
+              <button
+                type="button"
+                onClick={handleGenerate}
+                disabled={loading || !imageBase64}
+                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 text-white font-bold text-sm shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99]"
               >
-                {PLATFORMS.map((p) => (
-                  <option key={p} value={p}>
-                    {p}
-                  </option>
-                ))}
-              </select>
+                {loading ? (
+                  <>
+                    <Sparkles size={16} className="animate-spin" /> Đang Phân Tích Ảnh & Viết Listing...
+                  </>
+                ) : (
+                  <>
+                    <Send size={16} /> Phân Tích & Tạo Listing AI
+                  </>
+                )}
+              </button>
             </div>
 
-            {/* 3. GỢI Ý NGÀNH HÀNG */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                Gợi Ý Ngành Hàng / Tên Loại Sản Phẩm (Tùy chọn)
-              </label>
-              <input
-                type="text"
-                value={categoryHint}
-                onChange={(e) => setCategoryHint(e.target.value)}
-                placeholder="VD: Gia dụng nhà bếp - Lò vi sóng..."
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition-all"
-              />
-            </div>
-
-            {/* 4. KHÁCH HÀNG MỤC TIÊU */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                Khách Hàng Mục Tiêu (Tùy chọn)
-              </label>
-              <input
-                type="text"
-                value={targetAudience}
-                onChange={(e) => setTargetAudience(e.target.value)}
-                placeholder="VD: Gia đình 2-5 người, người bận rộn..."
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition-all"
-              />
-            </div>
-
-            {/* 5. GHI CHÚ / ƯU ĐÃI RIÊNG CỦA SHOP */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                Ưu Đãi & Quà Tặng Kèm Riêng Của Shop (Tùy chọn)
-              </label>
-              <textarea
-                rows={2}
-                value={shopNote}
-                onChange={(e) => setShopNote(e.target.value)}
-                placeholder="VD: Tặng đĩa thủy tinh cường lực, bảo hành 12 tháng 1 đổi 1..."
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition-all resize-none leading-relaxed"
-              />
-            </div>
-
-            {/* NÚT SUBMIT */}
-            <button
-              type="button"
-              onClick={handleGenerate}
-              disabled={loading || !imageBase64}
-              className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 text-white font-bold text-sm shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99]"
-            >
-              {loading ? (
-                <>
-                  <Sparkles size={16} className="animate-spin" /> Đang Phân Tích Ảnh & Viết Listing...
-                </>
-              ) : (
-                <>
-                  <Send size={16} /> Phân Tích & Tạo Listing AI
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* Tips Card */}
-          <div className="bg-slate-100 dark:bg-slate-900/60 rounded-xl p-3.5 border border-slate-200/80 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
-            <p className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-              <Clock size={13} className="text-emerald-500" /> Bí quyết để AI quan sát ảnh chính xác nhất:
-            </p>
-            <p>• <strong>Độ sáng rõ:</strong> Chụp nền trắng hoặc phông đơn sắc giúp AI nhận diện màu sắc chuẩn 100%.</p>
-            <p>• <strong>Thấy rõ chi tiết:</strong> Chụp cận cảnh đường may, phụ kiện, chất liệu vải hoặc bao bì sản phẩm.</p>
+            {/* Tips Card */}
+            {/* <div className="bg-slate-100 dark:bg-slate-900/60 rounded-xl p-3.5 border border-slate-200/80 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
+              <p className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                <Clock size={13} className="text-emerald-500" /> Bí quyết để AI quan sát ảnh chính xác nhất:
+              </p>
+              <p>• <strong>Độ sáng rõ:</strong> Chụp nền trắng hoặc phông đơn sắc giúp AI nhận diện màu sắc chuẩn 100%.</p>
+              <p>• <strong>Thấy rõ chi tiết:</strong> Chụp cận cảnh đường may, phụ kiện, chất liệu vải hoặc bao bì sản phẩm.</p>
+            </div> */}
           </div>
         </div>
-      </div>
 
         {/* CỘT PHẢI: KẾT QUẢ HIỂN THỊ */}
         <div className="lg:col-span-7 flex flex-col min-h-0 lg:h-full lg:overflow-hidden">

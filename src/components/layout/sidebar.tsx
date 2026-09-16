@@ -77,7 +77,7 @@ export function Sidebar({
     { 
       id: 3, 
       name: 'Kho Công Cụ AI', 
-      desc: '13 Tools bứt phá doanh số',
+      desc: '19 Tools bứt phá doanh số',
       href: '/tools', 
       icon: Wrench,
       viewAllHref: '/tools',
@@ -94,7 +94,13 @@ export function Sidebar({
         { name: '10. Chat Broadcast & Zalo', href: '/tools/chat-broadcast' },
         { name: '11. AI Xử Lý Khủng Hoảng', href: '/tools/review-replier' },
         { name: '12. AI Kháng Nghị', href: '/tools/appeal-generator' },
-        { name: '13. AI Soi Từ Cấm Sàn', href: '/tools/policy-checker' }
+        { name: '13. AI Soi Từ Cấm Sàn', href: '/tools/policy-checker' },
+        { name: '14. AI Thư Cảm Ơn Nhét Hộp', href: '/tools/unboxing-card' },
+        { name: '15. AI Chống Hoàn Hàng COD', href: '/tools/anti-return-nudge' },
+        { name: '16. AI Thẩm Định Sản Phẩm', href: '/tools/product-validator' },
+        { name: '17. AI Đọc Vị Đối Thủ (USP)', href: '/tools/competitor-miner' },
+        { name: '18. AI Prompt Studio Ảnh', href: '/tools/photo-prompter' },
+        { name: '19. AI Bẻ Gãy Từ Chối 1-1', href: '/tools/objection-killer' }
       ]
     },
     { 
@@ -126,8 +132,8 @@ export function Sidebar({
   };
 
   return (
-    <aside className={`w-72 sidebar-theme border-r min-h-screen flex-col relative z-20 ${pathname === '/tools/seo-optimizer' ? 'hidden lg:flex shrink-0' : 'flex'}`}>
-      <div className="p-6 pb-2">
+    <aside className={`w-72 xl:w-80 sidebar-theme border-r min-h-screen flex-col relative z-20 ${pathname === '/tools/seo-optimizer' ? 'hidden lg:flex shrink-0' : 'flex'}`}>
+      <div className="p-5 pb-2">
         <h1 
           className="text-2xl font-black bg-clip-text text-transparent"
           style={{ backgroundImage: "var(--brand-gradient)" }}
@@ -137,14 +143,14 @@ export function Sidebar({
         <p className="text-xs text-[var(--sidebar-text-muted)] mt-1 font-medium">Hành trình X10 Doanh Số</p>
       </div>
 
-      <div className="flex-1 px-6 py-8 overflow-y-auto custom-scrollbar">
-        <p className="text-[11px] font-bold text-[var(--sidebar-text-muted)] uppercase tracking-wider mb-6">Lộ trình khám phá</p>
+      <div className="flex-1 px-4 py-4 overflow-y-auto custom-scrollbar">
+        <p className="text-[11px] font-bold text-[var(--sidebar-text-muted)] uppercase tracking-wider mb-4">Lộ trình khám phá</p>
         
         <div className="relative">
           {/* Vertical Timeline Line */}
           <div className="absolute left-5 top-5 bottom-8 w-0.5" style={{ backgroundColor: "var(--sidebar-timeline-line)" }}></div>
 
-          <div className="space-y-6">
+          <div className="space-y-4">
             {journeySteps.map((step, index) => {
               const Icon = step.icon;
               const isActive =
@@ -193,8 +199,8 @@ export function Sidebar({
 
                   {/* SubMenu (Accordion) */}
                   {hasSub && (
-                    <div className={`overflow-hidden transition-all duration-300 ${isExpanded ? 'max-h-[600px] mt-3 opacity-100' : 'max-h-0 opacity-0'}`}>
-                      <div className="pl-14 pr-2 space-y-1.5 pb-2">
+                    <div className={`overflow-hidden transition-all duration-300 ${isExpanded ? 'max-h-[2400px] mt-2 opacity-100' : 'max-h-0 opacity-0'}`}>
+                      <div className="pl-11 pr-1 space-y-1 pb-2">
                         {step.subItems?.map((sub: any, i) => {
                           const isSubActive =
                             sub.href === '/courses'
@@ -210,9 +216,9 @@ export function Sidebar({
                               key={i} 
                               href={sub.href}
                               title={sub.name}
-                              className={`flex items-center justify-between text-xs py-2 px-3 rounded-lg transition-colors group ${
+                              className={`flex items-center justify-between text-[12px] py-1.5 px-2.5 rounded-lg transition-colors group ${
                                 isSubActive
-                                  ? 'bg-white/90 dark:bg-brand-light text-brand font-bold border-l-2 border-brand pl-2.5 shadow-xs'
+                                  ? 'bg-white/90 dark:bg-brand-light text-brand font-bold border-l-2 border-brand pl-2 shadow-xs'
                                   : 'text-[var(--sidebar-text-secondary)] hover:text-[var(--sidebar-text-primary)] hover:bg-[var(--sidebar-hover-bg)]'
                               }`}
                             >
@@ -229,9 +235,9 @@ export function Sidebar({
                         {step.viewAllHref && (
                           <Link
                             href={step.viewAllHref}
-                            className="block text-[11px] py-1.5 px-3 text-[var(--sidebar-text-muted)] hover:text-brand hover:bg-[var(--sidebar-hover-bg)] rounded-lg transition-colors italic mt-1 font-semibold"
+                            className="block text-[11px] py-1.5 px-2.5 text-[var(--sidebar-text-muted)] hover:text-brand hover:bg-[var(--sidebar-hover-bg)] rounded-lg transition-colors italic mt-1 font-semibold"
                           >
-                            Xem toàn bộ trang &rarr;
+                            Xem toàn bộ 19 công cụ &rarr;
                           </Link>
                         )}
                       </div>

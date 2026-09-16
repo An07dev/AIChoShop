@@ -536,6 +536,396 @@ Hãy trình bày theo ĐÚNG cấu trúc Markdown chuẩn xác sau:
         break;
       }
 
+      case "unboxing-card": {
+        const toneMap: Record<string, string> = {
+          emotional: "Chân thành, ấm áp, chạm đến cảm xúc, sự biết ơn sâu sắc của thương hiệu/startup Việt",
+          friendly_witty: "Trẻ trung, hài hước, năng động Gen Z, hóm hỉnh và gần gũi",
+          premium_elegant: "Sang trọng, quý phái, thanh lịch, xưng hô Quý Khách chuẩn thương hiệu cao cấp",
+          cute_cheerful: "Đáng yêu, ngọt ngào, tươi vui, hợp ngành mẹ & bé, quà tặng, phụ kiện",
+        };
+
+        const formatMap: Record<string, string> = {
+          postcard_a6: "Bưu thiếp A6 (10 x 15 cm) - Tiêu chuẩn sang trọng, phổ biến nhất",
+          mini_card: "Thẻ Card visit mini (9 x 5.4 cm) - Nhỏ gọn, tiết kiệm chi phí in ấn",
+          voucher_tag: "Tag treo / Thẻ đính kèm nơ hộp quà - Tinh tế và bất ngờ",
+        };
+
+        const toneText = toneMap[inputs.cardTone] || inputs.cardTone || "Chân thành, ấm áp";
+        const formatText = formatMap[inputs.cardFormat] || inputs.cardFormat || "Bưu thiếp A6";
+        const shopName = inputs.shopName || "Gian Hàng Chính Hãng";
+        const category = inputs.productCategory || "Sản phẩm";
+        const offer = inputs.specialOffer || "Voucher giảm 20k cho đơn sau & Quà tặng bất ngờ khi quét mã bảo hành";
+
+        systemPrompt = "Bạn là chuyên gia hàng đầu về Trải Nghiệm Khách Hàng (Customer Experience), Nghệ thuật Đóng Gói (Unboxing Experience) và Chiến Lược Giữ Chân Khách Hàng (Retention Marketing) trên các sàn TMĐT Việt Nam (Shopee, TikTok Shop, Lazada). Bạn chuyên thiết kế các mẫu thư cảm ơn in nhét trong kiện hàng vừa chạm sâu vào cảm xúc người nhận, vừa tạo 'khiên chắn bảo vệ shop trước đánh giá 1 sao', vừa kích thích khách chụp ảnh/quay video feedback 5 sao, đồng thời khéo léo kéo tệp khách hàng về kênh chăm sóc Zalo OA đúng luật sàn mà không bao giờ bị coi là vi phạm.";
+
+        userPrompt = `Hãy thiết kế một bản Thư Cảm Ơn Nhét Hộp Hàng hoàn chỉnh chuẩn quy cách in ấn cho đơn hàng TMĐT với các thông số sau:
+
+DỮ LIỆU ĐẦU VÀO:
+- Tên Shop / Thương hiệu: ${shopName}
+- Ngành hàng / Sản phẩm: ${category}
+- Phong cách ngôn từ (Tone): ${toneText}
+- Định dạng thẻ in: ${formatText}
+- Quà tặng / Ưu đãi tri ân: ${offer}
+
+YÊU CẦU ĐẦU RA BẰNG MARKDOWN CHUYÊN NGHIỆP, RÕ RÀNG THEO CẤU TRÚC:
+
+## 🎴 1. MẶT TRƯỚC (BÌA THIỆP - FIRST IMPRESSION)
+*(Hiển thị ngay khi khách vừa mở nắp thùng hàng, gây bất ngờ và kích thích đọc tiếp)*
+- **Tiêu đề đập vào mắt:** [1 câu giật tít ngắn gọn, ấm áp hoặc bất ngờ]
+- **Lời tựa (Sub-headline):** [1-2 câu chào mừng khách hàng đã nhận được món quà này]
+- **Điểm nhấn thiết kế (Visual Note):** [Gợi ý icon hoặc chi tiết minh họa trang trí]
+
+---
+
+## 💌 2. MẶT SAU (NỘI DUNG THƯ TRI ÂN ĐẮC NHÂN TÂM)
+*(Nội dung chính được trình bày tinh tế, vừa vặn trên mặt sau của thẻ)*
+
+### 🌹 Lời Tri Ân Từ Trái Tim Đội Ngũ
+[Đoạn văn từ 3-5 câu: Bày tỏ lòng biết ơn sâu sắc vì giữa hàng ngàn sự lựa chọn ngoài kia, khách hàng đã trao niềm tin cho ${shopName}. Kể lại sự tỉ mỉ, trân trọng của các bạn nhân viên đóng gói khi chuẩn bị gói hàng này cho khách]
+
+### 🛡️ KHIÊN CHẮN 1 SAO (Anti-1-Star Shield)
+*(Bắt buộc: Lời nhắc khéo léo, nhún nhường để ngăn chặn đánh giá 1 sao khi có sự cố vận chuyển/nhầm lẫn)*
+[Đoạn văn 2-3 câu: "Nếu trong quá trình vận chuyển đường dài hoặc đóng gói có bất kỳ điều gì sơ suất khiến bạn chưa hài lòng, xin bạn ĐỪNG VỘI ĐÁNH GIÁ 1 SAO làm tổn thương công sức của các bạn đóng gói. Xin hãy dành cho ${shopName} cơ hội được chịu trách nhiệm và sửa sai bằng cách nhắn tin ngay qua khung chat sàn để được ĐỔI MỚI 100% MIỄN PHÍ hoặc HOÀN TIỀN trong 24 giờ."]
+
+### ⭐ NAM CHÂM KÉO REVIEW 5 SAO (Review Magnet)
+*(Thúc đẩy khách hào hứng chụp ảnh, quay video feedback 5 sao lung linh)*
+[Đoạn kêu gọi hấp dẫn: Hướng dẫn khách chụp ảnh hoặc quay clip unboxing xinh xắn kèm đánh giá 5 sao để nhận ngay phần quà tri ân đặc biệt hoặc voucher mua sắm cho đơn hàng tiếp theo]
+
+### 📲 CỔNG QUÉT QR CHĂM SÓC KHÁCH HÀNG AN TOÀN (Safe QR / Zalo OA)
+*(Khéo léo chuyển đổi data khách về Zalo OA hợp lệ theo quy định sàn thông qua lý do Bảo hành/Tích điểm)*
+- **Khung quét mã QR:** [Gợi ý khung text đặt cạnh mã QR in trên thẻ]
+- **Lời dẫn an toàn sàn:** "Quét mã QR để KÍCH HOẠT BẢO HÀNH ĐIỆN TỬ CHÍNH HÃNG 1 ĐỔI 1 & NHẬN QUÀ BÍ MẬT DÀNH RIÊNG CHO KHÁCH HÀNG THÂN THIẾT CỦA ${shopName.toUpperCase()}"
+
+---
+
+## 🖨️ 3. QUY CHUẨN IN ẤN & TỐI ƯU CHI PHÍ THỰC CHIẾN
+- **Quy cách kích thước in:** [Thông số mm chuẩn xưởng in cho ${formatText}]
+- **Chất liệu giấy đề xuất:** [Gợi ý loại giấy (ví dụ C300 cán màng mờ hoặc Giấy Kraft) và ưu nhược điểm]
+- **Ước tính chi phí in tại xưởng Việt Nam:** [Khoảng giá in theo số lượng 500 - 2.000 tấm]
+- **Mẹo nhỏ từ chuyên gia:** [1 mẹo thực chiến giúp tấm thiệp phát huy 200% tác dụng khi xếp vào hộp hàng]
+`;
+        break;
+      }
+
+      case "anti-return-nudge": {
+        const scenarioMap: Record<string, string> = {
+          just_ordered: "Khách vừa bấm đặt hàng COD (Xác nhận đơn & tạo trách nhiệm nhận hàng)",
+          cancel_requested: "Khách bấm Yêu cầu hủy đơn trước khi giao (Cứu đơn khẩn cấp)",
+          delivery_failed_1: "Shipper báo Giao không thành công lần 1 / Thuê bao (Cứu đơn hoàn)",
+          delayed_shipment: "Đơn hàng bị trễ do kho vận/thời tiết (Trấn an khách tránh hủy)",
+          expensive_cod: "Đơn COD giá trị cao trên 500.000đ (Lọc đơn ảo & xác thực ý định mua)",
+        };
+
+        const scenarioText = scenarioMap[inputs.scenario] || inputs.scenario || "Xác nhận đơn hàng COD";
+        const shopName = inputs.shopName || "Shop";
+        const productName = inputs.productName || "Sản phẩm";
+        const codAmount = inputs.codAmount ? `${inputs.codAmount}đ` : "Đơn hàng COD";
+        const customerReason = inputs.customerReason ? `Lý do/Phản hồi từ khách: ${inputs.customerReason}` : "";
+        const offer = inputs.compensationOffer ? `Ưu đãi/Phương án cứu đơn: ${inputs.compensationOffer}` : "Hỗ trợ đổi size/màu miễn phí, tặng quà độc quyền trong kiện hàng";
+
+        systemPrompt = "Bạn là Chuyên gia Vận hành Đơn hàng TMĐT và Xử lý Khủng hoảng Hoàn Hàng (COD & Return Defense) hàng đầu tại Việt Nam. Bạn thấu hiểu tâm lý mua sắm bốc đồng, nỗi sợ bị lừa và lý do 'bom hàng' của người mua trên TikTok Shop, Shopee và Lazada. Bạn chuyên viết các kịch bản tin nhắn và lời thoại gọi điện đắc nhân tâm, vừa khéo léo bảo vệ dòng tiền cho shop, vừa biến khách hàng do dự thành khách hàng hào hứng nhận kiện hàng.";
+
+        userPrompt = `Hãy xây dựng bộ kịch bản cứu đơn và chống hoàn hàng COD toàn diện theo thông tin sau:
+
+DỮ LIỆU ĐẦU VÀO:
+- Tên Gian Hàng / Shop: ${shopName}
+- Tên Sản Phẩm: ${productName}
+- Giá trị thu hộ COD: ${codAmount}
+- Tình huống xử lý: ${scenarioText}
+${customerReason}
+- Ưu đãi / Phương án hỗ trợ nếu cần: ${offer}
+
+YÊU CẦU ĐẦU RA BẰNG MARKDOWN CHUYÊN NGHIỆP, RÕ RÀNG THEO CẤU TRÚC:
+
+## 💬 1. KỊCH BẢN TIN NHẮN CHAT SÀN (SHOPEE / TIKTOK SHOP)
+*(Tin nhắn gửi trực tiếp qua khung chat sàn cho khách hàng)*
+
+### 📱 Mẫu 1: Ngắn Gọn & Hiển Thị Hoàn Hảo (Dưới 350 ký tự)
+*(Bắt buộc: Cực kỳ súc tích để khách nhìn thấy toàn bộ trên màn hình thông báo điện thoại mà không phải bấm 'Xem thêm')*
+[Nội dung tin nhắn dưới 350 ký tự: Chào khách xưng tên thân thiện, thông báo trạng thái đơn, nêu bật quyền lợi đặc biệt của khách khi nhận kiện hàng này, dặn dò mở máy nhận hàng]
+
+### 🎁 Mẫu 2: Đánh Vào Quyền Lợi & Tạo Trách Nhiệm (Kèm Quà Tặng / Cam Kết)
+[Nội dung tin nhắn: Nhắc đến phần quà bất ngờ đã được đóng gói kỹ lưỡng bên trong gói hàng dành riêng cho khách, cam kết cho phép đồng kiểm / hỗ trợ đổi mới 1-1 nếu không vừa, khiến khách cảm thấy được quan tâm đặc biệt và ngại từ chối nhận]
+
+---
+
+## 📞 2. KỊCH BẢN GỌI ĐIỆN THOẠI / SMS TRỰC TIẾP
+*(Dành cho nhân viên CSKH khi gọi điện thoại xác nhận hoặc nhắn SMS/Zalo trực tiếp)*
+
+### 🎙️ Lời Thoại Cuộc Gọi (Kịch bản 45 giây)
+- **Lời mở đầu:** "[Chào khách ấm áp, xưng tên shop, xác nhận tên khách hàng một cách tự nhiên nhất]"
+- **Xử lý tình huống:** "[Câu nói tháo gỡ lo lắng hoặc hỗ trợ lý do khách đưa ra, ví dụ: đổi giờ giao thuận tiện, đổi địa chỉ nhận, trấn an về chất lượng hàng]"
+- **Chốt hẹn giao hàng:** "[Câu chốt giờ shipper giao lại để khách chủ động chuẩn bị tiền mặt và nghe máy]"
+
+### 📩 Mẫu SMS / Zalo Nhắn Tin Nhanh (Dưới 160 ký tự)
+[Mẫu tin nhắn SMS ngắn gọn thông báo kiện hàng quan trọng đang trên đường tới, xin phép nhờ khách chú ý cuộc gọi của shipper]
+
+---
+
+## 🛡️ 3. KẾ HOẠCH HÀNH ĐỘNG DỰ PHÒNG TRÊN SELLER CENTER (PLAN B)
+- **Thao tác trên hệ thống sàn:** [Hướng dẫn chủ shop thao tác cụ thể trên giao diện Seller Center để hoãn hoàn hàng / yêu cầu giao lại lần 2, lần 3]
+- **Phối hợp với Shipper / Bưu cục:** [Mẹo liên hệ bưu cục phát hoặc tổng đài vận chuyển để thúc đẩy shipper mang hàng đi giao lại thay vì vội bấm 'Khách không nghe máy']
+
+---
+
+## 🧠 4. BÍ QUYẾT TÂM LÝ HỌC CHỐNG BOM HÀNG TỪ CHUYÊN GIA
+- [3 mẹo tâm lý học thực chiến giúp tỷ lệ nhận hàng tăng vọt 20-30%, ví dụ: Tạo cảm giác chờ đợi háo hức, Kỹ thuật ràng buộc cam kết nhỏ, Nhắc nhở văn minh về công sức người lao động]
+`;
+        break;
+      }
+
+      case "product-validator": {
+        const productName = inputs.productName || "Sản phẩm";
+        const costPrice = inputs.costPrice ? `${inputs.costPrice}đ` : "Chưa rõ";
+        const targetPrice = inputs.targetPrice ? `${inputs.targetPrice}đ` : "Chưa rõ";
+        const platform = inputs.platform || "Shopee và TikTok Shop";
+        const source = inputs.source || "Nhập sỉ / Xưởng Việt Nam";
+        const notes = inputs.notes ? `Ghi chú chi tiết: ${inputs.notes}` : "";
+
+        systemPrompt = "Bạn là Giám đốc Nghiên cứu Thị trường & Thẩm định Sản phẩm TMĐT hàng đầu tại Việt Nam (Shopee, TikTok Shop, Lazada). Bạn có tư duy tài chính sắc bén, am hiểu sâu sắc về biên độ lợi nhuận, chi phí sàn ẩn (phí cố định, phí dịch vụ, voucher, tỷ lệ hoàn hàng, phí quảng cáo), các rủi ro vận hành (cồng kềnh, dễ vỡ, vi phạm chính sách) và phân biệt rõ giữa sản phẩm Trend ngắn hạn bẫy vốn và sản phẩm Evergreen bền vững.";
+
+        userPrompt = `Hãy thẩm định toàn diện tiềm năng và rủi ro thương mại của sản phẩm sau đây trước khi nhà bán hàng xuống tiền nhập hàng:
+
+DỮ LIỆU ĐẦU VÀO:
+- Tên Sản Phẩm / Ý Tưởng: ${productName}
+- Giá vốn nhập dự kiến: ${costPrice}
+- Giá bán mục tiêu: ${targetPrice}
+- Kênh bán dự kiến: ${platform}
+- Nguồn hàng: ${source}
+${notes}
+
+YÊU CẦU ĐẦU RA BẰNG MARKDOWN CHUYÊN NGHIỆP, RÕ RÀNG THEO CẤU TRÚC:
+
+## 📊 1. BẢNG ĐIỂM TIỀM NĂNG SẢN PHẨM (THANG ĐIỂM 100)
+- **Điểm tổng quan:** [X/100 Điểm] — [KHUYÊN NÊN LÀM / CÂN NHẮC KỸ / RỦI RO CAO - NÊN BỎ]
+- **Đánh giá ngắn gọn:** [2 câu kết luận thực tế nhất]
+
+| Tiêu chí thẩm định | Điểm (1-10) | Nhận xét chi tiết từ chuyên gia |
+| :--- | :--- | :--- |
+| **Dung lượng & Nhu cầu tìm kiếm** | [X/10] | [Phân tích lượng khách cần mua] |
+| **Mức độ bão hòa & Cạnh tranh giá** | [X/10] | [Đối thủ phá giá, tổng kho có làm không] |
+| **Biên lợi nhuận thực tế sau phí & ads** | [X/10] | [Sau khi trừ phí sàn 12-16% + Ads + Hoàn hàng còn lãi không] |
+| **Vòng đời & Tính bền vững** | [X/10] | [Hàng Trend ngắn hạn <1 tháng hay Evergreen quanh năm] |
+| **Độ dễ vận hành & Rủi ro vận chuyển** | [X/10] | [Cồng kềnh ăn cước, bể vỡ, hạn sử dụng] |
+
+---
+
+## ⚠️ 2. CẢNH BÁO TỬ HUYỆT VẬN HÀNH & RỦI RO ẨN
+- **Rủi ro cước cân nặng / Thể tích (Volumetric Weight):** [Đánh giá kích thước đóng gói so với giá trị món hàng]
+- **Rủi ro tỷ lệ hoàn hàng (COD Risk):** [Sản phẩm này khách có dễ bom hay từ chối nhận không?]
+- **Rủi ro chính sách & Vi phạm sàn:** [Nghi vấn dính bản quyền thương hiệu, từ cấm y tế hoặc hạn chế quảng cáo]
+
+---
+
+## 💡 3. CHIẾN LƯỢC BIẾN THỂ NGÁCH & NÉ BẪY GIÁ RẺ
+- **Biến thể độc quyền (Differentiating Angle):** [Gợi ý cải tiến màu sắc, chất liệu hoặc quà tặng độc quyền để né cuộc chiến phá giá của các tổng kho]
+- **Gợi ý Combo / Upsell đẩy giá trị giỏ hàng (AOV):** [Gợi ý 1-2 món bán kèm để tăng giá trị đơn hàng]
+
+---
+
+## 🎯 4. KẾT LUẬN & LỘ TRÌNH TEST ĐƠN AN TOÀN
+- **Khuyến nghị số lượng nhập thử nghiệm:** [Số lượng cái nên nhập đợt 1 để test thị trường]
+- **Ngân sách Ads tối đa cho phép:** [Chi phí quảng cáo tối đa cho mỗi đơn để không bị lỗ vốn]
+- **Lời khuyên vàng từ chuyên gia:** [1 lời khuyên sống còn cho mặt hàng này]
+`;
+        break;
+      }
+
+      case "competitor-miner": {
+        const productName = inputs.productName || "Sản phẩm của Shop";
+        const reviews = inputs.competitorReviews || "Đánh giá của khách";
+        const category = inputs.category || "Ngành hàng TMĐT";
+        const strength = inputs.shopStrength ? `Thế mạnh của Shop: ${inputs.shopStrength}` : "";
+
+        systemPrompt = "Bạn là Chuyên gia Chiến lược Định vị Thương hiệu và Phân tích Đối thủ Cạnh tranh (Competitive Intelligence) TMĐT hàng đầu Việt Nam. Bạn có biệt tài 'đọc vị' tâm lý khách hàng từ những lời chê bai cay đắng nhất dành cho đối thủ, biến điểm yếu chí mạng của đối thủ thành vũ khí USP (Unique Selling Proposition) độc quyền và xây dựng các thông điệp truyền thông dìm hàng đối thủ một cách văn minh, tinh tế mà không bao giờ vi phạm luật quảng cáo.";
+
+        userPrompt = `Hãy phân tích tập trung các phản hồi tiêu cực / đánh giá chê của khách hàng về đối thủ sau đây để tìm ra vũ khí cạnh tranh cho sản phẩm của tôi:
+
+DỮ LIỆU ĐẦU VÀO:
+- Tên Sản Phẩm của Shop tôi: ${productName}
+- Ngành hàng: ${category}
+${strength}
+- Danh sách Đánh giá / Review chê của khách về đối thủ:
+"""
+${reviews}
+"""
+
+YÊU CẦU ĐẦU RA BẰNG MARKDOWN CHUYÊN NGHIỆP, RÕ RÀNG THEO CẤU TRÚC:
+
+## 🔍 1. BÓC TÁCH 3 TỬ HUYỆT LỚN NHẤT CỦA ĐỐI THỦ
+*(Những điểm khách hàng thất vọng và ức chế nhất khi mua của đối thủ)*
+- **Tử huyệt 1 (Lỗi sản phẩm / Chất liệu):** [Bóc tách lỗi kèm phân tích vì sao khách thất vọng]
+- **Tử huyệt 2 (Đóng gói / Giao hàng / Phụ kiện):** [Lỗi bao bì móp méo, thiếu phụ kiện hoặc hướng dẫn]
+- **Tử huyệt 3 (Dịch vụ CSKH / Bảo hành):** [Thái độ phục vụ hoặc sự vô trách nhiệm của đối thủ]
+
+---
+
+## 💎 2. ĐỊNH VỊ VŨ KHÍ USP ĐỘC QUYỀN CHO SHOP BẠN
+- **Tuyên ngôn định vị đập tan nỗi sợ:** "[1 câu slogan/tuyên ngôn ngắn gọn khẳng định shop bạn giải quyết triệt để lỗi của đối thủ]"
+- **Bảng so sánh hơn hẳn (Shop Bạn vs Đối Thủ Thị Trường):**
+
+| Tiêu chí | Đối thủ trên thị trường | Sản phẩm của Shop Bạn (Vượt trội) |
+| :--- | :--- | :--- |
+| **Chất liệu / Hoàn thiện** | [Điểm yếu của họ] | [Điểm mạnh cam kết của bạn] |
+| **Quy cách đóng gói** | [Hộp sơ sài, dễ vỡ] | [Hộp cứng chống sốc, niêm phong kỹ] |
+| **Chính sách bảo hành** | [Trốn tránh, đổ lỗi] | [Đổi mới 100% tận nhà trong 24h] |
+
+---
+
+## 🎬 3. BỘ CÂU HOOK & KỊCH BẢN "DÌM HÀNG VĂN MINH"
+*(Đánh trúng nỗi đau khách hàng đã từng trải nghiệm ở shop khác mà không nêu tên đối thủ)*
+- **Hook 1 (Góc Cảnh Báo):** "[Câu hook 3s đầu video/livestream]"
+- **Hook 2 (Góc Đồng Cảm Thực Tế):** "[Câu hook 3s đầu video/livestream]"
+- **Hook 3 (Góc Vạch Trần Sự Thật):** "[Câu hook 3s đầu video/livestream]"
+- **Đoạn mô tả sản phẩm "Đá xéo đối thủ tinh tế":** [Đoạn văn 3-4 câu chèn vào bài mô tả sản phẩm để khách đọc xong là không dám mua của đối thủ nữa]
+
+---
+
+## 🛡️ 4. LỜI KHUYÊN PHÒNG THỦ CHO SHOP BẠN
+- [3 lưu ý nghiêm ngặt trong khâu sản xuất và đóng gói để shop bạn không bao giờ giẫm vào vết xe đổ của đối thủ]
+`;
+        break;
+      }
+
+      case "photo-prompter": {
+        const productName = inputs.productName || "Sản phẩm";
+        const style = inputs.style || "minimalist_studio";
+        const imageType = inputs.imageType || "product_flatlay";
+        const aiTool = inputs.aiTool || "Midjourney v6 / Flux.1";
+        const modelInfo = inputs.modelDemographic ? `Người mẫu: ${inputs.modelDemographic}` : "";
+
+        const styleMap: Record<string, string> = {
+          minimalist_studio: "Studio tối giản sang trọng, bục podium bê tông/đá cẩm thạch, ánh sáng mềm",
+          luxury_hotel: "Khách sạn 5 sao cao cấp, nội thất gỗ óc chó và ánh sáng ấm áp",
+          korean_cafe: "Quán cafe phong cách Hàn Quốc pastel, ánh sáng tự nhiên qua ô cửa sổ",
+          street_cyberpunk: "Đường phố hiện đại, ánh sáng neon rực rỡ, năng động trẻ trung",
+          nature_organic: "Thiên nhiên tươi mát, lá cây xanh, ánh nắng mặt trời buổi sáng, phong cách hữu cơ",
+          scandinavian: "Bắc Âu ấm cúng, tông màu be/trắng, chất liệu vải lanh và gỗ sồi",
+        };
+
+        const styleText = styleMap[style] || style;
+
+        systemPrompt = `Bạn là Chuyên gia Nhiếp ảnh Thương mại (Commercial Product Photography) kiêm Kỹ sư Prompt AI hàng đầu thế giới chuyên về các nền tảng tạo ảnh: Midjourney, Flux.1, Stable Diffusion (SDXL, SD 3.5), Fooocus, DALL-E 3, Google Imagen 3, Ideogram v2, Leonardo.ai và Adobe Firefly. Bạn am hiểu sâu sắc các thông số ống kính máy ảnh (35mm, 50mm, 85mm prime lens, 100mm macro), khẩu độ (f/1.4, f/2.8), kỹ thuật chiếu sáng studio (softbox, rim light, Rembrandt lighting, caustic reflection) và cấu trúc câu lệnh prompt tiếng Anh chuyên nghiệp tối ưu riêng cho công cụ "${aiTool}" (ví dụ: Midjourney thêm tham số --ar, --v 6.1; Flux/DALL-E dùng câu mô tả tự nhiên phong phú; SDXL/Fooocus thêm trigger tags chuẩn xác) giúp các nhà bán hàng tạo ra ảnh sản phẩm và lookbook người mẫu chân thực 100%.`;
+
+        userPrompt = `Hãy tạo 5 bộ Prompt AI tiếng Anh chuyên nghiệp chuẩn xưởng ảnh thương mại cho sản phẩm sau:
+
+DỮ LIỆU ĐẦU VÀO:
+- Tên Sản Phẩm & Chi Tiết: ${productName}
+- Phong cách bối cảnh: ${styleText}
+- Loại hình ảnh: ${imageType}
+- Nền tảng AI: ${aiTool}
+${modelInfo}
+
+YÊU CẦU ĐẦU RA BẰNG MARKDOWN CHUYÊN NGHIỆP, RÕ RÀNG THEO CẤU TRÚC:
+
+## 📸 1. TOP 5 BỘ PROMPT TIẾNG ANH CHUẨN STUDIO THƯƠNG MẠI
+*(Copy nguyên văn đoạn mã code tiếng Anh vào Midjourney hoặc Flux để tạo ảnh chất lượng 8K)*
+
+### 🌟 Prompt 1: Góc Chụp Toàn Cảnh (Master Hero Shot)
+- **English Prompt (Ready to Copy):**
+\`\`\`
+[Viết prompt tiếng Anh cực kỳ chi tiết bao gồm chủ thể, bối cảnh, ánh sáng, góc máy 85mm f/1.8, màu sắc, octane render, photorealistic, 8k --ar 1:1 --v 6.0]
+\`\`\`
+- **Ý đồ nhiếp ảnh:** [Giải thích ngắn bằng tiếng Việt về góc chụp và cảm xúc mang lại]
+
+### 🔍 Prompt 2: Góc Chụp Cận Cảnh Chi Tiết (Macro Detail Shot)
+- **English Prompt (Ready to Copy):**
+\`\`\`
+[Viết prompt tiếng Anh chi tiết zoom cận vào chất liệu, đường nét gia công tinh xảo, độ sâu trường ảnh nông bokeh mờ mịt --ar 1:1 --v 6.0]
+\`\`\`
+- **Ý đồ nhiếp ảnh:** [Giải thích ngắn bằng tiếng Việt]
+
+### 💃 Prompt 3: Góc Lookbook Người Mẫu (Model Lookbook Shot)
+- **English Prompt (Ready to Copy):**
+\`\`\`
+[Viết prompt tiếng Anh mô tả người mẫu tương tác tự nhiên với sản phẩm, thần thái cuốn hút, trang phục phối hợp hoàn hảo --ar 3:4 --v 6.0]
+\`\`\`
+- **Ý đồ nhiếp ảnh:** [Giải thích ngắn bằng tiếng Việt]
+
+### ☕ Prompt 4: Bối Cảnh Đời Sống Thực Tế (Lifestyle In-Context)
+- **English Prompt (Ready to Copy):**
+\`\`\`
+[Viết prompt tiếng Anh mô tả sản phẩm đặt trong không gian sống thực tế theo đúng phong cách ${styleText}, ánh nắng tự nhiên ấm áp --ar 1:1 --v 6.0]
+\`\`\`
+- **Ý đồ nhiếp ảnh:** [Giải thích ngắn bằng tiếng Việt]
+
+### ✨ Prompt 5: Phong Cách Tối Giản Nghệ Thuật (High-end Editorial)
+- **English Prompt (Ready to Copy):**
+\`\`\`
+[Viết prompt tiếng Anh theo phong cách tạp chí thời trang Vogue/Elle, ánh sáng bóng đổ nghệ thuật, bục trưng bày điêu khắc --ar 1:1 --v 6.0]
+\`\`\`
+- **Ý đồ nhiếp ảnh:** [Giải thích ngắn bằng tiếng Việt]
+
+---
+
+## 🚫 2. BỘ CÂU LỆNH LOẠI TRỪ (NEGATIVE PROMPT)
+*(Dán vào ô Negative Prompt / --no để ảnh không bị lỗi)*
+\`\`\`
+deformed hands, missing fingers, extra limbs, bad anatomy, distorted product, low quality, blurry, text, watermark, logo, oversaturated, plastic skin, cartoon, 3d render look
+\`\`\`
+
+---
+
+## 💡 3. MẸO THỰC CHIẾN TỪ NHIẾP ẢNH GIA AI
+- [3 mẹo ghép logo hoặc inpaint sản phẩm thật vào ảnh AI để đăng lên sàn chuẩn xác 100%]
+`;
+        break;
+      }
+
+      case "objection-killer": {
+        const productName = inputs.productName || "Sản phẩm";
+        const price = inputs.price ? `${inputs.price}đ` : "Giá niêm yết";
+        const objection = inputs.customerObjection || "Khách chê đắt hoặc đòi suy nghĩ thêm";
+        const offer = inputs.flexibleOffer ? `Ưu đãi shop có thể nhượng bộ: ${inputs.flexibleOffer}` : "Voucher 20k, tặng quà bí mật, hỗ trợ đổi size miễn phí";
+
+        systemPrompt = "Bạn là Chuyên gia Đào tạo Bán hàng & Trực Chat CSKH (Live Chat Sales Closing Specialist) hàng đầu tại Việt Nam. Bạn nắm rõ tâm lý do dự, tiếc tiền và sợ bị hớ của người mua online. Bạn chuyên sáng tạo các câu trả lời tin nhắn bẻ gãy mọi lời từ chối theo phong cách 'vừa đắc nhân tâm, vừa khéo léo tạo áp lực chốt đơn nhẹ nhàng', giúp nhân viên trực chat biến khách hàng đang muốn rời đi thành người bấm nút Đặt Hàng trong vòng 3 phút.";
+
+        userPrompt = `Hãy xây dựng bộ kịch bản bẻ gãy lời từ chối và chốt đơn ngay lập tức cho tình huống sau:
+
+DỮ LIỆU ĐẦU VÀO:
+- Tên Sản Phẩm: ${productName}
+- Mức Giá Hiện Tại: ${price}
+- Lời Từ Chối / Thắc Mắc của Khách: "${objection}"
+- Ưu đãi linh hoạt Shop có thể hỗ trợ: ${offer}
+
+YÊU CẦU ĐẦU RA BẰNG MARKDOWN CHUYÊN NGHIỆP, RÕ RÀNG THEO CẤU TRÚC:
+
+## 🧠 1. GIẢI MÃ TÂM LÝ ẨN SAU LỜI TỪ CHỐI
+- **Nỗi sợ thực sự của khách:** [Phân tích ngắn gọn lý do ngầm khiến khách chần chừ]
+- **Sai lầm nhân viên thường mắc:** [Điều tuyệt đối không nên nói khi gặp câu này]
+
+---
+
+## 💬 2. BA PHƯƠNG ÁN PHẢN HỒI BẺ GÃY TỪ CHỐI TỨC THÌ
+*(Mỗi phương án từ 2-4 câu súc tích, văn phong thân thiện, xưng hô Em - Anh/Chị, tối ưu cho khung chat sàn)*
+
+### 💎 Phương Án 1: Đánh Vào Giá Trị Vượt Trội (Value Focus - Khuyên Dùng)
+- **Mẫu tin nhắn:** "[Nội dung tin nhắn: Đồng cảm với khách, chứng minh sản phẩm bền gấp đôi / chất lượng vượt trội nên tính ra rẻ hơn nhiều lần]"
+- **Thời điểm áp dụng:** Dành cho khách chê đắt nhưng thực sự thích sản phẩm.
+
+### ⚡ Phương Án 2: Tung Deal Khan Hiếm 15 Phút (Urgency & Exclusive Offer)
+- **Mẫu tin nhắn:** "[Nội dung tin nhắn: Dành riêng 1 suất quà tặng hoặc voucher đặc quyền chỉ có hiệu lực ngay trong phiên chat này]"
+- **Thời điểm áp dụng:** Dành cho khách đòi 'suy nghĩ thêm' hoặc so sánh giá.
+
+### 🛡️ Phương Án 3: Đảo Ngược Rủi Ro Tuyệt Đối (Zero-Risk Reversal)
+- **Mẫu tin nhắn:** "[Nội dung tin nhắn: Cam kết hỗ trợ đổi trả tận nhà, chịu 100% phí ship nếu không ưng ý, xóa sạch nỗi sợ mua online]"
+- **Thời điểm áp dụng:** Dành cho khách sợ hàng không giống ảnh hoặc sợ bị lừa.
+
+---
+
+## 🚀 3. KỸ THUẬT "CÂU HỎI MỞ" BUỘC KHÁCH PHẢI TRẢ LỜI
+*(Ngăn chặn tình trạng khách xem xong im lặng bỏ đi - Ghosting)*
+- **Câu hỏi lựa chọn 1:** "[Câu hỏi hướng khách chọn màu/size thay vì suy nghĩ có mua hay không]"
+- **Câu hỏi lựa chọn 2:** "[Câu hỏi chốt địa chỉ nhận hàng thuận tiện]"
+
+---
+
+## ⏱️ 4. NGUYÊN TẮC VÀNG KHI TRỰC CHAT SÀN
+- [3 mẹo giúp tỷ lệ chốt đơn (Conversion Rate) trên khung chat tăng từ 15% lên 40%]
+`;
+        break;
+      }
+
       default:
         return NextResponse.json({ success: false, error: "Công cụ không hợp lệ." }, { status: 400 });
     }
@@ -567,13 +957,30 @@ Hãy trình bày theo ĐÚNG cấu trúc Markdown chuẩn xác sau:
         { role: "user", content: userMessageContent }
       ],
       temperature: 0.7,
-      max_tokens: tool === "video-repurposer" || tool === "vision-listing" ? 2500 : 1500,
+      max_tokens: [
+        "video-repurposer",
+        "vision-listing",
+        "unboxing-card",
+        "anti-return-nudge",
+        "product-validator",
+        "competitor-miner",
+        "photo-prompter",
+        "objection-killer"
+      ].includes(tool) ? 2500 : 1500,
     });
 
     const choice = completion.choices[0];
     const outputText = choice?.message?.content?.trim();
     if (!outputText || choice?.message.refusal || choice.finish_reason !== "stop") throw new SeoError("INVALID_AI_OUTPUT", "AI chưa tạo được kết quả hoàn chỉnh. Lượt dùng chưa bị trừ.", 502);
-    await completeAi(lease, { userId, tool, output: outputText, model, inputTokens: completion.usage?.prompt_tokens ?? 0, outputTokens: completion.usage?.completion_tokens ?? 0 });
+    await completeAi(lease, {
+      userId,
+      tool,
+      output: outputText,
+      model,
+      inputTokens: completion.usage?.prompt_tokens ?? 0,
+      outputTokens: completion.usage?.completion_tokens ?? 0,
+      input: inputs,
+    });
     lease = undefined;
     const usageStats = await getAiUsageStats(userId).catch(() => null);
 

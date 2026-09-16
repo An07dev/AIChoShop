@@ -8,6 +8,7 @@ interface ActivityItem {
   tool: string;
   toolName: string;
   action: string;
+  input?: any;
   output?: string | null;
   time: string;
   createdAt: string;
@@ -44,7 +45,8 @@ export function AiUsageBadge({ tool, refreshTrigger = 0, onSelectOutput }: AiUsa
 
   const fetchStats = useCallback(async () => {
     try {
-      const res = await fetch("/api/ai/usage");
+      const url = tool ? `/api/ai/usage?tool=${encodeURIComponent(tool)}` : "/api/ai/usage";
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
         setStats({
@@ -60,7 +62,7 @@ export function AiUsageBadge({ tool, refreshTrigger = 0, onSelectOutput }: AiUsa
     } catch {
       // ignore fetch error
     }
-  }, []);
+  }, [tool]);
 
   useEffect(() => {
     fetchStats();
@@ -185,6 +187,25 @@ export function AiUsageBadge({ tool, refreshTrigger = 0, onSelectOutput }: AiUsa
                     <span className="text-slate-400">{viewingItem.time}</span>
                   </div>
 
+                  {viewingItem.input && typeof viewingItem.input === "object" && Object.keys(viewingItem.input).length > 0 && (
+                    <div className="bg-slate-100/70 dark:bg-slate-800/60 p-3 rounded-xl border border-slate-200/80 dark:border-slate-700/60 text-xs">
+                      <div className="font-semibold text-slate-500 dark:text-slate-400 text-[11px] uppercase tracking-wider mb-1.5 flex items-center gap-1.5">
+                        <FileText size={13} /> Thông số đã nhập:
+                      </div>
+                      <div className="flex flex-wrap gap-x-4 gap-y-1 text-slate-700 dark:text-slate-300">
+                        {Object.entries(viewingItem.input)
+                          .filter(([k, v]) => v && typeof v !== "object" && k !== "imageBase64" && k !== "snapshot")
+                          .slice(0, 6)
+                          .map(([k, v]) => (
+                            <div key={k} className="inline-flex items-center gap-1 text-[11px]">
+                              <span className="text-slate-400 capitalize">{k}:</span>
+                              <span className="font-medium text-slate-800 dark:text-slate-200">{String(v)}</span>
+                            </div>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+
                   <div className="bg-slate-50 dark:bg-slate-950 p-4 rounded-xl border border-slate-200 dark:border-slate-800 text-xs font-mono text-slate-800 dark:text-slate-200 whitespace-pre-wrap leading-relaxed max-h-96 overflow-y-auto custom-scrollbar">
                     {viewingItem.output || "(Không có nội dung)"}
                   </div>
@@ -196,6 +217,18 @@ export function AiUsageBadge({ tool, refreshTrigger = 0, onSelectOutput }: AiUsa
                     >
                       Quay lại danh sách
                     </button>
+                    {onSelectOutput && viewingItem.output && (
+                      <button
+                        onClick={() => {
+                          onSelectOutput(viewingItem.output || "");
+                          setIsOpen(false);
+                          setViewingItem(null);
+                        }}
+                        className="px-3.5 py-2 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-lg transition-colors cursor-pointer"
+                      >
+                        Nạp lại vào trang
+                      </button>
+                    )}
                     {viewingItem.output && (
                       <button
                         onClick={() => handleCopy(viewingItem.id, viewingItem.output || "")}

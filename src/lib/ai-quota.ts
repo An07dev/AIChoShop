@@ -4,19 +4,14 @@ import { prisma } from "./prisma";
 import { isVipActive } from "./vip-expiration";
 import { SeoError } from "./seo/contract";
 
-export const AI_TOOLS = [
-  "seo-optimizer",
-  "script-writer",
-  "appeal-generator",
-  "ad-copy",
-  "review-replier",
-  "chat-broadcast",
-  "title-spinner",
-  "video-repurposer",
-  "koc-planner",
-  "vision-listing",
-  "policy-checker",
-];
+import {
+  AI_TOOLS,
+  TOOL_NAMES,
+  summarizeAiAction,
+  sanitizeAiInput,
+} from "./ai-tools-config";
+
+export { AI_TOOLS };
 export function vnDayStart(now = new Date()) {
   return new Date(Math.floor((now.getTime() + 25_200_000) / 86_400_000) * 86_400_000 - 25_200_000);
 }
@@ -59,11 +54,42 @@ export async function reserveAi(userId: string | null, guestSubject?: string) {
   return `ai_${id}`;
 }
 
-export async function completeAi(id: string, data: { userId: string | null; tool: string; output: string; model: string; inputTokens: number; outputTokens: number }, finalize?: (tx: Prisma.TransactionClient) => Promise<unknown>) {
+export async function completeAi(
+  id: string,
+  data: {
+    userId: string | null;
+    tool: string;
+    output: string;
+    model: string;
+    inputTokens: number;
+    outputTokens: number;
+    input?: any;
+    toolName?: string;
+    action?: string;
+  },
+  finalize?: (tx: Prisma.TransactionClient) => Promise<unknown>
+) {
   return prisma.$transaction(async tx => {
-    const result = await tx.seoRun.updateMany({ where: { id, status: "pending", createdAt: { gt: new Date(Date.now() - 150_000) } }, data: { status: "success", model: data.model, inputTokens: data.inputTokens, outputTokens: data.outputTokens } });
+    const result = await tx.seoRun.updateMany({
+      where: { id, status: "pending", createdAt: { gt: new Date(Date.now() - 150_000) } },
+      data: { status: "success", model: data.model, inputTokens: data.inputTokens, outputTokens: data.outputTokens },
+    });
     if (result.count !== 1) throw new SeoError("REQUEST_EXPIRED", "Yêu cầu đã hết thời gian xử lý. Vui lòng thử lại.", 409);
-    if (data.userId) await tx.aiUsageLog.create({ data: { userId: data.userId, tool: data.tool, toolName: data.tool, action: `Tạo nội dung: ${data.tool}`, output: data.output } });
+    if (data.userId) {
+      const toolName = data.toolName || TOOL_NAMES[data.tool] || data.tool;
+      const action = data.action || summarizeAiAction(data.tool, data.input);
+      const inputStr = sanitizeAiInput(data.input);
+      await tx.aiUsageLog.create({
+        data: {
+          userId: data.userId,
+          tool: data.tool,
+          toolName,
+          action,
+          input: inputStr,
+          output: data.output,
+        },
+      });
+    }
     if (finalize) await finalize(tx);
   });
 }

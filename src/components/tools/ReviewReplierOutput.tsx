@@ -371,22 +371,20 @@ export function ReviewReplierOutput({
               <button
                 onClick={() => setViewMode("visual")}
                 title="Dạng giao diện trực quan"
-                className={`px-2 py-1 rounded text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer ${
-                  viewMode === "visual"
-                    ? "bg-amber-600 text-white shadow-sm"
-                    : "text-slate-400 hover:text-white"
-                }`}
+                className={`px-2 py-1 rounded text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer ${viewMode === "visual"
+                  ? "bg-amber-600 text-white shadow-sm"
+                  : "text-slate-400 hover:text-white"
+                  }`}
               >
                 <LayoutList size={12} /> Trực quan
               </button>
               <button
                 onClick={() => setViewMode("raw")}
                 title="Dạng văn bản markdown gốc"
-                className={`px-2 py-1 rounded text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer ${
-                  viewMode === "raw"
-                    ? "bg-amber-600 text-white shadow-sm"
-                    : "text-slate-400 hover:text-white"
-                }`}
+                className={`px-2 py-1 rounded text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer ${viewMode === "raw"
+                  ? "bg-amber-600 text-white shadow-sm"
+                  : "text-slate-400 hover:text-white"
+                  }`}
               >
                 <FileText size={12} /> Gốc
               </button>
@@ -432,15 +430,7 @@ export function ReviewReplierOutput({
               <Sparkles size={13} className="text-amber-400" />
               <span>Gợi ý 3 phong cách: Chân thành, Khéo léo vận chuyển, Bảo vệ thương hiệu</span>
             </div>
-            {onUseSample && (
-              <button
-                type="button"
-                onClick={onUseSample}
-                className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-400 px-4 py-2 text-xs font-bold text-slate-950 shadow-md shadow-amber-500/20 cursor-pointer transition-all active:scale-95"
-              >
-                <Sparkles size={14} /> Thử mẫu 1 sao (Demo)
-              </button>
-            )}
+
           </div>
         )}
 
@@ -471,11 +461,10 @@ export function ReviewReplierOutput({
                   <div className="flex items-center gap-1.5 overflow-x-auto pb-1 custom-scrollbar">
                     <button
                       onClick={() => setActiveTab("all")}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-                        activeTab === "all"
-                          ? "bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20"
-                          : "bg-slate-800/80 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-700/60"
-                      }`}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${activeTab === "all"
+                        ? "bg-amber-500 text-slate-950 shadow-md shadow-amber-500/20"
+                        : "bg-slate-800/80 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-700/60"
+                        }`}
                     >
                       <Sparkles size={13} />
                       Tất cả ({parsedData.styles.length} phương án)
@@ -488,11 +477,10 @@ export function ReviewReplierOutput({
                         <button
                           key={style.id}
                           onClick={() => setActiveTab(style.id)}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${
-                            isSelected
-                              ? "bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/20"
-                              : "bg-slate-800/80 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-700/60"
-                          }`}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all whitespace-nowrap cursor-pointer flex items-center gap-1.5 ${isSelected
+                            ? "bg-amber-500 text-slate-950 font-bold shadow-md shadow-amber-500/20"
+                            : "bg-slate-800/80 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-700/60"
+                            }`}
                         >
                           {theme.icon}
                           <span>{style.title.split(":")[0]}</span>

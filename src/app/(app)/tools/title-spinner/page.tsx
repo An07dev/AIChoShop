@@ -59,7 +59,7 @@ export default function TitleSpinnerPage() {
           });
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [refreshTrigger]);
 
   const handleUseSample = () => {
@@ -114,11 +114,11 @@ export default function TitleSpinnerPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-12">
+    <div className="max-w-7xl w-full mx-auto flex-1 flex flex-col min-h-0 h-full lg:overflow-hidden">
       <GateModals />
 
       {/* Header & Breadcrumb */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="shrink-0 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
             <Link href="/tools" className="hover:text-emerald-600 transition-colors flex items-center gap-1">
@@ -127,17 +127,14 @@ export default function TitleSpinnerPage() {
             <span>/</span>
             <span className="text-slate-600 dark:text-slate-300">Nhân Bản Sản Phẩm</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white flex flex-wrap items-center gap-2 sm:gap-3">
+          <h1 className="text-2xl font-black text-slate-900 dark:text-white flex flex-wrap items-center gap-2">
             AI Nhân Bản Chống Spam
             <span className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 shadow-xs uppercase tracking-wider">
               <Crown size={11} className="text-amber-600 dark:text-amber-400" />
               VIP TOOL
             </span>
-            <span className="hidden sm:inline-flex text-[10px] font-black px-2.5 py-1 rounded-full bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300 uppercase tracking-wide border border-teal-200 dark:border-teal-800">
-              Spin Content Top 1
-            </span>
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             Nhân bản 10 biến thể tiêu đề chuẩn SEO, xáo trộn từ khóa thông minh để tránh bị sàn phạt vi phạm trùng lặp.
           </p>
         </div>
@@ -161,11 +158,12 @@ export default function TitleSpinnerPage() {
         </div>
       </div>
 
-      {/* Grid 2 Cột: Cấu hình bên trái & Output bên phải */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* CỘT TRÁI: FORM NHẬP LIỆU */}
-        <div className="lg:col-span-5 space-y-5">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
+      {/* Grid 2 Cột: Cuộn độc lập */}
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:overflow-hidden items-stretch">
+        {/* CỘT TRÁI: FORM NHẬP LIỆU (cuộn độc lập) */}
+        <div className="lg:col-span-5 flex flex-col min-h-0 lg:h-full lg:overflow-hidden">
+          <div className="h-full overflow-y-auto custom-scrollbar space-y-4 lg:pr-1.5 pb-2">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
             {/* 3 Thẻ tóm tắt tính năng */}
             <div className="grid grid-cols-3 gap-2">
               <div className="p-2.5 rounded-xl border border-teal-200/70 dark:border-teal-900/40 bg-teal-50/40 dark:bg-teal-950/20">
@@ -275,26 +273,18 @@ export default function TitleSpinnerPage() {
               )}
             </p>
           </div>
-
-          {/* Tips Card */}
-          <div className="bg-slate-100 dark:bg-slate-900/60 rounded-xl p-3.5 border border-slate-200/80 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
-            <p className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-              <Clock size={13} className="text-emerald-500" /> Bí quyết nhân bản Shop clone an toàn:
-            </p>
-            <p>• <strong>Đảo trật tự từ khóa:</strong> Thay đổi vị trí tính năng và từ phụ để tỷ lệ trùng lặp văn bản dưới 60%.</p>
-            <p>• <strong>Độ dài an toàn:</strong> Tiêu đề ≤ 120 ký tự để không bị thuật toán cắt dấu "..." trên app điện thoại.</p>
-          </div>
-        </div>
-
-        {/* CỘT PHẢI: HIỂN THỊ KẾT QUẢ NHÂN BẢN */}
-        <div className="lg:col-span-7 min-h-[520px]">
-          <TitleSpinnerOutput
-            result={result}
-            loading={loading}
-            originalTitle={originalTitle}
-          />
         </div>
       </div>
+
+      {/* CỘT PHẢI: HIỂN THỊ KẾT QUẢ NHÂN BẢN (cuộn độc lập) */}
+      <div className="lg:col-span-7 flex flex-col min-h-0 lg:h-full lg:overflow-hidden">
+        <TitleSpinnerOutput
+          result={result}
+          loading={loading}
+          originalTitle={originalTitle}
+        />
+      </div>
     </div>
-  );
+  </div>
+);
 }

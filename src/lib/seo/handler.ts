@@ -75,9 +75,25 @@ export async function handleSeo(req: Request, rawInputs: unknown) {
     }, (input, outputTokens) => { metrics.inputTokens += input; metrics.outputTokens += outputTokens; });
     metrics.durationMs = Date.now() - started;
     let successes = 0;
-    await completeAi(lease, { userId: identity.userId ?? null, tool: "seo-optimizer", output: JSON.stringify(output), model: metrics.model, inputTokens: metrics.inputTokens, outputTokens: metrics.outputTokens }, async tx => {
-      successes = await finishSeo(subject, runId!, true, metrics, null, tx);
-    });
+    await completeAi(
+      lease,
+      {
+        userId: identity.userId ?? null,
+        tool: "seo-optimizer",
+        toolName: "AI Tối Ưu SEO",
+        action: inputs?.productName
+          ? `Tối ưu SEO & Hashtag cho "${inputs.productName}"`
+          : "Tối ưu SEO & Hashtag sản phẩm",
+        input: inputs,
+        output: JSON.stringify(output),
+        model: metrics.model,
+        inputTokens: metrics.inputTokens,
+        outputTokens: metrics.outputTokens,
+      },
+      async tx => {
+        successes = await finishSeo(subject, runId!, true, metrics, null, tx);
+      }
+    );
     lease = undefined;
     runId = undefined;
     const updatedStats = currentUser && !currentUser.isVIP ? await getAiUsageStats(currentUser.id).catch(() => null) : null;

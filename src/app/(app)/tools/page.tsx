@@ -1,7 +1,27 @@
 "use client";
 
 import Link from "next/link";
-import { Calculator, ShieldAlert, Video, MessageSquareWarning, Megaphone, Presentation, ArrowRight, Cpu, Layers, Flame, Send, Share2, Sparkles } from "lucide-react";
+import {
+  Calculator,
+  ShieldAlert,
+  Video,
+  MessageSquareWarning,
+  Megaphone,
+  Presentation,
+  ArrowRight,
+  Cpu,
+  Layers,
+  Flame,
+  Send,
+  Share2,
+  Sparkles,
+  HeartHandshake,
+  PackageCheck,
+  TrendingUp,
+  Target,
+  Camera,
+  MessageSquareCheck,
+} from "lucide-react";
 
 export default function ToolsPage() {
   const toolStages = [
@@ -9,6 +29,14 @@ export default function ToolsPage() {
       stage: "Giai đoạn 1: Chuẩn bị & Tài chính",
       description: "Xác định biên độ lợi nhuận và nghĩa vụ thuế trước khi nhập hàng.",
       tools: [
+        {
+          id: "product-validator",
+          name: "AI Thẩm Định Sản Phẩm Trend & Rủi Ro",
+          description: "Chấm điểm tiềm năng 1-100, bóc tách rủi ro chôn vốn, cước cân nặng ẩn và tính biên lợi nhuận trước khi nhập.",
+          icon: <TrendingUp size={32} className="text-amber-500" />,
+          color: "bg-amber-50 border-amber-100 hover:border-amber-300",
+          isFree: false,
+        },
         {
           id: "pricing-calculator",
           name: "Tính Giá Bán Sản Phẩm",
@@ -31,6 +59,22 @@ export default function ToolsPage() {
       stage: "Giai đoạn 2: Tối ưu SEO & Phủ sóng",
       description: "Đăng sản phẩm chuẩn thuật toán Sàn để lên Top 1 tìm kiếm tự nhiên.",
       tools: [
+        {
+          id: "competitor-miner",
+          name: "AI Đọc Vị Đối Thủ & Săn Tử Huyệt",
+          description: "Bóc tách review 1-3 sao cay đắng của đối thủ, tìm vũ khí USP độc quyền và kịch bản video dìm hàng văn minh.",
+          icon: <Target size={32} className="text-rose-500" />,
+          color: "bg-rose-50 border-rose-100 hover:border-rose-300",
+          isFree: false,
+        },
+        {
+          id: "photo-prompter",
+          name: "AI Prompt Chụp Ảnh Studio & Mẫu Ảo",
+          description: "Tạo 5 bộ prompt tiếng Anh chuẩn Midjourney v6 / Flux.1 tiết kiệm hàng chục triệu tiền thuê mẫu và studio.",
+          icon: <Camera size={32} className="text-violet-500" />,
+          color: "bg-violet-50 border-violet-100 hover:border-violet-300",
+          isFree: false,
+        },
         {
           id: "vision-listing",
           name: "AI Phân Tích Ảnh (Vision)",
@@ -100,6 +144,14 @@ export default function ToolsPage() {
       description: "Chăm sóc khách hàng, kéo khách cũ mua lại và giải quyết các biến cố vi phạm.",
       tools: [
         {
+          id: "objection-killer",
+          name: "Bẻ Gãy Từ Chối & Chốt Đơn 1-1",
+          description: "Xử lý mượt mà câu nói 'đắt quá', 'suy nghĩ thêm' trong tin nhắn chat sàn, chốt khách ngay trong 3 phút.",
+          icon: <MessageSquareCheck size={32} className="text-emerald-500" />,
+          color: "bg-emerald-50 border-emerald-100 hover:border-emerald-300",
+          isFree: false,
+        },
+        {
           id: "policy-checker",
           name: "AI Soi Từ Cấm & Vi Phạm Sàn",
           description: "Rà soát từ cấm theo luật kiểm duyệt TikTok Shop, Shopee, chấm điểm rủi ro và tự động viết lại bản an toàn.",
@@ -130,6 +182,22 @@ export default function ToolsPage() {
           icon: <ShieldAlert size={32} className="text-rose-500" />,
           color: "bg-rose-50 border-rose-100 hover:border-rose-300",
           isFree: false,
+        },
+        {
+          id: "unboxing-card",
+          name: "AI Thư Cảm Ơn Nhét Hộp",
+          description: "Thiết kế thiệp cảm ơn 2 mặt: Cài khiên chắn chống 1 sao, kéo đánh giá 5 sao kèm ảnh và kết nối Zalo OA an toàn.",
+          icon: <HeartHandshake size={32} className="text-pink-500" />,
+          color: "bg-pink-50 border-pink-100 hover:border-pink-300",
+          isFree: false,
+        },
+        {
+          id: "anti-return-nudge",
+          name: "AI Chống Hoàn Hàng COD",
+          description: "Ma trận kịch bản cứu đơn: Nhắc khách nhận hàng, cứu đơn khi khách bấm hủy và xử lý khi shipper báo giao thất bại.",
+          icon: <PackageCheck size={32} className="text-teal-500" />,
+          color: "bg-teal-50 border-teal-100 hover:border-teal-300",
+          isFree: false,
         }
       ]
     }
@@ -139,7 +207,7 @@ export default function ToolsPage() {
     <div className="max-w-7xl mx-auto space-y-12 pb-12">
       <div>
         <h1 className="text-3xl font-black text-slate-900 mb-2">Hành Trình Tự Động Hóa E-commerce</h1>
-        <p className="text-slate-500 text-lg max-w-3xl">Lộ trình 13 công cụ được sắp xếp từ A-Z theo vòng đời kinh doanh của một nhà bán hàng chuyên nghiệp. Khám phá và sử dụng theo thứ tự để đạt hiệu quả cao nhất.</p>
+        <p className="text-slate-500 text-lg max-w-3xl">Lộ trình 19 công cụ được sắp xếp từ A-Z theo vòng đời kinh doanh của một nhà bán hàng chuyên nghiệp. Khám phá và sử dụng theo thứ tự để đạt hiệu quả cao nhất.</p>
       </div>
 
       <div className="space-y-12">
