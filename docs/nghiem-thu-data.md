@@ -40,5 +40,18 @@ Migration đổi DEFAULT không đổi cấu hình người dùng nên rollback 
 Đợt này chưa thay đổi database production. Không coi test bị SKIP là bằng chứng đạt.
 
 Kết quả ngày 16/09/2026: PostgreSQL 17 local cổng 5439; tạo mới, deploy lặp và tiếp nhận database cũ thành công, drift bằng 0. Hai test DATA đạt, không skip; lint các file DATA đạt. Chưa chạy migration trên database thật.
-Build production 
-ext build --webpack và kiểm tra TypeScript đạt. Sửa thêm export hằng số không hợp lệ trên page Photo Prompter để build được.
+Build production `next build --webpack` và kiểm tra TypeScript đạt. Sửa thêm export hằng số không hợp lệ trên page Photo Prompter để build được.
+
+## Cập nhật production ngày 16/09/2026
+
+Sau đợt kiểm thử local ở trên, người dùng đã yêu cầu cập nhật DB thật. Đã thực hiện:
+
+- Backup toàn bộ schema public và dữ liệu ứng dụng bằng pg_dump custom, dùng snapshot repeatable-read; lưu riêng trong `.data/backups/data-rollout-20260916/public-before.dump` (không commit hoặc đóng gói deploy). Đây là backup database ứng dụng, không bao gồm video hoặc các schema dịch vụ Supabase khác.
+- Restore backup vào PostgreSQL 17 local, database riêng `aichoshop_rollout2_test`, chuẩn bị btree_gist và bỏ mục CREATE SCHEMA public khỏi danh mục restore để tránh xung đột schema rỗng.
+- Phát hiện và thử đồng bộ hai điểm drift: SeoSession_userId_fkey sang ON DELETE/UPDATE CASCADE theo schema đã có; MediaAsset.updatedAt bỏ DEFAULT theo schema. Không UPDATE/DELETE nội dung bản ghi. Hành vi xóa User trong tương lai sẽ cascade phiên SEO như schema ứng dụng quy định.
+- Bản sao chạy baseline, hai migration tiếp theo và kiểm tra drift thành công. Đối chiếu số lượng và fingerprint nội dung tất cả bảng ứng dụng giữ nguyên trước/sau.
+- Áp dụng hai điểm đồng bộ lên production, ghi nhận baseline mà không chạy lại CREATE TABLE, sau đó migrate deploy thành công. migrate status báo up to date, migrate diff không có khác biệt.
+- Đối chiếu fingerprint toàn bộ bảng ứng dụng production trước/sau thành công. Transaction và PaymentWebhookEvent bật RLS, quyền PUBLIC/anon/authenticated được thu hồi, kết nối server postgres có quyền bypass RLS và truy cập bảng.
+- Không chạy seed/demo trên production. Không đổi các bản ghi cấu hình AI/ngân hàng hiện có, không thay đổi video. Chưa deploy code lên Hostinger và chưa kiểm thử thanh toán end-to-end trên giao diện production trong đợt này.
+
+Biên bản máy và SHA256 backup lưu riêng tại `.data/backups/data-rollout-20260916/`. Các ghi chú "chưa thay đổi production" ở phần kiểm thử phía trên mô tả trạng thái trước rollout này.
