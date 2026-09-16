@@ -183,13 +183,13 @@ export default function SeoOptimizerPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-12">
+    <div className="max-w-7xl w-full mx-auto flex-1 flex flex-col min-h-0 h-full lg:overflow-hidden">
       {/* Modals chặn quyền & đăng nhập */}
       <GateModals />
       <AuthModal isOpen={loginOpen} onClose={() => setLoginOpen(false)} initialTab="login" />
 
       {/* Header & Breadcrumb */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="shrink-0 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
             <Link href="/tools" className="hover:text-emerald-600 transition-colors flex items-center gap-1">
@@ -198,17 +198,14 @@ export default function SeoOptimizerPage() {
             <span>/</span>
             <span className="text-slate-600 dark:text-slate-300">Tối Ưu SEO & Đăng Bán</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white flex flex-wrap items-center gap-2 sm:gap-3">
+          <h1 className="text-2xl font-black text-slate-900 dark:text-white flex flex-wrap items-center gap-2">
             AI Tối Ưu SEO Sản Phẩm
             <span className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shadow-xs uppercase tracking-wider">
               <Sparkles size={11} className="text-emerald-600 dark:text-emerald-400" />
               FREE TOOL
             </span>
-            <span className="hidden sm:inline-flex text-[10px] font-black px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 uppercase tracking-wide border border-emerald-200 dark:border-emerald-800">
-              Chuẩn SEO Top 1
-            </span>
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             Tạo 5 biến thể tiêu đề giật tít chuẩn thuật toán, dàn ý mô tả kích thích mua hàng và bộ 10 hashtag đẩy xu hướng.
           </p>
         </div>
@@ -232,152 +229,131 @@ export default function SeoOptimizerPage() {
         </div>
       </div>
 
-      {/* Grid 2 Cột: Cấu hình bên trái & Output bên phải */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* CỘT TRÁI: FORM NHẬP LIỆU */}
-        <div className="lg:col-span-5 space-y-5">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
-            {/* 1. SÀN THƯƠNG MẠI ĐIỆN TỬ */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
-                Sàn Thương Mại Điện Tử <span className="text-rose-500">*</span>
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setInputs((prev) => ({ ...prev, platform: "shopee" }))}
-                  className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-2 cursor-pointer ${inputs.platform === "shopee"
-                    ? "bg-orange-50 dark:bg-orange-950/40 border-orange-500 text-orange-600 dark:text-orange-400 shadow-xs"
-                    : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
-                    }`}
-                >
-                  <span className="text-base">🛒</span>
-                  <div className="text-left">
-                    <div className="font-bold leading-tight">Shopee</div>
-                    <div className="text-[10px] font-normal opacity-80">Tiêu đề ≤ 120 ký tự</div>
-                  </div>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setInputs((prev) => ({ ...prev, platform: "tiktok" }))}
-                  className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-2 cursor-pointer ${inputs.platform === "tiktok"
-                    ? "bg-slate-100 dark:bg-slate-800 border-slate-600 text-slate-900 dark:text-white shadow-xs"
-                    : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
-                    }`}
-                >
-                  <span className="text-base">🎵</span>
-                  <div className="text-left">
-                    <div className="font-bold leading-tight">TikTok Shop</div>
-                    <div className="text-[10px] font-normal opacity-80">Tiêu đề ≤ 79 ký tự</div>
-                  </div>
-                </button>
-              </div>
-            </div>
-
-            {/* 3 Thẻ tóm tắt tính năng */}
-            <div className="grid grid-cols-3 gap-2">
-              <div className="p-2.5 rounded-xl border border-emerald-200/70 dark:border-emerald-900/40 bg-emerald-50/40 dark:bg-emerald-950/20">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-900 dark:text-emerald-300">
-                  <Layers size={13} className="text-emerald-600 dark:text-emerald-400 shrink-0" />
-                  5 Tiêu Đề
-                </div>
-                <p className="text-[10px] text-emerald-700/80 dark:text-emerald-400/80 mt-0.5">Chuẩn SEO sàn</p>
-              </div>
-              <div className="p-2.5 rounded-xl border border-teal-200/70 dark:border-teal-900/40 bg-teal-50/40 dark:bg-teal-950/20">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-teal-900 dark:text-teal-300">
-                  <FileText size={13} className="text-teal-600 dark:text-teal-400 shrink-0" />
-                  Mô Tả AIDA
-                </div>
-                <p className="text-[10px] text-teal-700/80 dark:text-teal-400/80 mt-0.5">Kích thích chốt đơn</p>
-              </div>
-              <div className="p-2.5 rounded-xl border border-cyan-200/70 dark:border-cyan-900/40 bg-cyan-50/40 dark:bg-cyan-950/20">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-cyan-900 dark:text-cyan-300">
-                  <Hash size={13} className="text-cyan-600 dark:text-cyan-400 shrink-0" />
-                  10 Hashtag
-                </div>
-                <p className="text-[10px] text-cyan-700/80 dark:text-cyan-400/80 mt-0.5">Gợi ý lên xu hướng</p>
-              </div>
-            </div>
-
-            {/* 2. TÊN SẢN PHẨM */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Tên Sản Phẩm Gốc <span className="text-rose-500">*</span>
+      {/* Grid 2 Cột: Cuộn độc lập */}
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:overflow-hidden items-stretch">
+        {/* CỘT TRÁI: FORM NHẬP LIỆU (cuộn độc lập) */}
+        <div className="lg:col-span-5 flex flex-col min-h-0 lg:h-full lg:overflow-hidden">
+          <div className="h-full overflow-y-auto custom-scrollbar space-y-4 lg:pr-1.5 pb-2">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
+              {/* 1. SÀN THƯƠNG MẠI ĐIỆN TỬ */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                  Sàn Thương Mại Điện Tử <span className="text-rose-500">*</span>
                 </label>
-                <span className="text-[10px] text-slate-400">
-                  {charCount(inputs.productName)}/{SEO_LIMITS.productName}
-                </span>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setInputs((prev) => ({ ...prev, platform: "shopee" }))}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-2 cursor-pointer ${inputs.platform === "shopee"
+                      ? "bg-orange-50 dark:bg-orange-950/40 border-orange-500 text-orange-600 dark:text-orange-400 shadow-xs"
+                      : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                      }`}
+                  >
+                    <span className="text-base">🛒</span>
+                    <div className="text-left">
+                      <div className="font-bold leading-tight">Shopee</div>
+                      <div className="text-[10px] font-normal opacity-80">Tiêu đề ≤ 120 ký tự</div>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setInputs((prev) => ({ ...prev, platform: "tiktok" }))}
+                    className={`py-2 px-3 rounded-xl text-xs font-bold border transition-all flex items-center justify-center gap-2 cursor-pointer ${inputs.platform === "tiktok"
+                      ? "bg-slate-100 dark:bg-slate-800 border-slate-600 text-slate-900 dark:text-white shadow-xs"
+                      : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                      }`}
+                  >
+                    <span className="text-base">🎵</span>
+                    <div className="text-left">
+                      <div className="font-bold leading-tight">TikTok Shop</div>
+                      <div className="text-[10px] font-normal opacity-80">Tiêu đề ≤ 79 ký tự</div>
+                    </div>
+                  </button>
+                </div>
               </div>
-              <input
-                type="text"
-                value={inputs.productName}
-                onChange={(e) => setInputs((prev) => ({ ...prev, productName: e.target.value }))}
-                placeholder="VD: Áo polo nam ngắn tay cổ bẻ vải cá sấu gai cao cấp"
-                maxLength={SEO_LIMITS.productName}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition-all"
-              />
-            </div>
 
-            {/* 3. THƯƠNG HIỆU & TỪ KHÓA */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* 3 Thẻ tóm tắt tính năng */}
+
+
+              {/* 2. TÊN SẢN PHẨM */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                    Thương Hiệu
+                    Tên Sản Phẩm Gốc <span className="text-rose-500">*</span>
                   </label>
                   <span className="text-[10px] text-slate-400">
-                    {charCount(inputs.brand)}/{SEO_LIMITS.brand}
+                    {charCount(inputs.productName)}/{SEO_LIMITS.productName}
                   </span>
                 </div>
                 <input
                   type="text"
-                  value={inputs.brand}
-                  onChange={(e) => setInputs((prev) => ({ ...prev, brand: e.target.value }))}
-                  placeholder="VD: OEM hoặc No Brand"
-                  maxLength={SEO_LIMITS.brand}
+                  value={inputs.productName}
+                  onChange={(e) => setInputs((prev) => ({ ...prev, productName: e.target.value }))}
+                  placeholder="VD: Áo polo nam ngắn tay cổ bẻ vải cá sấu gai cao cấp"
+                  maxLength={SEO_LIMITS.productName}
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition-all"
                 />
               </div>
+
+              {/* 3. THƯƠNG HIỆU & TỪ KHÓA */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Thương Hiệu
+                    </label>
+                    <span className="text-[10px] text-slate-400">
+                      {charCount(inputs.brand)}/{SEO_LIMITS.brand}
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    value={inputs.brand}
+                    onChange={(e) => setInputs((prev) => ({ ...prev, brand: e.target.value }))}
+                    placeholder="VD: OEM hoặc No Brand"
+                    maxLength={SEO_LIMITS.brand}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition-all"
+                  />
+                </div>
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                      Từ Khóa Đẩy Top
+                    </label>
+                    <span className="text-[10px] text-slate-400">
+                      {charCount(inputs.keywords)}/{SEO_LIMITS.keywords}
+                    </span>
+                  </div>
+                  <input
+                    type="text"
+                    value={inputs.keywords}
+                    onChange={(e) => setInputs((prev) => ({ ...prev, keywords: e.target.value }))}
+                    placeholder="VD: áo polo nam, áo thun có cổ"
+                    maxLength={SEO_LIMITS.keywords}
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* 4. ĐIỂM NỔI BẬT (USP) & TAGS */}
               <div>
                 <div className="flex items-center justify-between mb-1.5">
                   <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                    Từ Khóa Đẩy Top
+                    Điểm Nổi Bật (USP) & Lợi Ích <span className="text-rose-500">*</span>
                   </label>
                   <span className="text-[10px] text-slate-400">
-                    {charCount(inputs.keywords)}/{SEO_LIMITS.keywords}
+                    {charCount(inputs.usp)}/{SEO_LIMITS.usp}
                   </span>
                 </div>
-                <input
-                  type="text"
-                  value={inputs.keywords}
-                  onChange={(e) => setInputs((prev) => ({ ...prev, keywords: e.target.value }))}
-                  placeholder="VD: áo polo nam, áo thun có cổ"
-                  maxLength={SEO_LIMITS.keywords}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition-all"
+                <textarea
+                  rows={3}
+                  value={inputs.usp}
+                  onChange={(e) => setInputs((prev) => ({ ...prev, usp: e.target.value }))}
+                  placeholder="Chất liệu cotton cá sấu gai tổ ong 100% tự nhiên, co giãn 4 chiều, thấm hút mồ hôi vượt trội, bo cổ dệt nguyên khối không bai dão..."
+                  maxLength={SEO_LIMITS.usp}
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition-all resize-none"
                 />
-              </div>
-            </div>
-
-            {/* 4. ĐIỂM NỔI BẬT (USP) & TAGS */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Điểm Nổi Bật (USP) & Lợi Ích <span className="text-rose-500">*</span>
-                </label>
-                <span className="text-[10px] text-slate-400">
-                  {charCount(inputs.usp)}/{SEO_LIMITS.usp}
-                </span>
-              </div>
-              <textarea
-                rows={3}
-                value={inputs.usp}
-                onChange={(e) => setInputs((prev) => ({ ...prev, usp: e.target.value }))}
-                placeholder="Chất liệu cotton cá sấu gai tổ ong 100% tự nhiên, co giãn 4 chiều, thấm hút mồ hôi vượt trội, bo cổ dệt nguyên khối không bai dão..."
-                maxLength={SEO_LIMITS.usp}
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition-all resize-none"
-              />
-              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                {/* <div className="mt-2 flex flex-wrap items-center gap-1.5">
                 <span className="text-[10px] text-slate-400 font-semibold">Gợi ý nhanh:</span>
                 {USP_TAGS.map((tag) => (
                   <button
@@ -390,122 +366,113 @@ export default function SeoOptimizerPage() {
                     + {tag}
                   </button>
                 ))}
+              </div> */}
               </div>
-            </div>
 
-            {/* 5. THÔNG SỐ KỸ THUẬT */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Thông Số Kỹ Thuật
-                </label>
-                <span className="text-[10px] text-slate-400">
-                  {charCount(inputs.specs)}/{SEO_LIMITS.specs}
-                </span>
-              </div>
-              <textarea
-                rows={2}
-                value={inputs.specs}
-                onChange={(e) => setInputs((prev) => ({ ...prev, specs: e.target.value }))}
-                placeholder="Size M (50-60kg), L (60-70kg), XL, XXL, bảng 5 màu..."
-                maxLength={SEO_LIMITS.specs}
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition-all resize-none"
-              />
-            </div>
-
-            {/* 6. KHÁCH HÀNG MỤC TIÊU */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Khách Hàng Mục Tiêu
-                </label>
-                <span className="text-[10px] text-slate-400">
-                  {charCount(inputs.audience)}/{SEO_LIMITS.audience}
-                </span>
-              </div>
-              <textarea
-                rows={2}
-                value={inputs.audience}
-                onChange={(e) => setInputs((prev) => ({ ...prev, audience: e.target.value }))}
-                placeholder="Nam thanh niên, nhân viên văn phòng, sinh viên..."
-                maxLength={SEO_LIMITS.audience}
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition-all resize-none"
-              />
-            </div>
-
-            {/* 7. CHÍNH SÁCH BÁN HÀNG */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Chính Sách Bán Hàng & Đổi Trả
-                </label>
-                <span className="text-[10px] text-slate-400">
-                  {charCount(inputs.policies)}/{SEO_LIMITS.policies}
-                </span>
-              </div>
-              <input
-                type="text"
-                value={inputs.policies}
-                onChange={(e) => setInputs((prev) => ({ ...prev, policies: e.target.value }))}
-                placeholder="VD: Hỗ trợ đổi trả trong 7 ngày nếu lỗi từ NSX, kiểm tra hàng trước khi nhận..."
-                maxLength={SEO_LIMITS.policies}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition-all"
-              />
-            </div>
-
-            {/* Nút Submit */}
-            <button
-              type="button"
-              onClick={handleGenerate}
-              disabled={loading}
-              className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 text-white font-bold text-sm shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99]"
-            >
-              {loading ? (
-                <>
-                  <Sparkles size={16} className="animate-spin" /> Đang Tối Ưu SEO Chuẩn Sàn...
-                </>
-              ) : (
-                <>
-                  <Send size={16} /> Tối Ưu SEO ({inputs.platform === "shopee" ? "Shopee" : "TikTok Shop"})
-                </>
-              )}
-            </button>
-
-            {/* Thông tin quota tài khoản */}
-            <p aria-live="polite" className="text-[10px] text-center text-slate-400">
-              {userQuota?.isLogged ? (
-                userQuota.isVIP ? (
-                  <span className="text-amber-500 font-bold flex items-center justify-center gap-1">
-                    <span>👑</span> VIP · Không giới hạn
+              {/* 5. THÔNG SỐ KỸ THUẬT */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Thông Số Kỹ Thuật
+                  </label>
+                  <span className="text-[10px] text-slate-400">
+                    {charCount(inputs.specs)}/{SEO_LIMITS.specs}
                   </span>
+                </div>
+                <textarea
+                  rows={2}
+                  value={inputs.specs}
+                  onChange={(e) => setInputs((prev) => ({ ...prev, specs: e.target.value }))}
+                  placeholder="Size M (50-60kg), L (60-70kg), XL, XXL, bảng 5 màu..."
+                  maxLength={SEO_LIMITS.specs}
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition-all resize-none"
+                />
+              </div>
+
+              {/* 6. KHÁCH HÀNG MỤC TIÊU */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Khách Hàng Mục Tiêu
+                  </label>
+                  <span className="text-[10px] text-slate-400">
+                    {charCount(inputs.audience)}/{SEO_LIMITS.audience}
+                  </span>
+                </div>
+                <textarea
+                  rows={2}
+                  value={inputs.audience}
+                  onChange={(e) => setInputs((prev) => ({ ...prev, audience: e.target.value }))}
+                  placeholder="Nam thanh niên, nhân viên văn phòng, sinh viên..."
+                  maxLength={SEO_LIMITS.audience}
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition-all resize-none"
+                />
+              </div>
+
+              {/* 7. CHÍNH SÁCH BÁN HÀNG */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Chính Sách Bán Hàng & Đổi Trả
+                  </label>
+                  <span className="text-[10px] text-slate-400">
+                    {charCount(inputs.policies)}/{SEO_LIMITS.policies}
+                  </span>
+                </div>
+                <input
+                  type="text"
+                  value={inputs.policies}
+                  onChange={(e) => setInputs((prev) => ({ ...prev, policies: e.target.value }))}
+                  placeholder="VD: Hỗ trợ đổi trả trong 7 ngày nếu lỗi từ NSX, kiểm tra hàng trước khi nhận..."
+                  maxLength={SEO_LIMITS.policies}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition-all"
+                />
+              </div>
+
+              {/* Nút Submit */}
+              <button
+                type="button"
+                onClick={handleGenerate}
+                disabled={loading}
+                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 text-white font-bold text-sm shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99]"
+              >
+                {loading ? (
+                  <>
+                    <Sparkles size={16} className="animate-spin" /> Đang Tối Ưu SEO Chuẩn Sàn...
+                  </>
                 ) : (
-                  <span>
-                    ⚡ Còn <strong className={userQuota.remainingFree === 0 ? "text-rose-500" : "text-emerald-500"}>{userQuota.remainingFree ?? 0}</strong>/{userQuota.dailyFreeLimit} lượt hôm nay · <Link href="/profile#pricing-section" className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline">Nâng cấp VIP</Link>
-                  </span>
-                )
-              ) : remaining === null ? (
-                <span>Đã đăng nhập · Sử dụng theo định mức hàng ngày.</span>
-              ) : typeof remaining === "number" ? (
-                <span>Còn {remaining}/2 lượt thử nghiệm miễn phí. Đăng nhập để nhận lượt hàng ngày.</span>
-              ) : (
-                <span>Tài khoản miễn phí được cấp lượt dùng mỗi ngày.</span>
-              )}
-            </p>
-          </div>
+                  <>
+                    <Send size={16} /> Tối Ưu SEO ({inputs.platform === "shopee" ? "Shopee" : "TikTok Shop"})
+                  </>
+                )}
+              </button>
 
-          {/* Tips Card chuẩn Chat Broadcast */}
-          <div className="bg-slate-100 dark:bg-slate-900/60 rounded-xl p-3.5 border border-slate-200/80 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
-            <p className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-              <Clock size={13} className="text-emerald-500" /> Bí quyết tối ưu SEO sàn TMĐT Top 1:
-            </p>
-            <p>• <strong>Cấu trúc tiêu đề chuẩn:</strong> [Loại SP] + [Thương hiệu/Đặc điểm chính] + [Chất liệu/Công năng] + [Kích thước/Mã].</p>
-            <p>• <strong>Vị trí từ khóa vàng:</strong> Đặt từ khóa tìm kiếm quan trọng nhất trong 40 ký tự đầu tiên để hiển thị trọn vẹn trên app điện thoại.</p>
-            <p>• <strong>Hashtag chuẩn ngách:</strong> Kết hợp hashtag ngành hàng + hashtag công năng + hashtag tệp khách để thuật toán phân phối đúng tệp mua.</p>
+              {/* Thông tin quota tài khoản */}
+              <p aria-live="polite" className="text-[10px] text-center text-slate-400">
+                {userQuota?.isLogged ? (
+                  userQuota.isVIP ? (
+                    <span className="text-amber-500 font-bold flex items-center justify-center gap-1">
+                      <span>👑</span> VIP · Không giới hạn
+                    </span>
+                  ) : (
+                    <span>
+                      ⚡ Còn <strong className={userQuota.remainingFree === 0 ? "text-rose-500" : "text-emerald-500"}>{userQuota.remainingFree ?? 0}</strong>/{userQuota.dailyFreeLimit} lượt hôm nay · <Link href="/profile#pricing-section" className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline">Nâng cấp VIP</Link>
+                    </span>
+                  )
+                ) : remaining === null ? (
+                  <span>Đã đăng nhập · Sử dụng theo định mức hàng ngày.</span>
+                ) : typeof remaining === "number" ? (
+                  <span>Còn {remaining}/2 lượt thử nghiệm miễn phí. Đăng nhập để nhận lượt hàng ngày.</span>
+                ) : (
+                  <span>Tài khoản miễn phí được cấp lượt dùng mỗi ngày.</span>
+                )}
+              </p>
+            </div>
           </div>
         </div>
 
-        {/* CỘT PHẢI: KẾT QUẢ HIỂN THỊ */}
-        <div className="lg:col-span-7 min-h-[520px]">
+        {/* CỘT PHẢI: KẾT QUẢ HIỂN THỊ (cuộn độc lập) */}
+        <div className="lg:col-span-7 flex flex-col min-h-0 lg:h-full lg:overflow-hidden">
           <SeoOptimizerOutput snapshot={snapshot} loading={loading} />
         </div>
       </div>

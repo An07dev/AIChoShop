@@ -189,9 +189,7 @@ export default function PolicyCheckerPage() {
             <span className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700/60 shadow-xs uppercase tracking-wider">
               FREE TOOL
             </span>
-            <span className="hidden sm:inline-flex text-[10px] font-black px-2.5 py-1 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300 uppercase tracking-wide border border-rose-200 dark:border-rose-800">
-              Chống Khóa Shop
-            </span>
+
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
             Rà soát 100% từ cấm theo chính sách TikTok Shop & Shopee          </p>
@@ -310,13 +308,6 @@ export default function PolicyCheckerPage() {
             </div>
 
             {/* Tips Policy */}
-            <div className="bg-slate-100 dark:bg-slate-900/60 rounded-xl p-3.5 border border-slate-200/80 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
-              <p className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <Clock size={13} className="text-emerald-500" /> Lưu ý kiểm duyệt sàn 2026:
-              </p>
-              <p>• <strong>Tránh lách chữ:</strong> Không nên viết kiểu &quot;z.a.l.o&quot;, &quot;s-đ-t&quot; vì AI của sàn vẫn quét ra và sẽ bị phạt lỗi gian lận cố ý.</p>
-              <p>• <strong>Dùng bản viết lại:</strong> Sử dụng bản viết lại an toàn do AI đề xuất để vừa cuốn hút vừa tránh mọi rủi ro ăn gậy.</p>
-            </div>
           </div>
         </div>
 

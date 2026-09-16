@@ -1,21 +1,14 @@
-import { AI_TOOLS, vnDayStart } from "./ai-quota";
-
+import { vnDayStart } from "./ai-quota";
+import {
+  AI_TOOLS,
+  TOOL_NAMES,
+  summarizeAiAction,
+  sanitizeAiInput,
+} from "./ai-tools-config";
 import { isVipActive } from "@/lib/vip-expiration";
 import { prisma } from "@/lib/prisma";
 
-export const TOOL_NAMES: Record<string, string> = {
-  "seo-optimizer": "AI Tối Ưu SEO",
-  "script-writer": "AI Kịch Bản Video",
-  "appeal-generator": "AI Kháng Nghị Vi Phạm",
-  "ad-copy": "AI Mẫu Quảng Cáo Ads",
-  "review-replier": "AI Xử Lý Đánh Giá",
-  "chat-broadcast": "Chat Broadcast & Zalo",
-  "title-spinner": "Nhân Bản Tiêu Đề",
-  "video-repurposer": "AI Biến Video 5 Kênh",
-  "koc-planner": "AI Kế Hoạch KOC",
-  "pricing-calculator": "Tính Giá Bán",
-  "tax-calculator": "Tính Thuế TMĐT",
-};
+export { AI_TOOLS, TOOL_NAMES, summarizeAiAction, sanitizeAiInput };
 
 /**
  * Lấy mốc 00:00:00 của ngày hôm nay theo múi giờ Việt Nam (GMT+7)
@@ -58,71 +51,18 @@ export function formatRelativeTime(dateInput: Date | string): string {
 }
 
 /**
- * Tự động tạo tóm tắt hành động từ công cụ và thông số đầu vào
- */
-export function summarizeAiAction(tool: string, inputs: any): string {
-  switch (tool) {
-    case "seo-optimizer":
-      return inputs?.productName
-        ? `Tối ưu SEO & Hashtag cho "${inputs.productName}"`
-        : "Tối ưu SEO & Hashtag sản phẩm";
-
-    case "script-writer":
-      return inputs?.productName
-        ? `Kịch bản video TikTok: "${inputs.productName}"`
-        : "Tạo kịch bản video TikTok/Reels";
-
-    case "appeal-generator":
-      return inputs?.shopName
-        ? `Đơn kháng nghị vi phạm: Shop ${inputs.shopName}`
-        : "Tạo đơn kháng nghị vi phạm sàn TMĐT";
-
-    case "ad-copy":
-      return inputs?.productName
-        ? `Mẫu quảng cáo Ads: "${inputs.productName}"`
-        : "Tạo mẫu quảng cáo & Hook 3s đa kênh";
-
-    case "review-replier":
-      return inputs?.shopName
-        ? `Phản hồi đánh giá ${inputs.rating || 5} sao: Shop ${inputs.shopName}`
-        : `Phản hồi đánh giá ${inputs?.rating || 5} sao của khách`;
-
-    case "chat-broadcast":
-      return inputs?.shopName
-        ? `Tin nhắn CSKH / Broadcast: Shop ${inputs.shopName}`
-        : "Soạn kịch bản tin nhắn chăm sóc khách hàng";
-
-    case "title-spinner":
-      return inputs?.originalTitle
-        ? `Xoay tiêu đề: "${inputs.originalTitle.slice(0, 45)}${inputs.originalTitle.length > 45 ? "..." : ""}"`
-        : "Nhân bản tiêu đề chống spam";
-
-    case "video-repurposer":
-      return inputs?.videoTopic
-        ? `Tái bản video 5 kênh: "${inputs.videoTopic.slice(0, 40)}${inputs.videoTopic.length > 40 ? "..." : ""}"`
-        : "Tái bản video 5 kênh đa nền tảng";
-
-    case "pricing-calculator":
-      return inputs?.productName
-        ? `Định giá sản phẩm "${inputs.productName}"`
-        : "Định giá bán & tối ưu lợi nhuận";
-
-    case "tax-calculator":
-      return inputs?.title || (inputs?.payerType
-        ? `Tính thuế TMĐT ${inputs.payerType === "company" ? "Doanh nghiệp" : inputs.payerType === "individual" ? "Cá nhân KD" : "Hộ kinh doanh"} (${inputs.taxYear || 2026})`
-        : "Tính thuế TMĐT 2026");
-
-    default:
-      return `Sử dụng công cụ ${TOOL_NAMES[tool] || tool}`;
-  }
-}
-
-/**
  * Lấy toàn bộ số liệu thống kê AI của người dùng
  */
 export async function getAiUsageStats(userId: string, filterTool?: string) {
   const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
-  const where = { userId, ...(filterTool ? { tool: filterTool } : {}) };
+  const where = {
+    userId,
+    ...(filterTool
+      ? filterTool === "koc-planner"
+        ? { tool: { in: ["koc-planner", "koc-calculator"] } }
+        : { tool: filterTool }
+      : {}),
+  };
   const [todayCount, totalGenerated, activities] = await Promise.all([
     prisma.aiUsageLog.count({ where: { userId, tool: { in: AI_TOOLS }, createdAt: { gte: vnDayStart() } } }),
     prisma.aiUsageLog.count({ where }),
@@ -147,7 +87,7 @@ export async function recordAiUsage(params: {
   try {
     const toolName = params.toolName || TOOL_NAMES[params.tool] || params.tool;
     const action = params.action || summarizeAiAction(params.tool, params.input);
-    const inputStr = typeof params.input === "string" ? params.input : JSON.stringify(params.input || {});
+    const inputStr = sanitizeAiInput(params.input);
 
     const logId = "log_" + Date.now() + "_" + Math.random().toString(36).substring(2, 8);
 

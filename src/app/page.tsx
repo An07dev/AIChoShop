@@ -5,7 +5,8 @@ import {
   Star, Crown, TrendingUp, ArrowRight, ChevronDown,
   Target, MessageSquare, PenTool, Calculator,
   Search, Copy, Play, Shield, Users, ArrowUpRight,
-  Flame, Send, Share2,
+  Flame, Send, Share2, HeartHandshake, PackageCheck,
+  Camera, MessageSquareCheck,
 } from "lucide-react";
 import { Footer } from "@/components/layout/footer";
 import { getActiveVipPlans } from "@/lib/vip-plans-server";
@@ -13,7 +14,7 @@ import { DEFAULT_VIP_PLANS } from "@/lib/vip-plans";
 
 export const metadata = {
   title: "AIChoShop - Công Cụ AI Miễn Phí Cho Nhà Bán Hàng TMĐT",
-  description: "11 công cụ AI miễn phí + Khóa học ứng dụng AI vào bán hàng Shopee, TikTok Shop. Viết SEO, chạy Ads, tạo kịch bản Reels, tính thuế TMĐT. Dùng thử ngay.",
+  description: "19 công cụ AI miễn phí + Khóa học ứng dụng AI vào bán hàng Shopee, TikTok Shop. Viết SEO, chạy Ads, tạo kịch bản Reels, tính thuế TMĐT, chống hoàn hàng COD, thư cảm ơn nhét hộp, thẩm định sản phẩm, bẻ gãy từ chối. Dùng thử ngay.",
 };
 
 export default async function LandingPage() {
@@ -64,7 +65,7 @@ export default async function LandingPage() {
             <h1 className="text-4xl sm:text-5xl md:text-6xl font-extrabold text-slate-900 leading-[1.1] mb-5 tracking-tight">
               Bán hàng thông minh hơn
               <br />
-              với <span className="text-blue-600">8 công cụ AI</span> miễn phí
+              với <span className="text-blue-600">19 công cụ AI</span> miễn phí
             </h1>
             <p className="text-lg text-slate-500 mb-8 max-w-xl mx-auto leading-relaxed">
               Tự động viết SEO, tạo kịch bản Reels, tính thuế TMĐT, kháng nghị vi phạm.
@@ -116,7 +117,7 @@ export default async function LandingPage() {
           </div>
           <div className="w-px h-8 bg-slate-200 hidden sm:block"></div>
           <div className="text-center flex-1 min-w-[120px]">
-            <div className="text-2xl font-extrabold text-slate-900">8</div>
+            <div className="text-2xl font-extrabold text-slate-900">19</div>
             <div className="text-xs text-slate-400 font-medium mt-0.5">Tools AI miễn phí</div>
           </div>
           <div className="w-px h-8 bg-slate-200 hidden sm:block"></div>
@@ -180,7 +181,7 @@ export default async function LandingPage() {
           <div className="text-center mb-14">
             <p className="text-sm font-semibold text-blue-600 mb-3">Hoàn toàn miễn phí</p>
             <h2 className="text-3xl sm:text-4xl font-extrabold text-slate-900 mb-3">
-              11 công cụ AI cho nhà bán hàng
+              19 công cụ AI cho nhà bán hàng
             </h2>
             <p className="text-slate-500 max-w-lg mx-auto">
               Mỗi tool giải quyết 1 vấn đề cụ thể. Dùng ngay, không cần đăng ký.
@@ -261,6 +262,12 @@ export default async function LandingPage() {
 
             <SmallToolCard href="/tools/review-replier" icon={<MessageSquare size={20} />} iconBg="bg-emerald-50 text-emerald-600" title="Trả Lời Đánh Giá" desc="Biến 1★ thành 5★" />
             <SmallToolCard href="/tools/koc-planner" icon={<Users size={20} />} iconBg="bg-pink-50 text-pink-600" title="KOC Planner" desc="Brief & đo ROI KOC" />
+            <SmallToolCard href="/tools/unboxing-card" icon={<HeartHandshake size={20} />} iconBg="bg-rose-50 text-rose-600" title="Thư Cảm Ơn Nhét Hộp" desc="Nam châm kéo review 5★" />
+            <SmallToolCard href="/tools/anti-return-nudge" icon={<PackageCheck size={20} />} iconBg="bg-teal-50 text-teal-600" title="Chống Hoàn Hàng COD" desc="Cứu đơn khi khách đòi hủy" />
+            <SmallToolCard href="/tools/product-validator" icon={<TrendingUp size={20} />} iconBg="bg-amber-50 text-amber-600" title="Thẩm Định Sản Phẩm" desc="Chấm điểm rủi ro 1-100" />
+            <SmallToolCard href="/tools/competitor-miner" icon={<Target size={20} />} iconBg="bg-rose-50 text-rose-600" title="Đọc Vị Đối Thủ" desc="Săn tử huyệt tìm USP" />
+            <SmallToolCard href="/tools/photo-prompter" icon={<Camera size={20} />} iconBg="bg-violet-50 text-violet-600" title="Prompt Chụp Studio" desc="Lookbook mẫu ảo 8K" />
+            <SmallToolCard href="/tools/objection-killer" icon={<MessageSquareCheck size={20} />} iconBg="bg-emerald-50 text-emerald-600" title="Bẻ Gãy Từ Chối" desc="Chốt khách trong 3 phút" />
           </div>
 
           <div className="text-center mt-10">

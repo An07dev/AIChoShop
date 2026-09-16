@@ -175,22 +175,20 @@ export function AppealGeneratorOutput({
               <button
                 onClick={() => setViewMode("visual")}
                 title="Dạng giao diện trực quan"
-                className={`px-2 py-1 rounded text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer ${
-                  viewMode === "visual"
-                    ? "bg-rose-600 text-white shadow-sm"
-                    : "text-slate-400 hover:text-white"
-                }`}
+                className={`px-2 py-1 rounded text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer ${viewMode === "visual"
+                  ? "bg-rose-600 text-white shadow-sm"
+                  : "text-slate-400 hover:text-white"
+                  }`}
               >
                 <LayoutList size={12} /> Trực quan
               </button>
               <button
                 onClick={() => setViewMode("raw")}
                 title="Dạng văn bản markdown gốc"
-                className={`px-2 py-1 rounded text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer ${
-                  viewMode === "raw"
-                    ? "bg-rose-600 text-white shadow-sm"
-                    : "text-slate-400 hover:text-white"
-                }`}
+                className={`px-2 py-1 rounded text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer ${viewMode === "raw"
+                  ? "bg-rose-600 text-white shadow-sm"
+                  : "text-slate-400 hover:text-white"
+                  }`}
               >
                 <FileText size={12} /> Gốc
               </button>
@@ -240,15 +238,7 @@ export function AppealGeneratorOutput({
               <Sparkles size={13} className="text-rose-400" />
               <span>Hỗ trợ Shopee, TikTok Shop, Lazada, Facebook</span>
             </div>
-            {onUseSample && (
-              <button
-                type="button"
-                onClick={onUseSample}
-                className="mt-1 inline-flex items-center gap-1.5 rounded-xl bg-rose-500 hover:bg-rose-400 px-4 py-2 text-xs font-bold text-white shadow-md shadow-rose-500/20 cursor-pointer transition-all active:scale-95"
-              >
-                <Sparkles size={14} /> Thử mẫu vi phạm (Demo)
-              </button>
-            )}
+
           </div>
         )}
 

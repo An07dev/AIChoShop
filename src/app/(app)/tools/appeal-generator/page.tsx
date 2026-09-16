@@ -77,7 +77,7 @@ export default function AppealGenerator() {
           });
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [refreshTrigger]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -167,11 +167,11 @@ export default function AppealGenerator() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-12">
+    <div className="max-w-7xl w-full mx-auto flex-1 flex flex-col min-h-0 h-full lg:overflow-hidden pb-3">
       <GateModals />
 
       {/* Header & Breadcrumb */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 shrink-0">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
             <Link href="/tools" className="hover:text-emerald-600 transition-colors flex items-center gap-1">
@@ -180,23 +180,20 @@ export default function AppealGenerator() {
             <span>/</span>
             <span className="text-slate-600 dark:text-slate-300">Xử Lý Khiếu Nại & Khủng Hoảng</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white flex flex-wrap items-center gap-2 sm:gap-3">
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex flex-wrap items-center gap-2 sm:gap-3">
             AI Xử Lý Khủng Hoảng
             <span className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 shadow-xs uppercase tracking-wider">
               <Crown size={11} className="text-amber-600 dark:text-amber-400" />
               VIP TOOL
             </span>
-            <span className="hidden sm:inline-flex text-[10px] font-black px-2.5 py-1 rounded-full bg-rose-100 text-rose-700 dark:bg-rose-900/40 dark:text-rose-300 uppercase tracking-wide border border-rose-200 dark:border-rose-800">
-              Kháng Nghị Vi Phạm
-            </span>
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             Tạo chiến lược giải trình pháp lý và mẫu đơn khiếu nại chuẩn sàn tăng tỷ lệ mở shop & sản phẩm bị khóa.
           </p>
         </div>
 
         {/* Nút hành động nhanh */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <AiUsageBadge tool="appeal-generator" refreshTrigger={refreshTrigger} />
           <button
             type="button"
@@ -215,37 +212,13 @@ export default function AppealGenerator() {
         </div>
       </div>
 
-      {/* Grid 2 Cột: Cấu hình bên trái & Output bên phải */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* CỘT TRÁI: FORM NHẬP LIỆU */}
-        <div className="lg:col-span-5 space-y-5">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
-            {/* 3 Thẻ tóm tắt tính năng */}
-            <div className="grid grid-cols-3 gap-2">
-              <div className="p-2.5 rounded-xl border border-rose-200/70 dark:border-rose-900/40 bg-rose-50/40 dark:bg-rose-950/20">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-rose-900 dark:text-rose-300">
-                  <ShieldCheck size={13} className="text-rose-500 shrink-0" />
-                  Luật Sàn
-                </div>
-                <p className="text-[10px] text-rose-700/80 dark:text-rose-400/80 mt-0.5">Bám sát chính sách</p>
-              </div>
-              <div className="p-2.5 rounded-xl border border-pink-200/70 dark:border-pink-900/40 bg-pink-50/40 dark:bg-pink-950/20">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-pink-900 dark:text-pink-300">
-                  <FileText size={13} className="text-pink-500 shrink-0" />
-                  2 Khối
-                </div>
-                <p className="text-[10px] text-pink-700/80 dark:text-pink-400/80 mt-0.5">Chiến lược & Lá đơn</p>
-              </div>
-              <div className="p-2.5 rounded-xl border border-amber-200/70 dark:border-amber-900/40 bg-amber-50/40 dark:bg-amber-950/20">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-amber-900 dark:text-amber-300">
-                  <Scale size={13} className="text-amber-500 shrink-0" />
-                  Tỷ Lệ Mở
-                </div>
-                <p className="text-[10px] text-amber-700/80 dark:text-amber-400/80 mt-0.5">Lập luận chuyên sâu</p>
-              </div>
-            </div>
-
-            {/* Sàn TMĐT & Tên Shop */}
+      {/* Grid 2 Cột: Cuộn độc lập */}
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:overflow-hidden items-stretch">
+        {/* CỘT TRÁI: FORM NHẬP LIỆU (cuộn độc lập) */}
+        <div className="lg:col-span-5 flex flex-col min-h-0 lg:h-full lg:overflow-hidden">
+          <div className="h-full overflow-y-auto custom-scrollbar space-y-4 lg:pr-1.5 pb-2">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 sm:p-5 shadow-xs space-y-4">
+              {/* Sàn TMĐT & Tên Shop */}
             <div className="grid grid-cols-2 gap-2.5">
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
@@ -417,29 +390,21 @@ export default function AppealGenerator() {
               )}
             </p>
           </div>
-
-          {/* Tips Card */}
-          <div className="bg-slate-100 dark:bg-slate-900/60 rounded-xl p-3.5 border border-slate-200/80 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
-            <p className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-              <Clock size={13} className="text-emerald-500" /> Bí quyết gỡ gậy & mở khóa shop thành công:
-            </p>
-            <p>• <strong>Bằng chứng xác thực:</strong> Kèm số hóa đơn VAT, vận đơn hoặc video đóng hàng để tăng 90% tỷ lệ xét duyệt.</p>
-            <p>• <strong>Thái độ văn minh:</strong> Thừa nhận lỗi hiểu nhầm thuật toán, cam kết khắc phục thay vì tranh cãi gay gắt.</p>
-          </div>
-        </div>
-
-        {/* CỘT PHẢI: HIỂN THỊ KẾT QUẢ ĐƠN KHÁNG NGHỊ */}
-        <div className="lg:col-span-7 min-h-[520px]">
-          <AppealGeneratorOutput
-            result={result}
-            loading={loading}
-            platform={platform}
-            shopName={shopName}
-            violationType={violationType.startsWith("Khác") ? (customViolationType || "Vi phạm khác") : violationType}
-            onUseSample={handleUseSample}
-          />
         </div>
       </div>
+
+      {/* CỘT PHẢI: HIỂN THỊ KẾT QUẢ ĐƠN KHÁNG NGHỊ (cuộn độc lập) */}
+      <div className="lg:col-span-7 flex flex-col min-h-0 lg:h-full lg:overflow-hidden">
+        <AppealGeneratorOutput
+          result={result}
+          loading={loading}
+          platform={platform}
+          shopName={shopName}
+          violationType={violationType.startsWith("Khác") ? (customViolationType || "Vi phạm khác") : violationType}
+          onUseSample={handleUseSample}
+        />
+      </div>
     </div>
-  );
+  </div>
+);
 }

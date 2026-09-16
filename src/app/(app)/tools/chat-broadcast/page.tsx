@@ -124,12 +124,12 @@ export default function ChatBroadcastPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-12">
+    <div className="max-w-7xl w-full mx-auto flex-1 flex flex-col min-h-0 h-full lg:overflow-hidden pb-3">
       {/* Modals chặn quyền nếu có */}
       <GateModals />
 
       {/* Header & Breadcrumb */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 shrink-0">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
             <Link href="/tools" className="hover:text-emerald-600 transition-colors flex items-center gap-1">
@@ -138,22 +138,19 @@ export default function ChatBroadcastPage() {
             <span>/</span>
             <span className="text-slate-600 dark:text-slate-300">Remarketing Khách Cũ</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white flex flex-wrap items-center gap-2 sm:gap-3">
+          <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex flex-wrap items-center gap-2 sm:gap-3">
             Soạn Tin Nhắn Chat Broadcast & Zalo
             <span className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 shadow-xs uppercase tracking-wider">
               <Crown size={11} className="text-amber-600 dark:text-amber-400" />
               VIP TOOL
             </span>
-            <span className="hidden sm:inline-flex text-[10px] font-black px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300 uppercase tracking-wide border border-emerald-200 dark:border-emerald-800">
-              Chống Spam
-            </span>
           </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
             Tạo kịch bản Shopee Chat Broadcast dưới 350 ký tự & Tin nhắn Zalo OA đắc nhân tâm kéo khách mua lại.
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
           <AiUsageBadge tool="chat-broadcast" refreshTrigger={refreshTrigger} />
           <button
             type="button"
@@ -172,155 +169,167 @@ export default function ChatBroadcastPage() {
         </div>
       </div>
 
-      {/* Grid 2 Cột: Cấu hình bên trái & Output bên phải */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* CỘT TRÁI: FORM NHẬP LIỆU */}
-        <div className="lg:col-span-5 space-y-5">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
-            
-            {/* 1. KÊNH GỬI TIN */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
-                Kênh Gửi Tin Nhắn <span className="text-rose-500">*</span>
-              </label>
-              <div className="grid grid-cols-3 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setChannel("both")}
-                  className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all flex flex-col items-center gap-1 cursor-pointer ${
-                    channel === "both"
-                      ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 text-emerald-600 dark:text-emerald-400 shadow-xs"
-                      : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
-                  }`}
-                >
-                  <span>💬 Cả Hai</span>
-                  <span className="text-[10px] font-normal opacity-80">Shopee & Zalo</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setChannel("shopee")}
-                  className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all flex flex-col items-center gap-1 cursor-pointer ${
-                    channel === "shopee"
-                      ? "bg-orange-50 dark:bg-orange-950/40 border-orange-500 text-orange-600 dark:text-orange-400 shadow-xs"
-                      : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
-                  }`}
-                >
-                  <span>🛒 Shopee</span>
-                  <span className="text-[10px] font-normal opacity-80">&lt; 350 ký tự</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setChannel("zalo")}
-                  className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all flex flex-col items-center gap-1 cursor-pointer ${
-                    channel === "zalo"
-                      ? "bg-blue-50 dark:bg-blue-950/40 border-blue-500 text-blue-600 dark:text-blue-400 shadow-xs"
-                      : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
-                  }`}
-                >
-                  <span>📱 Zalo OA</span>
-                  <span className="text-[10px] font-normal opacity-80">Thân tình 1:1</span>
-                </button>
+      {/* Grid 2 Cột: Cuộn độc lập */}
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:overflow-hidden items-stretch">
+        {/* CỘT TRÁI: FORM NHẬP LIỆU (cuộn độc lập) */}
+        <div className="lg:col-span-5 flex flex-col min-h-0 lg:h-full lg:overflow-hidden">
+          <div className="h-full overflow-y-auto custom-scrollbar space-y-4 lg:pr-1.5 pb-2">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 sm:p-5 shadow-xs space-y-4">
+              {/* Header Khối Form */}
+              <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold shadow-2xs">
+                    <MessageSquare size={16} />
+                  </div>
+                  <div>
+                    <h2 className="font-bold text-slate-900 dark:text-white text-sm">
+                      Thiết Lập Broadcast
+                    </h2>
+                  </div>
+                </div>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                  Chuẩn Remarketing
+                </span>
               </div>
-            </div>
 
-            {/* 2. TÌNH HUỐNG GỬI TIN */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                Tình Huống Gửi Tin (Kịch Bản) <span className="text-rose-500">*</span>
-              </label>
-              <select
-                value={scenario}
-                onChange={(e) => setScenario(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition-all cursor-pointer"
+              {/* 1. KÊNH GỬI TIN */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
+                  Kênh Gửi Tin Nhắn <span className="text-rose-500">*</span>
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setChannel("both")}
+                    className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all flex flex-col items-center gap-1 cursor-pointer ${
+                      channel === "both"
+                        ? "bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500 text-emerald-600 dark:text-emerald-400 shadow-xs"
+                        : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    }`}
+                  >
+                    <span>💬 Cả Hai</span>
+                    <span className="text-[10px] font-normal opacity-80">Shopee & Zalo</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setChannel("shopee")}
+                    className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all flex flex-col items-center gap-1 cursor-pointer ${
+                      channel === "shopee"
+                        ? "bg-orange-50 dark:bg-orange-950/40 border-orange-500 text-orange-600 dark:text-orange-400 shadow-xs"
+                        : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    }`}
+                  >
+                    <span>🛒 Shopee</span>
+                    <span className="text-[10px] font-normal opacity-80">&lt; 350 ký tự</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setChannel("zalo")}
+                    className={`py-2 px-2 rounded-xl text-xs font-bold border transition-all flex flex-col items-center gap-1 cursor-pointer ${
+                      channel === "zalo"
+                        ? "bg-blue-50 dark:bg-blue-950/40 border-blue-500 text-blue-600 dark:text-blue-400 shadow-xs"
+                        : "border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800"
+                    }`}
+                  >
+                    <span>📱 Zalo OA</span>
+                    <span className="text-[10px] font-normal opacity-80">Thân tình 1:1</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* 2. TÌNH HUỐNG GỬI TIN */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Tình Huống Gửi Tin (Kịch Bản) <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={scenario}
+                  onChange={(e) => setScenario(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition-all cursor-pointer"
+                >
+                  {SCENARIOS.map((sc) => (
+                    <option key={sc.id} value={sc.id}>
+                      {sc.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* 3. TÊN GIAN HÀNG & SẢN PHẨM */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Tên Shop <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={shopName}
+                    onChange={(e) => setShopName(e.target.value)}
+                    placeholder="VD: Aicho Tech Store"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    Sản Phẩm / Ngành Hàng <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={productName}
+                    onChange={(e) => setProductName(e.target.value)}
+                    placeholder="VD: Củ cáp sạc nhanh GaN 65W"
+                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* 4. ƯU ĐÃI / VOUCHER / QUÀ TẶNG */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
+                  <span>
+                    Ưu Đãi / Voucher Kèm Theo <span className="text-rose-500">*</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-normal">Lý do khách mở tin</span>
+                </label>
+                <textarea
+                  rows={3}
+                  value={offer}
+                  onChange={(e) => setOffer(e.target.value)}
+                  placeholder="VD: Mã GIAM30K giảm 30.000đ cho đơn từ 150k + Tặng 01 cáp sạc ngắn, số lượng chỉ có 50 suất trong 24h..."
+                  className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition-all resize-none"
+                />
+              </div>
+
+              {/* NÚT SUBMIT */}
+              <button
+                type="button"
+                onClick={handleGenerate}
+                disabled={loading}
+                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 text-white font-bold text-sm shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {SCENARIOS.map((sc) => (
-                  <option key={sc.id} value={sc.id}>
-                    {sc.label}
-                  </option>
-                ))}
-              </select>
+                {loading ? (
+                  <>
+                    <Sparkles size={16} className="animate-spin" /> Đang Soạn Tin Nhắn...
+                  </>
+                ) : (
+                  <>
+                    <Send size={16} /> Soạn Tin Nhắn Kéo Khách Cũ
+                  </>
+                )}
+              </button>
             </div>
-
-            {/* 3. TÊN GIAN HÀNG & SẢN PHẨM */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Tên Shop <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={shopName}
-                  onChange={(e) => setShopName(e.target.value)}
-                  placeholder="VD: Aicho Tech Store"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition-all"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                  Sản Phẩm / Ngành Hàng <span className="text-rose-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={productName}
-                  onChange={(e) => setProductName(e.target.value)}
-                  placeholder="VD: Củ cáp sạc nhanh GaN 65W"
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition-all"
-                />
-              </div>
-            </div>
-
-            {/* 4. ƯU ĐÃI / VOUCHER / QUÀ TẶNG */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
-                <span>Ưu Đãi / Voucher Kèm Theo <span className="text-rose-500">*</span></span>
-                <span className="text-[10px] text-slate-400 font-normal">Lý do khách mở tin</span>
-              </label>
-              <textarea
-                rows={3}
-                value={offer}
-                onChange={(e) => setOffer(e.target.value)}
-                placeholder="VD: Mã GIAM30K giảm 30.000đ cho đơn từ 150k + Tặng 01 cáp sạc ngắn, số lượng chỉ có 50 suất trong 24h..."
-                className="w-full px-3.5 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition-all resize-none"
-              />
-            </div>
-
-            {/* NÚT SUBMIT */}
-            <button
-              type="button"
-              onClick={handleGenerate}
-              disabled={loading}
-              className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 text-white font-bold text-sm shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {loading ? (
-                <>
-                  <Sparkles size={16} className="animate-spin" /> Đang Soạn Tin Nhắn...
-                </>
-              ) : (
-                <>
-                  <Send size={16} /> Soạn Tin Nhắn Kéo Khách Cũ
-                </>
-              )}
-            </button>
-          </div>
-
-          {/* Tips Remarketing */}
-          <div className="bg-slate-100 dark:bg-slate-900/60 rounded-xl p-3.5 border border-slate-200/80 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
-            <p className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-              <Clock size={13} className="text-emerald-500" /> Bí quyết gửi tin nhắn không bị đánh dấu Spam:
-            </p>
-            <p>• <strong>Khung giờ vàng:</strong> 11h30 - 13h00 (nghỉ trưa) và 20h00 - 21h30 (sau giờ ăn tối).</p>
-            <p>• <strong>Cấp bách thực tế:</strong> Chỉ gửi voucher có hạn dùng 24h - 48h để thúc đẩy hành động ngay.</p>
           </div>
         </div>
 
-        {/* CỘT PHẢI: KẾT QUẢ HIỂN THỊ */}
-        <div className="lg:col-span-7 min-h-[520px]">
+        {/* CỘT PHẢI: KẾT QUẢ HIỂN THỊ (cuộn độc lập) */}
+        <div className="lg:col-span-7 flex flex-col min-h-0 lg:h-full lg:overflow-hidden">
           <ChatBroadcastOutput
             result={result}
             loading={loading}
             shopName={shopName}
             channel={channel}
             scenario={scenario}
+            onUseSample={handleUseSample}
           />
         </div>
       </div>

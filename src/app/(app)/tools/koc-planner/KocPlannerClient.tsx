@@ -9,7 +9,9 @@ import {
   BarChart3,
   Calculator,
   Check,
+  ChevronDown,
   ChevronRight,
+  ChevronUp,
   CircleDollarSign,
   ClipboardCopy,
   Clock,
@@ -53,6 +55,7 @@ import {
   Crown,
 } from "lucide-react";
 import { useToolGate } from "@/hooks/useToolGate";
+import { AiUsageBadge } from "@/components/tools/AiUsageBadge";
 import { calculateKocPlan, validateKocPlanInput } from "@/lib/koc-planner/engine";
 import { isFeeProfileStale, resolveFeeProfile } from "@/lib/pricing/fee-resolver";
 import type { FeeOverrideRecord } from "@/lib/pricing/types";
@@ -148,7 +151,7 @@ function migrateInput(raw: LegacyKocInput): KocPlanInput {
 function MoneyInput({
   value,
   onChange,
-  placeholder,
+  placeholder = "0",
   className = "",
 }: {
   value: number;
@@ -161,11 +164,14 @@ function MoneyInput({
       <input
         inputMode="numeric"
         placeholder={placeholder}
-        value={value ? new Intl.NumberFormat("vi-VN").format(value) : ""}
+        value={value ? new Intl.NumberFormat("vi-VN").format(value) : (value === 0 ? "0" : "")}
         onChange={(event) => onChange(parseMoney(event.target.value))}
-        className={`w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800/80 px-3.5 py-2.5 pr-8 text-right font-mono text-sm font-bold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 dark:focus:border-brand ${className}`}
+        onFocus={(event) => {
+          if (value === 0) event.target.select();
+        }}
+        className={`w-full h-[38px] rounded-xl border border-slate-200/90 dark:border-slate-700/80 bg-white dark:bg-slate-800/90 px-3 pr-7 text-right font-mono text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 dark:focus:border-brand shadow-2xs ${className}`}
       />
-      <span className="pointer-events-none absolute right-3 text-xs font-bold text-slate-400 dark:text-slate-500">
+      <span className="pointer-events-none absolute right-2.5 text-xs font-bold text-slate-400 dark:text-slate-500">
         ₫
       </span>
     </div>
@@ -196,12 +202,15 @@ function NumberInput({
         min={min}
         max={max}
         step={step}
-        value={value}
+        value={value ?? 0}
         onChange={(event) => onChange(Number(event.target.value))}
-        className={`w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800/80 px-3.5 py-2.5 pr-8 text-right font-mono text-sm font-bold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 dark:focus:border-brand ${className}`}
+        onFocus={(event) => {
+          if (value === 0) event.target.select();
+        }}
+        className={`w-full h-[38px] rounded-xl border border-slate-200/90 dark:border-slate-700/80 bg-white dark:bg-slate-800/90 px-3 pr-7 text-right font-mono text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 dark:focus:border-brand shadow-2xs ${className}`}
       />
       {suffix && (
-        <span className="pointer-events-none absolute right-3 text-xs font-bold text-slate-400 dark:text-slate-500">
+        <span className="pointer-events-none absolute right-2.5 text-xs font-bold text-slate-400 dark:text-slate-500">
           {suffix}
         </span>
       )}
@@ -214,25 +223,27 @@ function Field({
   hint,
   children,
   tooltip,
+  className = "",
 }: {
   label: string;
   hint?: string;
   children: ReactNode;
   tooltip?: string;
+  className?: string;
 }) {
   return (
-    <label className="block">
-      <span className="mb-1.5 flex items-center justify-between gap-2 text-xs font-bold text-slate-700 dark:text-slate-300">
-        <span className="inline-flex items-center gap-1.5">
-          {label}
+    <label className={`block ${className}`}>
+      <span className="mb-1.5 flex items-center justify-between gap-1 text-xs font-bold text-slate-700 dark:text-slate-300">
+        <span className="inline-flex items-center gap-1 min-w-0">
+          <span className="truncate whitespace-nowrap">{label}</span>
           {tooltip && (
-            <span title={tooltip} className="cursor-help text-slate-400 hover:text-slate-600">
-              <HelpCircle size={12} />
+            <span title={tooltip} className="cursor-help text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 shrink-0">
+              <HelpCircle size={11} />
             </span>
           )}
         </span>
         {hint && (
-          <span className="font-normal text-slate-400 dark:text-slate-500 text-[11px]">
+          <span className="font-normal text-slate-400 dark:text-slate-500 text-[10px] shrink-0 whitespace-nowrap">
             {hint}
           </span>
         )}
@@ -248,25 +259,47 @@ function SectionCard({
   children,
   badge,
   className = "",
+  defaultOpen = true,
 }: {
   title: string;
   icon: ReactNode;
   children: ReactNode;
   badge?: ReactNode;
   className?: string;
+  defaultOpen?: boolean;
 }) {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
+
   return (
     <section
-      className={`overflow-hidden rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs transition-colors p-5 sm:p-6 space-y-4 ${className}`}
+      className={`rounded-2xl border border-slate-200/80 dark:border-slate-800/80 bg-slate-50/50 dark:bg-slate-800/25 transition-all shadow-2xs overflow-hidden ${className}`}
     >
-      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-3.5">
-        <h2 className="flex items-center gap-2.5 text-sm sm:text-base font-black text-slate-900 dark:text-white">
+      <div
+        role="button"
+        tabIndex={0}
+        onClick={() => setIsOpen(!isOpen)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault();
+            setIsOpen(!isOpen);
+          }
+        }}
+        className={`flex items-center justify-between p-3 sm:p-3.5 cursor-pointer select-none transition-colors hover:bg-slate-100/70 dark:hover:bg-slate-800/60 ${
+          isOpen ? "border-b border-slate-200/60 dark:border-slate-700/60" : ""
+        }`}
+      >
+        <h3 className="flex items-center gap-2 text-xs sm:text-sm font-black text-slate-900 dark:text-white">
           <span className="text-brand flex items-center">{icon}</span>
-          {title}
-        </h2>
-        {badge}
+          <span>{title}</span>
+        </h3>
+        <div className="flex items-center gap-2">
+          {badge}
+          <div className="text-slate-400 dark:text-slate-500 p-0.5">
+            {isOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+          </div>
+        </div>
       </div>
-      {children}
+      {isOpen && <div className="p-3.5 sm:p-4 space-y-3.5">{children}</div>}
     </section>
   );
 }
@@ -285,25 +318,45 @@ function ToggleCard({
   badge?: string;
 }) {
   return (
-    <label className="flex cursor-pointer items-start justify-between gap-3 rounded-2xl border border-slate-200 dark:border-slate-700/80 bg-slate-50/70 dark:bg-slate-800/50 p-4 transition hover:border-slate-300 dark:hover:border-slate-600">
-      <div className="space-y-0.5">
-        <div className="flex items-center gap-2">
-          <strong className="text-sm font-bold text-slate-900 dark:text-white">{label}</strong>
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => onChange(!checked)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onChange(!checked);
+        }
+      }}
+      className={`flex cursor-pointer items-start justify-between gap-3 rounded-xl border p-3 transition select-none shadow-2xs ${
+        checked
+          ? "border-brand/40 bg-brand/5 dark:bg-brand/10 dark:border-brand/30"
+          : "border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800/60 hover:border-slate-300 dark:hover:border-slate-600"
+      }`}
+    >
+      <div className="space-y-0.5 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <strong className="text-xs sm:text-sm font-bold text-slate-900 dark:text-white">{label}</strong>
           {badge && (
-            <span className="rounded-full bg-brand-light px-2 py-0.5 text-[10px] font-black text-brand">
+            <span className="rounded-full bg-brand-light dark:bg-brand/20 px-2 py-0.5 text-[10px] font-black text-brand">
               {badge}
             </span>
           )}
         </div>
-        {note && <p className="text-xs text-slate-500 dark:text-slate-400">{note}</p>}
+        {note && <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">{note}</p>}
       </div>
-      <input
-        type="checkbox"
-        checked={checked}
-        onChange={(event) => onChange(event.target.checked)}
-        className="mt-1 h-4 w-4 rounded accent-brand cursor-pointer"
-      />
-    </label>
+      <div
+        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out mt-0.5 ${
+          checked ? "bg-brand" : "bg-slate-200 dark:bg-slate-700"
+        }`}
+      >
+        <span
+          className={`pointer-events-none inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-md transition duration-200 ease-in-out ${
+            checked ? "translate-x-4.5" : "translate-x-0.5"
+          }`}
+        />
+      </div>
+    </div>
   );
 }
 
@@ -327,23 +380,23 @@ function ResultRow({
     brand: "text-brand",
     green: "text-emerald-600 dark:text-emerald-400 font-bold",
     orange: "text-amber-600 dark:text-amber-400",
-    red: "text-rose-600 dark:text-rose-400",
+    red: "text-rose-600 dark:text-rose-400 font-bold",
   };
 
   return (
     <div
-      className={`flex items-center justify-between gap-3 py-2.5 text-xs transition-colors ${highlight
+      className={`flex items-center justify-between gap-3 py-2 text-xs transition-colors ${highlight
         ? "rounded-xl bg-brand-light/30 dark:bg-brand-light/10 px-3 border border-brand/20 my-1"
         : "border-b border-slate-100 dark:border-slate-800/80"
         }`}
     >
-      <div className="space-y-0.5">
+      <div className="space-y-0.5 min-w-0">
         <span className={`${strong ? "font-bold text-slate-900 dark:text-white" : "text-slate-600 dark:text-slate-400"}`}>
           {label}
         </span>
         {subtext && <p className="text-[10px] text-slate-400 dark:text-slate-500">{subtext}</p>}
       </div>
-      <span className={`font-mono ${tones[tone]} ${strong ? "text-sm font-black" : "font-bold"}`}>
+      <span className={`font-mono shrink-0 ${tones[tone]} ${strong ? "text-sm font-black" : "font-bold"}`}>
         {value}
       </span>
     </div>
@@ -409,25 +462,6 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
   const [searchFilter, setSearchFilter] = useState("");
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
 
-  // Khóa cuộn trang chính trên desktop, chỉ cho phép cuộn nội bộ phần input và output
-  useEffect(() => {
-    const main = document.querySelector("main");
-    if (!main) return;
-    const handleResize = () => {
-      if (window.innerWidth >= 1024) {
-        main.style.overflow = "hidden";
-      } else {
-        main.style.overflow = "auto";
-      }
-    };
-    handleResize();
-    window.addEventListener("resize", handleResize);
-    return () => {
-      main.style.overflow = "";
-      window.removeEventListener("resize", handleResize);
-    };
-  }, []);
-
   const categories = useMemo(() => getAvailableCategories("tiktok", shopType), [shopType]);
   const category = categories.find((item) => item.id === categoryId) ?? categories[0];
   const level1Values = Array.from(new Set(categories.map((item) => item.level1)));
@@ -468,6 +502,34 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
       setSavedPlans([]);
     }
     setSavedProducts(readPricingHistory(localStorage).filter((item) => item.input.platform === "tiktok"));
+
+    // Tự động đồng bộ lịch sử từ Server (/api/ai/usage)
+    fetch("/api/ai/usage?tool=koc-planner")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.recentActivities && Array.isArray(data.recentActivities)) {
+          const serverPlans: SavedPlan[] = [];
+          for (const act of data.recentActivities) {
+            if (act.input?.snapshot && act.input.snapshot.id && act.input.snapshot.input && act.input.snapshot.result) {
+              serverPlans.push(act.input.snapshot);
+            }
+          }
+          if (serverPlans.length > 0) {
+            setSavedPlans((current) => {
+              const existingIds = new Set(current.map((p) => p.id));
+              const merged = [...current];
+              for (const sp of serverPlans) {
+                if (!existingIds.has(sp.id)) {
+                  merged.push(sp);
+                  existingIds.add(sp.id);
+                }
+              }
+              return merged;
+            });
+          }
+        }
+      })
+      .catch(() => {});
   }, []);
 
   const changeShopType = (next: ShopType) => {
@@ -579,11 +641,37 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
       feeVersion: feeProfile.dataVersion,
       feeSource: feeProfile.sourceName,
     };
-    const next = [item, ...savedPlans];
+    const next = [item, ...savedPlans.filter((p) => p.id !== item.id)].slice(0, 50);
     setSavedPlans(next);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     setSaveNotice("Đã lưu phương án thành công!");
     setTimeout(() => setSaveNotice(""), 3000);
+
+    const campaignTitle = lastCalculatedInput.campaignName.trim() || "Chiến dịch KOC TikTok Shop";
+    fetch("/api/ai/usage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tool: "koc-planner",
+        toolName: "AI Kế Hoạch KOC",
+        action: `Kế hoạch KOC "${campaignTitle}" (Ngân sách: ${money(lastCalculatedInput.totalBudget)})`,
+        input: {
+          campaignName: campaignTitle,
+          shopType,
+          category: getCategoryLabel(category),
+          totalBudget: lastCalculatedInput.totalBudget,
+          invitedKocs: calculatedResult.invitedKocs,
+          effectiveKocs: calculatedResult.effectiveKocs,
+          videos: calculatedResult.videos,
+          netRevenue: calculatedResult.netRevenue,
+          netProfit: calculatedResult.netProfit,
+          roi: calculatedResult.roi,
+          snapshotId: item.id,
+          snapshot: item,
+        },
+        output: `Kế hoạch KOC: ${campaignTitle}\nNgành hàng: ${getCategoryLabel(category)}\nNgân sách: ${money(lastCalculatedInput.totalBudget)}\nKOC có thể mời: ${calculatedResult.invitedKocs} người (${calculatedResult.effectiveKocs} KOC ra ${calculatedResult.videos} video)\nDoanh thu sau hoàn: ${money(calculatedResult.netRevenue)}\nTổng chi phí: ${money(calculatedResult.totalCost)}\nLợi nhuận ròng: ${money(calculatedResult.netProfit)}\nROI: ${calculatedResult.roi.toFixed(1)}%`,
+      }),
+    }).catch((err) => console.warn("Failed to log KOC plan to server:", err));
   };
 
   const openPlan = (item: SavedPlan) => {
@@ -678,7 +766,7 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
   const singleKocCost = input.sampleCost + input.sampleShippingCost + input.castFee;
 
   return (
-    <div className="w-full max-w-7xl mx-auto flex-1 flex flex-col min-h-0 overflow-hidden">
+    <div className="max-w-7xl w-full mx-auto flex-1 flex flex-col min-h-0 h-full lg:overflow-hidden">
       <GateModals />
       {feeLoadWarning && <div role="alert" className="m-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">Không tải được biểu phí quản trị. Kế hoạch đang dùng bộ phí tích hợp; hãy kiểm tra lại trước khi chốt ngân sách.</div>}
       {isFeeProfileStale(feeProfile) && <div role="alert" className="m-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">Biểu phí TikTok đã quá 90 ngày kể từ lần xác minh hoặc ngày hiệu lực. Hãy đối chiếu Seller Center trước khi chốt ngân sách.</div>}
@@ -894,14 +982,15 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
               <Crown size={11} className="text-amber-600 dark:text-amber-400" />
               VIP TOOL
             </span>
-            <span className="hidden sm:inline-flex text-[10px] font-black px-2.5 py-1 rounded-full bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 uppercase tracking-wide border border-amber-200 dark:border-amber-800">
-              PHÍ TIKTOK {FEE_DATA_VERSION}
-            </span>
           </h1>
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
+            Lập kế hoạch ngân sách, dự phóng phễu KOC, đơn hàng, hạch toán phí sàn TikTok Shop và P&L tài chính chi tiết.
+          </p>
         </div>
 
         {/* Quick Actions Bar */}
         <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <AiUsageBadge tool="koc-planner" refreshTrigger={savedPlans.length} />
           {saveNotice && (
             <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-800">
               <Check size={13} /> {saveNotice}
@@ -913,7 +1002,7 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
             className="px-3 py-1.5 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/60 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 text-xs font-bold hover:bg-blue-100/60 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
             title="Xem lịch sử các phương án KOC đã lưu"
           >
-            <Clock size={14} /> Lịch sử
+            <Clock size={14} /> Kế hoạch đã lưu {savedPlans.length > 0 ? `(${savedPlans.length})` : ""}
           </button>
           <button
             type="button"
@@ -933,9 +1022,9 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
       </div>
 
       {/* 2. Main 2-Column Core Architecture: Cả 2 cuộn độc lập, trang ngoài không cuộn */}
-      <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 overflow-hidden">
+      <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 lg:overflow-hidden items-stretch">
         {/* CỘT TRÁI: FORM NHẬP LIỆU */}
-        <div className="w-full lg:w-[480px] xl:w-[500px] shrink-0 flex flex-col h-full min-h-0 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden">
+        <div className="w-full lg:w-[510px] xl:w-[540px] shrink-0 flex flex-col h-full min-h-0 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
           {/* Header cột trái */}
           <div className="px-4 py-2.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-800/50 shrink-0">
             <div className="flex items-center gap-2">
@@ -948,33 +1037,28 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
           </div>
 
           {/* Form inputs cuộn nội bộ */}
-          <div className="p-3.5 sm:p-4 flex-1 min-h-0 overflow-y-auto custom-scrollbar overscroll-contain space-y-3.5">
+          <div className="p-3.5 sm:p-4 flex-1 min-h-0 overflow-y-auto custom-scrollbar space-y-3.5">
             {/* Card 1: Thông tin chiến dịch & Ngành hàng TikTok */}
             <SectionCard
               title="Chiến dịch & Ngành hàng"
-              icon={<Users size={18} />}
+              icon={<Users size={16} />}
+              defaultOpen={true}
               badge={
-                <span className="rounded-full bg-brand-light px-2.5 py-0.5 text-xs font-black text-brand">
+                <span className="rounded-full bg-brand-light dark:bg-brand/20 px-2.5 py-0.5 text-xs font-black text-brand">
                   {feeProfile.commissionRate}% hoa hồng
                 </span>
               }
             >
-              {/* Guidance banner */}
-              <p className="rounded-2xl border border-amber-200/70 dark:border-amber-900/50 bg-amber-50/70 dark:bg-amber-950/30 px-3.5 py-2.5 text-xs leading-relaxed text-amber-900 dark:text-amber-300">
-                💡 <strong>Lưu ý quan trọng:</strong> Hoa hồng sàn được đối chiếu tự động theo biểu phí TikTok Shop
-                ngành cấp 3. Các tỷ lệ hiệu suất KOC, Ads, hoàn huỷ nên cập nhật theo số liệu thực tế từ Seller Center.
-              </p>
-
               {/* Quick Load from Pricing History */}
               {savedProducts.length > 0 && (
-                <div className="rounded-2xl border border-brand/20 bg-brand-light/30 dark:bg-brand-light/10 p-3.5 space-y-2">
+                <div className="rounded-xl border border-brand/20 bg-brand-light/30 dark:bg-brand-light/10 p-3 space-y-1.5">
                   <span className="flex items-center gap-1.5 text-xs font-black uppercase tracking-wider text-brand">
                     <Sparkles size={13} /> Nạp nhanh từ sản phẩm TikTok đã tính giá
                   </span>
                   <select
                     defaultValue=""
                     onChange={(event) => applySavedProduct(event.target.value)}
-                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-bold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 cursor-pointer"
+                    className="w-full h-[38px] rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 px-3 text-xs font-bold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 cursor-pointer"
                   >
                     <option value="" disabled>
                       Chọn sản phẩm để tự động điền giá bán & chi phí...
@@ -997,56 +1081,56 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                     setError("");
                   }}
                   placeholder="Ví dụ: Mega Live 10.10 - Bộ sưu tập Polo Thu Đông"
-                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800/80 px-3.5 py-2.5 text-sm font-semibold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
+                  className="w-full h-[38px] rounded-xl border border-slate-200/90 dark:border-slate-700/80 bg-white dark:bg-slate-800/90 px-3.5 text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20 shadow-2xs"
                 />
               </Field>
 
               {/* Shop Type (Marketplace vs Mall) */}
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <span className="text-xs font-bold text-slate-700 dark:text-slate-300">Loại hình gian hàng TikTok</span>
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2.5">
                   <button
                     type="button"
                     onClick={() => changeShopType("marketplace")}
-                    className={`flex items-center gap-2.5 rounded-2xl border p-3.5 text-left transition cursor-pointer ${shopType === "marketplace"
-                      ? "border-brand bg-brand-light/30 dark:bg-brand-light/10 shadow-xs ring-2 ring-brand/20"
-                      : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/50 hover:border-slate-300"
+                    className={`flex items-center gap-2 rounded-xl border p-2.5 text-left transition cursor-pointer ${shopType === "marketplace"
+                      ? "border-brand bg-brand-light/30 dark:bg-brand-light/10 shadow-xs ring-1.5 ring-brand/20"
+                      : "border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800/60 hover:border-slate-300"
                       }`}
                   >
-                    <Store size={18} className={shopType === "marketplace" ? "text-brand" : "text-slate-400"} />
-                    <div>
-                      <strong className="block text-xs font-bold text-slate-900 dark:text-white">Shop thường</strong>
-                      <span className="text-[10px] text-slate-400">Marketplace tiêu chuẩn</span>
+                    <Store size={16} className={shopType === "marketplace" ? "text-brand shrink-0" : "text-slate-400 shrink-0"} />
+                    <div className="min-w-0">
+                      <strong className="block text-xs font-bold text-slate-900 dark:text-white truncate">Shop thường</strong>
+                      <span className="text-[10px] text-slate-400 block truncate">Marketplace</span>
                     </div>
                   </button>
                   <button
                     type="button"
                     onClick={() => changeShopType("mall")}
-                    className={`flex items-center gap-2.5 rounded-2xl border p-3.5 text-left transition cursor-pointer ${shopType === "mall"
-                      ? "border-brand bg-brand-light/30 dark:bg-brand-light/10 shadow-xs ring-2 ring-brand/20"
-                      : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/50 hover:border-slate-300"
+                    className={`flex items-center gap-2 rounded-xl border p-2.5 text-left transition cursor-pointer ${shopType === "mall"
+                      ? "border-brand bg-brand-light/30 dark:bg-brand-light/10 shadow-xs ring-1.5 ring-brand/20"
+                      : "border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800/60 hover:border-slate-300"
                       }`}
                   >
-                    <ShieldCheck size={18} className={shopType === "mall" ? "text-brand" : "text-slate-400"} />
-                    <div>
-                      <strong className="block text-xs font-bold text-slate-900 dark:text-white">TikTok Shop Mall</strong>
-                      <span className="text-[10px] text-slate-400">Thương hiệu chính hãng</span>
+                    <ShieldCheck size={16} className={shopType === "mall" ? "text-brand shrink-0" : "text-slate-400 shrink-0"} />
+                    <div className="min-w-0">
+                      <strong className="block text-xs font-bold text-slate-900 dark:text-white truncate">TikTok Mall</strong>
+                      <span className="text-[10px] text-slate-400 block truncate">Chính hãng</span>
                     </div>
                   </button>
                 </div>
               </div>
 
               {/* Cascading Category Selector */}
-              <div className="space-y-3 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 p-4">
-                <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Ngành hàng chính thức TikTok Shop
+              <div className="space-y-2.5 pt-1">
+                <span className="text-[11px] font-black uppercase tracking-wider text-slate-500 dark:text-slate-400 block">
+                  Ngành hàng TikTok Shop (Theo biểu phí)
                 </span>
-                <div className="grid gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <Field label="Ngành cấp 1">
                     <select
                       value={category.level1}
                       onChange={(event) => chooseCategory((item) => item.level1 === event.target.value)}
-                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand"
+                      className="w-full h-[38px] rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 px-3 text-xs font-semibold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand"
                     >
                       {level1Values.map((value) => (
                         <option key={value} value={value} className="dark:bg-slate-900">
@@ -1061,7 +1145,7 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                       onChange={(event) =>
                         chooseCategory((item) => item.level1 === category.level1 && item.level2 === event.target.value)
                       }
-                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand"
+                      className="w-full h-[38px] rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 px-3 text-xs font-semibold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand"
                     >
                       {level2Values.map((value) => (
                         <option key={value} value={value} className="dark:bg-slate-900">
@@ -1070,27 +1154,28 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                       ))}
                     </select>
                   </Field>
-                  <Field label="Ngành cấp 3 (Chi tiết theo biểu phí)">
-                    <select
-                      value={category.id}
-                      onChange={(event) => setCategoryId(event.target.value)}
-                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-semibold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand"
-                    >
-                      {level3Categories.map((item) => (
-                        <option key={item.id} value={item.id} className="dark:bg-slate-900">
-                          {item.level3} — {shopType === "mall" ? item.mallRate : item.marketplaceRate}% hoa hồng
-                        </option>
-                      ))}
-                    </select>
-                  </Field>
                 </div>
+                <Field label="Ngành cấp 3 (Chi tiết theo biểu phí)">
+                  <select
+                    value={category.id}
+                    onChange={(event) => setCategoryId(event.target.value)}
+                    className="w-full h-[38px] rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 px-3 text-xs font-semibold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand"
+                  >
+                    {level3Categories.map((item) => (
+                      <option key={item.id} value={item.id} className="dark:bg-slate-900">
+                        {item.level3} — {shopType === "mall" ? item.mallRate : item.marketplaceRate}% hoa hồng
+                      </option>
+                    ))}
+                  </select>
+                </Field>
               </div>
             </SectionCard>
 
             {/* Card 2: Ngân sách & Chi phí Mời KOC */}
             <SectionCard
               title="Ngân sách & Chi phí Mời KOC"
-              icon={<Wallet size={18} />}
+              icon={<Wallet size={16} />}
+              defaultOpen={false}
               badge={
                 <span className="text-xs font-mono font-bold text-slate-500">
                   1 KOC ~ {money(singleKocCost)}
@@ -1099,15 +1184,15 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
             >
               {/* Quick Budget Presets */}
               <div className="space-y-1.5">
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Mức ngân sách mẫu</span>
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">Mức ngân sách mẫu</span>
                 <div className="grid grid-cols-4 gap-2">
                   {[10_000_000, 20_000_000, 50_000_000, 100_000_000].map((preset) => (
                     <button
                       key={preset}
                       type="button"
                       onClick={() => update("totalBudget", preset)}
-                      className={`rounded-xl border py-2 text-xs font-mono font-bold transition cursor-pointer ${input.totalBudget === preset
-                        ? "border-brand bg-brand-light text-brand shadow-xs"
+                      className={`h-8 rounded-xl border text-xs font-mono font-bold transition cursor-pointer ${input.totalBudget === preset
+                        ? "border-brand bg-brand-light dark:bg-brand/20 text-brand shadow-xs"
                         : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300"
                         }`}
                     >
@@ -1121,47 +1206,54 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                 <MoneyInput value={input.totalBudget} onChange={(value) => update("totalBudget", value)} />
               </Field>
 
-              <div className="grid gap-3 sm:grid-cols-3">
-                <Field label="Giá vốn mẫu / KOC" tooltip="Giá vốn 1 sản phẩm gửi tặng cho KOC">
+              <div className="grid gap-2.5 sm:grid-cols-3">
+                <Field label="Giá vốn mẫu" tooltip="Giá vốn 1 sản phẩm gửi tặng KOC">
                   <MoneyInput value={input.sampleCost} onChange={(value) => update("sampleCost", value)} />
                 </Field>
-                <Field label="Phí ship / KOC" tooltip="Cước vận chuyển gửi hàng mẫu">
+                <Field label="Ship gửi mẫu" tooltip="Cước vận chuyển gửi hàng mẫu">
                   <MoneyInput value={input.sampleShippingCost} onChange={(value) => update("sampleShippingCost", value)} />
                 </Field>
-                <Field label="Phí booking / cast" tooltip="Thù lao cứng trả trực tiếp cho KOC">
+                <Field label="Thù lao Cast" tooltip="Thù lao cứng trả trực tiếp cho KOC">
                   <MoneyInput value={input.castFee} onChange={(value) => update("castFee", value)} />
                 </Field>
               </div>
 
-              <div className="flex items-center justify-between rounded-xl bg-slate-50 dark:bg-slate-800/60 p-3 text-xs border border-slate-100 dark:border-slate-800">
-                <span className="text-slate-500">Số KOC dự kiến có thể mời:</span>
-                <span className="font-mono font-black text-brand text-sm">
-                  {result
-                    ? result.invitedKocs
-                    : singleKocCost > 0
-                      ? Math.floor((input.totalBudget * (1 - input.adsBudgetRate / 100)) / singleKocCost)
-                      : 0}{" "}
-                  KOC
-                </span>
+              <div className="flex items-center justify-between rounded-xl bg-slate-100/70 dark:bg-slate-800/70 px-3.5 py-2.5 text-xs border border-slate-200/70 dark:border-slate-700/60 shadow-2xs">
+                <span className="text-slate-600 dark:text-slate-300 font-medium">KOC dự kiến mời:</span>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] text-slate-400 font-mono">1 KOC ~ {money(singleKocCost)}</span>
+                  <span className="font-mono font-black text-brand text-sm">
+                    {result
+                      ? result.invitedKocs
+                      : singleKocCost > 0
+                        ? Math.floor((input.totalBudget * (1 - input.adsBudgetRate / 100)) / singleKocCost)
+                        : 0}{" "}
+                    KOC
+                  </span>
+                </div>
               </div>
             </SectionCard>
 
             {/* Card 3: Hiệu suất KOC & Kinh tế Đơn hàng */}
-            <SectionCard title="Hiệu suất KOC & Kinh tế Đơn hàng" icon={<Video size={18} />}>
-              <div className="space-y-4">
+            <SectionCard
+              title="Hiệu suất KOC & Kinh tế Đơn hàng"
+              icon={<Video size={16} />}
+              defaultOpen={false}
+            >
+              <div className="space-y-3.5">
                 <div>
-                  <span className="mb-2 block text-[11px] font-black uppercase tracking-wider text-slate-400">
+                  <span className="mb-1.5 block text-[11px] font-black uppercase tracking-wider text-slate-400">
                     1. Hiệu suất chuyển đổi KOC
                   </span>
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <Field label="Tỷ lệ KOC lên clip" hint="">
+                  <div className="grid gap-2.5 sm:grid-cols-3">
+                    <Field label="Tỷ lệ lên clip" tooltip="Tỷ lệ % KOC nhận mẫu sẽ đăng video">
                       <NumberInput
                         value={input.effectiveKocRate}
                         onChange={(value) => update("effectiveKocRate", value)}
                         max={100}
                       />
                     </Field>
-                    <Field label="Video / KOC" hint="">
+                    <Field label="Video / KOC" tooltip="Số video trung bình mỗi KOC sản xuất">
                       <NumberInput
                         value={input.videosPerKoc}
                         onChange={(value) => update("videosPerKoc", value)}
@@ -1169,7 +1261,7 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                         step={1}
                       />
                     </Field>
-                    <Field label="Đơn tự nhiên / KOC" hint="">
+                    <Field label="Đơn / KOC" tooltip="Số đơn hàng tự nhiên dự kiến trên mỗi KOC lên clip">
                       <NumberInput
                         value={input.organicOrdersPerEffectiveKoc}
                         onChange={(value) => update("organicOrdersPerEffectiveKoc", value)}
@@ -1180,18 +1272,18 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                   </div>
                 </div>
 
-                <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
-                  <span className="mb-2 block text-[11px] font-black uppercase tracking-wider text-slate-400">
-                    2. Giá bán & Voucher ưu đãi
+                <div className="border-t border-slate-200/60 dark:border-slate-700/60 pt-3">
+                  <span className="mb-1.5 block text-[11px] font-black uppercase tracking-wider text-slate-400">
+                    2. Giá bán & Chiết khấu
                   </span>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <Field label="Giá niêm yết trung bình">
+                  <div className="grid gap-2.5 sm:grid-cols-2">
+                    <Field label="Giá niêm yết (ASP)">
                       <MoneyInput
                         value={input.averageSellingPrice}
                         onChange={(value) => update("averageSellingPrice", value)}
                       />
                     </Field>
-                    <Field label="Chiết khấu của Shop">
+                    <Field label="Chiết khấu Shop">
                       <NumberInput
                         value={input.sellerDiscountRate}
                         onChange={(value) => update("sellerDiscountRate", value)}
@@ -1213,30 +1305,32 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                   </div>
                 </div>
 
-                <div className="border-t border-slate-100 dark:border-slate-800 pt-3">
-                  <span className="mb-2 block text-[11px] font-black uppercase tracking-wider text-slate-400">
+                <div className="border-t border-slate-200/60 dark:border-slate-700/60 pt-3">
+                  <span className="mb-1.5 block text-[11px] font-black uppercase tracking-wider text-slate-400">
                     3. Giá vốn & Chi phí vận hành đơn
                   </span>
-                  <div className="grid gap-3 sm:grid-cols-3">
-                    <Field label="Giá vốn SP (COGS)">
+                  <div className="grid gap-2.5 sm:grid-cols-3">
+                    <Field label="Giá vốn (COGS)">
                       <MoneyInput
                         value={input.costPerSoldItem}
                         onChange={(value) => update("costPerSoldItem", value)}
                       />
                     </Field>
-                    <Field label="Đóng gói / đơn">
+                    <Field label="Bao bì đóng gói">
                       <MoneyInput value={input.packagingCost} onChange={(value) => update("packagingCost", value)} />
                     </Field>
                     <Field label="Nhân công / đơn">
                       <MoneyInput value={input.handlingCost} onChange={(value) => update("handlingCost", value)} />
                     </Field>
-                    <Field label="Shop chịu phí ship">
+                  </div>
+                  <div className="grid gap-2.5 sm:grid-cols-2 mt-2.5">
+                    <Field label="Shop chịu ship (Freeship)">
                       <MoneyInput
                         value={input.sellerShippingCost}
                         onChange={(value) => update("sellerShippingCost", value)}
                       />
                     </Field>
-                    <Field label="HH Affiliate KOC" hint="">
+                    <Field label="HH Affiliate KOC">
                       <NumberInput
                         value={input.organicCommissionRate}
                         onChange={(value) => update("organicCommissionRate", value)}
@@ -1248,8 +1342,12 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
             </SectionCard>
 
             {/* Card 4: Quảng cáo & Phí sàn TikTok */}
-            <SectionCard title="Quảng cáo & Phí sàn TikTok Shop" icon={<TrendingUp size={18} />}>
-              <div className="space-y-4">
+            <SectionCard
+              title="Quảng cáo & Phí sàn TikTok Shop"
+              icon={<TrendingUp size={16} />}
+              defaultOpen={false}
+            >
+              <div className="space-y-3.5">
                 {/* Ads Toggle */}
                 <ToggleCard
                   checked={input.useAds}
@@ -1260,12 +1358,9 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                 />
 
                 {input.useAds && (
-                  <div className="rounded-2xl border border-brand/20 bg-brand-light/20 dark:bg-brand-light/5 p-4 space-y-3">
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      <Field
-                        label="% Ngân sách Ads"
-                        hint=""
-                      >
+                  <div className="rounded-xl border border-brand/20 bg-brand-light/20 dark:bg-brand-light/5 p-3 space-y-2.5">
+                    <div className="grid gap-2.5 sm:grid-cols-3">
+                      <Field label="% Ngân sách Ads">
                         <NumberInput
                           value={input.adsBudgetRate}
                           onChange={(value) => update("adsBudgetRate", value)}
@@ -1297,57 +1392,77 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                 />
 
                 {input.includeTikTokFees && (
-                  <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 p-4 space-y-3">
-                    <div className="grid gap-3 sm:grid-cols-3">
-                      <Field label="Hoa hồng ngành" hint="">
-                        <div className="flex h-[42px] items-center justify-end rounded-xl border border-amber-200 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/40 px-3.5 font-mono text-sm font-black text-amber-700 dark:text-amber-300">
+                  <div className="rounded-xl border border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800/60 p-3.5 space-y-3">
+                    <div className="grid gap-2.5 sm:grid-cols-3">
+                      <Field label="Hoa hồng ngành">
+                        <div className="flex h-[38px] items-center justify-end rounded-xl border border-amber-200 dark:border-amber-800/60 bg-amber-50 dark:bg-amber-950/40 px-3 font-mono text-xs sm:text-sm font-black text-amber-700 dark:text-amber-300 shadow-2xs">
                           {feeProfile.commissionRate}%
                         </div>
                       </Field>
                       <Field label="Phí giao dịch sàn">
-                        <div className="flex h-[42px] items-center justify-end rounded-xl border border-slate-200 bg-white px-3.5 font-mono text-sm font-black text-slate-700">{feeProfile.transactionRate}%</div>
+                        <div className="flex h-[38px] items-center justify-end rounded-xl border border-slate-200/90 dark:border-slate-700/80 bg-white dark:bg-slate-800/90 px-3 font-mono text-xs sm:text-sm font-black text-slate-700 dark:text-slate-200 shadow-2xs">
+                          {feeProfile.transactionRate}%
+                        </div>
                       </Field>
                       <Field label="Phí xử lý đơn">
-                        <div className="flex h-[42px] items-center justify-end rounded-xl border border-slate-200 bg-white px-3.5 font-mono text-sm font-black text-slate-700">{feeProfile.orderProcessingFee.toLocaleString("vi-VN")}đ</div>
+                        <div className="flex h-[38px] items-center justify-end rounded-xl border border-slate-200/90 dark:border-slate-700/80 bg-white dark:bg-slate-800/90 px-3 font-mono text-xs sm:text-sm font-black text-slate-700 dark:text-slate-200 shadow-2xs">
+                          {feeProfile.orderProcessingFee.toLocaleString("vi-VN")}đ
+                        </div>
                       </Field>
                     </div>
 
                     {/* Programs Checklist */}
-                    <div className="space-y-2 border-t border-slate-200/70 dark:border-slate-800 pt-3">
-                      <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    <div className="space-y-2 border-t border-slate-100 dark:border-slate-700/60 pt-2.5">
+                      <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
                         Chương trình dịch vụ sàn bổ sung
                       </span>
                       <div className="grid gap-2">
                         {getAvailablePrograms("tiktok", input.shopType).map((prog) => {
                           const isChecked = input.enabledProgramIds.includes(prog.id);
                           return (
-                            <label
+                            <div
                               key={prog.id}
-                              className={`flex cursor-pointer items-start justify-between gap-3 rounded-xl border p-3 transition ${isChecked
-                                ? "border-brand bg-brand-light/30 dark:bg-brand-light/10"
-                                : "border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800"
-                                }`}
-                            >
-                              <div className="space-y-0.5">
-                                <strong className="text-xs font-bold text-slate-900 dark:text-white">
-                                  {prog.name} ({prog.rate}%{prog.cap ? `, tối đa ${money(prog.cap)}` : ""})
-                                </strong>
-                                <p className="text-[11px] text-slate-400">{prog.note}</p>
-                              </div>
-                              <input
-                                type="checkbox"
-                                checked={isChecked}
-                                onChange={() =>
+                              role="button"
+                              tabIndex={0}
+                              onClick={() =>
+                                update(
+                                  "enabledProgramIds",
+                                  isChecked
+                                    ? input.enabledProgramIds.filter((id) => id !== prog.id)
+                                    : [...input.enabledProgramIds, prog.id]
+                                )
+                              }
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ") {
+                                  e.preventDefault();
                                   update(
                                     "enabledProgramIds",
                                     isChecked
                                       ? input.enabledProgramIds.filter((id) => id !== prog.id)
                                       : [...input.enabledProgramIds, prog.id]
-                                  )
+                                  );
                                 }
-                                className="mt-0.5 h-4 w-4 rounded accent-brand cursor-pointer"
-                              />
-                            </label>
+                              }}
+                              className={`flex cursor-pointer items-start justify-between gap-2.5 rounded-xl border p-2.5 transition select-none ${isChecked
+                                ? "border-brand bg-brand-light/30 dark:bg-brand-light/10"
+                                : "border-slate-200 dark:border-slate-700/70 bg-slate-50/50 dark:bg-slate-800/50 hover:border-slate-300"
+                                }`}
+                            >
+                              <div className="space-y-0.5 min-w-0">
+                                <strong className="text-xs font-bold text-slate-900 dark:text-white block">
+                                  {prog.name} ({prog.rate}%{prog.cap ? `, tối đa ${money(prog.cap)}` : ""})
+                                </strong>
+                                <p className="text-[11px] text-slate-400 leading-relaxed">{prog.note}</p>
+                              </div>
+                              <div
+                                className={`w-4 h-4 rounded mt-0.5 flex items-center justify-center shrink-0 border transition-colors ${isChecked
+                                  ? "bg-brand border-brand text-white"
+                                  : "border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-700"
+                                  }`}
+                              >
+                                {isChecked && <Check size={12} strokeWidth={3} />}
+                              </div>
+                            </div>
                           );
                         })}
                       </div>
@@ -1358,72 +1473,94 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
             </SectionCard>
 
             {/* Card 5: Thuế & Quản trị Rủi ro Hủy/Hoàn */}
-            <SectionCard title="Thuế & Quản trị Rủi ro Hủy / Hoàn" icon={<ReceiptText size={18} />}>
-              <div className="space-y-3">
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <Field label="Thuế doanh thu" tooltip="Thuế khoán hộ kinh doanh 1.5% hoặc tỷ lệ doanh nghiệp">
-                    <NumberInput value={input.taxRate} onChange={(value) => update("taxRate", value)} />
-                  </Field>
-                  <Field label="Tỷ lệ hủy đơn">
-                    <NumberInput
-                      value={input.cancellationRate}
-                      onChange={(value) => update("cancellationRate", value)}
-                    />
-                  </Field>
-                  <Field label="Chi phí 1 đơn hủy">
-                    <MoneyInput
-                      value={input.cancellationCost}
-                      onChange={(value) => update("cancellationCost", value)}
-                    />
-                  </Field>
+            <SectionCard
+              title="Thuế & Quản trị Rủi ro Hủy / Hoàn"
+              icon={<ReceiptText size={16} />}
+              defaultOpen={false}
+            >
+              <div className="space-y-3.5">
+                {/* 1. Thuế & Đơn hủy trước giao */}
+                <div className="space-y-2">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 block">
+                    1. Thuế & Đơn hủy trước giao
+                  </span>
+                  <div className="grid gap-2.5 sm:grid-cols-3">
+                    <Field label="Thuế doanh thu" tooltip="Thuế khoán HKD 1.5% hoặc DN">
+                      <NumberInput value={input.taxRate} onChange={(value) => update("taxRate", value)} />
+                    </Field>
+                    <Field label="Tỷ lệ hủy đơn" tooltip="Tỷ lệ khách hủy trước khi giao vận chuyển">
+                      <NumberInput
+                        value={input.cancellationRate}
+                        onChange={(value) => update("cancellationRate", value)}
+                      />
+                    </Field>
+                    <Field label="Chi phí 1 đơn hủy" tooltip="Phí đóng gói đã in tem/hộp (nếu có)">
+                      <MoneyInput
+                        value={input.cancellationCost}
+                        onChange={(value) => update("cancellationCost", value)}
+                      />
+                    </Field>
+                  </div>
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-2">
-                  <Field label="Tỷ lệ giao thất bại (Bom hàng)">
-                    <NumberInput
-                      value={input.deliveryFailureRate}
-                      onChange={(value) => update("deliveryFailureRate", value)}
-                    />
-                  </Field>
-                  <Field label="Tỷ lệ hoàn sau giao">
-                    <NumberInput value={input.returnRate} onChange={(value) => update("returnRate", value)} />
-                  </Field>
-                  <Field label="Phí vận chuyển hoàn">
-                    <MoneyInput
-                      value={input.returnCostPerOrder}
-                      onChange={(value) => update("returnCostPerOrder", value)}
-                    />
-                  </Field>
-                  <Field label="Phí sàn không được hoàn">
-                    <MoneyInput
-                      value={input.nonRefundableReturnFee}
-                      onChange={(value) => update("nonRefundableReturnFee", value)}
-                    />
-                  </Field>
-                  <Field label="Thu hồi giá trị hàng hoàn">
-                    <NumberInput
-                      value={input.returnedInventoryRecoveryRate}
-                      onChange={(value) => update("returnedInventoryRecoveryRate", value)}
-                    />
-                  </Field>
-                  <Field label="Tỷ lệ hao hụt / hỏng hàng">
-                    <NumberInput value={input.damageRate} onChange={(value) => update("damageRate", value)} />
-                  </Field>
+                {/* 2. Bom hàng & Hoàn trả sau giao */}
+                <div className="border-t border-slate-200/60 dark:border-slate-700/60 pt-3 space-y-2">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 block">
+                    2. Bom hàng & Hoàn trả sau giao
+                  </span>
+                  <div className="grid gap-2.5 sm:grid-cols-2">
+                    <Field label="Tỷ lệ bom hàng (Giao thất bại)">
+                      <NumberInput
+                        value={input.deliveryFailureRate}
+                        onChange={(value) => update("deliveryFailureRate", value)}
+                      />
+                    </Field>
+                    <Field label="Tỷ lệ trả hàng sau giao">
+                      <NumberInput value={input.returnRate} onChange={(value) => update("returnRate", value)} />
+                    </Field>
+                    <Field label="Phí vận chuyển hoàn">
+                      <MoneyInput
+                        value={input.returnCostPerOrder}
+                        onChange={(value) => update("returnCostPerOrder", value)}
+                      />
+                    </Field>
+                    <Field label="Phí sàn không hoàn lại">
+                      <MoneyInput
+                        value={input.nonRefundableReturnFee}
+                        onChange={(value) => update("nonRefundableReturnFee", value)}
+                      />
+                    </Field>
+                    <Field label="Tỷ lệ thu hồi hàng hoàn">
+                      <NumberInput
+                        value={input.returnedInventoryRecoveryRate}
+                        onChange={(value) => update("returnedInventoryRecoveryRate", value)}
+                      />
+                    </Field>
+                    <Field label="Tỷ lệ hao hụt / hỏng hàng">
+                      <NumberInput value={input.damageRate} onChange={(value) => update("damageRate", value)} />
+                    </Field>
+                  </div>
                 </div>
 
-                <div className="grid gap-3 sm:grid-cols-2 border-t border-slate-100 dark:border-slate-800 pt-3">
-                  <Field label="Dự phòng KOC phát sinh" hint="">
-                    <NumberInput
-                      value={input.extraKocCostRate}
-                      onChange={(value) => update("extraKocCostRate", value)}
-                    />
-                  </Field>
-                  <Field label="Vận hành chiến dịch khác">
-                    <MoneyInput
-                      value={input.otherOperatingCost}
-                      onChange={(value) => update("otherOperatingCost", value)}
-                    />
-                  </Field>
+                {/* 3. Dự phòng chi phí khác */}
+                <div className="border-t border-slate-200/60 dark:border-slate-700/60 pt-3 space-y-2">
+                  <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 block">
+                    3. Dự phòng & Vận hành khác
+                  </span>
+                  <div className="grid gap-2.5 sm:grid-cols-2">
+                    <Field label="Dự phòng KOC phát sinh">
+                      <NumberInput
+                        value={input.extraKocCostRate}
+                        onChange={(value) => update("extraKocCostRate", value)}
+                      />
+                    </Field>
+                    <Field label="Vận hành chiến dịch khác">
+                      <MoneyInput
+                        value={input.otherOperatingCost}
+                        onChange={(value) => update("otherOperatingCost", value)}
+                      />
+                    </Field>
+                  </div>
                 </div>
               </div>
             </SectionCard>
@@ -1575,7 +1712,7 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
               <>
                 {/* 1. Hero Profit Card */}
                 <section
-                  className={`relative overflow-hidden rounded-3xl border shadow-xl transition-all ${isLoss
+                  className={`relative overflow-hidden rounded-2xl border shadow-lg transition-all ${isLoss
                     ? "border-rose-500/40 bg-gradient-to-br from-rose-950 via-slate-950 to-slate-950"
                     : "border-slate-800 dark:border-slate-800 bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900"
                     }`}
@@ -1586,28 +1723,28 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                     style={{ background: isLoss ? "#e11d48" : "var(--brand-primary)" }}
                   />
 
-                  <div className="relative p-6 sm:p-7 text-white">
-                    <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
+                  <div className="relative p-5 sm:p-6 text-white">
+                    <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
                       <div>
                         <div className="flex items-center gap-2">
-                          <span className="text-[11px] font-black uppercase tracking-widest text-slate-400">
+                          <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                             Lợi nhuận ròng dự kiến
                           </span>
                           <span
-                            className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${isLoss ? "bg-rose-500/20 text-rose-300" : "bg-emerald-500/20 text-emerald-300"
+                            className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${isLoss ? "bg-rose-500/20 text-rose-300" : "bg-emerald-500/20 text-emerald-300"
                               }`}
                           >
                             Biên ròng: {result.netMargin.toFixed(1)}%
                           </span>
                         </div>
                         <p
-                          className={`mt-2 text-4xl sm:text-5xl font-black font-mono tracking-tight ${isLoss ? "text-rose-400" : "text-emerald-400"
+                          className={`mt-1.5 text-3xl sm:text-4xl lg:text-5xl font-black font-mono tracking-tight ${isLoss ? "text-rose-400" : "text-emerald-400"
                             }`}
                         >
                           {money(result.netProfit)}
                         </p>
-                        <p className="mt-1.5 text-xs text-slate-400 font-medium">
-                          ROI Chiến dịch:{" "}
+                        <p className="mt-1 text-xs text-slate-400 font-medium">
+                          ROI:{" "}
                           <strong className={result.roi < 0 ? "text-rose-400" : "text-emerald-400"}>
                             {result.roi.toFixed(1)}%
                           </strong>{" "}
@@ -1620,35 +1757,35 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                         <button
                           type="button"
                           onClick={copyResult}
-                          className="flex h-fit items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/10 hover:bg-white/20 px-3.5 py-2 text-xs font-bold text-white transition cursor-pointer active:scale-95"
+                          className="flex h-fit items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/10 hover:bg-white/20 px-3 py-1.5 text-xs font-bold text-white transition cursor-pointer active:scale-95"
                         >
-                          {copied ? <Check size={14} className="text-emerald-400" /> : <ClipboardCopy size={14} />}
+                          {copied ? <Check size={13} className="text-emerald-400" /> : <ClipboardCopy size={13} />}
                           {copied ? "Đã chép" : "Sao chép"}
                         </button>
                       </div>
                     </div>
 
                     {/* 4 Core Financial Metrics */}
-                    <div className="mt-6 grid grid-cols-2 gap-3 border-t border-white/10 pt-5 sm:grid-cols-4">
-                      <div className="rounded-2xl bg-white/5 p-3">
+                    <div className="mt-4 grid grid-cols-2 gap-2.5 border-t border-white/10 pt-4 sm:grid-cols-4">
+                      <div className="rounded-xl bg-white/5 p-2.5">
                         <p className="text-[10px] uppercase tracking-wider text-slate-400">Tổng ngân sách</p>
-                        <p className="mt-1 text-sm font-black font-mono text-white">{money(input.totalBudget)}</p>
+                        <p className="mt-0.5 text-xs sm:text-sm font-black font-mono text-white">{money(input.totalBudget)}</p>
                       </div>
-                      <div className="rounded-2xl bg-white/5 p-3">
+                      <div className="rounded-xl bg-white/5 p-2.5">
                         <p className="text-[10px] uppercase tracking-wider text-slate-400">KOC làm video</p>
-                        <p className="mt-1 text-sm font-black font-mono text-white">
+                        <p className="mt-0.5 text-xs sm:text-sm font-black font-mono text-white">
                           {number(result.effectiveKocs)} / {number(result.invitedKocs)}
                         </p>
                       </div>
-                      <div className="rounded-2xl bg-white/5 p-3">
+                      <div className="rounded-xl bg-white/5 p-2.5">
                         <p className="text-[10px] uppercase tracking-wider text-slate-400">Đơn thành công</p>
-                        <p className="mt-1 text-sm font-black font-mono text-emerald-400">
+                        <p className="mt-0.5 text-xs sm:text-sm font-black font-mono text-emerald-400">
                           {number(result.successfulOrders, 1)}
                         </p>
                       </div>
-                      <div className="rounded-2xl bg-white/5 p-3">
+                      <div className="rounded-xl bg-white/5 p-2.5">
                         <p className="text-[10px] uppercase tracking-wider text-slate-400">Đơn hòa vốn</p>
-                        <p className="mt-1 text-sm font-black font-mono text-white">
+                        <p className="mt-0.5 text-xs sm:text-sm font-black font-mono text-white">
                           {result.breakEvenOrders === null ? "—" : number(result.breakEvenOrders, 1)}
                         </p>
                       </div>
@@ -1656,99 +1793,99 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                   </div>
                 </section>
 
-                {/* 2. Four Financial Intelligence KPI Cards Grid (2x2) */}
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                  <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-xs">
+                {/* 2. Four Financial Intelligence KPI Cards Grid */}
+                <div className="grid grid-cols-2 gap-2.5 xl:grid-cols-4">
+                  <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 shadow-xs">
                     <div className="flex items-center justify-between text-slate-400">
-                      <span className="text-[11px] font-bold uppercase">ROI Toàn bộ</span>
-                      <Percent size={14} className="text-brand" />
+                      <span className="text-[10px] font-bold uppercase">ROI Toàn bộ</span>
+                      <Percent size={13} className="text-brand" />
                     </div>
                     <p
-                      className={`mt-2 font-mono text-lg font-black ${result.roi < 0
+                      className={`mt-1 font-mono text-base font-black ${result.roi < 0
                         ? "text-rose-600 dark:text-rose-400"
                         : "text-emerald-600 dark:text-emerald-400"
                         }`}
                     >
                       {result.roi.toFixed(1)}%
                     </p>
-                    <span className="mt-1 block text-[10px] text-slate-400">
+                    <span className="mt-0.5 block text-[10px] text-slate-400">
                       {result.roi > 50 ? "Hiệu quả cao" : result.roi > 0 ? "Khả quan" : "Cần tối ưu"}
                     </span>
                   </div>
 
-                  <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-xs">
+                  <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 shadow-xs">
                     <div className="flex items-center justify-between text-slate-400">
-                      <span className="text-[11px] font-bold uppercase">ROAS Ads</span>
-                      <Tv size={14} className="text-brand" />
+                      <span className="text-[10px] font-bold uppercase">ROAS Ads</span>
+                      <Tv size={13} className="text-brand" />
                     </div>
-                    <p className="mt-2 font-mono text-lg font-black text-slate-900 dark:text-white">
+                    <p className="mt-1 font-mono text-base font-black text-slate-900 dark:text-white">
                       {result.roas === null ? "—" : `${result.roas.toFixed(2)}x`}
                     </p>
-                    <span className="mt-1 block text-[10px] text-slate-400">
+                    <span className="mt-0.5 block text-[10px] text-slate-400">
                       {input.useAds ? `Đơn Ads: ${number(result.adOrders, 1)}` : "Tắt Ads"}
                     </span>
                   </div>
 
-                  <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-xs">
+                  <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 shadow-xs">
                     <div className="flex items-center justify-between text-slate-400">
-                      <span className="text-[11px] font-bold uppercase">Chi phí / Đơn</span>
-                      <Package size={14} className="text-brand" />
+                      <span className="text-[10px] font-bold uppercase">Chi phí / Đơn</span>
+                      <Package size={13} className="text-brand" />
                     </div>
-                    <p className="mt-2 font-mono text-lg font-black text-slate-900 dark:text-white">
+                    <p className="mt-1 font-mono text-base font-black text-slate-900 dark:text-white">
                       {result.costPerSuccessfulOrder === null ? "—" : money(result.costPerSuccessfulOrder)}
                     </p>
-                    <span className="mt-1 block text-[10px] text-slate-400">Trên mỗi đơn giao đạt</span>
+                    <span className="mt-0.5 block text-[10px] text-slate-400">Trên mỗi đơn đạt</span>
                   </div>
 
-                  <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 shadow-xs">
+                  <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 shadow-xs">
                     <div className="flex items-center justify-between text-slate-400">
-                      <span className="text-[11px] font-bold uppercase">CPA Hòa vốn</span>
-                      <Target size={14} className="text-brand" />
+                      <span className="text-[10px] font-bold uppercase">CPA Hòa vốn</span>
+                      <Target size={13} className="text-brand" />
                     </div>
-                    <p className="mt-2 font-mono text-lg font-black text-slate-900 dark:text-white">
+                    <p className="mt-1 font-mono text-base font-black text-slate-900 dark:text-white">
                       {result.breakEvenCpa === null ? "—" : money(result.breakEvenCpa)}
                     </p>
-                    <span className="mt-1 block text-[10px] text-slate-400">Mức trần chi phí Ads</span>
+                    <span className="mt-0.5 block text-[10px] text-slate-400">Mức trần chi phí Ads</span>
                   </div>
                 </div>
 
                 {/* 3. Deep Analytical Tabs */}
-                <section className="overflow-hidden rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
+                <section className="overflow-hidden rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs">
                   {/* Tab Header Buttons */}
-                  <div className="flex border-b border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 p-1.5">
+                  <div className="flex border-b border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-800/40 p-1 gap-1">
                     <button
                       type="button"
                       onClick={() => setActiveTab("budget")}
-                      className={`flex-1 flex items-center justify-center gap-1.5 rounded-2xl py-2.5 text-xs font-bold transition cursor-pointer ${activeTab === "budget"
+                      className={`flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold transition cursor-pointer ${activeTab === "budget"
                         ? "bg-white dark:bg-slate-900 text-brand shadow-xs"
                         : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
                         }`}
                     >
-                      <PieChart size={14} /> Phân bổ Ngân sách
+                      <PieChart size={13} /> Phân bổ Ngân sách
                     </button>
                     <button
                       type="button"
                       onClick={() => setActiveTab("funnel")}
-                      className={`flex-1 flex items-center justify-center gap-1.5 rounded-2xl py-2.5 text-xs font-bold transition cursor-pointer ${activeTab === "funnel"
+                      className={`flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold transition cursor-pointer ${activeTab === "funnel"
                         ? "bg-white dark:bg-slate-900 text-brand shadow-xs"
                         : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
                         }`}
                     >
-                      <Layers size={14} /> Sản lượng & Funnel
+                      <Layers size={13} /> Sản lượng & Funnel
                     </button>
                     <button
                       type="button"
                       onClick={() => setActiveTab("pnl")}
-                      className={`flex-1 flex items-center justify-center gap-1.5 rounded-2xl py-2.5 text-xs font-bold transition cursor-pointer ${activeTab === "pnl"
+                      className={`flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2 text-xs font-bold transition cursor-pointer ${activeTab === "pnl"
                         ? "bg-white dark:bg-slate-900 text-brand shadow-xs"
                         : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
                         }`}
                     >
-                      <ReceiptText size={14} /> Báo cáo P&L Doanh thu
+                      <ReceiptText size={13} /> Báo cáo P&L Doanh thu
                     </button>
                   </div>
 
-                  <div className="p-5 sm:p-6">
+                  <div className="p-4 sm:p-5">
                     {/* Tab 1: Phân bổ ngân sách */}
                     {activeTab === "budget" && (
                       <div className="space-y-4">

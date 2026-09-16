@@ -63,7 +63,7 @@ export default function ScriptWriterPage() {
           });
         }
       })
-      .catch(() => {});
+      .catch(() => { });
   }, [refreshTrigger]);
 
   const handleUseSample = () => {
@@ -120,11 +120,11 @@ export default function ScriptWriterPage() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6 pb-12">
+    <div className="max-w-7xl w-full mx-auto flex-1 flex flex-col min-h-0 h-full lg:overflow-hidden">
       <GateModals />
 
       {/* Header & Breadcrumb */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="shrink-0 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
             <Link href="/tools" className="hover:text-emerald-600 transition-colors flex items-center gap-1">
@@ -138,9 +138,6 @@ export default function ScriptWriterPage() {
             <span className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 shadow-xs uppercase tracking-wider">
               <Crown size={11} className="text-amber-600 dark:text-amber-400" />
               VIP TOOL
-            </span>
-            <span className="hidden sm:inline-flex text-[10px] font-black px-2.5 py-1 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300 uppercase tracking-wide border border-purple-200 dark:border-purple-800">
-              Hook 3s Triệu View
             </span>
           </h1>
           <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
@@ -167,147 +164,115 @@ export default function ScriptWriterPage() {
         </div>
       </div>
 
-      {/* Grid 2 Cột: Cấu hình bên trái & Output bên phải */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* CỘT TRÁI: FORM NHẬP LIỆU */}
-        <div className="lg:col-span-5 space-y-5">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
-            {/* 3 Thẻ tóm tắt tính năng */}
-            <div className="grid grid-cols-3 gap-2">
-              <div className="p-2.5 rounded-xl border border-purple-200/70 dark:border-purple-900/40 bg-purple-50/40 dark:bg-purple-950/20">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-purple-900 dark:text-purple-300">
-                  <Flame size={13} className="text-amber-500 shrink-0" />
-                  3 Kịch Bản
+      {/* Grid 2 Cột: Cuộn độc lập */}
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:overflow-hidden items-stretch">
+        {/* CỘT TRÁI: FORM NHẬP LIỆU (cuộn độc lập) */}
+        <div className="lg:col-span-5 flex flex-col min-h-0 lg:h-full lg:overflow-hidden">
+          <div className="h-full overflow-y-auto custom-scrollbar space-y-4 lg:pr-1.5 pb-2">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
+              {/* 3 Thẻ tóm tắt tính năng */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="p-2.5 rounded-xl border border-purple-200/70 dark:border-purple-900/40 bg-purple-50/40 dark:bg-purple-950/20">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-purple-900 dark:text-purple-300">
+                    <Flame size={13} className="text-amber-500 shrink-0" />
+                    3 Kịch Bản
+                  </div>
+                  <p className="text-[10px] text-purple-700/80 dark:text-purple-400/80 mt-0.5">3 góc tiếp cận</p>
                 </div>
-                <p className="text-[10px] text-purple-700/80 dark:text-purple-400/80 mt-0.5">3 góc tiếp cận</p>
-              </div>
-              <div className="p-2.5 rounded-xl border border-indigo-200/70 dark:border-indigo-900/40 bg-indigo-50/40 dark:bg-indigo-950/20">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-900 dark:text-indigo-300">
-                  <Film size={13} className="text-indigo-500 shrink-0" />
-                  Phân Cảnh
+                <div className="p-2.5 rounded-xl border border-indigo-200/70 dark:border-indigo-900/40 bg-indigo-50/40 dark:bg-indigo-950/20">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-900 dark:text-indigo-300">
+                    <Film size={13} className="text-indigo-500 shrink-0" />
+                    Phân Cảnh
+                  </div>
+                  <p className="text-[10px] text-indigo-700/80 dark:text-indigo-400/80 mt-0.5">Thoại & góc quay</p>
                 </div>
-                <p className="text-[10px] text-indigo-700/80 dark:text-indigo-400/80 mt-0.5">Thoại & góc quay</p>
-              </div>
-              <div className="p-2.5 rounded-xl border border-emerald-200/70 dark:border-emerald-900/40 bg-emerald-50/40 dark:bg-emerald-950/20">
-                <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-900 dark:text-emerald-300">
-                  <FileSpreadsheet size={13} className="text-emerald-500 shrink-0" />
-                  Xuất Excel
+                <div className="p-2.5 rounded-xl border border-emerald-200/70 dark:border-emerald-900/40 bg-emerald-50/40 dark:bg-emerald-950/20">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-emerald-900 dark:text-emerald-300">
+                    <FileSpreadsheet size={13} className="text-emerald-500 shrink-0" />
+                    Xuất Excel
+                  </div>
+                  <p className="text-[10px] text-emerald-700/80 dark:text-emerald-400/80 mt-0.5">Sẵn sàng quay</p>
                 </div>
-                <p className="text-[10px] text-emerald-700/80 dark:text-emerald-400/80 mt-0.5">Sẵn sàng quay</p>
               </div>
-            </div>
 
-            {/* Tên sản phẩm */}
-            <div>
-              <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
-                Tên Sản Phẩm Của Bạn <span className="text-rose-500">*</span>
-              </label>
-              <input
-                type="text"
-                value={productName}
-                onChange={(e) => setProductName(e.target.value)}
-                placeholder="VD: Kem chống nắng La Roche-Posay Anthelios kiềm dầu..."
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition-all"
-              />
-            </div>
-
-            {/* Điểm nổi bật (USP) */}
-            <div>
-              <div className="flex items-center justify-between mb-1.5">
-                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Điểm Nổi Bật (USP) Cần Nhấn Mạnh <span className="text-rose-500">*</span>
+              {/* Tên sản phẩm */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  Tên Sản Phẩm Của Bạn <span className="text-rose-500">*</span>
                 </label>
-                <span className="text-[10px] text-slate-400">
-                  Lợi ích giải quyết vấn đề
-                </span>
+                <input
+                  type="text"
+                  value={productName}
+                  onChange={(e) => setProductName(e.target.value)}
+                  placeholder="VD: Kem chống nắng La Roche-Posay Anthelios kiềm dầu..."
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition-all"
+                />
               </div>
-              <textarea
-                rows={4}
-                value={usp}
-                onChange={(e) => setUsp(e.target.value)}
-                placeholder="VD: Kiềm dầu 12h, nâng tone tự nhiên không bết dính vệt trắng, kháng nước mồ hôi tối ưu khi hoạt động ngoài trời..."
-                className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition-all resize-none leading-relaxed"
-              />
-            </div>
 
-            {/* Gợi ý điểm bán hàng nhanh / Quick tags */}
-            <div className="space-y-1.5">
-              <div className="flex items-center justify-between text-[11px] text-slate-400">
-                <span className="font-semibold text-slate-600 dark:text-slate-300">
-                  Gợi ý thêm điểm bán & ưu đãi:
-                </span>
-                {(productName || usp) && (
-                  <button
-                    type="button"
-                    onClick={handleResetForm}
-                    className="text-slate-400 hover:text-rose-500 transition-colors text-[11px] cursor-pointer"
-                  >
-                    Xóa tất cả
-                  </button>
-                )}
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {QUICK_TAGS.map((tag) => (
-                  <button
-                    key={tag}
-                    type="button"
-                    onClick={() => handleAddUspTag(tag)}
-                    className="text-[10px] px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-emerald-100 dark:hover:bg-emerald-950/50 text-slate-600 dark:text-slate-400 hover:text-emerald-700 dark:hover:text-emerald-300 border border-slate-200/60 dark:border-slate-700/60 transition-colors cursor-pointer"
-                  >
-                    + {tag}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Nút Submit */}
-            <button
-              type="button"
-              onClick={handleGenerate}
-              disabled={loading}
-              className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 text-white font-bold text-sm shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99]"
-            >
-              {loading ? (
-                <>
-                  <Sparkles size={16} className="animate-spin" /> Đang Viết 3 Kịch Bản Phân Cảnh...
-                </>
-              ) : (
-                <>
-                  <Send size={16} /> Lên Kịch Bản Bằng AI (3 Góc Quay)
-                </>
-              )}
-            </button>
-
-            {/* Thông tin quota tài khoản */}
-            <p aria-live="polite" className="text-[10px] text-center text-slate-400">
-              {userQuota?.isLogged ? (
-                userQuota.isVIP ? (
-                  <span className="text-amber-500 font-bold flex items-center justify-center gap-1">
-                    <span>👑</span> VIP · Không giới hạn
+              {/* Điểm nổi bật (USP) */}
+              <div>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Điểm Nổi Bật (USP) Cần Nhấn Mạnh <span className="text-rose-500">*</span>
+                  </label>
+                  <span className="text-[10px] text-slate-400">
+                    Lợi ích giải quyết vấn đề
                   </span>
+                </div>
+                <textarea
+                  rows={4}
+                  value={usp}
+                  onChange={(e) => setUsp(e.target.value)}
+                  placeholder="VD: Kiềm dầu 12h, nâng tone tự nhiên không bết dính vệt trắng, kháng nước mồ hôi tối ưu khi hoạt động ngoài trời..."
+                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition-all resize-none leading-relaxed"
+                />
+              </div>
+
+              {/* Gợi ý điểm bán hàng nhanh / Quick tags */}
+
+              {/* Nút Submit */}
+              <button
+                type="button"
+                onClick={handleGenerate}
+                disabled={loading}
+                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 text-white font-bold text-sm shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99]"
+              >
+                {loading ? (
+                  <>
+                    <Sparkles size={16} className="animate-spin" /> Đang Viết 3 Kịch Bản Phân Cảnh...
+                  </>
                 ) : (
-                  <span>
-                    ⚡ Còn <strong className={userQuota.remainingFree === 0 ? "text-rose-500" : "text-emerald-500"}>{userQuota.remainingFree ?? 0}</strong>/{userQuota.dailyFreeLimit} lượt hôm nay · <Link href="/profile#pricing-section" className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline">Nâng cấp VIP</Link>
-                  </span>
-                )
-              ) : (
-                <span>Tài khoản miễn phí được cấp lượt dùng mỗi ngày.</span>
-              )}
-            </p>
-          </div>
+                  <>
+                    <Send size={16} /> Lên Kịch Bản Bằng AI (3 Góc Quay)
+                  </>
+                )}
+              </button>
 
-          {/* Tips Card */}
-          <div className="bg-slate-100 dark:bg-slate-900/60 rounded-xl p-3.5 border border-slate-200/80 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
-            <p className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-              <Clock size={13} className="text-emerald-500" /> Bí quyết video ngắn giữ chân người xem:
-            </p>
-            <p>• <strong>Hook 3s đầu:</strong> Đặt câu hỏi sốc hoặc hành động bất ngờ ngăn người xem lướt đi.</p>
-            <p>• <strong>Chữ trên video:</strong> Hơn 70% người dùng xem tắt tiếng, hãy luôn có caption to rõ.</p>
+              {/* Thông tin quota tài khoản */}
+              <p aria-live="polite" className="text-[10px] text-center text-slate-400">
+                {userQuota?.isLogged ? (
+                  userQuota.isVIP ? (
+                    <span className="text-amber-500 font-bold flex items-center justify-center gap-1">
+                      <span>👑</span> VIP · Không giới hạn
+                    </span>
+                  ) : (
+                    <span>
+                      ⚡ Còn <strong className={userQuota.remainingFree === 0 ? "text-rose-500" : "text-emerald-500"}>{userQuota.remainingFree ?? 0}</strong>/{userQuota.dailyFreeLimit} lượt hôm nay · <Link href="/profile#pricing-section" className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline">Nâng cấp VIP</Link>
+                    </span>
+                  )
+                ) : (
+                  <span>Tài khoản miễn phí được cấp lượt dùng mỗi ngày.</span>
+                )}
+              </p>
+            </div>
+
+            {/* Tips Card */}
+
           </div>
         </div>
 
-        {/* CỘT PHẢI: HIỂN THỊ KẾT QUẢ KỊCH BẢN */}
-        <div className="lg:col-span-7 min-h-[520px]">
+        {/* CỘT PHẢI: HIỂN THỊ KẾT QUẢ KỊCH BẢN (cuộn độc lập) */}
+        <div className="lg:col-span-7 flex flex-col min-h-0 lg:h-full lg:overflow-hidden">
           <ScriptWriterOutput
             result={result}
             loading={loading}

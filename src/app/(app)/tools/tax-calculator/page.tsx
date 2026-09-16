@@ -680,9 +680,9 @@ export default function TaxCalculator() {
                     <Sparkles size={11} className="text-emerald-600 dark:text-emerald-400" />
                     FREE TOOL
                   </span>
-                  <span className="hidden sm:inline-flex rounded-full bg-brand-light/80 border border-brand/30 px-2.5 py-0.5 text-[10px] font-black text-brand uppercase tracking-wider">
+                  {/* <span className="hidden sm:inline-flex rounded-full bg-brand-light/80 border border-brand/30 px-2.5 py-0.5 text-[10px] font-black text-brand uppercase tracking-wider">
                     LUẬT 2026
-                  </span>
+                  </span> */}
                 </div>
                 <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                   Dự toán tham khảo nghĩa vụ thuế GTGT và TNCN/TNDN cho người bán hàng Shopee, TikTok Shop và đa kênh theo bộ quy tắc 2026.
@@ -809,14 +809,10 @@ export default function TaxCalculator() {
             </div>
 
             {isPersonal && (
-              <div className="rounded-2xl border border-brand/20 bg-brand-light/30 dark:bg-brand-light/10 p-3.5">
+              <div className="rounded-2xl border border-brand/20 bg-brand-light/30 dark:bg-brand-light/10 p-3.5 space-y-3">
                 <Field
                   label="Phương pháp tính thuế TNCN"
-                  hint={
-                    input.personalPreviousYearRevenue > 3_000_000_000
-                      ? "Năm trước trên 3 tỷ: theo thu nhập"
-                      : "Phụ thuộc doanh thu tham chiếu và lựa chọn trước đó"
-                  }
+                  hint=""
                 >
                   <select
                     value={input.personalIncomeMethod}
@@ -833,18 +829,18 @@ export default function TaxCalculator() {
                     </option>
                   </select>
                 </Field>
-                <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                  <Field label="Doanh thu năm trước" hint="Xác định phương pháp">
-                    <MoneyInput value={input.personalPreviousYearRevenue} onChange={(value) => update("personalPreviousYearRevenue", value)} />
+
+                <Field label="Doanh thu năm trước" hint="">
+                  <MoneyInput value={input.personalPreviousYearRevenue} onChange={(value) => update("personalPreviousYearRevenue", value)} />
+                </Field>
+
+                {input.personalIncomeMethod === "profit" && (
+                  <Field label="Năm bắt đầu theo thu nhập" hint="Duy trì 2 năm">
+                    <input type="number" min={2024} max={2026} value={input.profitMethodStartYear ?? ""}
+                      onChange={(event) => update("profitMethodStartYear", event.target.value ? Number(event.target.value) : null)}
+                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm font-bold" />
                   </Field>
-                  {input.personalIncomeMethod === "profit" && (
-                    <Field label="Năm bắt đầu theo thu nhập" hint="Duy trì 2 năm">
-                      <input type="number" min={2024} max={2026} value={input.profitMethodStartYear ?? ""}
-                        onChange={(event) => update("profitMethodStartYear", event.target.value ? Number(event.target.value) : null)}
-                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm font-bold" />
-                    </Field>
-                  )}
-                </div>
+                )}
               </div>
             )}
           </Section>
@@ -874,14 +870,14 @@ export default function TaxCalculator() {
                   placeholder="0"
                 />
               </Field>
-              <Field label="Sàn TMĐT khác" hint="Lazada, Tiki, v.v.">
+              <Field label="Sàn TMĐT khác" hint="">
                 <MoneyInput
                   value={input.otherPlatformRevenue}
                   onChange={(value) => update("otherPlatformRevenue", value)}
                   placeholder="0"
                 />
               </Field>
-              <Field label="Kênh tự chốt" hint="Facebook, Web, Offline">
+              <Field label="Kênh tự chốt" hint="">
                 <MoneyInput
                   value={input.directRevenue}
                   onChange={(value) => update("directRevenue", value)}
@@ -912,9 +908,9 @@ export default function TaxCalculator() {
                     {moneyFormat.format(activityRevenueTotal)} / {moneyFormat.format(liveTotalRevenue)} ₫
                   </span>
                 </div>
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-2.5 grid-cols-1">
                   {(Object.entries(ACTIVITY_RATES) as [BusinessActivity, (typeof ACTIVITY_RATES)[BusinessActivity]][]).map(([id, item]) => (
-                    <Field key={id} label={item.label} hint={`${item.vat}% GTGT · ${item.pitRevenue}% TNCN`}>
+                    <Field key={id} label={item.label} hint="">
                       <MoneyInput
                         value={input.activityRevenues[id]}
                         max={maxActivityRevenue(id)}
@@ -932,7 +928,7 @@ export default function TaxCalculator() {
             title="Chi phí có hóa đơn chứng từ & Dòng tiền"
             icon={<ReceiptText size={18} className="text-amber-500" />}
           >
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 grid-cols-1">
               <Field label="Tổng phí sàn TMĐT" hint="">
                 <MoneyInput
                   value={input.platformFees}
@@ -976,18 +972,20 @@ export default function TaxCalculator() {
                       placeholder="0"
                     />
                   </Field>
-                  <Field label="Số tháng hoạt động năm trước" hint="Quy đổi đủ 12 tháng">
-                    <input type="number" min={1} max={12} value={input.companyPreviousYearOperatingMonths}
-                      onChange={(event) => update("companyPreviousYearOperatingMonths", Number(event.target.value))}
-                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800/80 px-3.5 py-2.5 text-right font-mono text-sm font-bold" />
-                  </Field>
-                  <Field label="GTGT đầu vào được khấu trừ" hint="">
-                    <MoneyInput
-                      value={input.deductibleInputVat}
-                      onChange={(value) => update("deductibleInputVat", value)}
-                      placeholder="0"
-                    />
-                  </Field>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <Field label="Số tháng hoạt động năm trước" hint="Quy đổi đủ 12 tháng">
+                      <input type="number" min={1} max={12} value={input.companyPreviousYearOperatingMonths}
+                        onChange={(event) => update("companyPreviousYearOperatingMonths", Number(event.target.value))}
+                        className="w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800/80 px-3.5 py-2.5 text-right font-mono text-sm font-bold" />
+                    </Field>
+                    <Field label="GTGT đầu vào được khấu trừ" hint="">
+                      <MoneyInput
+                        value={input.deductibleInputVat}
+                        onChange={(value) => update("deductibleInputVat", value)}
+                        placeholder="0"
+                      />
+                    </Field>
+                  </div>
                 </>
               )}
             </div>

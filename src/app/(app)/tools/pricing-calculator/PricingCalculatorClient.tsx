@@ -881,9 +881,9 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
                     <Sparkles size={11} className="text-emerald-600 dark:text-emerald-400" />
                     FREE TOOL
                   </span>
-                  <span className="hidden sm:inline-flex rounded-full bg-brand-light/80 border border-brand/30 px-2.5 py-0.5 text-[10px] font-black text-brand uppercase tracking-wider">
+                  {/* <span className="hidden sm:inline-flex rounded-full bg-brand-light/80 border border-brand/30 px-2.5 py-0.5 text-[10px] font-black text-brand uppercase tracking-wider">
                     {FEE_DATA_VERSION}
-                  </span>
+                  </span> */}
                 </div>
                 <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
                   Hạch toán toàn diện phí sàn TMĐT, thuế, voucher và chi phí rủi ro đơn hủy, giao thất bại, trả hàng.
