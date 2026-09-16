@@ -2,17 +2,14 @@ import "dotenv/config";
 import { prisma } from '../src/lib/prisma';
 
 async function main() {
-  console.log("Xóa dữ liệu cũ...");
-  await prisma.lesson.deleteMany({});
-  await prisma.course.deleteMany({});
-
-  console.log("Đang tạo Khóa học Masterclass...");
-  const course = await prisma.course.create({
-    data: {
-      title: "Masterclass Ứng Dụng AI Vào Bán Hàng Đa Nền Tảng",
+  console.log("Đảm bảo khóa học mẫu tồn tại mà không xóa dữ liệu hiện có...");
+  const courseTitle = "Masterclass Ứng Dụng AI Vào Bán Hàng Đa Nền Tảng";
+  let course = await prisma.course.findFirst({ where: { title: courseTitle } });
+  if (!course) course = await prisma.course.create({ data: {
+      title: courseTitle,
       description: "Huấn luyện Seller sử dụng toàn bộ hệ sinh thái AI (ChatGPT, Sinh ảnh, Giọng nói, Avatar ảo) thay thế 1 team In-house 5 người trên Shopee, TikTok, FB.",
-    }
-  });
+      status: "DRAFT",
+    } });
 
   const lessonsData = [
     // PHẦN 1
@@ -51,21 +48,24 @@ async function main() {
     { title: "Phần 5 - Bài 25: Tổng kết khóa học & Trao chứng nhận", isVIP: false },
   ];
 
-  console.log("Đang tạo 25 Bài học mới...");
+  const existing = new Set((await prisma.lesson.findMany({ where: { courseId: course.id }, select: { title: true } })).map(item => item.title.trim().toLowerCase()));
+  console.log("Bổ sung các bài mẫu còn thiếu ở trạng thái nháp...");
   for (let i = 0; i < lessonsData.length; i++) {
+    if (existing.has(lessonsData[i].title.trim().toLowerCase())) continue;
     await prisma.lesson.create({
       data: {
         title: lessonsData[i].title,
-        content: `Nội dung hướng dẫn chi tiết của ${lessonsData[i].title}. Học viên sử dụng các công cụ AI tương ứng để thực hành.`,
-        videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+        content: null,
+        videoUrl: null,
         isVIP: lessonsData[i].isVIP,
+        status: "DRAFT",
         order: i + 1,
         courseId: course.id,
       }
     });
   }
 
-  console.log("Seed dữ liệu Masterclass thành công!");
+  console.log("Seed an toàn hoàn tất. Không có dữ liệu nào bị xóa.");
 }
 
 main()

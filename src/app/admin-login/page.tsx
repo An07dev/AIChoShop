@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { loginAdmin } from "./actions";
 import { ShieldAlert, KeyRound } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 export default function AdminLogin() {
+  const router = useRouter();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -17,6 +19,10 @@ export default function AdminLogin() {
     try {
       const result = await loginAdmin(formData);
       if (result?.error) setError(result.error);
+      else if (result?.success) {
+        router.replace("/admin");
+        router.refresh();
+      }
     } catch {
       setError("Không thể đăng nhập. Vui lòng thử lại.");
     } finally {

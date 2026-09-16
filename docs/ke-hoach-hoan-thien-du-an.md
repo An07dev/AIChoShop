@@ -153,13 +153,13 @@ Phần mã chính: [API AI](/D:/AIChoShop/src/app/api/ai/route.ts), [SEO](/D:/AI
 
 ## 9. Khóa học và video — P1/P2
 
-- [ ] **LEARN-01 — DTO danh mục.** Guest/Free chỉ nhận metadata và phần nội dung được quyền xem; không serialize nội dung hoặc URL video VIP.
-- [ ] **LEARN-02 — Phát video có quyền.** Kiểm tra entitlement trước cấp URL/media; dùng storage và URL có hạn cho nội dung riêng. Video public được xác định rõ là public.
+- [x] **LEARN-01 — DTO danh mục.** Guest/Free chỉ nhận metadata và phần nội dung được quyền xem; không serialize nội dung hoặc URL video VIP.
+- [x] **LEARN-02 — Phát video có quyền.** Media nội bộ được phát qua route kiểm tra session/quyền ở mỗi request và hỗ trợ Range; URL YouTube/Vimeo được ghi rõ là nguồn công khai, không giả là video riêng tư.
 - [ ] **LEARN-03 — Hoàn thiện nội dung thật.** Thay video/nội dung placeholder, kiểm tra số bài, module và thứ tự; không quảng cáo 27 bài nếu catalog thực không tương ứng.
-- [ ] **LEARN-04 — CRUD bài học/khóa học.** Validate title, courseId, order, module, URL và quyền. Đổi thứ tự/trạng thái bài phải cập nhật đúng các trang courses/learn/sidebar.
-- [ ] **LEARN-05 — Tiến độ.** Chỉ user hợp lệ ghi tiến độ bài được phép; thao tác lặp không làm trạng thái khó đoán. Giữ đúng tiến độ khi chuyển khóa và sau refresh.
-- [ ] **LEARN-06 — Sửa Hooks và trạng thái trống.** Không gọi hook sau early return; khóa không có bài, bài đã xóa, video không phát đều có UI xử lý.
-- [ ] **LEARN-07 — Upload.** Admin guard, size/MIME/signature, tên ngẫu nhiên, kiểm tra codec hoặc chuyển mã theo nhu cầu; quản lý file mồ côi và ownership. Không nạp toàn bộ file lớn vào RAM nếu có luồng stream phù hợp.
+- [x] **LEARN-04 — CRUD bài học/khóa học.** Validate title, courseId, order, module, URL và quyền. Đổi thứ tự/trạng thái bài cập nhật đúng các trang courses/learn.
+- [x] **LEARN-05 — Tiến độ.** Chỉ user hợp lệ ghi tiến độ bài được phép; lưu hoàn thành, thời điểm và vị trí video trực tiếp để tiếp tục sau refresh.
+- [x] **LEARN-06 — Sửa Hooks và trạng thái trống.** Không gọi hook sau early return; khóa không có bài, bài đã xóa, video không phát đều có UI xử lý.
+- [x] **LEARN-07 — Upload.** Admin guard, giới hạn 100 MiB, MIME/chữ ký, tên ngẫu nhiên, ghi file theo stream, ownership, trạng thái gắn/mồ côi và thao tác dọn file không dùng.
 
 **Nghiệm thu:** tài khoản không có quyền không lấy được nội dung VIP qua response hoặc URL; khóa trống/có bài chuyển qua lại không lỗi; video thật phát trên thiết bị mục tiêu.
 

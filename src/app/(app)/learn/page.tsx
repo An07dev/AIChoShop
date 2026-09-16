@@ -19,9 +19,9 @@ export default async function LearnPage({
   if (initialLessonId && !targetCourseId) {
     const targetLesson = await prisma.lesson.findUnique({
       where: { id: initialLessonId },
-      select: { courseId: true },
+      select: { courseId: true, status: true, course: { select: { status: true } } },
     });
-    if (targetLesson?.courseId) {
+    if (targetLesson?.courseId && targetLesson.status === "PUBLISHED" && targetLesson.course.status === "PUBLISHED") {
       targetCourseId = targetLesson.courseId;
     }
   }
@@ -32,6 +32,7 @@ export default async function LearnPage({
   let isUserVIP = false;
   let isLogged = false;
   let completedLessonIds: string[] = [];
+  const playbackByLesson = new Map<string, number>();
 
   if (token) {
     const user = await prisma.user.findUnique({
@@ -44,20 +45,23 @@ export default async function LearnPage({
       if (isVipActive(user)) isUserVIP = true;
 
       const userProgress = await prisma.progress.findMany({
-        where: { userId: user.id, completed: true },
-        select: { lessonId: true },
+        where: { userId: user.id },
+        select: { lessonId: true, completed: true, positionSeconds: true },
       });
-      completedLessonIds = userProgress.map((p) => p.lessonId);
+      completedLessonIds = userProgress.filter((p) => p.completed).map((p) => p.lessonId);
+      userProgress.forEach((p) => playbackByLesson.set(p.lessonId, p.positionSeconds));
     }
   }
 
   // 3. Lấy tất cả khóa học để hỗ trợ chuyển đổi khóa học
   const allCourses = await prisma.course.findMany({
+    where: { status: "PUBLISHED" },
     select: {
       id: true,
       title: true,
-      _count: { select: { lessons: true } },
+      _count: { select: { lessons: { where: { status: "PUBLISHED" } } } },
       lessons: {
+        where: { status: "PUBLISHED" },
         select: { id: true },
         orderBy: { order: "asc" },
         take: 1,
@@ -70,9 +74,10 @@ export default async function LearnPage({
   let course = null;
   if (targetCourseId) {
     course = await prisma.course.findUnique({
-      where: { id: targetCourseId },
+      where: { id: targetCourseId, status: "PUBLISHED" },
       include: {
         lessons: {
+          where: { status: "PUBLISHED" },
           orderBy: { order: "asc" },
         },
       },
@@ -81,8 +86,10 @@ export default async function LearnPage({
 
   if (!course) {
     course = await prisma.course.findFirst({
+      where: { status: "PUBLISHED" },
       include: {
         lessons: {
+          where: { status: "PUBLISHED" },
           orderBy: { order: "asc" },
         },
       },
@@ -119,18 +126,12 @@ export default async function LearnPage({
       videoUrl: !lesson.isVIP || isUserVIP ? lesson.videoUrl : null,
       order: lesson.order,
       isVIP: lesson.isVIP,
+      positionSeconds: playbackByLesson.get(lesson.id) || 0,
     });
   });
 
 
   const modules = Array.from(modulesMap.values());
-
-  console.log("=== [SERVER LOG] /learn Page Data ===");
-  console.log("Course:", course.title);
-  console.log("Total Lessons in DB:", course.lessons.length);
-  console.log("Is VIP:", isUserVIP, "| Is Logged:", isLogged);
-  console.log("Completed Lessons Count:", completedLessonIds.length);
-  console.log("=====================================");
 
   const coursesList = allCourses.map((c) => ({
     id: c.id,
@@ -141,6 +142,7 @@ export default async function LearnPage({
 
   return (
     <LearnClient
+      key={`${course.id}:${initialLessonId || "first"}`}
       modules={modules}
       isUserVIP={isUserVIP}
       isLogged={isLogged}
@@ -152,4 +154,3 @@ export default async function LearnPage({
     />
   );
 }
-
