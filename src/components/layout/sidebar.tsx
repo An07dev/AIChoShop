@@ -35,12 +35,10 @@ export function Sidebar({
     });
   };
 
-  const totalLessonsCount = dynamicModules?.reduce((a, b) => a + b.count, 0) || 26;
+  const totalLessonsCount = dynamicModules?.reduce((a, b) => a + b.count, 0) || 0;
 
-  // Danh sách các khóa học thực tế: đầu tiên là "Tất cả bài học & Video", tiếp theo là các khóa học đang có
-  const displayCourses = courses.length > 0 
-    ? courses 
-    : [{ id: '1', title: 'Masterclass Ứng Dụng AI Vào Bán Hàng', lessonsCount: totalLessonsCount, firstLessonId: '' }];
+  // Dữ liệu đã được lọc trạng thái xuất bản ở server layout.
+  const displayCourses = courses;
 
   const courseSubItems = [
     { name: '📺 Tất cả bài học & Video', href: '/courses' },
