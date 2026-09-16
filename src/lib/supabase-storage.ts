@@ -14,16 +14,11 @@ export function storageConfig() {
     Number.isFinite(configuredMib) && configuredMib > 0 ? Math.floor(configuredMib * 1024 * 1024) : DEFAULT_MAX_MIB * 1024 * 1024,
     MAX_DATABASE_BYTES,
   );
-  const parsed = new URL(url);
-  const directHost = parsed.hostname.endsWith(".supabase.co")
-    ? parsed.hostname.replace(/\.supabase\.co$/, ".storage.supabase.co")
-    : parsed.hostname;
   return {
     url,
     serviceRoleKey,
     bucket,
     maxBytes,
-    tusEndpoint: `${parsed.protocol}//${directHost}/storage/v1/upload/resumable`,
   };
 }
 

@@ -2,7 +2,6 @@
 
 import { useState, useMemo, useTransition } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import * as tus from "tus-js-client";
 
 import {
   BookOpen,
@@ -294,7 +293,7 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
     setModalError("");
   };
 
-  // Upload trực tiếp lên Supabase Storage bằng TUS; server chỉ cấp token và xác nhận kết quả.
+  // Upload trực tiếp lên Supabase Storage bằng URL ký tạm thời; server chỉ cấp quyền và xác nhận kết quả.
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -312,30 +311,33 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
       const prepared = await prepareResponse.json();
       if (!prepareResponse.ok || !prepared.success) throw new Error(prepared.error || "Không thể chuẩn bị upload.");
 
+      if (typeof prepared.signedUploadUrl !== "string" || !prepared.signedUploadUrl.startsWith("https://")) {
+        throw new Error("URL upload video không hợp lệ.");
+      }
       await new Promise<void>((resolve, reject) => {
-        const upload = new tus.Upload(file, {
-          endpoint: prepared.tusEndpoint,
-          headers: { "x-signature": prepared.token },
-          chunkSize: 6 * 1024 * 1024,
-          retryDelays: [0, 3000, 5000, 10_000, 20_000],
-          uploadDataDuringCreation: true,
-          removeFingerprintOnSuccess: true,
-          metadata: {
-            bucketName: prepared.bucket,
-            objectName: prepared.objectPath,
-            contentType: file.type || "application/octet-stream",
-            cacheControl: "3600",
-          },
-          onError: reject,
-          onProgress: (uploaded, total) => setUploadProgress(total ? Math.round((uploaded / total) * 100) : 0),
-          onSuccess: () => resolve(),
-        });
-        upload.findPreviousUploads()
-          .then((previous) => {
-            if (previous.length) upload.resumeFromPreviousUpload(previous[0]);
-            upload.start();
-          })
-          .catch(reject);
+        const body = new FormData();
+        body.append("cacheControl", "3600");
+        body.append("", file);
+        const request = new XMLHttpRequest();
+        request.open("PUT", prepared.signedUploadUrl);
+        request.setRequestHeader("x-upsert", "false");
+        request.upload.onprogress = (event) => {
+          if (event.lengthComputable) setUploadProgress(Math.round((event.loaded / event.total) * 100));
+        };
+        request.onerror = () => reject(new Error("Mất kết nối khi tải video lên Supabase Storage."));
+        request.onabort = () => reject(new Error("Đã hủy tải video."));
+        request.onload = () => {
+          if (request.status >= 200 && request.status < 300) resolve();
+          else {
+            let message = `Supabase Storage từ chối upload (${request.status}).`;
+            try {
+              const payload = JSON.parse(request.responseText) as { message?: string; error?: string };
+              message = payload.message || payload.error || message;
+            } catch { /* Phản hồi không phải JSON. */ }
+            reject(new Error(message));
+          }
+        };
+        request.send(body);
       });
 
       const finalizeResponse = await fetch("/api/upload/video", {

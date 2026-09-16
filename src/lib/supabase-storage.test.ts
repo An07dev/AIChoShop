@@ -22,11 +22,11 @@ function withStorageEnv(run: () => void) {
   }
 }
 
-test("storage config uses the direct Supabase TUS hostname and private bucket", () => withStorageEnv(() => {
+test("storage config uses the configured private bucket and size limit", () => withStorageEnv(() => {
   const config = storageConfig();
   assert.equal(config.bucket, "course-videos");
   assert.equal(config.maxBytes, 200 * 1024 * 1024);
-  assert.equal(config.tusEndpoint, "https://project-ref.storage.supabase.co/storage/v1/upload/resumable");
+  assert.equal(config.url, "https://project-ref.supabase.co");
 }));
 
 test("video input accepts MP4/WebM and enforces configured size", () => withStorageEnv(() => {
