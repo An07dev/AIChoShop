@@ -1,23 +1,18 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import {
   Play,
   PlayCircle,
   Crown,
   Sparkles,
-  CheckCircle2,
   BookOpen,
   Search,
-  Filter,
   Layers,
   Video,
-  ExternalLink,
   ArrowRight,
   X,
-  Lock,
-  ShieldCheck,
   Check,
   ChevronRight,
   GraduationCap,
@@ -64,25 +59,6 @@ export default function CoursesClient({
   const [selectedCourseId, setSelectedCourseId] = useState<string>(initialCourseId || "ALL");
   const [selectedModule, setSelectedModule] = useState<string>(initialModule || "ALL");
   const [previewLesson, setPreviewLesson] = useState<CourseLessonItem | null>(null);
-
-  // Đồng bộ khi initialModule trên URL thay đổi
-  useEffect(() => {
-    if (initialModule) {
-      setSelectedModule(initialModule);
-    }
-  }, [initialModule]);
-
-  // Đồng bộ khi initialCourseId trên URL thay đổi (Ví dụ click từ Sidebar)
-  useEffect(() => {
-    if (initialCourseId) {
-      setSelectedCourseId(initialCourseId);
-    }
-  }, [initialCourseId]);
-
-  // Tự động reset module về ALL khi đổi khóa học
-  useEffect(() => {
-    setSelectedModule("ALL");
-  }, [selectedCourseId]);
 
   const handleCourseChange = (courseId: string) => {
     setSelectedCourseId(courseId);
@@ -468,7 +444,6 @@ export default function CoursesClient({
                       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
                         {lessons.map((lesson) => {
                           const isCompleted = completedLessonIds.includes(lesson.id);
-                          const canWatch = !lesson.isVIP || isUserVIP;
                           const videoInfo = parseVideoUrl(lesson.videoUrl);
 
                           // Thumbnail URL
@@ -488,6 +463,7 @@ export default function CoursesClient({
                                 className="relative aspect-video bg-slate-900 overflow-hidden cursor-pointer"
                               >
                                 {ytThumbnail ? (
+                                  // eslint-disable-next-line @next/next/no-img-element -- provider thumbnail is external and optional.
                                   <img
                                     src={ytThumbnail}
                                     alt={lesson.title}

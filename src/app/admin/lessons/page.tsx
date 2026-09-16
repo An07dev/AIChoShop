@@ -2,6 +2,7 @@
 import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { LessonsManager } from "@/components/admin/LessonsManager";
+import { CoursesManager } from "@/components/admin/CoursesManager";
 import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
@@ -13,8 +14,7 @@ export const metadata: Metadata = {
 
 export default async function AdminLessons() {
   await requireAdmin();
-  try {
-    const [lessons, courses] = await Promise.all([
+  const [lessons, courses] = await Promise.all([
       prisma.lesson.findMany({
         orderBy: { order: "asc" },
         include: {
@@ -24,34 +24,23 @@ export default async function AdminLessons() {
         },
       }),
       prisma.course.findMany({
-        select: { id: true, title: true },
+        select: { id: true, title: true, description: true, thumbnail: true, status: true, _count: { select: { lessons: true } } },
+        orderBy: { createdAt: "asc" },
       }),
-    ]);
+  ]);
 
-    const serializedLessons = lessons.map((l) => ({
-      ...l,
-      createdAt: l.createdAt ? l.createdAt.toISOString() : new Date().toISOString(),
-    }));
-
-    console.log("=== [SERVER LOG] /admin/lessons ===");
-    console.log(`Loaded ${lessons.length} lessons from PostgreSQL DB.`);
-    console.log(`Courses found: ${courses.map((c) => c.title).join(", ")}`);
-    console.log("===================================");
-
-    return (
-
-      <div className="flex-1 flex flex-col min-h-0">
-        <LessonsManager initialLessons={serializedLessons} courses={courses} />
-      </div>
-    );
-  } catch (error: any) {
-    console.error("ADMIN LESSONS ERROR:", error);
-    return (
-      <div className="p-8 text-red-500 bg-red-50 rounded-xl border border-red-200">
-        <h2 className="text-xl font-bold mb-2">Lỗi tải danh sách bài học:</h2>
-        <pre className="text-sm whitespace-pre-wrap">{error?.stack || error?.message || String(error)}</pre>
-      </div>
-    );
-  }
+  const serializedLessons = lessons.map((l) => ({
+    ...l,
+    createdAt: l.createdAt ? l.createdAt.toISOString() : new Date().toISOString(),
+  }));
+  return (
+    <div className="flex-1 flex flex-col min-h-0 gap-4">
+      <CoursesManager courses={courses.map(course => ({ ...course, lessonsCount: course._count.lessons }))} />
+      <LessonsManager
+        key={courses.map(course => `${course.id}:${course.title}`).join("|")}
+        initialLessons={serializedLessons}
+        courses={courses}
+      />
+    </div>
+  );
 }
-

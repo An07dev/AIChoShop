@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useMemo, useEffect } from "react";
+import { useState, useTransition, useMemo, useRef } from "react";
 import {
   PlayCircle,
   Lock,
@@ -11,14 +11,14 @@ import {
   ChevronLeft,
   BookOpen,
   FileText,
-  Flame,
   ShieldCheck,
   Check,
   Video,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { parseVideoUrl } from "@/lib/video";
-import { toggleLessonProgress } from "@/app/actions/learn";
+import { saveLessonPlayback, toggleLessonProgress } from "@/app/actions/learn";
 
 export interface ClientLesson {
   id: string;
@@ -29,6 +29,7 @@ export interface ClientLesson {
   videoUrl: string | null;
   order: number;
   isVIP: boolean;
+  positionSeconds?: number;
 }
 
 
@@ -65,36 +66,20 @@ export default function LearnClient({
   courses,
   initialLessonId,
 }: LearnClientProps) {
+  const router = useRouter();
   // Tìm bài học đầu tiên
   const allLessons = useMemo(() => {
     return modules.flatMap((m) => m.lessons);
   }, [modules]);
 
-  const [activeLesson, setActiveLesson] = useState<ClientLesson>(() => {
-    if (initialLessonId) {
-      const target = allLessons.find((l) => l.id === initialLessonId);
-      if (target) return target;
-    }
-    return allLessons[0] || null;
-  });
-
-  // Tự động chuyển bài nếu initialLessonId hoặc allLessons thay đổi
-  useEffect(() => {
-    if (initialLessonId) {
-      const target = allLessons.find((l) => l.id === initialLessonId);
-      if (target) {
-        setActiveLesson(target);
-        return;
-      }
-    }
-    // Nếu activeLesson hiện tại không thuộc allLessons của khóa học mới, chuyển sang bài đầu tiên
-    if (allLessons.length > 0 && (!activeLesson || !allLessons.some((l) => l.id === activeLesson.id))) {
-      setActiveLesson(allLessons[0]);
-    }
-  }, [initialLessonId, allLessons]);
+  const [activeLessonId, setActiveLessonId] = useState(initialLessonId || allLessons[0]?.id || "");
+  const activeLesson = allLessons.find((lesson) => lesson.id === activeLessonId)
+    || allLessons.find((lesson) => lesson.id === initialLessonId)
+    || allLessons[0]
+    || null;
 
   const handleSelectLesson = (lesson: ClientLesson) => {
-    setActiveLesson(lesson);
+    setActiveLessonId(lesson.id);
     if (typeof window !== "undefined") {
       window.history.replaceState(null, "", `/learn?lessonId=${lesson.id}`);
     }
@@ -102,34 +87,7 @@ export default function LearnClient({
 
   const [completedIds, setCompletedIds] = useState<string[]>(initialCompletedLessonIds);
   const [isPending, startTransition] = useTransition();
-
-  // Log dữ liệu nhận được từ Server ra Browser Console (F12)
-  useEffect(() => {
-    console.group("🎓 [AIChoShop] DỮ LIỆU KHÓA HỌC & BÀI HỌC TỪ DATABASE:");
-    console.log("📌 Tên Khóa Học:", courseTitle);
-    console.log("👑 Quyền Hạn User:", {
-      isLogged,
-      isUserVIP,
-      userTier: isUserVIP ? "VIP PRO (Mở khóa toàn bộ)" : "Tài khoản FREE",
-    });
-    console.log("📊 Thống Kê:", {
-      tongSoPhan: modules.length,
-      tongSoBaiHoc: allLessons.length,
-      daHoanThanh: `${allLessons.filter((l) => initialCompletedLessonIds.includes(l.id)).length}/${allLessons.length}`,
-    });
-    console.log("📚 Danh Sách Học Phần & Bài Học (Phân Quyền VIP/FREE):");
-    console.table(
-      allLessons.map((l) => ({
-        STT: l.order,
-        "Tiêu Đề": l.fullTitle || l.title,
-        "Phân Quyền": l.isVIP ? "👑 VIP PRO" : "✨ FREE",
-        "Quyền Xem": !l.isVIP || isUserVIP ? "✅ Được xem" : "🔒 Bị khóa (Cần VIP)",
-        "Link Video": l.videoUrl ? l.videoUrl.slice(0, 40) + "..." : "(Chưa có)",
-      }))
-    );
-    console.groupEnd();
-  }, [courseTitle, isUserVIP, isLogged, modules, allLessons, initialCompletedLessonIds]);
-
+  const lastSavedSecondRef = useRef(0);
 
   if (!activeLesson) {
     return (
@@ -166,6 +124,7 @@ export default function LearnClient({
 
   // Xử lý đánh dấu hoàn thành bài học
   const handleToggleComplete = () => {
+    if (!canWatch) return;
     if (!isLogged) {
       alert("Vui lòng đăng nhập để lưu tiến độ học tập!");
       return;
@@ -188,6 +147,14 @@ export default function LearnClient({
         alert(res.error || "Không thể lưu tiến độ học");
       }
     });
+  };
+
+  const persistPlayback = (video: HTMLVideoElement, force = false) => {
+    if (!isLogged || !activeLesson || !canWatch) return;
+    const second = Math.max(0, Math.floor(video.currentTime || 0));
+    if (!force && second - lastSavedSecondRef.current < 15) return;
+    lastSavedSecondRef.current = second;
+    void saveLessonPlayback(activeLesson.id, second, Number.isFinite(video.duration) ? video.duration : null);
   };
 
   return (
@@ -260,6 +227,14 @@ export default function LearnClient({
                 src={videoInfo.embedUrl}
                 controls
                 autoPlay
+                onLoadedMetadata={(event) => {
+                  const saved = activeLesson.positionSeconds || 0;
+                  if (saved > 0 && saved < event.currentTarget.duration - 3) event.currentTarget.currentTime = saved;
+                  lastSavedSecondRef.current = saved;
+                }}
+                onTimeUpdate={(event) => persistPlayback(event.currentTarget)}
+                onPause={(event) => persistPlayback(event.currentTarget, true)}
+                onEnded={(event) => persistPlayback(event.currentTarget, true)}
                 className="w-full h-full object-contain"
               />
             ) : (
@@ -319,7 +294,7 @@ export default function LearnClient({
             {/* Nút Đánh dấu Hoàn thành */}
             <button
               onClick={handleToggleComplete}
-              disabled={isPending}
+              disabled={isPending || !canWatch}
               className={`shrink-0 px-4 py-2.5 rounded-xl font-bold text-xs sm:text-sm transition-all flex items-center gap-2 cursor-pointer active:scale-95 ${
                 isCurrentCompleted
                   ? "bg-emerald-50 dark:bg-emerald-500/20 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/30 hover:bg-emerald-100 dark:hover:bg-emerald-500/30"
@@ -409,9 +384,9 @@ export default function LearnClient({
                   onChange={(e) => {
                     const selected = courses.find((c) => c.id === e.target.value);
                     if (selected?.firstLessonId) {
-                      window.location.href = `/learn?lessonId=${selected.firstLessonId}`;
+                      router.push(`/learn?lessonId=${selected.firstLessonId}`);
                     } else if (selected?.id) {
-                      window.location.href = `/learn?courseId=${selected.id}`;
+                      router.push(`/learn?courseId=${selected.id}`);
                     }
                   }}
                   className="w-full bg-brand-light border border-brand/30 text-brand text-xs font-bold rounded-xl px-2.5 py-2 focus:ring-2 focus:ring-brand/20 cursor-pointer truncate shadow-2xs hover:border-brand transition-colors"

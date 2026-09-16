@@ -4,6 +4,8 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 import { randomUUID } from "node:crypto";
+import { Readable } from "node:stream";
+import { pipeline } from "node:stream/promises";
 import { privateMediaRoot } from "@/lib/media";
 import { RequestBodyError } from "@/lib/http/body";
 import { audit } from "@/lib/auth/audit";
@@ -38,8 +40,9 @@ export async function POST(req: NextRequest) {
 
     // Kiểm tra định dạng video hợp lệ
     const allowedExtensions = [".mp4", ".webm"];
+    const allowedMimeTypes = ["video/mp4", "video/webm", "application/octet-stream", ""];
     const ext = path.extname(file.name).toLowerCase();
-    if (!allowedExtensions.includes(ext)) {
+    if (!allowedExtensions.includes(ext) || !allowedMimeTypes.includes(file.type.toLowerCase())) {
       return NextResponse.json(
         {
           success: false,
@@ -63,11 +66,22 @@ export async function POST(req: NextRequest) {
     const filename = `${randomUUID()}${ext}`;
     const filePath = path.join(uploadDir, filename);
 
-    // Ghi buffer vào ổ đĩa
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    await fs.promises.writeFile(filePath, buffer, { flag: "wx" });
-    try { await audit(prisma, auditAdmin.id, "VIDEO_UPLOADED", filename, { bytes: file.size }); }
+    // Ghi theo stream để không tạo thêm một bản sao toàn bộ video trong RAM.
+    await pipeline(Readable.fromWeb(file.stream() as never), fs.createWriteStream(filePath, { flags: "wx" }));
+    let asset;
+    try {
+      asset = await prisma.$transaction(async tx => {
+        const created = await tx.mediaAsset.create({ data: {
+          filename,
+          originalName: path.basename(file.name).slice(0, 240) || filename,
+          mimeType: ext === ".webm" ? "video/webm" : "video/mp4",
+          sizeBytes: file.size,
+          uploadedBy: auditAdmin.id,
+        } });
+        await audit(tx, auditAdmin.id, "VIDEO_UPLOADED", created.id, { bytes: file.size });
+        return created;
+      });
+    }
     catch (error) { await fs.promises.unlink(filePath); throw error; }
 
     // Đường dẫn tĩnh truy cập trực tiếp qua Next.js public
@@ -77,6 +91,7 @@ export async function POST(req: NextRequest) {
       success: true,
       url: publicUrl,
       filename,
+      mediaAssetId: asset.id,
       size: file.size,
     });
   } catch (error) {

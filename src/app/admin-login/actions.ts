@@ -1,6 +1,5 @@
 "use server";
 
-import { redirect } from "next/navigation";
 import { loginUser } from "@/app/actions/auth";
 import { getSessionUser } from "@/lib/auth/session";
 import { deleteSeoSession } from "@/lib/seo/session";
@@ -15,5 +14,5 @@ export async function loginAdmin(formData: FormData) {
     await deleteSeoSession();
     return { error: "Tài khoản không có quyền quản trị." };
   }
-  redirect("/admin");
+  return { success: true };
 }

@@ -83,6 +83,7 @@ const initialInput: TaxCalculatorInput = {
   otherPlatformRevenue: 0,
   directRevenue: 0,
   platformFees: 140_000_000,
+  platformFeesDeductible: false,
   deductibleCosts: 700_000_000,
   otherTaxableIncome: 0,
   carriedLoss: 0,
@@ -937,9 +938,17 @@ export default function TaxCalculator() {
                 />
               </Field>
 
+              {(!isPersonal || input.personalIncomeMethod === "profit") && (
+                <label className="flex items-start gap-2 rounded-xl border border-slate-200 p-3 text-xs dark:border-slate-700 sm:col-span-2">
+                  <input type="checkbox" className="mt-0.5" checked={input.platformFeesDeductible}
+                    onChange={(event) => update("platformFeesDeductible", event.target.checked)} />
+                  <span><strong>Tính phí sàn vào chi phí được trừ</strong><br />Chỉ bật khi phí sàn có hóa đơn/chứng từ hợp lệ và chưa được cộng trong ô chi phí hợp lệ khác.</span>
+                </label>
+              )}
+
               {(!isPersonal || input.personalIncomeMethod === "profit" || liveTotalRevenue > 3_000_000_000) && (
                 <>
-                  <Field label="Chi phí hợp lệ có hóa đơn" hint="">
+                  <Field label="Chi phí hợp lệ khác" hint="Không gồm phí sàn">
                     <MoneyInput
                       value={input.deductibleCosts}
                       onChange={(value) => update("deductibleCosts", value)}

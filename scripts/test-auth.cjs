@@ -36,7 +36,7 @@ function fixture({ role = 'ADMIN', locked = false, expired = false, token = 'a'.
     cache.set(full,exports);
     const context = { exports, module: {exports}, Response, Request, FormData, URL, Buffer, Date, console, process: {env:{},cwd:()=>root}, require: name => {
       if(Object.hasOwn(mocks,name)) return mocks[name];
-      if(['node:crypto','crypto','path','node:path'].includes(name)) return require(name);
+      if(['node:crypto','crypto','path','node:path','node:stream','node:stream/promises','node:fs/promises'].includes(name)) return require(name);
       if(name==='fs') return {existsSync(){throw new Error('Unexpected filesystem access');}};
       const local = name.startsWith('@/') ? path.join(root,'src',name.slice(2)) : name.startsWith('.') ? path.resolve(path.dirname(full),name) : null;
       if(local) return load(local.endsWith('.ts')?local:local+'.ts');
