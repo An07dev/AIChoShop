@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useMemo, useTransition } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import {
   BookOpen,
@@ -69,9 +70,16 @@ interface LessonsManagerProps {
 }
 
 export function LessonsManager({ initialLessons, courses }: LessonsManagerProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const requestedCourseId = searchParams.get("courseId");
   const [lessons, setLessons] = useState<AdminLessonItem[]>(initialLessons);
   const [coursesList, setCoursesList] = useState<AdminCourseItem[]>(courses);
-  const [selectedCourseId, setSelectedCourseId] = useState<string>("all");
+  const [selectedCourseId, setSelectedCourseId] = useState<string>(
+    requestedCourseId && courses.some((course) => course.id === requestedCourseId)
+      ? requestedCourseId
+      : "all"
+  );
   const [searchTerm, setSearchTerm] = useState("");
   const [vipFilter, setVipFilter] = useState<"all" | "vip" | "free">("all");
   const [selectedModule, setSelectedModule] = useState<string>("all");
@@ -116,6 +124,16 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
   const showToast = (message: string, type: "success" | "error" = "success") => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3500);
+  };
+
+  const selectCourse = (courseId: string) => {
+    setSelectedCourseId(courseId);
+    setSelectedModule("all");
+    const params = new URLSearchParams(searchParams.toString());
+    if (courseId === "all") params.delete("courseId");
+    else params.set("courseId", courseId);
+    const query = params.toString();
+    router.replace(query ? `/admin/lessons?${query}` : "/admin/lessons", { scroll: false });
   };
 
 
@@ -236,8 +254,7 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
           title: res.course.title,
         };
         setCoursesList((prev) => [...prev, newCourse]);
-        setSelectedCourseId(newCourse.id);
-        setSelectedModule("all");
+        selectCourse(newCourse.id);
         setShowCourseModal(false);
         setNewCourseTitle("");
         setNewCourseDesc("");
@@ -445,7 +462,14 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
           createdAt: res.lesson.createdAt || new Date(),
         };
 
-        setLessons((prev) => [...prev, createdItem]);
+        setLessons((prev) => [
+          ...prev.map((item) =>
+            item.course.id === createdItem.course.id && item.order >= createdItem.order
+              ? { ...item, order: item.order + 1 }
+              : item
+          ),
+          createdItem,
+        ]);
         setShowAddModal(false);
         showToast(`Đã thêm bài học "${formData.title}" vào ${finalModuleName} thành công!`);
       } else {
@@ -483,18 +507,29 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
 
       if (res.success && res.lesson) {
         const course = coursesList.find((c) => c.id === formData.courseId) || editingLesson.course;
-        setLessons((prev) =>
-          prev.map((l) =>
-            l.id === editingLesson.id
-              ? {
-                ...l,
-                ...res.lesson,
-                moduleName: res.lesson.moduleName || finalModuleName,
-                course: { id: course.id, title: course.title },
-              }
-              : l
-          )
-        );
+        const oldCourseId = editingLesson.course.id;
+        const newCourseId = course.id;
+        const oldOrder = editingLesson.order;
+        const newOrder = res.lesson.order;
+        setLessons((prev) => prev.map((item) => {
+          if (item.id === editingLesson.id) {
+            return {
+              ...item,
+              ...res.lesson,
+              moduleName: res.lesson.moduleName || finalModuleName,
+              course: { id: course.id, title: course.title },
+            };
+          }
+          if (oldCourseId === newCourseId && item.course.id === oldCourseId) {
+            if (newOrder < oldOrder && item.order >= newOrder && item.order < oldOrder) return { ...item, order: item.order + 1 };
+            if (newOrder > oldOrder && item.order > oldOrder && item.order <= newOrder) return { ...item, order: item.order - 1 };
+          }
+          if (oldCourseId !== newCourseId) {
+            if (item.course.id === oldCourseId && item.order > oldOrder) return { ...item, order: item.order - 1 };
+            if (item.course.id === newCourseId && item.order >= newOrder) return { ...item, order: item.order + 1 };
+          }
+          return item;
+        }));
         setEditingLesson(null);
         showToast(`Đã cập nhật bài học #${formData.order} thành công!`);
       } else {
@@ -684,8 +719,7 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
             <select
               value={selectedCourseId}
               onChange={(e) => {
-                setSelectedCourseId(e.target.value);
-                setSelectedModule("all");
+                selectCourse(e.target.value);
               }}
               className="bg-white border border-indigo-200 text-slate-800 font-bold rounded px-2 py-0.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer max-w-[200px] truncate"
             >
@@ -756,8 +790,7 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
               onClick={() => {
                 setSearchTerm("");
                 setVipFilter("all");
-                setSelectedModule("all");
-                setSelectedCourseId("all");
+                selectCourse("all");
               }}
               className="text-xs text-rose-600 hover:underline font-semibold ml-auto cursor-pointer"
             >
@@ -812,10 +845,7 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
                       <td className="p-4">
                         <button
                           type="button"
-                          onClick={() => {
-                            setSelectedCourseId(lesson.course?.id || "all");
-                            setSelectedModule("all");
-                          }}
+                          onClick={() => selectCourse(lesson.course?.id || "all")}
                           title={`Click để lọc chỉ xem các bài của khóa "${lesson.course?.title}"`}
                           className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-all cursor-pointer group text-left max-w-[190px]"
                         >
