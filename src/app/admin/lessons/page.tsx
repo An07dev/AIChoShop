@@ -33,11 +33,18 @@ export default async function AdminLessons() {
     ...l,
     createdAt: l.createdAt ? l.createdAt.toISOString() : new Date().toISOString(),
   }));
+  const lessonsVersion = serializedLessons
+    .map((lesson) => `${lesson.id}:${lesson.courseId}:${lesson.order}:${lesson.status}`)
+    .join("|");
 
   return (
     <div className="flex-1 flex flex-col min-h-0 gap-4">
       <CoursesManager courses={courses.map(course => ({ ...course, lessonsCount: course._count.lessons }))} />
-      <LessonsManager key={courses.map(course => `${course.id}:${course.title}`).join("|")} initialLessons={serializedLessons} courses={courses} />
+      <LessonsManager
+        key={`${courses.map(course => `${course.id}:${course.title}`).join("|")}::${lessonsVersion}`}
+        initialLessons={serializedLessons}
+        courses={courses}
+      />
     </div>
   );
 }
