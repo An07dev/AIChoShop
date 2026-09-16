@@ -56,7 +56,7 @@ import {
 } from "lucide-react";
 import { useToolGate } from "@/hooks/useToolGate";
 import { AiUsageBadge } from "@/components/tools/AiUsageBadge";
-import { calculateKocPlan, validateKocPlanInput } from "@/lib/koc-planner/engine";
+import { calculateKocForecast, calculateKocPlan, validateKocPlanInput } from "@/lib/koc-planner/engine";
 import { isFeeProfileStale, resolveFeeProfile } from "@/lib/pricing/fee-resolver";
 import type { FeeOverrideRecord } from "@/lib/pricing/types";
 import type { KocForecast, KocPlanInput, KocPlanResult } from "@/lib/koc-planner/types";
@@ -68,7 +68,7 @@ import {
   getDefaultCategoryId,
   SOURCES,
 } from "@/lib/pricing/registry";
-import type { PricingCalculationSnapshot } from "@/lib/pricing/storage";
+import { readPricingHistory, type PricingCalculationSnapshot } from "@/lib/pricing/storage";
 import type { ShopType } from "@/lib/pricing/types";
 import { safeSpreadsheetCell } from "@/lib/pricing/csv";
 import { extractAccountPricingSnapshots, inspectPricingSnapshotVersion, type PricingHistoryPayload } from "@/lib/koc-planner/pricing-import";
@@ -1111,6 +1111,7 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                     ))}
                   </select>
                 </div>
+              )}
 
               {/* Campaign Name */}
               <Field label="Tên chiến dịch KOC" hint="Bắt buộc">
