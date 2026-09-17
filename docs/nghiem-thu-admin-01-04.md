@@ -13,6 +13,8 @@ Ngày thực hiện: 17/09/2026. Nhánh: `codex/hoan-thien-admin-01-04`.
 
 Đã khôi phục thiết kế tổng quan cũ: AdminPageHeader, bốn thẻ màu, hai biểu đồ cạnh nhau, danh sách 5 người dùng mới và 5 giao dịch gần đây, các thẻ lối tắt quản trị. Bộ lọc kỳ và báo cáo chi tiết mới được tích hợp trong cùng phong cách thẻ bo góc. Biểu đồ doanh thu hỗ trợ cột/đường và ngày/tuần/tháng, vẫn dùng tổng hợp server theo paidAt và refundedAt. Biểu đồ phân bố dùng quyền VIP còn hạn hiện tại; tab đăng ký mới theo kỳ đang chọn ghi rõ màu VIP/Free là quyền hiện tại, không phải lịch sử cấp VIP. Hai danh sách gần đây dùng 5 bản ghi mới nhất toàn hệ thống, độc lập với kỳ doanh thu. Liên kết quản lý user dùng tham số `q` của bộ lọc mới. Không thay đổi database trong lần khôi phục UI này.
 
+Phần báo cáo chi tiết được đồng bộ giao diện: tiêu đề/icon màu, thẻ thống kê, nhãn trạng thái tiếng Việt, sự kiện VIP tách nguồn thanh toán/quản trị, bảng có header và số tiền căn phải, dòng tổng kỳ, cảnh báo đối soát, trạng thái trống, phần giải thích thu gọn. Bảng ngày giới hạn chiều cao và cuộn; màn hình nhỏ cuộn ngang bảng để không làm tràn cả dashboard. Logic và dữ liệu báo cáo giữ nguyên.
+
 ## Định nghĩa báo cáo
 
 - Doanh thu trước hoàn tiền: tổng `amount` của giao dịch `UPGRADE_VIP`, tiền VND, không sandbox, trạng thái SUCCESS hoặc REFUNDED, có `paidAt` trong kỳ. Ngày tạo yêu cầu không phải ngày doanh thu.
