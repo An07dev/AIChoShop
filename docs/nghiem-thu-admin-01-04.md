@@ -15,6 +15,8 @@ Ngày thực hiện: 17/09/2026. Nhánh: `codex/hoan-thien-admin-01-04`.
 
 Phần báo cáo chi tiết được đồng bộ giao diện: tiêu đề/icon màu, thẻ thống kê, nhãn trạng thái tiếng Việt, sự kiện VIP tách nguồn thanh toán/quản trị, bảng có header và số tiền căn phải, dòng tổng kỳ, cảnh báo đối soát, trạng thái trống, phần giải thích thu gọn. Bảng ngày giới hạn chiều cao và cuộn; màn hình nhỏ cuộn ngang bảng để không làm tràn cả dashboard. Logic và dữ liệu báo cáo giữ nguyên.
 
+Sửa cuộn ngoài gây khoảng trắng: caption `sr-only` dùng position absolute nhưng layout không có containing block có vị trí, nên caption thoát khỏi clip của các vùng overflow. Đặt `relative` trên khung admin và vùng cuộn nội dung, giữ chú thích accessibility. Tái hiện bằng render các component layout/dashboard thực với dữ liệu mẫu không nhạy cảm và CSS local trong trình duyệt: trước sửa document scrollHeight 2.465px dù viewport/root 720px; sau sửa document scrollHeight 720px, vùng nội dung 664px vẫn cuộn hết nội dung 2.719px. Đã kéo xuống cuối để xác nhận không có phần trắng; không thay auth hay DB. Trang fixture tạm được xóa sau kiểm tra.
+
 ## Định nghĩa báo cáo
 
 - Doanh thu trước hoàn tiền: tổng `amount` của giao dịch `UPGRADE_VIP`, tiền VND, không sandbox, trạng thái SUCCESS hoặc REFUNDED, có `paidAt` trong kỳ. Ngày tạo yêu cầu không phải ngày doanh thu.
