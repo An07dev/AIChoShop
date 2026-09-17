@@ -318,7 +318,6 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
   // Lịch sử modal & hoạt động server (Hoạt động gần đây)
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const [historyActivities, setHistoryActivities] = useState<HistoryActivity<PricingCalculationSnapshot>[]>([]);
-  const [historyTotal, setHistoryTotal] = useState(0);
   const [historyRefreshTrigger, setHistoryRefreshTrigger] = useState(0);
   const [viewingHistoryItem, setViewingHistoryItem] = useState<HistoryActivity<PricingCalculationSnapshot> | null>(null);
   const [copiedHistoryId, setCopiedHistoryId] = useState<string | null>(null);
@@ -338,7 +337,6 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
       .then((data) => {
         if (data) {
           setHistoryActivities(data.recentActivities || []);
-          setHistoryTotal(data.totalGenerated || 0);
         }
       })
       .catch(() => { });

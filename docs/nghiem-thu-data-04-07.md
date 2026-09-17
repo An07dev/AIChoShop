@@ -89,3 +89,7 @@ Chưa deploy mã nguồn mới lên Hostinger, chưa cấu hình scheduled comma
 - Đối chiếu fingerprint toàn bộ dữ liệu của 20 bảng trước/sau: không bảng nào thay đổi. Giữ nguyên 6 user, 3 khóa học, 30 bài học, 12 giao dịch, 119 bản ghi lịch sử, 13 tiến độ và 11 media asset. Không reset/seed, không chạy tác vụ xóa/làm sạch lịch sử trên DB thật trong lần cập nhật schema này.
 - Smoke test Prisma Client với driver adapter của ứng dụng đọc User/Course/Lesson/Transaction/AiUsageLog/Progress thành công. Báo cáo máy nằm trong `local-result.json`, `production-result.json` cạnh backup.
 - Chức năng giao diện xuất/xóa, sanitizer và bảo trì mới chỉ hoạt động khi Hostinger deploy mã nguồn tương ứng. Lịch dọn dữ liệu hằng ngày và làm sạch lịch sử cũ còn hạn vẫn cần triển khai bằng quy trình bảo trì ở trên.
+
+## Sửa hiển thị lịch sử sau khi xóa
+
+API và dashboard lọc `ERASED_ACTION` ngay trong truy vấn danh sách, trước giới hạn 10/50 mục; không thay đổi truy vấn đếm lượt/quota. Cửa sổ lịch sử dùng số mục còn hiển thị thay vì tổng số lượt đã tạo. Kiểm thử PostgreSQL local xác nhận xóa toàn bộ làm danh sách trống, số lượt/quota giữ nguyên và mục mới tạo sau xóa vẫn hiển thị. Bản sửa chỉ đổi mã nguồn, không cần migration mới hoặc xóa thêm dữ liệu DB thật.

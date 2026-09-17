@@ -8,7 +8,7 @@ interface ActivityItem {
   tool: string;
   toolName: string;
   action: string;
-  input?: any;
+  input?: Record<string, unknown> | null;
   output?: string | null;
   time: string;
   createdAt: string;
@@ -65,7 +65,7 @@ export function AiUsageBadge({ tool, refreshTrigger = 0, onSelectOutput }: AiUsa
   }, [tool]);
 
   useEffect(() => {
-    fetchStats();
+    queueMicrotask(() => { void fetchStats(); });
   }, [fetchStats, refreshTrigger]);
 
   const handleCopy = (id: string, text: string) => {
@@ -156,7 +156,7 @@ export function AiUsageBadge({ tool, refreshTrigger = 0, onSelectOutput }: AiUsa
                   <p className="text-xs text-slate-400">
                     {viewingItem
                       ? viewingItem.toolName
-                      : `Tổng cộng ${stats.totalGenerated} bản ghi đã lưu vào tài khoản`}
+                      : `${filteredActivities.length} mục lịch sử gần đây còn lưu`}
                   </p>
                 </div>
               </div>
