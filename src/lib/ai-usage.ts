@@ -1,3 +1,6 @@
+import { historyCutoff, redactText, sanitizeHistoryOutput } from "./privacy/policy";
+import { expireHistoryContent } from "./privacy/service";
+import { sanitizeHistoryValue } from "./privacy/policy";
 import { vnDayStart } from "./ai-quota";
 import {
   AI_TOOLS,
@@ -54,7 +57,7 @@ export function formatRelativeTime(dateInput: Date | string): string {
  * Lấy toàn bộ số liệu thống kê AI của người dùng
  */
 export async function getAiUsageStats(userId: string, filterTool?: string) {
-  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { isVIP: true, vipExpiresAt: true, dailyFreeLimit: true } });
   const where = {
     userId,
     ...(filterTool
@@ -66,96 +69,31 @@ export async function getAiUsageStats(userId: string, filterTool?: string) {
   const [todayCount, totalGenerated, activities] = await Promise.all([
     prisma.aiUsageLog.count({ where: { userId, tool: { in: AI_TOOLS }, createdAt: { gte: vnDayStart() } } }),
     prisma.aiUsageLog.count({ where }),
-    prisma.aiUsageLog.findMany({ where, orderBy: { createdAt: "desc" }, take: filterTool ? 50 : 10 }),
+    prisma.aiUsageLog.findMany({ where: { ...where, createdAt: { gte: historyCutoff() } }, orderBy: { createdAt: "desc" }, take: filterTool ? 50 : 10 }),
   ]);
   return { todayCount, totalGenerated, dailyFreeLimit: user.dailyFreeLimit,
     remainingFree: isVipActive(user) ? null : Math.max(0, user.dailyFreeLimit - todayCount), isVIP: isVipActive(user),
-    recentActivities: activities.map(act => ({ ...act, input: (() => { try { return act.input ? JSON.parse(act.input) : null; } catch { return null; } })(), time: formatRelativeTime(act.createdAt), createdAt: act.createdAt.toISOString() })) };
+    recentActivities: activities.map(act => ({ ...act, action: redactText(act.action), output: sanitizeHistoryOutput(act.output), input: (() => { try { return act.input ? sanitizeHistoryValue(JSON.parse(act.input)) : null; } catch { return null; } })(), time: formatRelativeTime(act.createdAt), createdAt: act.createdAt.toISOString() })) };
 }
 
 /**
  * Lưu bản ghi sử dụng AI vào Database
  */
 export async function recordAiUsage(params: {
-  userId: string;
-  tool: string;
-  toolName?: string;
-  action?: string;
-  input?: any;
-  output?: string;
+  userId: string; tool: string; input?: unknown; output?: string;
 }) {
-  try {
-    const toolName = params.toolName || TOOL_NAMES[params.tool] || params.tool;
-    const action = params.action || summarizeAiAction(params.tool, params.input);
-    const inputStr = sanitizeAiInput(params.input);
-
-    const logId = "log_" + Date.now() + "_" + Math.random().toString(36).substring(2, 8);
-
-    if ((prisma as any).aiUsageLog?.create) {
-      try {
-        await (prisma as any).aiUsageLog.create({
-          data: {
-            id: logId,
-            userId: params.userId,
-            tool: params.tool,
-            toolName,
-            action,
-            input: inputStr,
-            output: params.output || null,
-          },
-        });
-      } catch (ormErr) {
-        await prisma.$executeRawUnsafe(
-          'INSERT INTO "AiUsageLog" ("id", "userId", "tool", "toolName", "action", "input", "output", "createdAt") VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())',
-          logId,
-          params.userId,
-          params.tool,
-          toolName,
-          action,
-          inputStr,
-          params.output || null
-        );
-      }
-    } else {
-      await prisma.$executeRawUnsafe(
-        'INSERT INTO "AiUsageLog" ("id", "userId", "tool", "toolName", "action", "input", "output", "createdAt") VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())',
-        logId,
-        params.userId,
-        params.tool,
-        toolName,
-        action,
-        inputStr,
-        params.output || null
-      );
-    }
-
-    const startOfToday = getStartOfTodayVn();
-    let todayCount = 1;
-    let totalGenerated = 1;
-    try {
-      const [todayRes, totalRes]: [any, any] = await Promise.all([
-        prisma.$queryRawUnsafe(
-          'SELECT COUNT(*)::int as count FROM "AiUsageLog" WHERE "userId" = $1 AND "createdAt" >= $2',
-          params.userId,
-          startOfToday
-        ),
-        prisma.$queryRawUnsafe(
-          'SELECT COUNT(*)::int as count FROM "AiUsageLog" WHERE "userId" = $1',
-          params.userId
-        ),
-      ]);
-      todayCount = Number(todayRes?.[0]?.count) || 1;
-      totalGenerated = Number(totalRes?.[0]?.count) || 1;
-    } catch {}
-
-    return {
-      success: true,
-      logId,
-      todayCount,
-      totalGenerated,
-    };
-  } catch (error) {
-    console.error("Error saving AI usage log:", error);
-    return { success: false, error: "Failed to record AI usage" };
-  }
+  const log = await prisma.$transaction(async tx => {
+    await expireHistoryContent(tx);
+    return tx.aiUsageLog.create({ data: {
+    userId: params.userId, tool: params.tool,
+    toolName: TOOL_NAMES[params.tool] || params.tool,
+    action: redactText(summarizeAiAction(params.tool, params.input)).slice(0, 300),
+    input: sanitizeAiInput(params.input), output: sanitizeHistoryOutput(params.output),
+    } });
+  });
+  const [todayCount, totalGenerated] = await Promise.all([
+    prisma.aiUsageLog.count({ where: { userId: params.userId, tool: { in: AI_TOOLS }, createdAt: { gte: vnDayStart() } } }),
+    prisma.aiUsageLog.count({ where: { userId: params.userId } }),
+  ]);
+  return { success: true, logId: log.id, todayCount, totalGenerated };
 }

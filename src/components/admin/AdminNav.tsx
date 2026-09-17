@@ -14,6 +14,7 @@ export function AdminNav() {
     { href: "/admin/pricing-fees", label: "Biểu phí bán hàng", icon: Database, exact: true },
     { href: "/admin/users", label: "Quản lý Users", icon: UserCog },
     { href: "/admin/audit", label: "Nhật ký quản trị", icon: Database },
+    { href: "/admin/privacy", label: "Bảo trì dữ liệu", icon: Database },
     { href: "/admin/lessons", label: "Nội dung Khóa học", icon: BookOpen },
     { href: "/admin/settings", label: "Cài đặt hệ thống", icon: Settings },
   ];

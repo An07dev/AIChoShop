@@ -2,18 +2,12 @@
 const test=require('node:test');
 const assert=require('node:assert/strict');
 const fs=require('node:fs');
-const vm=require('node:vm');
-const ts=require('typescript');
 const {randomUUID}=require('node:crypto');
 const {Pool}=require('pg');
 const {seed}=require('./data/seed.cjs');
 
-function load(file,mocks) {
-  const output=ts.transpileModule(fs.readFileSync(file,'utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,target:ts.ScriptTarget.ES2022}}).outputText;
-  const exports={};
-  vm.runInNewContext(output,{exports,require:name=>{if(name in mocks) return mocks[name]; throw Error(`Unexpected import ${name}`);},process,console,Date});
-  return exports;
-}
+const recursiveLoader=require('./test-support/load-ts.cjs');
+function load(file,mocks) { return recursiveLoader(mocks)(file); }
 test('read helpers never recreate missing settings/plans or persist VIP expiry',async()=>{
   let writes=0;
   const model=new Proxy({findUnique:async()=>null,findMany:async()=>[]},{get:(object,key)=> key in object ? object[key] : ()=>{writes++;throw Error('Write during read');}});
@@ -28,7 +22,7 @@ test('read helpers never recreate missing settings/plans or persist VIP expiry',
   assert.equal(user.isVIP,true);
   await settings.getSystemSettings();
   const broken=load('src/lib/system-settings.ts',{...mocks,'@/lib/prisma':{prisma:{systemSetting:{findUnique:async()=>{throw Error('Expected database failure');}}}}});
-  assert.equal((await broken.getSystemSettings()).isOpenAiActive,false);
+  await assert.rejects(() => broken.getSystemSettings());
   assert.equal(writes,0);
 });
 

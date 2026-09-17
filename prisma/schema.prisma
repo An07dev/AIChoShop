@@ -81,6 +81,7 @@ model Lesson {
   progress        Progress[]
 
   @@index([courseId, status, order])
+  @@index([courseId, order])
   @@index([mediaAssetId])
 }
 
@@ -163,6 +164,7 @@ model Transaction {
   updatedAt     DateTime              @updatedAt
 
   @@index([userId, status, createdAt])
+  @@index([status, createdAt])
 }
 
 model PaymentWebhookEvent {
@@ -181,6 +183,7 @@ model PaymentWebhookEvent {
   approvedBy    String?
 
   @@index([status, receivedAt])
+  @@index([transactionId, status, receivedAt])
 }
 
 model PricingFeeOverride {
@@ -259,6 +262,8 @@ model AiUsageLog {
   createdAt DateTime @default(now())
 
   @@index([userId, createdAt])
+  @@index([userId, tool, createdAt])
+  @@index([createdAt])
 }
 
 model SeoUsage {
@@ -284,6 +289,7 @@ model SeoRun {
   createdAt    DateTime @default(now())
 
   @@index([createdAt])
+  @@index([subject, status, createdAt])
 }
 
 model AuthRateLimit {
@@ -318,6 +324,7 @@ model AdminAuditLog {
   createdAt DateTime @default(now())
 
   @@index([createdAt])
+  @@index([action, createdAt])
 }
 
 model SeoSession {

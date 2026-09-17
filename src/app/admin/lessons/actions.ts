@@ -1,4 +1,6 @@
 "use server";
+import { dataFailure, safeOperationMessage } from "@/lib/db-errors";
+
 
 import { auditedWrite } from "@/lib/auth/audit-operations";
 import { auditOutcome } from "@/lib/auth/audit-operations";
@@ -46,7 +48,7 @@ export async function toggleLessonVip(lessonId: string, newVipStatus: boolean) {
     revalidatePath("/courses");
     return { success: true, isVIP: updated.isVIP };
   } catch (error) {
-    console.error("Error toggling Lesson VIP:", error);
+    dataFailure(error, "app/admin/lessons/actions.ts");
     return { success: false, error: "Không thể cập nhật trạng thái VIP của bài học" };
   }
 
@@ -107,8 +109,8 @@ export async function createLesson(data: {
     refreshLearningPages();
     return { success: true, lesson: newLesson };
   } catch (error) {
-    console.error("Error creating lesson:", error);
-    return { success: false, error: error instanceof Error ? error.message : "Lỗi hệ thống khi tạo bài học mới" };
+    dataFailure(error, "app/admin/lessons/actions.ts");
+    return { success: false, error: safeOperationMessage(error, "Lỗi hệ thống khi tạo bài học mới") };
   }
 
   });
@@ -170,8 +172,8 @@ export async function updateLesson(
     refreshLearningPages();
     return { success: true, lesson: updated };
   } catch (error) {
-    console.error("Error updating lesson:", error);
-    return { success: false, error: error instanceof Error ? error.message : "Lỗi khi cập nhật bài học" };
+    dataFailure(error, "app/admin/lessons/actions.ts");
+    return { success: false, error: safeOperationMessage(error, "Lỗi khi cập nhật bài học") };
   }
 
   });
@@ -277,7 +279,7 @@ export async function restoreDefaultLessons() {
     revalidatePath("/learn");
     return { success: true, restoredCount };
   } catch (error) {
-    console.error("Error restoring default lessons:", error);
+    dataFailure(error, "app/admin/lessons/actions.ts");
     return { success: false, error: "Không thể khôi phục danh sách bài học" };
   }
 
@@ -307,7 +309,7 @@ export async function deleteLesson(lessonId: string) {
     revalidatePath("/courses");
     return { success: true };
   } catch (error) {
-    console.error("Error deleting lesson:", error);
+    dataFailure(error, "app/admin/lessons/actions.ts");
     return { success: false, error: "Không thể xóa bài học này" };
   }
 
@@ -332,8 +334,8 @@ export async function createCourse(data: { title: string; description?: string; 
     revalidatePath("/learn");
     return { success: true, course: newCourse };
   } catch (error) {
-    console.error("Error creating course:", error);
-    return { success: false, error: error instanceof Error ? error.message : "Lỗi hệ thống khi tạo khóa học mới" };
+    dataFailure(error, "app/admin/lessons/actions.ts");
+    return { success: false, error: safeOperationMessage(error, "Lỗi hệ thống khi tạo khóa học mới") };
   }
 
   });
@@ -351,7 +353,7 @@ export async function updateCourse(courseId: string, data: { title: string; desc
       refreshLearningPages();
       return { success: true, course };
     } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : "Không thể cập nhật khóa học." };
+      return { success: false, error: safeOperationMessage(error, "Không thể cập nhật khóa học.") };
     }
   });
 }
@@ -366,7 +368,7 @@ export async function deleteCourse(courseId: string) {
       refreshLearningPages();
       return { success: true };
     } catch (error) {
-      return { success: false, error: error instanceof Error ? error.message : "Không thể xóa khóa học." };
+      return { success: false, error: safeOperationMessage(error, "Không thể xóa khóa học.") };
     }
   });
 }

@@ -6,6 +6,8 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Nhật ký quản trị | AIChoShop" };
 
 const actions: Record<string, string> = {
+  PERSONAL_HISTORY_ERASED: "Xóa nội dung lịch sử cá nhân",
+  PRIVACY_MAINTENANCE: "Bảo trì dữ liệu riêng tư",
   VIP_EXPIRED: "VIP hết hạn",
   VIP_PLAN_SEEDED: "Khởi tạo gói VIP mặc định",
   SYSTEM_SETTINGS_UPDATED: "Cập nhật cấu hình AI", BANK_SETTINGS_UPDATED: "Cập nhật ngân hàng",

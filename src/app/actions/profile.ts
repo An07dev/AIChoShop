@@ -1,4 +1,6 @@
 "use server";
+import { dataFailure, safeOperationMessage } from "@/lib/db-errors";
+
 
 import { isVipActive } from "@/lib/vip-expiration";
 
@@ -40,7 +42,7 @@ export async function updateUserProfile(formData: FormData) {
     revalidatePath("/dashboard");
     return { success: true, message: "Cập nhật hồ sơ cá nhân thành công!" };
   } catch (error) {
-    console.error("Error updating profile:", error);
+    dataFailure(error, "app/actions/profile.ts");
     return { success: false, error: "Không thể cập nhật hồ sơ, vui lòng thử lại sau" };
   }
 }
@@ -87,7 +89,7 @@ export async function changeUserPassword(formData: FormData) {
 
     return { success: true, message: "Đổi mật khẩu thành công. Vui lòng đăng nhập lại trên các thiết bị." };
   } catch (error) {
-    console.error("Error changing password:", error);
+    dataFailure(error, "app/actions/profile.ts");
     return { success: false, error: "Đã xảy ra lỗi hệ thống khi đổi mật khẩu" };
   }
 }
@@ -99,7 +101,7 @@ export async function requestVipActivation(planId: string): Promise<{ success: b
     const intent = await createPaymentIntent(userId, planId, await getSePayConfig());
     return { success: true, intent };
   } catch (error) {
-    return { success: false, error: error instanceof Error ? error.message : "Không thể tạo yêu cầu thanh toán." };
+    return { success: false, error: safeOperationMessage(error, "Không thể tạo yêu cầu thanh toán.") };
   }
 }
 
@@ -133,7 +135,7 @@ export async function checkCurrentUserVipStatus() {
       vipExpiresAt: user.vipExpiresAt ? user.vipExpiresAt.toISOString() : null,
     };
   } catch (error) {
-    console.error("Error checking VIP status:", error);
+    dataFailure(error, "app/actions/profile.ts");
     return { isVIP: false, vipExpiresAt: null };
   }
 }

@@ -3,17 +3,18 @@ import { prisma } from "@/lib/prisma";
 import { hashToken, SEO_SESSION_COOKIE } from "@/lib/seo/session";
 import { securityEvent } from "./audit-operations";
 import { isAllowedOrigin } from "@/lib/http/origin";
+import { readDatabase, dataErrorResponse } from "@/lib/db-errors";
 
 export async function getSessionUser() {
   const token = (await cookies()).get(SEO_SESSION_COOKIE)?.value;
   if (!token || !/^[a-f0-9]{64}$/.test(token)) return null;
-  const session = await prisma.seoSession.findUnique({
+  const session = await readDatabase("read-session", () => prisma.seoSession.findUnique({
     where: { tokenHash: hashToken(token) },
     select: {
       expiresAt: true,
       user: { select: { id: true, role: true, isLocked: true } },
     },
-  });
+  }));
   if (!session || session.expiresAt <= new Date() || session.user.isLocked) return null;
   return session.user;
 }
@@ -33,6 +34,7 @@ export async function requireAdmin(operation = "admin") {
 
 // Route handlers return a stable denial before reading request bodies or touching data.
 export async function adminRouteGuard(request?: Request) {
+  try {
   const user = await getSessionUser();
   if (!user || user.role !== "ADMIN") {
     await securityEvent(user?.id || "anonymous", "ADMIN_ACCESS_DENIED", request ? `${request.method} ${new URL(request.url).pathname}` : "admin-api");
@@ -45,4 +47,5 @@ export async function adminRouteGuard(request?: Request) {
     }
   }
   return null;
+  } catch (error) { return dataErrorResponse(error, "admin-route-guard"); }
 }

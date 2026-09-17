@@ -1,5 +1,7 @@
 "use client";
 
+import { createHistoryId, type HistoryActivity } from "@/lib/history/types";
+import { useAccountStorage } from "@/context/AccountHistoryContext";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import {
@@ -306,6 +308,7 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
     auditPrice: number;
     isLoss: boolean;
   } | null>(null);
+  const { storage: historyStorage, ready: historyReady, fetch: historyFetch } = useAccountStorage();
   const [savedHistory, setSavedHistory] = useState<PricingCalculationSnapshot[]>([]);
   const [saveNotice, setSaveNotice] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -314,10 +317,10 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
 
   // Lịch sử modal & hoạt động server (Hoạt động gần đây)
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
-  const [historyActivities, setHistoryActivities] = useState<any[]>([]);
+  const [historyActivities, setHistoryActivities] = useState<HistoryActivity<PricingCalculationSnapshot>[]>([]);
   const [historyTotal, setHistoryTotal] = useState(0);
   const [historyRefreshTrigger, setHistoryRefreshTrigger] = useState(0);
-  const [viewingHistoryItem, setViewingHistoryItem] = useState<any | null>(null);
+  const [viewingHistoryItem, setViewingHistoryItem] = useState<HistoryActivity<PricingCalculationSnapshot> | null>(null);
   const [copiedHistoryId, setCopiedHistoryId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -325,11 +328,12 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
   }, [checkAccess]);
 
   useEffect(() => {
-    setSavedHistory(readPricingHistory(window.localStorage));
-  }, []);
+    if (!historyReady) return;
+    queueMicrotask(() => setSavedHistory(readPricingHistory(historyStorage)));
+  }, [historyStorage, historyReady]);
 
   useEffect(() => {
-    fetch("/api/ai/usage?tool=pricing-calculator")
+    historyFetch("/api/ai/usage?tool=pricing-calculator")
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data) {
@@ -338,7 +342,7 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
         }
       })
       .catch(() => { });
-  }, [historyRefreshTrigger]);
+  }, [historyRefreshTrigger, historyFetch]);
 
   const handleCopyHistory = (id: string, text: string) => {
     if (!text) return;
@@ -347,7 +351,7 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
     setTimeout(() => setCopiedHistoryId(null), 2000);
   };
 
-  const displayActivities = useMemo(() => {
+  const displayActivities = useMemo<HistoryActivity<PricingCalculationSnapshot>[]>(() => {
     if (historyActivities.length > 0) return historyActivities;
     return savedHistory.map((s) => ({
       id: s.id,
@@ -370,15 +374,12 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
   const feeProfile = resolveFeeProfile(input.platform, input.shopType, input.categoryId, feeOverrides);
   const adminOverride = selectFeeOverride(feeOverrides, input.platform, input.shopType, feeProfile.categoryId);
 
-  const calculationInput = useMemo(
-    () => ({
+  const calculationInput = {
       ...input,
       commissionOverride: input.commissionOverride ?? adminOverride?.commissionRate ?? null,
       transactionOverride: input.transactionOverride ?? adminOverride?.transactionRate ?? null,
       fixedFeeOverride: input.fixedFeeOverride ?? adminOverride?.orderProcessingFee ?? null,
-    }),
-    [adminOverride, input]
-  );
+    };
 
   const hasCalculated = !!appliedCalculation;
   const result = appliedCalculation?.result;
@@ -478,7 +479,7 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
     setAppliedCalculation(applied);
 
     // Tự động lưu snapshot vào lịch sử
-    const snapshotId = editingId || (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`);
+    const snapshotId = editingId || createHistoryId();
     const item: PricingCalculationSnapshot = {
       id: snapshotId,
       createdAt: new Date().toISOString(),
@@ -496,9 +497,9 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
 
     setEditingId(snapshotId);
 
-    persistHistory(
+    if (!persistHistory(
       editingId ? savedHistory.map((saved) => (saved.id === editingId ? item : saved)) : [item, ...savedHistory]
-    );
+    )) return;
     setSaveNotice(
       editingId ? `Đã tính toán & cập nhật “${item.productName}”.` : `Đã tính toán & lưu “${item.productName}” vào lịch sử.`
     );
@@ -511,7 +512,7 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
     const totalTaxes = computedResult.evaluation?.tax ?? 0;
     const platformName = input.platform === "shopee" ? "Shopee" : input.platform === "tiktok" ? "TikTok" : "Đơn ngoài";
 
-    fetch("/api/ai/usage", {
+    historyFetch("/api/ai/usage", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -535,13 +536,14 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
       }),
     })
       .then(() => setHistoryRefreshTrigger((prev) => prev + 1))
-      .catch((err) => console.warn("Failed to log pricing usage:", err));
+      .catch(() => setSaveNotice("Đã lưu trên thiết bị; chưa lưu được nhật ký server. Hãy kiểm tra đăng nhập và kết nối."));
   };
 
 
   const persistHistory = (next: PricingCalculationSnapshot[]) => {
-    setSavedHistory(next);
-    writePricingHistory(window.localStorage, next);
+    try { writePricingHistory(historyStorage, next); } catch (error) { setSaveNotice(error instanceof Error ? error.message : "Không lưu được lịch sử."); return false; }
+    setSavedHistory(readPricingHistory(historyStorage));
+    return true;
   };
 
   const saveCurrent = () => {
@@ -549,10 +551,12 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
   };
 
   const saveMany = (items: PricingCalculationSnapshot[]) => {
-    persistHistory([...items, ...savedHistory]);
-    setSaveNotice(`Đã lưu ${items.length} sản phẩm từ file CSV.`);
+    if (!persistHistory([...items, ...savedHistory])) return;
+    const retainedIds = new Set(readPricingHistory(historyStorage).map((item) => item.id));
+    const retainedCount = items.filter((item) => retainedIds.has(item.id)).length;
+    setSaveNotice(`Đã lưu ${retainedCount}/${items.length} sản phẩm từ file CSV. Lịch sử giữ tối đa 50 mục trong 90 ngày.`);
 
-    fetch("/api/ai/usage", {
+    historyFetch("/api/ai/usage", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -560,11 +564,11 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
         toolName: "Tính Giá Bán",
         action: `Định giá hàng loạt ${items.length} sản phẩm`,
         input: { count: items.length },
-        output: `Đã tính toán và lưu ${items.length} sản phẩm định giá hàng loạt vào tài khoản.`,
+        output: `Đã tính toán ${items.length} sản phẩm; lưu ${retainedCount} mục vào lịch sử trên thiết bị.`,
       }),
     })
       .then(() => setHistoryRefreshTrigger((prev) => prev + 1))
-      .catch((err) => console.warn("Failed to log bulk pricing:", err));
+      .catch(() => setSaveNotice("Đã lưu trên thiết bị; chưa lưu được nhật ký server. Hãy kiểm tra đăng nhập và kết nối."));
   };
 
   const openSaved = (item: PricingCalculationSnapshot) => {
@@ -774,7 +778,7 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
                       </p>
                     </div>
                   ) : (
-                    displayActivities.map((item: any) => {
+                    displayActivities.map((item) => {
                       const matchedSnapshot =
                         item.snapshot ||
                         savedHistory.find(

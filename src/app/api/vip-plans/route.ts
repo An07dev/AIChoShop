@@ -1,3 +1,4 @@
+import { dataErrorResponse } from "@/lib/db-errors";
 import { auditOutcome, auditedWrite } from "@/lib/auth/audit-operations";
 import { adminRouteGuard, requireAdmin } from "@/lib/auth/session";
 import { NextResponse } from "next/server";
@@ -22,11 +23,7 @@ export async function GET(req: Request) {
     const activePlans = await getActiveVipPlans();
     return NextResponse.json({ success: true, data: activePlans });
   } catch (error) {
-    console.error("GET /api/vip-plans error:", error);
-    return NextResponse.json(
-      { success: false, error: "Không thể lấy danh sách gói VIP" },
-      { status: 500 }
-    );
+    return dataErrorResponse(error, "app/api/vip-plans/route.ts");
   }
 }
 
@@ -110,11 +107,7 @@ export async function POST(req: Request) {
       { status: 201 }
     );
   } catch (error) {
-    console.error("POST /api/vip-plans error:", error);
-    return NextResponse.json(
-      { success: false, error: "Lỗi hệ thống khi tạo gói VIP" },
-      { status: 500 }
-    );
+    return dataErrorResponse(error, "app/api/vip-plans/route.ts");
   }
 
   });

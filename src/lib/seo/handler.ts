@@ -1,3 +1,4 @@
+import { classifyDatabaseError } from "@/lib/db-errors";
 import { NextResponse } from "next/server";
 import OpenAI from "openai";
 import { getSystemSettings } from "@/lib/system-settings";
@@ -12,6 +13,8 @@ import { isAllowedOrigin } from "@/lib/http/origin";
 
 function publicError(error: unknown): SeoError {
   if (error instanceof SeoError) return error;
+  const database = classifyDatabaseError(error);
+  if (database) return new SeoError(database.code, database.message, database.status);
   if (error instanceof OpenAI.APIConnectionTimeoutError || (error instanceof Error && error.name === "AbortError")) return new SeoError("TIMEOUT", "AI xử lý quá lâu. Vui lòng thử lại; lượt dùng chưa bị trừ.", 504);
   if (error instanceof OpenAI.APIError) {
     if (error.status === 401 || error.status === 403) return new SeoError("AI_CONFIG_ERROR", "Cấu hình kết nối AI chưa hợp lệ. Vui lòng liên hệ quản trị viên.", 503);

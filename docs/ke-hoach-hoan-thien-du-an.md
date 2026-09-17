@@ -168,10 +168,12 @@ Phần mã chính: [API AI](/D:/AIChoShop/src/app/api/ai/route.ts), [SEO](/D:/AI
 - [x] **DATA-01 — Migration có phiên bản.** Chuyển thay đổi schema/SQL thủ công sang quy trình migration phù hợp dữ liệu hiện có; thử upgrade trên bản sao và có kế hoạch phục hồi.
 - [x] **DATA-02 — Seed an toàn.** Tách dữ liệu demo khỏi bootstrap production; không mặc định xóa Course/Lesson. Sửa moduleName và tránh thao tác phá lịch sử tiến độ.
 - [x] **DATA-03 — Bỏ ghi ngầm trong get/render.** Khởi tạo settings/gói mặc định qua setup rõ ràng; không tạo dữ liệu hoặc hạ VIP vì người dùng mở trang.
-- [ ] **DATA-04 — Chuẩn hóa truy cập DB.** Giảm any và fallback SQL lặp; phân biệt lỗi dữ liệu, lỗi schema và mất kết nối. Không che lỗi bằng trả số liệu/quyền giả định.
-- [ ] **DATA-05 — Constraint/index.** Thêm unique event, trạng thái và ràng buộc cần thiết; kiểm tra index theo truy vấn user/status/time, course/order và usage. Dùng EXPLAIN với dữ liệu đại diện để chọn index.
-- [ ] **DATA-06 — Lịch sử riêng từng user.** Quyết định local/server là nguồn chính; namespace local theo tài khoản, xử lý logout/đổi tài khoản và giới hạn dung lượng. Có version/migration cho snapshot.
-- [ ] **DATA-07 — Quyền riêng tư.** Chốt dữ liệu gửi provider, lưu bao lâu, ai đọc được, cách xóa/xuất dữ liệu. Không lưu ảnh base64 hoặc PII trong log lâu hơn mục đích cần thiết.
+- [x] **DATA-04 — Chuẩn hóa truy cập DB.** Giảm any và fallback SQL lặp; phân biệt lỗi dữ liệu, lỗi schema và mất kết nối. Không che lỗi bằng trả số liệu/quyền giả định.
+- [x] **DATA-05 — Constraint/index.** Thêm unique event, trạng thái và ràng buộc cần thiết; kiểm tra index theo truy vấn user/status/time, course/order và usage. Dùng EXPLAIN với dữ liệu đại diện để chọn index.
+- [x] **DATA-06 — Lịch sử riêng từng user.** Quyết định local/server là nguồn chính; namespace local theo tài khoản, xử lý logout/đổi tài khoản và giới hạn dung lượng. Có version/migration cho snapshot.
+- [x] **DATA-07 — Quyền riêng tư.** Chốt dữ liệu gửi provider, lưu bao lâu, ai đọc được, cách xóa/xuất dữ liệu. Không lưu ảnh base64 hoặc PII trong log lâu hơn mục đích cần thiết.
+**DATA-04–07:** đã hoàn thiện mã nguồn và kiểm thử PostgreSQL local; xem [biên bản nghiệm thu](nghiem-thu-data-04-07.md). Migration mới chưa áp dụng DB thật; lịch bảo trì Hostinger chưa cấu hình.
+
 - [ ] **ADMIN-01 — Phân trang/lọc server.** Users, lessons, transactions và usage có pagination/filter/sort rõ. Tránh tải mọi bản ghi xuống trình duyệt.
 - [ ] **ADMIN-02 — Thao tác có trạng thái.** Chặn double submit, xác nhận thao tác xóa/ghi đè, báo lỗi cụ thể; refresh không để props và state cũ mâu thuẫn.
 - [ ] **ADMIN-03 — Báo cáo đúng định nghĩa.** Doanh thu theo paidAt, tách sandbox/refund/pending; tăng trưởng VIP theo sự kiện cấp quyền; ARPU/cohort có kỳ và mẫu số rõ.

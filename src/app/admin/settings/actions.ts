@@ -1,4 +1,6 @@
 "use server";
+import { dataFailure, safeOperationMessage } from "@/lib/db-errors";
+
 
 import { auditOutcome } from "@/lib/auth/audit-operations";
 import { requireAdmin } from "@/lib/auth/session";
@@ -44,10 +46,10 @@ export async function saveSystemSettingsAction(formData: {
       },
     };
   } catch (error) {
-    console.error("Error saving system settings:", error);
+    dataFailure(error, "app/admin/settings/actions.ts");
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Không thể lưu cấu hình hệ thống.",
+      error: safeOperationMessage(error, "Không thể lưu cấu hình hệ thống."),
     };
   }
 
@@ -96,7 +98,7 @@ export async function testOpenAiConnectionAction(params: {
       sampleReply: response.choices[0]?.message?.content || "OK",
     };
   } catch (error) {
-    console.error("OpenAI test connection error:", error);
+    dataFailure(error, "app/admin/settings/actions.ts");
 
     const info = error && typeof error === "object" ? error as { message?: string; status?: number; code?: string } : {};
     let friendlyError = info.message || "Không thể kết nối đến OpenAI.";
@@ -163,10 +165,10 @@ export async function changeAdminPasswordAction(params: {
       message: "Đổi mật khẩu ADMIN thành công. Vui lòng đăng nhập lại.",
     };
   } catch (error) {
-    console.error("Error changing admin password:", error);
+    dataFailure(error, "app/admin/settings/actions.ts");
     return {
       success: false,
-      error: error instanceof Error ? error.message : "Lỗi hệ thống khi đổi mật khẩu Admin.",
+      error: safeOperationMessage(error, "Lỗi hệ thống khi đổi mật khẩu Admin."),
     };
   }
 

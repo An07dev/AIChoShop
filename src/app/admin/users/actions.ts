@@ -1,4 +1,6 @@
 "use server";
+import { dataFailure, safeOperationMessage } from "@/lib/db-errors";
+
 
 import { audit, auditedUserUpdate } from "@/lib/auth/audit";
 import { auditOutcome } from "@/lib/auth/audit-operations";
@@ -44,7 +46,7 @@ export async function toggleUserVip(userId: string, newVipStatus: boolean) {
       vipExpiresAt: updated.vipExpiresAt ? updated.vipExpiresAt.toISOString() : null,
     };
   } catch (error) {
-    console.error("Error toggling VIP:", error);
+    dataFailure(error, "app/admin/users/actions.ts");
     return { success: false, error: "Không thể cập nhật trạng thái VIP" };
   }
 
@@ -104,8 +106,8 @@ export async function updateUserVipDuration(
       },
     };
   } catch (error) {
-    console.error("Error updating VIP duration:", error);
-    return { success: false, error: error instanceof Error ? error.message : "Không thể cập nhật thời hạn VIP" };
+    dataFailure(error, "app/admin/users/actions.ts");
+    return { success: false, error: safeOperationMessage(error, "Không thể cập nhật thời hạn VIP") };
   }
 
   });
@@ -129,7 +131,7 @@ export async function toggleUserLock(userId: string, newLockStatus: boolean) {
     revalidatePath("/admin");
     return { success: true, isLocked: updated.isLocked };
   } catch (error) {
-    console.error("Error toggling Lock:", error);
+    dataFailure(error, "app/admin/users/actions.ts");
     return { success: false, error: "Không thể cập nhật trạng thái khóa" };
   }
 
@@ -189,7 +191,7 @@ export async function createUserByAdmin(data: {
     revalidatePath("/admin");
     return { success: true };
   } catch (error) {
-    console.error("Error creating user:", error);
+    dataFailure(error, "app/admin/users/actions.ts");
     return { success: false, error: "Lỗi hệ thống khi tạo người dùng" };
   }
 
@@ -208,7 +210,7 @@ export async function resetPasswordByAdmin(userId: string, newPassword: string) 
     await replacePassword(userId, newPassword, undefined, admin.id);
     return { success: true };
   } catch (error) {
-    console.error("Error resetting password:", error);
+    dataFailure(error, "app/admin/users/actions.ts");
     return { success: false, error: "Không thể đặt lại mật khẩu" };
   }
 
@@ -235,7 +237,7 @@ export async function deleteUserByAdmin(userId: string) {
     revalidatePath("/admin");
     return { success: true };
   } catch (error) {
-    console.error("Error deleting user:", error);
+    dataFailure(error, "app/admin/users/actions.ts");
     return { success: false, error: "Không thể xóa tài khoản này" };
   }
 
@@ -255,8 +257,8 @@ export async function updateUserDailyFreeLimit(userId: string, newLimit: number)
     revalidatePath("/dashboard");
     return { success: true, dailyFreeLimit: limit };
   } catch (error) {
-    console.error("Error updating user free limit:", error);
-    return { success: false, error: error instanceof Error ? error.message : "Không thể cập nhật số lượt free" };
+    dataFailure(error, "app/admin/users/actions.ts");
+    return { success: false, error: safeOperationMessage(error, "Không thể cập nhật số lượt free") };
   }
 
   });
@@ -281,8 +283,8 @@ export async function updateGlobalDailyFreeLimit(newLimit: number) {
 
     return { success: true, defaultDailyFreeLimit: limit };
   } catch (error) {
-    console.error("Error updating global daily free limit:", error);
-    return { success: false, error: error instanceof Error ? error.message : "Không thể cập nhật số lượt Free chung" };
+    dataFailure(error, "app/admin/users/actions.ts");
+    return { success: false, error: safeOperationMessage(error, "Không thể cập nhật số lượt Free chung") };
   }
 
   });

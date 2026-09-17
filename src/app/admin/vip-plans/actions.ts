@@ -1,4 +1,6 @@
 "use server";
+import { dataFailure } from "@/lib/db-errors";
+
 
 import { auditedWrite } from "@/lib/auth/audit-operations";
 import { auditOutcome } from "@/lib/auth/audit-operations";
@@ -18,7 +20,7 @@ export async function getAdminVipPlans() {
     });
     return { success: true, data: plans };
   } catch (error) {
-    console.error("Error fetching admin VIP plans:", error);
+    dataFailure(error, "app/admin/vip-plans/actions.ts");
     return { success: false, error: "Không thể lấy danh sách gói VIP" };
   }
 
@@ -41,7 +43,7 @@ export async function toggleVipPlanActive(planId: string, currentActive: boolean
 
     return { success: true, active: updated.active };
   } catch (error) {
-    console.error("Error toggling VIP plan active:", error);
+    dataFailure(error, "app/admin/vip-plans/actions.ts");
     return { success: false, error: "Không thể cập nhật trạng thái gói VIP" };
   }
 
@@ -64,7 +66,7 @@ export async function toggleVipPlanPopular(planId: string, currentPopular: boole
 
     return { success: true, isPopular: updated.isPopular };
   } catch (error) {
-    console.error("Error toggling VIP plan popular:", error);
+    dataFailure(error, "app/admin/vip-plans/actions.ts");
     return { success: false, error: "Không thể cập nhật nhãn nổi bật" };
   }
 
@@ -142,7 +144,7 @@ export async function createVipPlan(data: {
 
     return { success: true, data: newPlan };
   } catch (error) {
-    console.error("Error creating VIP plan:", error);
+    dataFailure(error, "app/admin/vip-plans/actions.ts");
     return { success: false, error: "Lỗi hệ thống khi tạo gói VIP mới" };
   }
 
@@ -223,7 +225,7 @@ export async function updateVipPlan(
 
     return { success: true, data: updated };
   } catch (error) {
-    console.error("Error updating VIP plan:", error);
+    dataFailure(error, "app/admin/vip-plans/actions.ts");
     return { success: false, error: "Lỗi hệ thống khi cập nhật gói VIP" };
   }
 
@@ -248,7 +250,7 @@ export async function deleteVipPlan(id: string) {
 
     return { success: true, message: `Đã xóa gói '${existing.name}' thành công` };
   } catch (error) {
-    console.error("Error deleting VIP plan:", error);
+    dataFailure(error, "app/admin/vip-plans/actions.ts");
     return { success: false, error: "Lỗi hệ thống khi xóa gói VIP" };
   }
 
@@ -274,7 +276,7 @@ export async function seedDefaultVipPlans() {
 
     return { success: true, message: "Đã khởi tạo thành công 3 gói VIP mặc định" };
   } catch (error) {
-    console.error("Error seeding default VIP plans:", error);
+    dataFailure(error, "app/admin/vip-plans/actions.ts");
     return { success: false, error: "Không thể khởi tạo gói VIP mặc định" };
   }
 

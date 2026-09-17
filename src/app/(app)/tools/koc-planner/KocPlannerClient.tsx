@@ -1,5 +1,6 @@
 "use client";
 
+import { useAccountStorage } from "@/context/AccountHistoryContext";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import {
@@ -468,6 +469,7 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
   const [lastCalculatedInput, setLastCalculatedInput] = useState<KocPlanInput | null>(null);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState(false);
+  const { storage: historyStorage, ready: historyReady, fetch: historyFetch } = useAccountStorage();
   const [savedPlans, setSavedPlans] = useState<SavedPlan[]>([]);
   const [savedProducts, setSavedProducts] = useState<PricingCalculationSnapshot[]>([]);
   const [pricingSourceStatus, setPricingSourceStatus] = useState<"loading" | "account" | "login" | "error">("loading");
@@ -517,8 +519,10 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
   }, [checkAccess]);
 
   useEffect(() => {
+    if (!historyReady) return;
+    queueMicrotask(() => {
     try {
-      const stored = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]") as SavedPlan[];
+      const stored = JSON.parse(historyStorage.getItem(STORAGE_KEY) ?? "[]") as SavedPlan[];
       setSavedPlans(
         Array.isArray(stored)
           ? stored.map((item) => ({ ...item, input: migrateInput(item.input as LegacyKocInput) }))
@@ -527,36 +531,10 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
     } catch {
       setSavedPlans([]);
     }
-    setSavedProducts(readPricingHistory(localStorage).filter((item) => item.input.platform === "tiktok"));
+    setSavedProducts(readPricingHistory(historyStorage).filter((item) => item.input.platform === "tiktok"));
+    });
 
-    // Tự động đồng bộ lịch sử từ Server (/api/ai/usage)
-    fetch("/api/ai/usage?tool=koc-planner")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.recentActivities && Array.isArray(data.recentActivities)) {
-          const serverPlans: SavedPlan[] = [];
-          for (const act of data.recentActivities) {
-            if (act.input?.snapshot && act.input.snapshot.id && act.input.snapshot.input && act.input.snapshot.result) {
-              serverPlans.push(act.input.snapshot);
-            }
-          }
-          if (serverPlans.length > 0) {
-            setSavedPlans((current) => {
-              const existingIds = new Set(current.map((p) => p.id));
-              const merged = [...current];
-              for (const sp of serverPlans) {
-                if (!existingIds.has(sp.id)) {
-                  merged.push(sp);
-                  existingIds.add(sp.id);
-                }
-              }
-              return merged;
-            });
-          }
-        }
-      })
-      .catch(() => {});
-  }, []);
+  }, [historyStorage, historyReady]);
 
   const changeShopType = (next: ShopType) => {
     setShopType(next);
@@ -683,13 +661,13 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
       feeSource: feeProfile.sourceName,
     };
     const next = [item, ...savedPlans.filter((p) => p.id !== item.id)].slice(0, 50);
-    setSavedPlans(next);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    try { historyStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch (error) { setSaveNotice(error instanceof Error ? error.message : "Không lưu được lịch sử."); return; }
+    setSavedPlans(JSON.parse(historyStorage.getItem(STORAGE_KEY) ?? "[]"));
     setSaveNotice("Đã lưu phương án thành công!");
     setTimeout(() => setSaveNotice(""), 3000);
 
     const campaignTitle = lastCalculatedInput.campaignName.trim() || "Chiến dịch KOC TikTok Shop";
-    fetch("/api/ai/usage", {
+    historyFetch("/api/ai/usage", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -712,7 +690,7 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
         },
         output: `Kế hoạch KOC: ${campaignTitle}\nNgành hàng: ${getCategoryLabel(category)}\nNgân sách: ${money(lastCalculatedInput.totalBudget)}\nKOC có thể mời: ${calculatedResult.invitedKocs} người (${calculatedResult.effectiveKocs} KOC ra ${calculatedResult.videos} video)\nDoanh thu sau hoàn: ${money(calculatedResult.netRevenue)}\nTổng chi phí: ${money(calculatedResult.totalCost)}\nLợi nhuận ròng: ${money(calculatedResult.netProfit)}\nROI: ${calculatedResult.roi.toFixed(1)}%`,
       }),
-    }).catch((err) => console.warn("Failed to log KOC plan to server:", err));
+    }).catch(() => setSaveNotice("Đã lưu trên thiết bị; chưa lưu được nhật ký server. Hãy kiểm tra đăng nhập và kết nối."));
   };
 
   const openPlan = (item: SavedPlan) => {
@@ -753,8 +731,8 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
 
   const deletePlan = (id: string) => {
     const next = savedPlans.filter((item) => item.id !== id);
-    setSavedPlans(next);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    try { historyStorage.setItem(STORAGE_KEY, JSON.stringify(next)); } catch (error) { setSaveNotice(error instanceof Error ? error.message : "Không lưu được lịch sử."); return; }
+    setSavedPlans(JSON.parse(historyStorage.getItem(STORAGE_KEY) ?? "[]"));
   };
 
   const copyResult = async () => {
@@ -854,8 +832,7 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                       type="button"
                       onClick={() => {
                         if (confirm("Bạn có chắc chắn muốn xóa toàn bộ phương án đã lưu?")) {
-                          setSavedPlans([]);
-                          localStorage.setItem(STORAGE_KEY, "[]");
+                          try { historyStorage.setItem(STORAGE_KEY, "[]"); setSavedPlans([]); } catch (error) { setSaveNotice(error instanceof Error ? error.message : "Không xóa được lịch sử."); }
                         }
                       }}
                       className="inline-flex items-center gap-1 rounded-lg border border-rose-200 dark:border-rose-900/50 bg-rose-50 dark:bg-rose-950/40 px-2.5 py-1 text-[11px] font-bold text-rose-600 dark:text-rose-400 hover:bg-rose-100 transition cursor-pointer"
@@ -1727,7 +1704,7 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                     Chưa Có Kết Quả Dự Phóng Chiến Dịch
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm leading-relaxed">
-                    Thiết lập ngân sách và thông số chiến dịch ở cột bên trái rồi nhấn <strong className="text-brand font-semibold">"Tính toán Kế hoạch KOC"</strong>. Hệ thống sẽ mô phỏng toàn bộ phễu KOC, video, đơn hàng và bảng P&L tài chính chi tiết.
+                    Thiết lập ngân sách và thông số chiến dịch ở cột bên trái rồi nhấn <strong className="text-brand font-semibold">&ldquo;Tính toán Kế hoạch KOC&rdquo;</strong>. Hệ thống sẽ mô phỏng toàn bộ phễu KOC, video, đơn hàng và bảng P&L tài chính chi tiết.
                   </p>
                   <div className="flex flex-wrap items-center justify-center gap-2 mt-2">
                     <button

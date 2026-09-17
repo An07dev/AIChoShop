@@ -47,6 +47,7 @@ export function useToolGate() {
 
   const GateModals = () => (
     <>
+      <p className="my-3 text-xs text-slate-500">Công cụ AI gửi nội dung nhập và ảnh đính kèm đến model do quản trị viên cấu hình. Tránh nhập thông tin riêng tư. <Link href="/privacy" className="underline">Chính sách dữ liệu</Link> · <Link href="/profile/data" className="underline">Xuất/xóa lịch sử của tôi</Link></p>
       <AuthModal isOpen={showLoginModal} onClose={() => setShowLoginModal(false)} initialTab="register" />
 
       {showVIPModal && (

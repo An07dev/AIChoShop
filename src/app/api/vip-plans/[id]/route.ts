@@ -1,3 +1,4 @@
+import { dataErrorResponse } from "@/lib/db-errors";
 import { auditOutcome, auditedWrite } from "@/lib/auth/audit-operations";
 import { adminRouteGuard, requireAdmin } from "@/lib/auth/session";
 import { NextResponse } from "next/server";
@@ -26,11 +27,7 @@ export async function GET(req: Request, { params }: Params) {
 
     return NextResponse.json({ success: true, data: plan });
   } catch (error) {
-    console.error("GET /api/vip-plans/[id] error:", error);
-    return NextResponse.json(
-      { success: false, error: "Lỗi hệ thống khi tải gói VIP" },
-      { status: 500 }
-    );
+    return dataErrorResponse(error, "app/api/vip-plans/[id]/route.ts");
   }
 }
 
@@ -118,11 +115,7 @@ export async function PUT(req: Request, { params }: Params) {
       data: updated,
     });
   } catch (error) {
-    console.error("PUT /api/vip-plans/[id] error:", error);
-    return NextResponse.json(
-      { success: false, error: "Lỗi hệ thống khi cập nhật gói VIP" },
-      { status: 500 }
-    );
+    return dataErrorResponse(error, "app/api/vip-plans/[id]/route.ts");
   }
 
   });
@@ -161,11 +154,7 @@ export async function PATCH(req: Request, { params }: Params) {
       data: updated,
     });
   } catch (error) {
-    console.error("PATCH /api/vip-plans/[id] error:", error);
-    return NextResponse.json(
-      { success: false, error: "Lỗi hệ thống khi cập nhật gói VIP" },
-      { status: 500 }
-    );
+    return dataErrorResponse(error, "app/api/vip-plans/[id]/route.ts");
   }
 
   });
@@ -194,11 +183,7 @@ export async function DELETE(req: Request, { params }: Params) {
       message: `Đã xóa gói VIP '${existing.name}' thành công`,
     });
   } catch (error) {
-    console.error("DELETE /api/vip-plans/[id] error:", error);
-    return NextResponse.json(
-      { success: false, error: "Lỗi hệ thống khi xóa gói VIP" },
-      { status: 500 }
-    );
+    return dataErrorResponse(error, "app/api/vip-plans/[id]/route.ts");
   }
 
   });

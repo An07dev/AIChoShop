@@ -1,3 +1,4 @@
+import { dataFailure } from "./db-errors";
 import { audit } from "@/lib/auth/audit";
 import { prisma } from "@/lib/prisma";
 
@@ -44,16 +45,8 @@ export async function getSystemSettings(): Promise<SystemSettingData> {
       updatedAt: new Date(),
     };
   } catch (error) {
-    console.error("Error fetching system settings:", error);
-    return {
-      id: "default",
-      openaiApiKey: process.env.OPENAI_API_KEY?.trim().replace(/^["']|["']$/g, "") || null,
-      openaiModel: process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini",
-      openaiBaseUrl: null,
-      isOpenAiActive: false,
-      createdAt: new Date(),
-      updatedAt: new Date(),
-    };
+    const failure = dataFailure(error, "read-system-settings");
+    throw Object.assign(new Error(failure.message), { code: failure.code });
   }
 }
 
