@@ -1,5 +1,5 @@
 import { historyCutoff, redactText, sanitizeHistoryOutput } from "./privacy/policy";
-import { expireHistoryContent } from "./privacy/service";
+import { ERASED_ACTION, expireHistoryContent } from "./privacy/service";
 import { sanitizeHistoryValue } from "./privacy/policy";
 import { vnDayStart } from "./ai-quota";
 import {
@@ -69,7 +69,7 @@ export async function getAiUsageStats(userId: string, filterTool?: string) {
   const [todayCount, totalGenerated, activities] = await Promise.all([
     prisma.aiUsageLog.count({ where: { userId, tool: { in: AI_TOOLS }, createdAt: { gte: vnDayStart() } } }),
     prisma.aiUsageLog.count({ where }),
-    prisma.aiUsageLog.findMany({ where: { ...where, createdAt: { gte: historyCutoff() } }, orderBy: { createdAt: "desc" }, take: filterTool ? 50 : 10 }),
+    prisma.aiUsageLog.findMany({ where: { ...where, action: { not: ERASED_ACTION }, createdAt: { gte: historyCutoff() } }, orderBy: { createdAt: "desc" }, take: filterTool ? 50 : 10 }),
   ]);
   return { todayCount, totalGenerated, dailyFreeLimit: user.dailyFreeLimit,
     remainingFree: isVipActive(user) ? null : Math.max(0, user.dailyFreeLimit - todayCount), isVIP: isVipActive(user),

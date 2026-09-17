@@ -1008,7 +1008,7 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
 
         {/* Quick Actions Bar */}
         <div className="flex flex-wrap items-center gap-2 shrink-0">
-          <AiUsageBadge tool="koc-planner" refreshTrigger={savedPlans.length} />
+          <AiUsageBadge tool="koc-planner" refreshTrigger={savedPlans.length} showHistory={false} />
           {saveNotice && (
             <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-800">
               <Check size={13} /> {saveNotice}
@@ -1020,7 +1020,7 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
             className="px-3 py-1.5 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/60 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 text-xs font-bold hover:bg-blue-100/60 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
             title="Xem lịch sử các phương án KOC đã lưu"
           >
-            <Clock size={14} /> Kế hoạch đã lưu {savedPlans.length > 0 ? `(${savedPlans.length})` : ""}
+            <Clock size={14} /> Kế hoạch đã lưu ({savedPlans.length})
           </button>
           <button
             type="button"
@@ -1666,15 +1666,6 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                 {copied ? <Check size={12} className="text-emerald-500" /> : <ClipboardCopy size={12} />}
                 {copied ? "Đã chép" : "Sao chép"}
               </button>
-              <button
-                type="button"
-                onClick={() => setIsHistoryModalOpen(true)}
-                className="inline-flex items-center gap-1 rounded-lg border border-blue-200 dark:border-blue-900/60 bg-blue-50/60 dark:bg-blue-950/30 px-2.5 py-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-100/60 transition shadow-xs cursor-pointer"
-                title="Xem lịch sử các phương án KOC đã lưu"
-              >
-                <Clock size={12} />
-                <span>Lịch sử {savedPlans.length > 0 ? `(${savedPlans.length})` : ""}</span>
-              </button>
             </div>
           </div>
 
@@ -1714,15 +1705,6 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                     >
                       <Sparkles size={14} /> Chạy thử với dữ liệu mẫu
                     </button>
-                    {savedPlans.length > 0 && (
-                      <button
-                        type="button"
-                        onClick={() => setIsHistoryModalOpen(true)}
-                        className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/60 dark:bg-blue-950/30 px-3.5 py-2 text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-100/60 transition cursor-pointer shadow-xs"
-                      >
-                        <Clock size={14} /> Xem lịch sử ({savedPlans.length})
-                      </button>
-                    )}
                   </div>
                 </div>
               </div>

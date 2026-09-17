@@ -68,6 +68,16 @@ test('PostgreSQL: constraints, RLS, paginated export, erasure/retention preserve
   const statsBefore=await usage.getAiUsageStats('u1');assert.equal(statsBefore.todayCount,2);
   const exported=[];for await(const row of service.exportOwnData('u1'))exported.push(row);assert.equal(exported.filter(r=>r.kind==='history').length,901);assert.ok(!JSON.stringify(exported).includes('B-only'));assert.ok(!JSON.stringify(exported).includes('hashed-secret'));assert.ok(!JSON.stringify(exported).includes('expired-token'));assert.equal(exported.at(-1).kind,'complete');
   const total=await db.aiUsageLog.count();await service.eraseOwnHistory('u1');assert.equal(await db.aiUsageLog.count(),total);assert.equal((await usage.getAiUsageStats('u1')).todayCount,2);assert.equal((await db.aiUsageLog.findUnique({where:{id:'b-private'}})).output,'B-only');assert.equal(await db.progress.count({where:{userId:'u1',completed:true}}),1);assert.equal(await db.transaction.count(),30000);
+  const erasedStats = await usage.getAiUsageStats('u1');
+  assert.equal(erasedStats.recentActivities.length,0);
+  assert.equal(erasedStats.totalGenerated,statsBefore.totalGenerated);
+  assert.equal(erasedStats.todayCount,statsBefore.todayCount);
+  assert.equal((await usage.getAiUsageStats('u1','pricing-calculator')).recentActivities.length,0);
+  await db.aiUsageLog.create({data:{userId:'u1',tool:'pricing-calculator',toolName:'Fresh',action:'Fresh after erasure',output:'Fresh output',createdAt:new Date(now.getTime()-60000)}});
+  const freshStats = await usage.getAiUsageStats('u1','pricing-calculator');
+  assert.equal(freshStats.recentActivities.length,1);
+  assert.equal(freshStats.recentActivities[0].action,'Fresh after erasure');
+  assert.equal((await usage.getAiUsageStats('u1')).todayCount,statsBefore.todayCount);
   await db.aiUsageLog.create({data:{userId:'u2',tool:'script-writer',toolName:'Old',action:'Old PII',output:'old-content',createdAt:new Date(now.getTime()-91*86400000)}});const cleaned=await service.cleanupPrivateContent(now);assert.equal(cleaned.history,1);assert.equal(cleaned.sessions,1);assert.equal(cleaned.resets,1);assert.equal((await db.aiUsageLog.findUnique({where:{id:'b-private'}})).output,'B-only');assert.equal((await service.cleanupPrivateContent(now)).history,0);assert.equal(await db.seoRun.count(),30000);
  }finally{
   if(pool){await pool.query('RESET ROLE').catch(()=>{});}if(db)await db.$disconnect();if(pool&&!pool.ended)await pool.end();if(created)await control.query(`DROP SCHEMA "${schema}" CASCADE`);if(roleCreated)await control.query(`DROP ROLE "${reader}"`);await control.end();

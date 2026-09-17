@@ -8,7 +8,7 @@ interface ActivityItem {
   tool: string;
   toolName: string;
   action: string;
-  input?: any;
+  input?: Record<string, unknown> | null;
   output?: string | null;
   time: string;
   createdAt: string;
@@ -18,9 +18,10 @@ interface AiUsageBadgeProps {
   tool?: string;
   refreshTrigger?: number;
   onSelectOutput?: (output: string) => void;
+  showHistory?: boolean;
 }
 
-export function AiUsageBadge({ tool, refreshTrigger = 0, onSelectOutput }: AiUsageBadgeProps) {
+export function AiUsageBadge({ tool, refreshTrigger = 0, onSelectOutput, showHistory = true }: AiUsageBadgeProps) {
   const [stats, setStats] = useState<{
     isLogged: boolean;
     isVIP: boolean;
@@ -65,7 +66,7 @@ export function AiUsageBadge({ tool, refreshTrigger = 0, onSelectOutput }: AiUsa
   }, [tool]);
 
   useEffect(() => {
-    fetchStats();
+    queueMicrotask(() => { void fetchStats(); });
   }, [fetchStats, refreshTrigger]);
 
   const handleCopy = (id: string, text: string) => {
@@ -81,7 +82,7 @@ export function AiUsageBadge({ tool, refreshTrigger = 0, onSelectOutput }: AiUsa
   }
 
   const filteredActivities = tool
-    ? stats.recentActivities.filter((a) => a.tool === tool)
+    ? stats.recentActivities.filter((a) => a.tool === tool || (tool === "koc-planner" && a.tool === "koc-calculator"))
     : stats.recentActivities;
 
   return (
@@ -121,18 +122,18 @@ export function AiUsageBadge({ tool, refreshTrigger = 0, onSelectOutput }: AiUsa
         </div>
 
         {/* Nút Xem Nội Dung Đã Tạo Gần Đây */}
-        <button
+        {showHistory && <button
           onClick={() => setIsOpen(true)}
           className="flex items-center gap-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 transition-all cursor-pointer shadow-2xs active:scale-95"
           title="Xem các nội dung bạn đã tạo trước đây"
         >
           <Clock size={13} className="text-blue-500 shrink-0" />
           <span className="hidden sm:inline">Lịch sử</span>
-        </button>
+        </button>}
       </div>
 
       {/* Modal Lịch Sử Đã Tạo */}
-      {isOpen && (
+      {showHistory && isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs"
@@ -156,7 +157,7 @@ export function AiUsageBadge({ tool, refreshTrigger = 0, onSelectOutput }: AiUsa
                   <p className="text-xs text-slate-400">
                     {viewingItem
                       ? viewingItem.toolName
-                      : `Tổng cộng ${stats.totalGenerated} bản ghi đã lưu vào tài khoản`}
+                      : `${filteredActivities.length} mục lịch sử gần đây còn lưu`}
                   </p>
                 </div>
               </div>
