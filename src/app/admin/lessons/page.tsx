@@ -41,15 +41,15 @@ export default async function AdminLessons({ searchParams }: {
         ...l,
         createdAt: l.createdAt ? l.createdAt.toISOString() : new Date().toISOString(),
     }));
-    return (<div className="flex-1 flex flex-col min-h-0 gap-4">
-      <CoursesManager courses={courses.map(course => ({ ...course, lessonsCount: course._count.lessons }))}/>
-      <AdminListControls path="/admin/lessons" values={values} window={window} filters={[
+    const listControls = <AdminListControls embedded path="/admin/lessons" values={values} window={window} filters={[
             { name: "courseId", label: "Khóa học", options: [{ value: "", label: "Tất cả" }, ...courses.map(course => ({ value: course.id, label: course.title }))] },
             { name: "module", label: "Phần học", options: [{ value: "", label: "Tất cả" }, ...modules.map(module => ({ value: module.moduleName, label: module.moduleName }))] },
             { name: "vip", label: "Quyền", options: [{ value: "all", label: "Tất cả" }, { value: "vip", label: "VIP" }, { value: "free", label: "Free" }] },
             { name: "status", label: "Xuất bản", options: [{ value: "all", label: "Tất cả" }, { value: "DRAFT", label: "Nháp" }, { value: "PUBLISHED", label: "Đã xuất bản" }, { value: "HIDDEN", label: "Đã ẩn" }] },
             { name: "sort", label: "Sắp xếp", options: [{ value: "order", label: "Thứ tự bài" }, { value: "newest", label: "Mới nhất" }, { value: "title", label: "Tên bài A–Z" }] }
-        ]}/>
-      <LessonsManager initialLessons={serializedLessons} courses={courses.map(course => ({ ...course, maxOrder: courseOrders.find(row => row.courseId === course.id)?._max.order ?? 0 }))}/>
+        ]}/>;
+    return (<div className="flex-1 flex flex-col min-h-0 gap-4">
+      <CoursesManager courses={courses.map(course => ({ ...course, lessonsCount: course._count.lessons }))}/>
+      <LessonsManager listControls={listControls} initialLessons={serializedLessons} courses={courses.map(course => ({ ...course, maxOrder: courseOrders.find(row => row.courseId === course.id)?._max.order ?? 0 }))}/>
     </div>);
 }

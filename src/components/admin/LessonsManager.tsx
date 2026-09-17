@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useMemo, useEffect, useRef, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import {
@@ -67,11 +67,12 @@ export interface AdminCourseItem {
 }
 
 interface LessonsManagerProps {
+  listControls?: ReactNode;
   initialLessons: AdminLessonItem[];
   courses: AdminCourseItem[];
 }
 
-export function LessonsManager({ initialLessons, courses }: LessonsManagerProps) {
+export function LessonsManager({ initialLessons, courses, listControls }: LessonsManagerProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const requestedCourseId = searchParams.get("courseId");
@@ -613,8 +614,9 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
 
       {/* Thanh Tìm Kiếm, Bộ Lọc & Nút Thêm Mới */}
       <div className="bg-white rounded-2xl border border-slate-200 p-3 sm:p-3.5 shadow-sm space-y-2.5 shrink-0">
+        {listControls}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2 w-full">
             {/* Nút Khôi phục dữ liệu gốc nếu cần */}
             <button
               onClick={handleRestoreDefault}
