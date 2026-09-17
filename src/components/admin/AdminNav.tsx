@@ -21,7 +21,7 @@ export function AdminNav() {
   ];
 
   return (
-    <nav className="flex-1 p-4 space-y-1.5">
+    <nav className="flex-1 min-h-0 overflow-y-auto p-4 space-y-1.5">
       {links.map((link) => {
         const Icon = link.icon;
         const isActive = link.exact
