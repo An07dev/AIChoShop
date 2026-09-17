@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, type ReactNode } from "react";
 import {
   Crown,
   Lock,
@@ -65,12 +65,14 @@ export interface AdminUserItem {
 }
 
 interface UsersManagerProps {
+  listControls?: ReactNode;
   initialUsers: AdminUserItem[];
   initialPlans?: VipPlanItem[];
   initialGlobalFreeLimit?: number;
 }
 
 export function UsersManager({
+  listControls,
   initialUsers,
   initialPlans,
   initialGlobalFreeLimit = 12,
@@ -532,14 +534,15 @@ export function UsersManager({
 
       {/* Thanh Công Cụ Tìm Kiếm & Bộ Lọc */}
       <div className="bg-white rounded-2xl border border-slate-200 p-3 sm:p-3.5 shadow-sm space-y-2.5 shrink-0">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+        <div className="flex flex-col xl:flex-row xl:items-start gap-4">
+          <div className="min-w-0 flex-1">{listControls}</div>
           {/* Nút Thêm User Mới */}
           <button
             onClick={() => {
               setModalError("");
               setShowAddModal(true);
             }}
-            className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold px-4 py-2.5 rounded-xl shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 transition-all cursor-pointer whitespace-nowrap active:scale-95"
+            className="w-full sm:w-auto sm:self-start xl:mt-5 shrink-0 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold px-4 py-2.5 rounded-xl shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 transition-all cursor-pointer whitespace-nowrap active:scale-95"
           >
             <Plus size={16} /> Thêm Người Dùng
           </button>

@@ -9,7 +9,7 @@ type Filter = {
         label: string;
     }[];
 };
-export function AdminListControls({ path, values, window, filters = [], dateLabel, error }: {
+export function AdminListControls({ path, values, window, filters = [], dateLabel, error, embedded = false }: {
     path: string;
     values: SearchValues;
     window: {
@@ -21,13 +21,14 @@ export function AdminListControls({ path, values, window, filters = [], dateLabe
     filters?: Filter[];
     dateLabel?: string;
     error?: string;
+    embedded?: boolean;
 }) {
     const value = (name: string) => typeof values[name] === "string" ? values[name] as string : "";
     const href = (page: number) => { const query = new URLSearchParams(); for (const [key, v] of Object.entries(values))
         if (typeof v === "string" && v)
             query.set(key, v); query.set("page", String(page)); query.set("size", String(window.size)); return `${path}?${query}`; };
     const field = "rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-900";
-    return <section className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
+    return <section className={embedded ? "min-w-0 space-y-3" : "rounded-xl border border-slate-200 bg-white p-4 space-y-3"}>
   <Form key={JSON.stringify(values)} action={path} scroll={false} className="flex flex-wrap items-end gap-3">
    <label className="grid gap-1 text-xs font-semibold">Tìm kiếm<input name="q" defaultValue={value("q")} maxLength={128} placeholder="Tên, email hoặc mã…" className={field}/></label>
    {filters.map(filter => <label key={filter.name} className="grid gap-1 text-xs font-semibold">{filter.label}<select name={filter.name} defaultValue={value(filter.name) || filter.options[0]?.value} className={field}>{filter.options.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>)}

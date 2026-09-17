@@ -55,9 +55,10 @@ export default async function AdminUsers({ searchParams }: {
             vipDaysLeft: computeVipDaysLeft(user.vipExpiresAt),
         };
     });
-    return <div className="space-y-4"><AdminListControls path="/admin/users" values={values} window={window} filters={[
+    const listControls = <AdminListControls embedded path="/admin/users" values={values} window={window} filters={[
             { name: "vip", label: "Quyền", options: [{ value: "all", label: "Tất cả" }, { value: "vip", label: "VIP còn hạn" }, { value: "free", label: "Free / VIP hết hạn" }] },
             { name: "status", label: "Tài khoản", options: [{ value: "all", label: "Tất cả" }, { value: "active", label: "Hoạt động" }, { value: "locked", label: "Đã khóa" }] },
             { name: "sort", label: "Sắp xếp", options: [{ value: "newest", label: "Mới nhất" }, { value: "oldest", label: "Cũ nhất" }, { value: "email", label: "Email A–Z" }] }
-        ]}/><UsersManager initialUsers={serializedUsers} initialPlans={vipPlans} initialGlobalFreeLimit={setting?.defaultDailyFreeLimit ?? 12}/></div>;
+        ]}/>;
+    return <div className="space-y-4"><UsersManager listControls={listControls} initialUsers={serializedUsers} initialPlans={vipPlans} initialGlobalFreeLimit={setting?.defaultDailyFreeLimit ?? 12}/></div>;
 }
