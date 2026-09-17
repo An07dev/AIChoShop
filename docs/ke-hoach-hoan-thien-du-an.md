@@ -179,7 +179,7 @@ Phần mã chính: [API AI](/D:/AIChoShop/src/app/api/ai/route.ts), [SEO](/D:/AI
 - [x] **ADMIN-03 — Báo cáo đúng định nghĩa.** Doanh thu theo paidAt, tách sandbox/refund/pending; tăng trưởng VIP theo sự kiện cấp quyền; ARPU/cohort có kỳ và mẫu số rõ.
 - [x] **ADMIN-04 — Cấu hình gói ổn định.** Validate giá, thời hạn, slug, active/popular, snapshot intent cũ; ngừng bán toàn bộ gói không tự làm xuất hiện gói mặc định ngoài ý muốn.
 
-**ADMIN-01–04:** đã hoàn thiện mã nguồn và kiểm thử PostgreSQL local; migration admin mới chưa áp dụng DB thật, chưa deploy Hostinger. Xem [phạm vi, định nghĩa báo cáo và hướng dẫn test giao diện](nghiem-thu-admin-01-04.md).
+**ADMIN-01–04:** đã hoàn thiện mã nguồn, kiểm thử PostgreSQL local và áp dụng migration admin DB thật ngày 17/09/2026; dữ liệu 20 bảng cũ giữ nguyên, chưa deploy Hostinger. DB thật có thêm cột/index thống kê AI ngoài schema nhánh này, được giữ nguyên. Xem [phạm vi, kết quả DB thật và hướng dẫn test giao diện](nghiem-thu-admin-01-04.md).
 
 **Nghiệm thu:** dữ liệu user A không xuất hiện ở user B; admin truy vết được thao tác; số liệu doanh thu khớp giao dịch đối soát; deploy không tự seed/xóa nội dung thật.
 

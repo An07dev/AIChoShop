@@ -28,7 +28,15 @@ Migration mới: `prisma/migrations/20260918000000_admin_reporting/migration.sql
 
 Thêm `Transaction.isSandbox` (mặc định false), `Transaction.refundedAt`, các index báo cáo và bảng `VipGrantEvent`. Bảng sự kiện bật RLS, thu hồi quyền PUBLIC/anon/authenticated; ứng dụng dùng kết nối server tin cậy. Sự kiện chỉ chứa ID, nguồn, loại và thời gian; không lưu mật khẩu hoặc nội dung AI. Không xóa giao dịch, khóa học, bài học hay lịch sử cũ; không điền giả thời gian thanh toán hoặc sự kiện quá khứ.
 
-**Đã áp dụng trên PostgreSQL local, chưa áp dụng DB thật và chưa deploy Hostinger.** DB local: `aichoshop_data0407_rollout_test`, container `aichoshop-data-test-2`, cổng 5439. Không thay `.env` production để chạy kiểm thử.
+**Đã áp dụng trên PostgreSQL local và DB thật ngày 17/09/2026; chưa deploy Hostinger.** DB local: `aichoshop_data0407_rollout_test`, container `aichoshop-data-test-2`, cổng 5439. Không thay `.env` production để chạy kiểm thử.
+
+### Kết quả cập nhật DB thật
+
+- Migration `20260918000000_admin_reporting` thành công; DB thật ghi nhận đủ 7 migration đã hoàn tất.
+- Sao lưu trước khi cập nhật: `.data/backups/admin-01-04-rollout-1789619801475/public-before.dump`, 95.203 byte, định dạng PostgreSQL custom; kiểm tra catalogue đọc được. Biên bản/hash: `before.json`; kết quả sau cập nhật: `result.json` trong cùng thư mục. Backup nằm local, không đưa vào Git.
+- So sánh hash và số dòng của 20 bảng dữ liệu cũ: không thay đổi. Có 6 người dùng, 3 khóa học, 30 bài học, 12 giao dịch và 4 gói VIP. Hai cột mới trong 12 giao dịch đều có giá trị mặc định; bảng sự kiện mới trống, không dựng lịch sử giả.
+- `VipGrantEvent` bật RLS, server có quyền đọc/ghi, PUBLIC/anon/authenticated không có quyền được cấp.
+- Đối chiếu toàn schema production phát hiện phần ngoài migration admin: `AiUsageLog` đang có thêm `completionTokens`, `costUsd`, `model`, `promptTokens`, `totalTokens` và index `(tool, createdAt)` so với schema nhánh này. Không xóa/đổi các cột/index đó. Vì vậy không tuyên bố toàn schema production hết drift; cần đồng bộ phần thống kê AI với nhánh đang triển khai trước migration tiếp theo có đụng bảng này. Kiểm tra local không có drift.
 
 Khi triển khai: sao lưu DB thật, kiểm tra trạng thái migration và quyền kết nối server, chạy `npm run db:migrate -- --config prisma7.config.ts`, generate Prisma Client và deploy mã nguồn cùng bản schema. Kiểm tra lại `db:status` và `db:drift` với cùng config. Không dùng `db push` hay seed demo để cập nhật production. Bản code mới cần migration mới trước khi mở các màn hình admin. Nếu cần rollback ứng dụng, các cột/bảng bổ sung có thể giữ nguyên; không xóa migration/bảng để tránh mất sự kiện đã ghi.
 
