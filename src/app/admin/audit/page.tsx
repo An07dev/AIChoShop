@@ -6,6 +6,8 @@ export const dynamic = "force-dynamic";
 export const metadata = { title: "Nhật ký quản trị | AIChoShop" };
 
 const actions: Record<string, string> = {
+  PAYMENT_ENVIRONMENT_CHANGED: "Phân loại giao dịch thật/thử nghiệm",
+  PAYMENT_REFUND_RECORDED: "Ghi nhận hoàn tiền toàn phần",
   PERSONAL_HISTORY_ERASED: "Xóa nội dung lịch sử cá nhân",
   PRIVACY_MAINTENANCE: "Bảo trì dữ liệu riêng tư",
   VIP_EXPIRED: "VIP hết hạn",

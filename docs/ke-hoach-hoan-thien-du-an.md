@@ -174,10 +174,12 @@ Phần mã chính: [API AI](/D:/AIChoShop/src/app/api/ai/route.ts), [SEO](/D:/AI
 - [x] **DATA-07 — Quyền riêng tư.** Chốt dữ liệu gửi provider, lưu bao lâu, ai đọc được, cách xóa/xuất dữ liệu. Không lưu ảnh base64 hoặc PII trong log lâu hơn mục đích cần thiết.
 **DATA-04–07:** đã hoàn thiện mã nguồn, kiểm thử PostgreSQL local và áp dụng migration DB thật ngày 17/09/2026; dữ liệu 20 bảng giữ nguyên. Xem [biên bản nghiệm thu](nghiem-thu-data-04-07.md). Mã nguồn mới chưa deploy Hostinger; lịch bảo trì chưa cấu hình.
 
-- [ ] **ADMIN-01 — Phân trang/lọc server.** Users, lessons, transactions và usage có pagination/filter/sort rõ. Tránh tải mọi bản ghi xuống trình duyệt.
-- [ ] **ADMIN-02 — Thao tác có trạng thái.** Chặn double submit, xác nhận thao tác xóa/ghi đè, báo lỗi cụ thể; refresh không để props và state cũ mâu thuẫn.
-- [ ] **ADMIN-03 — Báo cáo đúng định nghĩa.** Doanh thu theo paidAt, tách sandbox/refund/pending; tăng trưởng VIP theo sự kiện cấp quyền; ARPU/cohort có kỳ và mẫu số rõ.
-- [ ] **ADMIN-04 — Cấu hình gói ổn định.** Validate giá, thời hạn, slug, active/popular, snapshot intent cũ; ngừng bán toàn bộ gói không tự làm xuất hiện gói mặc định ngoài ý muốn.
+- [x] **ADMIN-01 — Phân trang/lọc server.** Users, lessons, transactions và usage có pagination/filter/sort rõ. Tránh tải mọi bản ghi xuống trình duyệt.
+- [x] **ADMIN-02 — Thao tác có trạng thái.** Chặn double submit, xác nhận thao tác xóa/ghi đè, báo lỗi cụ thể; refresh không để props và state cũ mâu thuẫn.
+- [x] **ADMIN-03 — Báo cáo đúng định nghĩa.** Doanh thu theo paidAt, tách sandbox/refund/pending; tăng trưởng VIP theo sự kiện cấp quyền; ARPU/cohort có kỳ và mẫu số rõ.
+- [x] **ADMIN-04 — Cấu hình gói ổn định.** Validate giá, thời hạn, slug, active/popular, snapshot intent cũ; ngừng bán toàn bộ gói không tự làm xuất hiện gói mặc định ngoài ý muốn.
+
+**ADMIN-01–04:** đã hoàn thiện mã nguồn, kiểm thử PostgreSQL local và áp dụng migration admin DB thật ngày 17/09/2026; dữ liệu 20 bảng cũ giữ nguyên, chưa deploy Hostinger. DB thật có thêm cột/index thống kê AI ngoài schema nhánh này, được giữ nguyên. Xem [phạm vi, kết quả DB thật và hướng dẫn test giao diện](nghiem-thu-admin-01-04.md).
 
 **Nghiệm thu:** dữ liệu user A không xuất hiện ở user B; admin truy vết được thao tác; số liệu doanh thu khớp giao dịch đối soát; deploy không tự seed/xóa nội dung thật.
 

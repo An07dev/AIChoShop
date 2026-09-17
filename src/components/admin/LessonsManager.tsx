@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useTransition } from "react";
+import { useState, useMemo, useEffect, useRef, type ReactNode } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import {
@@ -26,6 +26,7 @@ import {
   GraduationCap,
   FolderPlus,
 } from "lucide-react";
+import { useAdminMutation } from "@/hooks/useAdminMutation";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import {
   createLesson,
@@ -62,28 +63,29 @@ export interface AdminLessonItem {
 export interface AdminCourseItem {
   id: string;
   title: string;
+  maxOrder?: number;
 }
 
 interface LessonsManagerProps {
+  listControls?: ReactNode;
   initialLessons: AdminLessonItem[];
   courses: AdminCourseItem[];
 }
 
-export function LessonsManager({ initialLessons, courses }: LessonsManagerProps) {
+export function LessonsManager({ initialLessons, courses, listControls }: LessonsManagerProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const requestedCourseId = searchParams.get("courseId");
   const [lessons, setLessons] = useState<AdminLessonItem[]>(initialLessons);
+  useEffect(() => { queueMicrotask(() => setLessons(initialLessons)); }, [initialLessons]);
   const [coursesList, setCoursesList] = useState<AdminCourseItem[]>(courses);
+  useEffect(() => { queueMicrotask(() => setCoursesList(courses)); }, [courses]);
   const [selectedCourseId, setSelectedCourseId] = useState<string>(
     requestedCourseId && courses.some((course) => course.id === requestedCourseId)
       ? requestedCourseId
       : "all"
   );
-  const [searchTerm, setSearchTerm] = useState("");
-  const [vipFilter, setVipFilter] = useState<"all" | "vip" | "free">("all");
-  const [selectedModule, setSelectedModule] = useState<string>("all");
-  const [isPending, startTransition] = useTransition();
+  useEffect(()=>{queueMicrotask(()=>setSelectedCourseId(requestedCourseId&&courses.some(course=>course.id===requestedCourseId)?requestedCourseId:"all"));},[requestedCourseId,courses]);
 
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
@@ -96,6 +98,7 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
   const [newCourseTitle, setNewCourseTitle] = useState("");
   const [newCourseDesc, setNewCourseDesc] = useState("");
   const [courseModalError, setCourseModalError] = useState("");
+  const courseBusy=useRef(false);
   const [isCreatingCourse, setIsCreatingCourse] = useState(false);
 
   // Form State (dùng chung cho Add & Edit)
@@ -125,13 +128,14 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
     setToast({ message, type });
     setTimeout(() => setToast(null), 3500);
   };
+  const [isPending, startTransition] = useAdminMutation((message) => showToast(message, "error"));
 
   const selectCourse = (courseId: string) => {
     setSelectedCourseId(courseId);
-    setSelectedModule("all");
     const params = new URLSearchParams(searchParams.toString());
     if (courseId === "all") params.delete("courseId");
     else params.set("courseId", courseId);
+    params.delete("module"); params.delete("page");
     const query = params.toString();
     router.replace(query ? `/admin/lessons?${query}` : "/admin/lessons", { scroll: false });
   };
@@ -172,36 +176,7 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
   }, [lessons, allModules]);
 
   // Lọc bài học
-  const filteredLessons = useMemo(() => {
-    return lessons
-      .filter((lesson) => {
-        // Lọc theo Khóa học
-        const matchCourse =
-          selectedCourseId === "all" || lesson.course?.id === selectedCourseId;
-
-        // Tìm kiếm theo tên bài, nội dung, khóa học hoặc STT
-        const matchSearch =
-          !searchTerm.trim() ||
-          lesson.title.toLowerCase().includes(searchTerm.toLowerCase().trim()) ||
-          (lesson.content && lesson.content.toLowerCase().includes(searchTerm.toLowerCase().trim())) ||
-          (lesson.course?.title && lesson.course.title.toLowerCase().includes(searchTerm.toLowerCase().trim())) ||
-          String(lesson.order).includes(searchTerm.trim());
-
-        // Lọc VIP
-        const matchVip =
-          vipFilter === "all" ||
-          (vipFilter === "vip" && lesson.isVIP) ||
-          (vipFilter === "free" && !lesson.isVIP);
-
-        // Lọc theo Module
-        const matchModule =
-          selectedModule === "all" ||
-          lesson.moduleName === selectedModule;
-
-        return matchCourse && matchSearch && matchVip && matchModule;
-      })
-      .sort((a, b) => a.order - b.order);
-  }, [lessons, searchTerm, vipFilter, selectedModule, selectedCourseId]);
+  const filteredLessons = lessons;
 
   // Bật Modal Thêm Mới
   const handleOpenAddModal = () => {
@@ -209,8 +184,7 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
     const targetCourseId =
       selectedCourseId !== "all" ? selectedCourseId : coursesList[0]?.id || "";
 
-    const lessonsInCourse = lessons.filter((l) => l.course?.id === targetCourseId);
-    const maxOrder = lessonsInCourse.reduce((max, l) => (l.order > max ? l.order : max), 0);
+    const maxOrder = coursesList.find(course=>course.id===targetCourseId)?.maxOrder ?? 0;
 
     setVideoMode("upload");
     setFormData({
@@ -239,6 +213,8 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
       return;
     }
 
+    if(courseBusy.current)return;
+    courseBusy.current=true;
     setIsCreatingCourse(true);
     setCourseModalError("");
 
@@ -265,6 +241,7 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
     } catch {
       setCourseModalError("Lỗi kết nối khi tạo khóa học");
     } finally {
+      courseBusy.current=false;
       setIsCreatingCourse(false);
     }
   };
@@ -410,7 +387,7 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
       if (res.success) {
         showToast(`Đã khôi phục thành công ${res.restoredCount} bài học! Trang sẽ tải lại.`);
         setTimeout(() => {
-          window.location.reload();
+          router.refresh();
         }, 1000);
       } else {
         showToast(res.error || "Không thể khôi phục dữ liệu", "error");
@@ -575,7 +552,7 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
         <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-slate-200 shadow-sm flex items-center justify-between">
           <div>
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">
-              Tổng Số Bài Học
+              Bài Học Trên Trang
             </span>
             <div className="text-2xl font-black text-slate-900">{stats.total}</div>
             <span className="text-xs text-slate-400 mt-1 block">Trong {stats.moduleCount || 1} phần lộ trình</span>
@@ -637,28 +614,9 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
 
       {/* Thanh Tìm Kiếm, Bộ Lọc & Nút Thêm Mới */}
       <div className="bg-white rounded-2xl border border-slate-200 p-3 sm:p-3.5 shadow-sm space-y-2.5 shrink-0">
+        {listControls}
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-          {/* Tìm kiếm */}
-          <div className="relative flex-1 w-full">
-            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Tìm theo tên bài học, nội dung hoặc STT..."
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all font-medium placeholder:text-slate-400"
-            />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
-
-          <div className="flex items-center gap-2 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-2 w-full">
             {/* Nút Khôi phục dữ liệu gốc nếu cần */}
             <button
               onClick={handleRestoreDefault}
@@ -705,99 +663,6 @@ export function LessonsManager({ initialLessons, courses }: LessonsManagerProps)
         </div>
 
 
-        {/* Thanh chip bộ lọc nhanh */}
-        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100">
-          <span className="text-xs font-bold text-slate-400 flex items-center gap-1 mr-1">
-            <Filter size={12} /> Lọc:
-          </span>
-
-          {/* Lọc theo Khóa học */}
-          <div className="inline-flex items-center gap-1.5 bg-indigo-50/70 border border-indigo-200/80 rounded-lg p-1 text-xs">
-            <span className="text-indigo-700 font-bold px-1.5 flex items-center gap-1">
-              <GraduationCap size={14} /> Khóa học:
-            </span>
-            <select
-              value={selectedCourseId}
-              onChange={(e) => {
-                selectCourse(e.target.value);
-              }}
-              className="bg-white border border-indigo-200 text-slate-800 font-bold rounded px-2 py-0.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer max-w-[200px] truncate"
-            >
-              <option value="all">Tất cả khóa học ({coursesList.length})</option>
-              {coursesList.map((c) => {
-                const count = lessons.filter((l) => l.course?.id === c.id).length;
-                return (
-                  <option key={c.id} value={c.id}>
-                    {c.title} ({count} bài)
-                  </option>
-                );
-              })}
-            </select>
-          </div>
-
-          {/* Lọc VIP */}
-          <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50 text-xs">
-            <button
-              onClick={() => setVipFilter("all")}
-              className={`px-2.5 py-1 rounded-md font-semibold transition-all cursor-pointer ${vipFilter === "all" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-800"
-                }`}
-            >
-              Tất cả ({stats.total})
-            </button>
-            <button
-              onClick={() => setVipFilter("vip")}
-              className={`px-2.5 py-1 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1 ${vipFilter === "vip"
-                ? "bg-amber-500 text-white shadow-sm"
-                : "text-amber-600 hover:text-amber-700"
-                }`}
-            >
-              <Crown size={11} /> VIP ({stats.vipCount})
-            </button>
-            <button
-              onClick={() => setVipFilter("free")}
-              className={`px-2.5 py-1 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1 ${vipFilter === "free"
-                ? "bg-emerald-600 text-white shadow-sm"
-                : "text-emerald-600 hover:text-emerald-700"
-                }`}
-            >
-              <Sparkles size={11} />FREE ({stats.freeCount})
-            </button>
-          </div>
-
-          {/* Lọc theo Module (Phần 1, 2,...) */}
-          {allModules.length > 0 && (
-            <div className="inline-flex items-center gap-1 bg-slate-50 border border-slate-200 rounded-lg p-0.5 text-xs">
-              <span className="text-slate-400 px-1.5 flex items-center gap-1">
-                <Layers size={11} /> Phần:
-              </span>
-              <select
-                value={selectedModule}
-                onChange={(e) => setSelectedModule(e.target.value)}
-                className="bg-white border-0 text-slate-700 font-semibold rounded px-2 py-1 focus:outline-none cursor-pointer"
-              >
-                <option value="all">Tất cả các phần</option>
-                {allModules.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </select>
-            </div>
-          )}
-
-          {(searchTerm || vipFilter !== "all" || selectedModule !== "all" || selectedCourseId !== "all") && (
-            <button
-              onClick={() => {
-                setSearchTerm("");
-                setVipFilter("all");
-                selectCourse("all");
-              }}
-              className="text-xs text-rose-600 hover:underline font-semibold ml-auto cursor-pointer"
-            >
-              Xóa bộ lọc
-            </button>
-          )}
-        </div>
       </div>
 
       {/* Bảng Danh Sách Bài Học (Chỉ cuộn trong bảng) */}

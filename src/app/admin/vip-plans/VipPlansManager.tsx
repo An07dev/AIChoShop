@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Crown,
   Plus,
@@ -19,6 +19,7 @@ import {
   AlertCircle,
   HelpCircle,
 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import {
   createVipPlan,
@@ -36,10 +37,20 @@ interface Props {
 
 export default function VipPlansManager({ initialPlans }: Props) {
   const [plans, setPlans] = useState<VipPlanItem[]>(initialPlans);
+  const router=useRouter();
+  const busy=useRef(false);
+  useEffect(()=>{queueMicrotask(()=>setPlans(initialPlans));},[initialPlans]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingPlan, setEditingPlan] = useState<VipPlanItem | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusMessage, setStatusMessage] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const perform=async(work:()=>Promise<void>)=>{
+    if(busy.current)return;
+    busy.current=true;setIsSubmitting(true);
+    try{await work();}catch{setStatusMessage({type:"error",text:"Không thực hiện được thao tác. Hãy thử lại."});}
+    finally{busy.current=false;setIsSubmitting(false);router.refresh();}
+  };
 
   // Form State
   const [formData, setFormData] = useState({
@@ -56,8 +67,8 @@ export default function VipPlansManager({ initialPlans }: Props) {
     active: true,
   });
   const [featuresList, setFeaturesList] = useState<string[]>([
-    "Không giới hạn 8 công cụ AI bán hàng",
-    "Mở khóa toàn bộ 27 video Masterclass",
+    "Sử dụng công cụ AI theo chính sách VIP",
+    "Truy cập các bài học dành cho VIP",
     "Xuất file Excel tính giá & thuế sàn",
     "Hỗ trợ kỹ thuật viên 1-1 qua Zalo",
   ]);
@@ -82,8 +93,8 @@ export default function VipPlansManager({ initialPlans }: Props) {
       active: true,
     });
     setFeaturesList([
-      "Không giới hạn 8 công cụ AI bán hàng",
-      "Mở khóa toàn bộ 27 video Masterclass",
+      "Sử dụng công cụ AI theo chính sách VIP",
+      "Truy cập các bài học dành cho VIP",
       "Xuất file Excel tính giá & thuế sàn",
       "Hỗ trợ kỹ thuật viên 1-1 qua Zalo",
     ]);
@@ -119,7 +130,8 @@ export default function VipPlansManager({ initialPlans }: Props) {
     setFeaturesList(featuresList.filter((_, i) => i !== index));
   };
 
-  const handleToggleActive = async (plan: VipPlanItem) => {
+  const handleToggleActive = async (plan: VipPlanItem) => perform(async () => {
+    if(plan.active&&!confirm(`Ngừng bán gói “${plan.name}”? Giao dịch đã tạo vẫn giữ nguyên.`))return;
     const res = await toggleVipPlanActive(plan.id, plan.active);
     if (res.success) {
       setPlans(plans.map((p) => (p.id === plan.id ? { ...p, active: res.active! } : p)));
@@ -127,9 +139,9 @@ export default function VipPlansManager({ initialPlans }: Props) {
     } else {
       setStatusMessage({ type: "error", text: res.error || "Không thể đổi trạng thái" });
     }
-  };
+  });
 
-  const handleTogglePopular = async (plan: VipPlanItem) => {
+  const handleTogglePopular = async (plan: VipPlanItem) => perform(async () => {
     const res = await toggleVipPlanPopular(plan.id, plan.isPopular);
     if (res.success) {
       setPlans(plans.map((p) => (p.id === plan.id ? { ...p, isPopular: res.isPopular! } : p)));
@@ -140,9 +152,9 @@ export default function VipPlansManager({ initialPlans }: Props) {
     } else {
       setStatusMessage({ type: "error", text: res.error || "Không thể đổi nhãn nổi bật" });
     }
-  };
+  });
 
-  const handleDelete = async (plan: VipPlanItem) => {
+  const handleDelete = async (plan: VipPlanItem) => perform(async () => {
     if (!confirm(`Bạn có chắc chắn muốn xóa vĩnh viễn gói '${plan.name}' không?`)) {
       return;
     }
@@ -153,9 +165,9 @@ export default function VipPlansManager({ initialPlans }: Props) {
     } else {
       setStatusMessage({ type: "error", text: res.error || "Không thể xóa gói" });
     }
-  };
+  });
 
-  const handleResetDefaults = async () => {
+  const handleResetDefaults = async () => perform(async () => {
     if (!confirm("Khôi phục danh sách 3 gói VIP mặc định (1 Tháng, 1 Năm, Trọn Đời)?")) {
       return;
     }
@@ -163,11 +175,11 @@ export default function VipPlansManager({ initialPlans }: Props) {
     const res = await seedDefaultVipPlans();
     setIsSubmitting(false);
     if (res.success) {
-      window.location.reload();
+      router.refresh();
     } else {
       setStatusMessage({ type: "error", text: res.error || "Lỗi khi khôi phục" });
     }
-  };
+  });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -176,6 +188,9 @@ export default function VipPlansManager({ initialPlans }: Props) {
       return;
     }
 
+    if(busy.current)return;
+    if(editingPlan&&!confirm(`Ghi đè thông tin gói “${editingPlan.name}”? Giao dịch đã tạo vẫn giữ nguyên.`))return;
+    busy.current=true;
     setIsSubmitting(true);
     setStatusMessage(null);
 
@@ -230,9 +245,10 @@ export default function VipPlansManager({ initialPlans }: Props) {
         }
       }
     } catch (err) {
-      console.error(err);
+
       setStatusMessage({ type: "error", text: "Đã xảy ra lỗi hệ thống" });
     } finally {
+      busy.current=false;router.refresh();
       setIsSubmitting(false);
     }
   };

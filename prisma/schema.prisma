@@ -159,12 +159,30 @@ model Transaction {
   expiresAt     DateTime?
   paidAt        DateTime?
   approvedBy    String?
+  isSandbox     Boolean               @default(false)
+  refundedAt    DateTime?
   webhookEvents PaymentWebhookEvent[]
   createdAt     DateTime              @default(now())
   updatedAt     DateTime              @updatedAt
 
   @@index([userId, status, createdAt])
   @@index([status, createdAt])
+  @@index([isSandbox, status, paidAt])
+  @@index([isSandbox, refundedAt])
+}
+
+model VipGrantEvent {
+  id            String   @id @default(cuid())
+  userId        String
+  source        String
+  kind          String
+  transactionId String?  @unique
+  actorId       String?
+  isSandbox     Boolean  @default(false)
+  occurredAt    DateTime @default(now())
+
+  @@index([occurredAt, source, kind])
+  @@index([userId, occurredAt])
 }
 
 model PaymentWebhookEvent {

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { useAdminMutation } from "@/hooks/useAdminMutation";
 import { useRouter } from "next/navigation";
 import { BookOpen, Check, Pencil, Trash2, X } from "lucide-react";
 import { deleteCourse, updateCourse } from "@/app/admin/lessons/actions";
@@ -20,7 +21,7 @@ export function CoursesManager({ courses }: { courses: CourseRow[] }) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draft, setDraft] = useState({ title: "", description: "", thumbnail: "", status: "DRAFT" as LearningContentStatus });
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [pending, startTransition] = useAdminMutation((text)=>setMessage({type:"error",text}));
 
   const edit = (course: CourseRow) => {
     setEditingId(course.id);
