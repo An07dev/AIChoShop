@@ -1,6 +1,6 @@
 # DATA-04 đến DATA-07
 
-Nhánh `codex/hoan-thien-data-04-07`, kế tiếp DATA-01–03. Đợt này triển khai mã nguồn và migration, thử trên PostgreSQL local; chưa áp dụng các migration mới lên production hoặc deploy Hostinger.
+Nhánh `codex/hoan-thien-data-04-07`, kế tiếp DATA-01–03. Mã nguồn và migration đã được kiểm thử PostgreSQL local. Các migration mới đã áp dụng lên DB thật ngày 17/09/2026 theo yêu cầu người dùng; chưa deploy mã nguồn mới lên Hostinger.
 
 ## DATA-04: truy cập và lỗi database
 
@@ -78,4 +78,14 @@ Trên giao diện sau deploy đúng nhánh:
 4. /admin/privacy: xác nhận bảo trì, kiểm tra thông báo và sự kiện trong /admin/audit. User thường gọi action trực tiếp phải bị từ chối.
 5. Mất DB: trang admin hiển thị lỗi, API trả 503/code; không hiển thị dashboard số 0 hoặc tự bật provider. Khôi phục kết nối rồi thử lại.
 
-Chưa deploy production, chưa cấu hình scheduled command trên Hostinger, chưa chứng nhận retention phía provider hoặc backup vận hành. Lỗi upload Hostinger còn là phạm vi OPS/media riêng.
+Chưa deploy mã nguồn mới lên Hostinger, chưa cấu hình scheduled command, chưa chứng nhận retention phía provider hoặc backup vận hành. Lỗi upload Hostinger còn là phạm vi OPS/media riêng.
+
+## Cập nhật DB thật ngày 17/09/2026
+
+- Sao lưu schema public và dữ liệu ứng dụng bằng pg_dump custom với snapshot repeatable-read: `.data/backups/data-04-07-rollout-20260917/public-before.dump`, 141245 byte, có SHA-256 trong `before.json`. Backup được giữ ngoài Git và gói deploy; không chứa file video hoặc schema dịch vụ Supabase khác.
+- Phục hồi bản sao mới vào `aichoshop_data0407_rollout_test` trên PostgreSQL local; bỏ riêng mục tạo schema public đã tồn tại khi restore. Chạy cả ba migration mới, đối chiếu fingerprint nội dung 20 bảng giữ nguyên và drift không khác biệt.
+- Xác minh kết nối server thật bypass RLS và checksum ba migration đã áp dụng trước đó khớp mã nguồn; chạy `npm run db:migrate` trên DB thật, chỉ áp dụng `20260917000000_data_constraints_indexes`, `20260917010000_private_data_access`, `20260917020000_catalog_access`.
+- Sau cập nhật: đủ 6 migration, status up to date, drift không khác biệt, 20 bảng có RLS và server vẫn có quyền truy cập, không còn grant PUBLIC/anon/authenticated trên các bảng này, không có constraint chưa validated.
+- Đối chiếu fingerprint toàn bộ dữ liệu của 20 bảng trước/sau: không bảng nào thay đổi. Giữ nguyên 6 user, 3 khóa học, 30 bài học, 12 giao dịch, 119 bản ghi lịch sử, 13 tiến độ và 11 media asset. Không reset/seed, không chạy tác vụ xóa/làm sạch lịch sử trên DB thật trong lần cập nhật schema này.
+- Smoke test Prisma Client với driver adapter của ứng dụng đọc User/Course/Lesson/Transaction/AiUsageLog/Progress thành công. Báo cáo máy nằm trong `local-result.json`, `production-result.json` cạnh backup.
+- Chức năng giao diện xuất/xóa, sanitizer và bảo trì mới chỉ hoạt động khi Hostinger deploy mã nguồn tương ứng. Lịch dọn dữ liệu hằng ngày và làm sạch lịch sử cũ còn hạn vẫn cần triển khai bằng quy trình bảo trì ở trên.

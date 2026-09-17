@@ -172,7 +172,7 @@ Phần mã chính: [API AI](/D:/AIChoShop/src/app/api/ai/route.ts), [SEO](/D:/AI
 - [x] **DATA-05 — Constraint/index.** Thêm unique event, trạng thái và ràng buộc cần thiết; kiểm tra index theo truy vấn user/status/time, course/order và usage. Dùng EXPLAIN với dữ liệu đại diện để chọn index.
 - [x] **DATA-06 — Lịch sử riêng từng user.** Quyết định local/server là nguồn chính; namespace local theo tài khoản, xử lý logout/đổi tài khoản và giới hạn dung lượng. Có version/migration cho snapshot.
 - [x] **DATA-07 — Quyền riêng tư.** Chốt dữ liệu gửi provider, lưu bao lâu, ai đọc được, cách xóa/xuất dữ liệu. Không lưu ảnh base64 hoặc PII trong log lâu hơn mục đích cần thiết.
-**DATA-04–07:** đã hoàn thiện mã nguồn và kiểm thử PostgreSQL local; xem [biên bản nghiệm thu](nghiem-thu-data-04-07.md). Migration mới chưa áp dụng DB thật; lịch bảo trì Hostinger chưa cấu hình.
+**DATA-04–07:** đã hoàn thiện mã nguồn, kiểm thử PostgreSQL local và áp dụng migration DB thật ngày 17/09/2026; dữ liệu 20 bảng giữ nguyên. Xem [biên bản nghiệm thu](nghiem-thu-data-04-07.md). Mã nguồn mới chưa deploy Hostinger; lịch bảo trì chưa cấu hình.
 
 - [ ] **ADMIN-01 — Phân trang/lọc server.** Users, lessons, transactions và usage có pagination/filter/sort rõ. Tránh tải mọi bản ghi xuống trình duyệt.
 - [ ] **ADMIN-02 — Thao tác có trạng thái.** Chặn double submit, xác nhận thao tác xóa/ghi đè, báo lỗi cụ thể; refresh không để props và state cũ mâu thuẫn.
