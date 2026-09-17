@@ -34,6 +34,7 @@ test('PostgreSQL: payment uniqueness, row locks, rollback, manual approval and c
     await pool.query(upgrade);
     await pool.query(upgrade); // The additive upgrade must also be repeatable.
     await pool.query(fs.readFileSync(path.join(__dirname,"../prisma/manual/create_recovery_audit.sql"),"utf8"));
+    await pool.query(fs.readFileSync(path.join(__dirname,"../prisma/migrations/20260918000000_admin_reporting/migration.sql"),"utf8"));
     db = new PrismaClient({ adapter: new PrismaPg(pool,{schema}) });
     const service = loader({'@/lib/prisma':{prisma:db}})('src/lib/payments/service.ts');
     await db.user.create({data:{id:'user',email:'fixture@example.test',password:'fixture-only'}});

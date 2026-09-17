@@ -35,6 +35,7 @@
     "db:drift": "prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code",
     "test:data": "node --test scripts/test-data.cjs",
     "test:data:extended": "node --test scripts/test-data-extended.cjs",
+    "test:admin": "node --test scripts/test-admin.cjs",
     "db:privacy:cleanup": "node scripts/privacy-cleanup.cjs"
   },
   "dependencies": {

@@ -7,7 +7,11 @@ function fixture() {
   const logs = []; let fail = false; let value = 0;
   const db = { adminAuditLog: { create: async ({data}) => { if(fail)throw Error('secret database error'); logs.push(data); return data; } },
     $transaction: async work => { const before=value; try{return await work(db);}catch(e){value=before;throw e;} },
-    vipPlan: { update: async () => { value++; return {id:'plan',price:120,active:true,apiKey:'secret',name:'private'}; } }
+    $executeRaw:async()=>0,
+    vipPlan: {
+      findUnique:async()=>({id:'plan',name:'Month',slug:'month',price:120,originalPrice:120,period:'/ tháng',durationDays:30,desc:'',tag:null,features:[],order:1,active:false,isPopular:false}),
+      update: async () => { value++; return {id:'plan',price:120,active:true,apiKey:'secret',name:'private'}; }
+    }
   };
   const load = loader({'@/lib/prisma':{prisma:db},'@/lib/auth/session':{requireAdmin:async()=>({id:'admin'})},'next/cache':{revalidatePath:()=>{}}});
   return {load,logs,db,setFail:()=>{fail=true;},value:()=>value};

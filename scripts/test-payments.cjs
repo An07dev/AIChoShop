@@ -6,7 +6,7 @@ const loader=require('./test-support/load-ts.cjs');
 // Transactional test double: rollback and serialized transactions are modeled.
 // Real PostgreSQL row locks/unique constraints are tested by test-payments-db.cjs.
 function fixture() {
-  let state={audits:[],events:[],intents:[{id:'intent',userId:'user',paymentCode:'ACS0123456789ABCDEF',planId:'plan',planName:'Month',amount:299000,durationDays:30,currency:'VND',accountNumber:'123456789',expiresAt:new Date(Date.now()+1800000),status:'PENDING'}],users:[{id:'user',isVIP:false,vipExpiresAt:null,isLocked:false}]};
+  let state={grants:[],audits:[],events:[],intents:[{id:'intent',userId:'user',paymentCode:'ACS0123456789ABCDEF',planId:'plan',planName:'Month',amount:299000,durationDays:30,currency:'VND',accountNumber:'123456789',expiresAt:new Date(Date.now()+1800000),status:'PENDING'}],users:[{id:'user',isVIP:false,vipExpiresAt:null,isLocked:false}]};
   let failWrite=false,tail=Promise.resolve();
   const matches=(item,where)=>Object.entries(where).every(([k,v])=>item[k]===v);
   const model=(key)=>({
@@ -17,7 +17,7 @@ function fixture() {
     update:async({where,data})=>{if(key==='intents' && failWrite)throw new Error('injected failure');const item=state[key].find(item=>matches(item,where));if(!item)throw new Error('missing');Object.assign(item,data);return item;},
     createMany:async({data})=>{let count=0;for(const item of data)if(!state[key].some(old=>old.id===item.id)){state[key].push({...item,receivedAt:new Date()});count++;}return {count};},
   });
-  const tx={adminAuditLog:{create:async({data})=>{state.audits.push(data);return data;}},paymentWebhookEvent:model('events'),transaction:model('intents'),user:model('users'),$queryRaw:async(strings,id)=>strings.join('').includes('FROM "User"')?state.users.filter(u=>u.id===id):[]};
+  const tx={vipGrantEvent:{create:async({data})=>{state.grants.push(data);return data;}},adminAuditLog:{create:async({data})=>{state.audits.push(data);return data;}},paymentWebhookEvent:model('events'),transaction:model('intents'),user:model('users'),$queryRaw:async(strings,id)=>strings.join('').includes('FROM "User"')?state.users.filter(u=>u.id===id):[]};
   const db={...tx,$transaction:work=>{
     const running=tail.then(async()=>{const backup=structuredClone(state);try{return await work(tx);}catch(error){state=backup;throw error;}});
     tail=running.catch(()=>{});return running;

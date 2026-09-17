@@ -24,6 +24,7 @@ export async function createPaymentIntent(userId: string, planId: string, config
   return prisma.$transaction(async tx => {
     const users = await tx.$queryRaw<{ isLocked: boolean }[]>`SELECT "isLocked" FROM "User" WHERE id = ${userId} FOR UPDATE`;
     if (!users[0] || users[0].isLocked) throw new Error("Tài khoản không thể tạo thanh toán.");
+    await tx.$queryRaw`SELECT id FROM "VipPlan" WHERE id = ${planId} FOR SHARE`;
     const plan = await tx.vipPlan.findUnique({ where: { id: planId } });
     if (!plan?.active || !Number.isSafeInteger(plan.price) || plan.price <= 0 || plan.price > 2147483647 || (plan.durationDays !== null && (!Number.isSafeInteger(plan.durationDays) || plan.durationDays < 0 || plan.durationDays > 36500))) throw new Error("Gói không còn bán hoặc có cấu hình không hợp lệ.");
     const now = new Date();
@@ -49,12 +50,14 @@ async function lockIntent(tx: Prisma.TransactionClient, id: string) {
 }
 
 async function activate(tx: Prisma.TransactionClient, intent: Transaction, eventId: string, approvedBy: string | null, now: Date) {
+  if (intent.isSandbox) throw new Error("Không cấp VIP thật từ giao dịch thử nghiệm.");
   const users = await tx.$queryRaw<{ id: string; isVIP: boolean; vipExpiresAt: Date | null; isLocked: boolean }[]>`
     SELECT id, "isVIP", "vipExpiresAt", "isLocked" FROM "User" WHERE id = ${intent.userId} FOR UPDATE`;
   const user = users[0];
   if (!user || user.isLocked) return false;
   await tx.user.update({ where: { id: user.id }, data: { isVIP: true, vipExpiresAt: nextVipExpiry(user, intent.durationDays, now) } });
   await tx.transaction.update({ where: { id: intent.id }, data: { status: "SUCCESS", sepayId: eventId, paidAt: now, approvedBy } });
+  await tx.vipGrantEvent.create({data:{userId:user.id,source:"PAYMENT",kind:user.isVIP&&(!user.vipExpiresAt||user.vipExpiresAt>now)?"RENEWAL":"NEW",transactionId:intent.id,actorId:approvedBy,occurredAt:now}});
   await tx.paymentWebhookEvent.update({ where: { id: eventId }, data: { status: "APPLIED", reason: null, transactionId: intent.id, processedAt: now, approvedBy } });
   return true;
 }
@@ -75,7 +78,7 @@ export async function processBankEvent(event: BankEvent, autoActivate: boolean) 
     const code = extractPaymentCode(event.content);
     const candidate = code ? await tx.transaction.findUnique({ where: { paymentCode: code } }) : null;
     const intent = candidate ? await lockIntent(tx, candidate.id) : null;
-    let reason = intent ? paymentReviewReason(intent, event, now) : "UNKNOWN_PAYMENT_CODE";
+    let reason = intent?.isSandbox ? "SANDBOX_INTENT" : intent ? paymentReviewReason(intent, event, now) : "UNKNOWN_PAYMENT_CODE";
     if (!reason && !autoActivate) reason = "AUTO_ACTIVATION_DISABLED";
     if (intent && !reason && await activate(tx, intent, event.id, null, now)) {
       return { status: "APPLIED", duplicate: false };
@@ -94,6 +97,7 @@ export async function approvePaymentIntent(intentId: string, adminId: string) {
   const events = await prisma.paymentWebhookEvent.findMany({ where: { transactionId: intentId, status: "REVIEW" }, orderBy: { receivedAt: "asc" } });
   const snapshot = await prisma.transaction.findUnique({ where: { id: intentId } });
   if (!snapshot) throw new Error("Không tìm thấy yêu cầu thanh toán.");
+  if (snapshot.isSandbox) throw new Error("Không duyệt cấp VIP thật từ giao dịch thử nghiệm.");
   const event = events.find(item => item.transferType === "in" && !paymentReviewReason(snapshot, { ...item, transferType: "in" }, new Date(), true));
   if (!event) throw new Error("Chưa có giao dịch ngân hàng khớp mã, tài khoản và số tiền để duyệt.");
   await prisma.$transaction(async tx => {

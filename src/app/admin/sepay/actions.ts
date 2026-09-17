@@ -66,3 +66,23 @@ export async function deleteTransactionAction(txId: string) {
 
   });
 }
+
+export async function setTransactionSandboxAction(txId:string,isSandbox:boolean){
+ const admin=await requireAdmin("setTransactionSandboxAction");
+ return auditOutcome(admin.id,"setTransactionSandboxAction",async()=>{try{
+  if(typeof isSandbox!=="boolean")throw Error("Trạng thái thử nghiệm không hợp lệ.");
+  await prisma.$transaction(async tx=>{await tx.$queryRaw`SELECT id FROM "Transaction" WHERE id=${txId} FOR UPDATE`;await tx.transaction.update({where:{id:txId},data:{isSandbox}});await tx.vipGrantEvent.updateMany({where:{transactionId:txId},data:{isSandbox}});await tx.adminAuditLog.create({data:{actorId:admin.id,action:"PAYMENT_ENVIRONMENT_CHANGED",targetId:txId,details:JSON.stringify({isSandbox})}});});
+  revalidatePath("/admin");revalidatePath("/admin/sepay");return {success:true,message:"Đã cập nhật phân loại báo cáo; quyền VIP hiện tại không thay đổi."};
+ }catch(error){return {success:false,error:safeOperationMessage(error,"Không phân loại được giao dịch.")};}});
+}
+
+export async function recordRefundAction(txId:string,refundedAt:string){
+ const admin=await requireAdmin("recordRefundAction");
+ return auditOutcome(admin.id,"recordRefundAction",async()=>{try{
+  if(!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?$/.test(refundedAt))throw Error("Thời điểm hoàn tiền không hợp lệ.");
+  const time=new Date(`${refundedAt.length===16?refundedAt+":00":refundedAt}+07:00`);
+  if(!Number.isFinite(time.getTime())||new Date(time.getTime()+7*3600000).toISOString().slice(0,refundedAt.length)!==refundedAt||time>new Date())throw Error("Thời điểm hoàn tiền không hợp lệ hoặc nằm trong tương lai.");
+  await prisma.$transaction(async tx=>{await tx.$queryRaw`SELECT id FROM "Transaction" WHERE id=${txId} FOR UPDATE`;const intent=await tx.transaction.findUniqueOrThrow({where:{id:txId}});if(intent.status!=="SUCCESS"||!intent.paidAt||time<intent.paidAt)throw Error("Chỉ ghi nhận hoàn tiền toàn phần cho giao dịch đã thanh toán, sau thời điểm trả tiền.");await tx.transaction.update({where:{id:txId},data:{status:"REFUNDED",refundedAt:time}});await tx.adminAuditLog.create({data:{actorId:admin.id,action:"PAYMENT_REFUND_RECORDED",targetId:txId,details:JSON.stringify({amount:intent.amount})}});});
+  revalidatePath("/admin");revalidatePath("/admin/sepay");return {success:true,message:"Đã ghi nhận hoàn tiền toàn phần. Thao tác này không chuyển tiền qua ngân hàng hoặc tự thu hồi VIP."};
+ }catch(error){return {success:false,error:safeOperationMessage(error,"Không ghi nhận được hoàn tiền.")};}});
+}
