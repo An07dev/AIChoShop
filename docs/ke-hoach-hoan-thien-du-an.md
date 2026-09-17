@@ -165,13 +165,15 @@ Phần mã chính: [API AI](/D:/AIChoShop/src/app/api/ai/route.ts), [SEO](/D:/AI
 
 ## 10. Dữ liệu, lưu trữ và quản trị — P1/P2
 
-- [ ] **DATA-01 — Migration có phiên bản.** Chuyển thay đổi schema/SQL thủ công sang quy trình migration phù hợp dữ liệu hiện có; thử upgrade trên bản sao và có kế hoạch phục hồi.
-- [ ] **DATA-02 — Seed an toàn.** Tách dữ liệu demo khỏi bootstrap production; không mặc định xóa Course/Lesson. Sửa moduleName và tránh thao tác phá lịch sử tiến độ.
-- [ ] **DATA-03 — Bỏ ghi ngầm trong get/render.** Khởi tạo settings/gói mặc định qua setup rõ ràng; không tạo dữ liệu hoặc hạ VIP vì người dùng mở trang.
-- [ ] **DATA-04 — Chuẩn hóa truy cập DB.** Giảm any và fallback SQL lặp; phân biệt lỗi dữ liệu, lỗi schema và mất kết nối. Không che lỗi bằng trả số liệu/quyền giả định.
-- [ ] **DATA-05 — Constraint/index.** Thêm unique event, trạng thái và ràng buộc cần thiết; kiểm tra index theo truy vấn user/status/time, course/order và usage. Dùng EXPLAIN với dữ liệu đại diện để chọn index.
-- [ ] **DATA-06 — Lịch sử riêng từng user.** Quyết định local/server là nguồn chính; namespace local theo tài khoản, xử lý logout/đổi tài khoản và giới hạn dung lượng. Có version/migration cho snapshot.
-- [ ] **DATA-07 — Quyền riêng tư.** Chốt dữ liệu gửi provider, lưu bao lâu, ai đọc được, cách xóa/xuất dữ liệu. Không lưu ảnh base64 hoặc PII trong log lâu hơn mục đích cần thiết.
+- [x] **DATA-01 — Migration có phiên bản.** Chuyển thay đổi schema/SQL thủ công sang quy trình migration phù hợp dữ liệu hiện có; thử upgrade trên bản sao và có kế hoạch phục hồi.
+- [x] **DATA-02 — Seed an toàn.** Tách dữ liệu demo khỏi bootstrap production; không mặc định xóa Course/Lesson. Sửa moduleName và tránh thao tác phá lịch sử tiến độ.
+- [x] **DATA-03 — Bỏ ghi ngầm trong get/render.** Khởi tạo settings/gói mặc định qua setup rõ ràng; không tạo dữ liệu hoặc hạ VIP vì người dùng mở trang.
+- [x] **DATA-04 — Chuẩn hóa truy cập DB.** Giảm any và fallback SQL lặp; phân biệt lỗi dữ liệu, lỗi schema và mất kết nối. Không che lỗi bằng trả số liệu/quyền giả định.
+- [x] **DATA-05 — Constraint/index.** Thêm unique event, trạng thái và ràng buộc cần thiết; kiểm tra index theo truy vấn user/status/time, course/order và usage. Dùng EXPLAIN với dữ liệu đại diện để chọn index.
+- [x] **DATA-06 — Lịch sử riêng từng user.** Quyết định local/server là nguồn chính; namespace local theo tài khoản, xử lý logout/đổi tài khoản và giới hạn dung lượng. Có version/migration cho snapshot.
+- [x] **DATA-07 — Quyền riêng tư.** Chốt dữ liệu gửi provider, lưu bao lâu, ai đọc được, cách xóa/xuất dữ liệu. Không lưu ảnh base64 hoặc PII trong log lâu hơn mục đích cần thiết.
+**DATA-04–07:** đã hoàn thiện mã nguồn, kiểm thử PostgreSQL local và áp dụng migration DB thật ngày 17/09/2026; dữ liệu 20 bảng giữ nguyên. Xem [biên bản nghiệm thu](nghiem-thu-data-04-07.md). Mã nguồn mới chưa deploy Hostinger; lịch bảo trì chưa cấu hình.
+
 - [ ] **ADMIN-01 — Phân trang/lọc server.** Users, lessons, transactions và usage có pagination/filter/sort rõ. Tránh tải mọi bản ghi xuống trình duyệt.
 - [ ] **ADMIN-02 — Thao tác có trạng thái.** Chặn double submit, xác nhận thao tác xóa/ghi đè, báo lỗi cụ thể; refresh không để props và state cũ mâu thuẫn.
 - [ ] **ADMIN-03 — Báo cáo đúng định nghĩa.** Doanh thu theo paidAt, tách sandbox/refund/pending; tăng trưởng VIP theo sự kiện cấp quyền; ARPU/cohort có kỳ và mẫu số rõ.
@@ -269,3 +271,5 @@ Mỗi ticket khi triển khai nên có: người phụ trách, phạm vi file, p
 Không ấn định lịch cố định từ số dòng mã. Sau khi chốt môi trường, policy và quy mô đội, chia ticket theo buổi/đợt có thể review độc lập. Theo dõi phần trăm hoàn thành theo các cổng G1–G5, không theo số màn hình đã vẽ.
 
 **Điểm bắt đầu cụ thể:** xây session/guard chuẩn và đóng API cấu hình AI/CRUD VIP; song song chuẩn bị staging và thiết kế payment intent. Đây là các thay đổi mở đường cho hầu hết công việc còn lại.
+
+DATA-01–03: bằng chứng và quy trình triển khai tại [nghiem-thu-data.md](nghiem-thu-data.md). Hoàn tất mã và kiểm thử PostgreSQL local; production chưa áp dụng.

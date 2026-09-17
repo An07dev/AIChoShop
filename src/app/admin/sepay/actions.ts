@@ -1,4 +1,6 @@
 "use server";
+import { safeOperationMessage } from "@/lib/db-errors";
+
 
 import { auditOutcome } from "@/lib/auth/audit-operations";
 import { requireAdmin } from "@/lib/auth/session";
@@ -20,7 +22,7 @@ export async function saveSePayConfigAction(formData: {
       accountHolder: formData.accountHolder.trim(), ...(formData.apiKey.trim() && { apiKey: formData.apiKey.trim() }), syntaxPrefix: "ACS", autoActivate: formData.autoActivate }, auditAdmin.id);
     revalidatePath("/admin/sepay"); revalidatePath("/profile");
     return { success: true, configured: Boolean(updated.apiKey) };
-  } catch (error) { return { success: false, error: error instanceof Error ? error.message : "Không thể lưu cấu hình." }; }
+  } catch (error) { return { success: false, error: safeOperationMessage(error, "Không thể lưu cấu hình.") }; }
 
   });
 }
@@ -36,7 +38,7 @@ export async function simulateSePayWebhookAction(data: { paymentCode: string; am
     if (!intent) throw new Error("Không tìm thấy yêu cầu thanh toán.");
     const reason = paymentReviewReason(intent, { id: "preview", amount: data.amount, accountNumber: intent.accountNumber || "", content: code, transferType: "in" }, new Date());
     return { success: true, message: reason ? `Cần đối soát: ${reason}. Đây là bản xem trước, chưa ghi nhận tiền hoặc cấp VIP.` : "Dữ liệu khớp yêu cầu. Đây là bản xem trước, chưa ghi nhận tiền hoặc cấp VIP." };
-  } catch (error) { return { success: false, error: error instanceof Error ? error.message : "Không thể xem trước." }; }
+  } catch (error) { return { success: false, error: safeOperationMessage(error, "Không thể xem trước.") }; }
 
   });
 }
@@ -48,7 +50,7 @@ export async function approveTransactionAction(txId: string) {
     await approvePaymentIntent(txId, admin.id);
     revalidatePath("/admin/sepay"); revalidatePath("/admin/users"); revalidatePath("/profile");
     return { success: true, message: "Đã đối soát giao dịch ngân hàng và cấp quyền VIP." };
-  } catch (error) { return { success: false, error: error instanceof Error ? error.message : "Không thể duyệt giao dịch." }; }
+  } catch (error) { return { success: false, error: safeOperationMessage(error, "Không thể duyệt giao dịch.") }; }
 
   });
 }
@@ -60,7 +62,7 @@ export async function deleteTransactionAction(txId: string) {
     await cancelUnpaidIntent(txId, admin.id);
     revalidatePath("/admin/sepay");
     return { success: true, message: "Đã hủy yêu cầu chưa thanh toán; bản ghi vẫn được giữ để đối soát." };
-  } catch (error) { return { success: false, error: error instanceof Error ? error.message : "Không thể hủy yêu cầu." }; }
+  } catch (error) { return { success: false, error: safeOperationMessage(error, "Không thể hủy yêu cầu.") }; }
 
   });
 }

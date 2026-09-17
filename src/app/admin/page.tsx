@@ -73,29 +73,17 @@ function timeAgo(date: Date | string) {
 
 export default async function AdminDashboard() {
   await requireAdmin();
-  let userCount = 0;
-  let vipCount = 0;
-  let lessonCount = 0;
-  let courseCount = 0;
-  let totalRevenue = 0;
-  let successTxCount = 0;
-  let recentUsers: any[] = [];
-  let recentTransactions: any[] = [];
-  let allSuccessfulTxs: any[] = [];
-  let allUsersTimeline: any[] = [];
-
-  try {
     const [
-      uCount,
-      vCount,
-      lCount,
-      cCount,
+      userCount,
+      vipCount,
+      lessonCount,
+      courseCount,
       revenueAgg,
-      sTxCount,
-      users,
-      txs,
-      succTxs,
-      usersTimeline,
+      successTxCount,
+      recentUsers,
+      recentTransactions,
+      allSuccessfulTxs,
+      allUsersTimeline,
     ] = await Promise.all([
       prisma.user.count(),
       prisma.user.count({ where: { isVIP: true } }),
@@ -154,19 +142,7 @@ export default async function AdminDashboard() {
       }),
     ]);
 
-    userCount = uCount;
-    vipCount = vCount;
-    lessonCount = lCount;
-    courseCount = cCount;
-    totalRevenue = revenueAgg._sum.amount || 0;
-    successTxCount = sTxCount;
-    recentUsers = users;
-    recentTransactions = txs;
-    allSuccessfulTxs = succTxs;
-    allUsersTimeline = usersTimeline;
-  } catch (error) {
-    console.error("Lỗi khi tải dữ liệu dashboard:", error);
-  }
+  const totalRevenue = revenueAgg._sum.amount ?? 0;
 
   const serializedTransactions = (allSuccessfulTxs || []).map((t) => ({
     id: String(t.id),

@@ -66,8 +66,10 @@ test('valid role from database grants access; cross-site mutations denied',async
   assert.equal((await session.adminRouteGuard(new Request('https://app.test/api',{method:'POST',headers:{origin:'https://other.test'}}))).status,403);
 });
 test('database failures never grant access',async()=>{
-  const f=fixture(); f.db.seoSession.findUnique=async()=>{throw new Error('offline');};
-  await assert.rejects(f.load('src/lib/auth/session.ts').requireAdmin(),/offline/);
+  const f=fixture(); f.db.seoSession.findUnique=async()=>{throw { code:'P1001', message:'offline secret connection' };};
+  const session=f.load('src/lib/auth/session.ts');
+  await assert.rejects(session.requireAdmin(),error=>error.code==='DATABASE_UNAVAILABLE' && !error.message.includes('secret'));
+  assert.equal((await session.adminRouteGuard()).status,503);
 });
 
 const routes = [

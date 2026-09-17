@@ -1,0 +1,330 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id             String          @id @default(cuid())
+  email          String          @unique
+  password       String // Mật khẩu đã mã hóa
+  name           String?
+  phone          String?
+  role           Role            @default(USER)
+  isVIP          Boolean         @default(false)
+  vipExpiresAt   DateTime?
+  dailyFreeLimit Int             @default(12)
+  isLocked       Boolean         @default(false)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  userCredit     UserCredit?
+  transactions   Transaction[]
+  progress       Progress[]
+  aiUsageLogs    AiUsageLog[]
+  seoSessions    SeoSession[]
+  passwordResets PasswordReset[]
+  mediaAssets    MediaAsset[]
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum ContentStatus {
+  DRAFT
+  PUBLISHED
+  HIDDEN
+}
+
+enum MediaAssetStatus {
+  UPLOADED
+  ATTACHED
+  ORPHANED
+}
+
+model Course {
+  id          String        @id @default(cuid())
+  title       String
+  description String?
+  thumbnail   String?
+  status      ContentStatus @default(PUBLISHED)
+  publishedAt DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  lessons     Lesson[]
+
+  @@index([status, createdAt])
+}
+
+model Lesson {
+  id              String        @id @default(cuid())
+  courseId        String
+  course          Course        @relation(fields: [courseId], references: [id])
+  title           String
+  content         String?       @db.Text
+  videoUrl        String?
+  mediaAssetId    String?
+  mediaAsset      MediaAsset?   @relation(fields: [mediaAssetId], references: [id], onDelete: SetNull)
+  order           Int
+  isVIP           Boolean       @default(false)
+  status          ContentStatus @default(PUBLISHED)
+  durationSeconds Int?
+  moduleName      String        @default("Phần 1")
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  progress        Progress[]
+
+  @@index([courseId, status, order])
+  @@index([mediaAssetId])
+}
+
+model Progress {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  lessonId        String
+  lesson          Lesson    @relation(fields: [lessonId], references: [id])
+  completed       Boolean   @default(false)
+  positionSeconds Int       @default(0)
+  durationSeconds Int?
+  startedAt       DateTime  @default(now())
+  lastViewedAt    DateTime  @default(now())
+  completedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([userId, lessonId])
+  @@index([userId, lastViewedAt])
+}
+
+model MediaAsset {
+  id           String           @id @default(cuid())
+  filename     String           @unique
+  originalName String
+  mimeType     String
+  sizeBytes    Int
+  uploadedBy   String
+  uploader     User             @relation(fields: [uploadedBy], references: [id], onDelete: Restrict)
+  status       MediaAssetStatus @default(UPLOADED)
+  lessons      Lesson[]
+  createdAt    DateTime         @default(now())
+  updatedAt    DateTime         @updatedAt
+
+  @@index([status, createdAt])
+  @@index([uploadedBy, createdAt])
+}
+
+model Tool {
+  id            String   @id @default(cuid())
+  name          String
+  description   String?
+  type          String // e.g., "SEO_DESC", "IMAGE_GEN"
+  costInCredits Int      @default(0) // 0 means free
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model UserCredit {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id])
+  balance   Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Transaction {
+  id            String                @id @default(cuid())
+  userId        String
+  user          User                  @relation(fields: [userId], references: [id])
+  amount        Int // Amount in VND or credits
+  status        String // PENDING, SUCCESS, FAILED
+  type          String // TOPUP, UPGRADE_VIP
+  sepayId       String? // Reference from SePay webhook
+  paymentCode   String?               @unique
+  planId        String?
+  planName      String?
+  durationDays  Int?
+  currency      String                @default("VND")
+  bankName      String?
+  accountNumber String?
+  accountHolder String?
+  expiresAt     DateTime?
+  paidAt        DateTime?
+  approvedBy    String?
+  webhookEvents PaymentWebhookEvent[]
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
+
+  @@index([userId, status, createdAt])
+}
+
+model PaymentWebhookEvent {
+  id            String       @id
+  provider      String       @default("sepay")
+  amount        Int
+  accountNumber String
+  content       String       @db.Text
+  transferType  String
+  status        String
+  reason        String?
+  transactionId String?
+  transaction   Transaction? @relation(fields: [transactionId], references: [id], onDelete: Restrict)
+  receivedAt    DateTime     @default(now())
+  processedAt   DateTime?
+  approvedBy    String?
+
+  @@index([status, receivedAt])
+}
+
+model PricingFeeOverride {
+  id                 String    @id @default(cuid())
+  platform           String
+  shopType           String
+  categoryId         String
+  commissionRate     Float?
+  transactionRate    Float?
+  orderProcessingFee Int?
+  effectiveFrom      DateTime
+  effectiveTo        DateTime?
+  sourceName         String
+  sourceUrl          String?
+  note               String?   @db.Text
+  active             Boolean   @default(true)
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@index([platform, shopType, categoryId, active])
+}
+
+model VipPlan {
+  id            String   @id @default(cuid())
+  name          String
+  slug          String   @unique
+  price         Int
+  originalPrice Int
+  period        String
+  durationDays  Int?
+  desc          String   @db.Text
+  tag           String?
+  isPopular     Boolean  @default(false)
+  features      String[]
+  order         Int      @default(0)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([active, order])
+}
+
+model SePayConfig {
+  id            String   @id @default("default")
+  bankName      String   @default("MB Bank")
+  accountNumber String   @default("0358888899")
+  accountHolder String   @default("AIChoShop Official")
+  apiKey        String?
+  syntaxPrefix  String   @default("VIP")
+  autoActivate  Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model SystemSetting {
+  id                    String   @id @default("default")
+  adminPassword         String?  @default("bigman123")
+  openaiApiKey          String?  @db.Text
+  openaiModel           String   @default("gpt-4o-mini")
+  openaiBaseUrl         String?
+  defaultDailyFreeLimit Int      @default(12)
+  isOpenAiActive        Boolean  @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
+
+model AiUsageLog {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tool      String // slug: e.g. "seo-optimizer", "script-writer"
+  toolName  String // e.g. "AI Tối Ưu SEO", "AI Kịch Bản Video"
+  action    String // Tóm tắt hành động
+  input     String?  @db.Text // Tóm tắt hoặc JSON input
+  output    String?  @db.Text // Nội dung đã sinh ra
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model SeoUsage {
+  id          String    @id
+  successes   Int       @default(0)
+  windowStart DateTime  @default(now())
+  attempts    Int       @default(0)
+  leaseId     String?
+  leaseUntil  DateTime?
+  updatedAt   DateTime  @default(now())
+}
+
+model SeoRun {
+  id           String   @id
+  subject      String
+  status       String
+  model        String?
+  provider     String?
+  inputTokens  Int      @default(0)
+  outputTokens Int      @default(0)
+  durationMs   Int      @default(0)
+  errorCode    String?
+  createdAt    DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model AuthRateLimit {
+  id        String   @id
+  attempts  Int      @default(0)
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}
+
+model PasswordReset {
+  id              String    @id @default(cuid())
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash       String?   @unique
+  passwordVersion String?
+  expiresAt       DateTime?
+  consumedAt      DateTime?
+  issuedBy        String?
+  deliveryStatus  String    @default("PENDING")
+  createdAt       DateTime  @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model AdminAuditLog {
+  id        String   @id @default(cuid())
+  actorId   String
+  action    String
+  targetId  String
+  details   String?  @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([createdAt])
+}
+
+model SeoSession {
+  tokenHash String   @id
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+
+  @@index([expiresAt])
+}

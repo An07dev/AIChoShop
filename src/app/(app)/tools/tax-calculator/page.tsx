@@ -1,5 +1,8 @@
 "use client";
 
+import { type HistoryActivity } from "@/lib/history/types";
+import { useAccountStorage } from "@/context/AccountHistoryContext";
+import type { HistoryStorage } from "@/lib/history/storage";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import {
@@ -44,23 +47,18 @@ export type TaxCalculationSnapshot = {
 
 const STORAGE_KEY = "aicho_tax_calculator_history";
 
-function readTaxHistory(): TaxCalculationSnapshot[] {
+function readTaxHistory(storage: HistoryStorage): TaxCalculationSnapshot[] {
   if (typeof window === "undefined") return [];
   try {
-    const raw = window.localStorage.getItem(STORAGE_KEY);
+    const raw = storage.getItem(STORAGE_KEY);
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
   }
 }
 
-function writeTaxHistory(history: TaxCalculationSnapshot[]) {
-  if (typeof window === "undefined") return;
-  try {
-    window.localStorage.setItem(STORAGE_KEY, JSON.stringify(history.slice(0, 50)));
-  } catch {
-    // ignore
-  }
+function writeTaxHistory(storage: HistoryStorage, history: TaxCalculationSnapshot[]) {
+  storage.setItem(STORAGE_KEY, JSON.stringify(history.slice(0, 50)));
 }
 
 const payerLabels: Record<TaxPayerType, string> = {
@@ -176,6 +174,7 @@ function Section({
 export default function TaxCalculator() {
   const { checkAccess, GateModals } = useToolGate();
 
+  const { storage: historyStorage, ready: historyReady, fetch: historyFetch } = useAccountStorage();
   const [input, setInput] = useState<TaxCalculatorInput>(initialInput);
   const [hasCalculated, setHasCalculated] = useState(false);
   const [calculatedResult, setCalculatedResult] = useState<TaxCalculatorResult | null>(null);
@@ -185,10 +184,10 @@ export default function TaxCalculator() {
 
   // Modal Lịch sử states
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
-  const [historyActivities, setHistoryActivities] = useState<any[]>([]);
+  const [historyActivities, setHistoryActivities] = useState<HistoryActivity<TaxCalculationSnapshot>[]>([]);
   const [historyTotal, setHistoryTotal] = useState(0);
   const [historyRefreshTrigger, setHistoryRefreshTrigger] = useState(0);
-  const [viewingHistoryItem, setViewingHistoryItem] = useState<any | null>(null);
+  const [viewingHistoryItem, setViewingHistoryItem] = useState<HistoryActivity<TaxCalculationSnapshot> | null>(null);
   const [copiedHistoryId, setCopiedHistoryId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -196,17 +195,18 @@ export default function TaxCalculator() {
   }, [checkAccess]);
 
   useEffect(() => {
-    setSavedHistory(readTaxHistory());
-  }, []);
+    if (!historyReady) return;
+    queueMicrotask(() => setSavedHistory(readTaxHistory(historyStorage)));
+  }, [historyStorage, historyReady]);
 
   // Lấy lịch sử từ server (/api/ai/usage)
   const fetchActivities = useCallback(async () => {
     try {
-      const res = await fetch("/api/ai/usage?tool=tax-calculator");
+      const res = await historyFetch("/api/ai/usage?tool=tax-calculator");
       if (res.ok) {
         const data = await res.json();
         const serverActivities = (data.recentActivities || []).filter(
-          (a: any) => a.tool === "tax-calculator"
+          (a: HistoryActivity<TaxCalculationSnapshot>) => a.tool === "tax-calculator"
         );
         setHistoryActivities(serverActivities);
         setHistoryTotal(serverActivities.length);
@@ -214,10 +214,10 @@ export default function TaxCalculator() {
     } catch {
       // ignore
     }
-  }, []);
+  }, [historyFetch]);
 
   useEffect(() => {
-    fetchActivities();
+    queueMicrotask(() => { void fetchActivities(); });
   }, [fetchActivities, historyRefreshTrigger]);
 
   const liveTotalRevenue =
@@ -315,8 +315,8 @@ export default function TaxCalculator() {
       ? savedHistory.map((s) => (s.id === editingId ? snapshot : s))
       : [snapshot, ...savedHistory.filter((s) => s.id !== snapshotId)].slice(0, 50);
 
-    setSavedHistory(nextHistory);
-    writeTaxHistory(nextHistory);
+    try { writeTaxHistory(historyStorage, nextHistory); } catch (error) { setSaveNotice(error instanceof Error ? error.message : "Không lưu được lịch sử."); return; }
+    setSavedHistory(readTaxHistory(historyStorage));
     setSaveNotice(
       editingId
         ? `Đã tính toán & cập nhật dự toán thuế (${payerLabel} - ${moneyFormat.format(result.totalRevenue)} ₫).`
@@ -324,7 +324,7 @@ export default function TaxCalculator() {
     );
 
     // Gửi log đến server để hiển thị tại "Hoạt động gần đây" (Dashboard & Modal Lịch sử)
-    fetch("/api/ai/usage", {
+    historyFetch("/api/ai/usage", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -346,7 +346,7 @@ export default function TaxCalculator() {
       }),
     })
       .then(() => setHistoryRefreshTrigger((p) => p + 1))
-      .catch((err) => console.warn("Failed to log tax usage:", err));
+      .catch(() => setSaveNotice("Đã lưu trên thiết bị; chưa lưu được nhật ký server. Hãy kiểm tra đăng nhập và kết nối."));
   };
 
   const resetAll = () => {
@@ -406,7 +406,7 @@ export default function TaxCalculator() {
   };
 
   // Tổng hợp danh sách hiển thị trong Modal Lịch sử - Tránh lưu/hiện duplicate 2 lần
-  const displayActivities = useMemo(() => {
+  const displayActivities = useMemo<HistoryActivity<TaxCalculationSnapshot>[]>(() => {
     if (historyActivities.length > 0) {
       return historyActivities.map((act) => {
         const matchedSnapshot =
@@ -577,7 +577,7 @@ export default function TaxCalculator() {
                       </p>
                     </div>
                   ) : (
-                    displayActivities.map((item: any) => {
+                    displayActivities.map((item) => {
                       const matchedSnapshot: TaxCalculationSnapshot | undefined =
                         item.snapshot ||
                         savedHistory.find(

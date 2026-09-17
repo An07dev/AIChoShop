@@ -1,104 +1,35 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionUserId } from "@/lib/auth/session";
+import { getSessionUser } from "@/lib/auth/session";
 import { readLimitedJson, RequestBodyError } from "@/lib/http/body";
-import { prisma } from "@/lib/prisma";
 import { getAiUsageStats, recordAiUsage } from "@/lib/ai-usage";
 import { isAllowedOrigin } from "@/lib/http/origin";
-
+import { dataErrorResponse } from "@/lib/db-errors";
+import { changedAccountResponse } from "@/lib/history/owner";
 export const dynamic = "force-dynamic";
-
-/**
- * GET /api/ai/usage
- * Lấy số liệu: Lượt dùng hôm nay, Tổng nội dung đã tạo, Hoạt động gần đây của User hiện tại
- */
+const headers = { "Cache-Control": "no-store" };
 export async function GET(req: NextRequest) {
   try {
-
-    const token = await getSessionUserId();
-
-    if (!token) {
-      return NextResponse.json({
-        isLogged: false,
-        isVIP: false,
-        todayCount: 0,
-        totalGenerated: 0,
-        recentActivities: [],
-      });
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { id: token },
-      select: { id: true, isVIP: true, isLocked: true },
-    });
-
-    if (!user || user.isLocked) {
-      return NextResponse.json({
-        isLogged: false,
-        isVIP: false,
-        todayCount: 0,
-        totalGenerated: 0,
-        recentActivities: [],
-      });
-    }
-
+    const user = await getSessionUser();
+    const changed = changedAccountResponse(req, user?.id ?? null); if (changed) return changed;
+    if (!user) return NextResponse.json({ isLogged: false, isVIP: false, todayCount: 0, totalGenerated: 0, recentActivities: [] }, { headers });
     const tool = req.nextUrl.searchParams.get("tool") || undefined;
-    const stats = await getAiUsageStats(user.id, tool);
-
-    return NextResponse.json({
-      isLogged: true,
-      ...stats,
-    });
-  } catch (error: any) {
-    console.error("Error in GET /api/ai/usage:", error);
-    return NextResponse.json(
-      { error: error instanceof RequestBodyError ? error.message : "Dịch vụ đang gián đoạn" },
-      { status: 500 }
-    );
-  }
+    if (tool && !/^[a-z-]{1,50}$/.test(tool)) return NextResponse.json({ error: "Công cụ không hợp lệ." }, { status: 400, headers });
+    return NextResponse.json({ isLogged: true, ...(await getAiUsageStats(user.id, tool)) }, { headers });
+  } catch (error) { return dataErrorResponse(error, "get-ai-history"); }
 }
-
-/**
- * POST /api/ai/usage
- * Ghi nhận một lần sử dụng công cụ AI (dành cho client hoặc công cụ phụ trợ)
- */
 export async function POST(req: NextRequest) {
   try {
-
-    const token = await getSessionUserId();
-
-    if (!token) {
-      return NextResponse.json(
-        { error: "Unauthorized: Vui lòng đăng nhập" },
-        { status: 401 }
-      );
-    }
-
-    if (!isAllowedOrigin(req)) return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
-    const body = await readLimitedJson(req, 32768) as Record<string, any>;
-    const { tool, toolName, action, input, output } = body;
-
-    if (!["pricing-calculator", "tax-calculator", "koc-planner"].includes(tool)) {
-      return NextResponse.json(
-        { error: "Missing required parameter: tool" },
-        { status: 400 }
-      );
-    }
-
-    const result = await recordAiUsage({
-      userId: token,
-      tool,
-      toolName,
-      action,
-      input,
-      output,
-    });
-
-    return NextResponse.json(result);
-  } catch (error: any) {
-    console.error("Error in POST /api/ai/usage:", error);
-    return NextResponse.json(
-      { error: error instanceof RequestBodyError ? error.message : "Dịch vụ đang gián đoạn" },
-      { status: 500 }
-    );
+    const user = await getSessionUser();
+    const changed = changedAccountResponse(req, user?.id ?? null, true); if (changed) return changed;
+    if (!user) return NextResponse.json({ error: "Vui lòng đăng nhập." }, { status: 401, headers });
+    if (!isAllowedOrigin(req)) return NextResponse.json({ error: "Nguồn yêu cầu không hợp lệ." }, { status: 403, headers });
+    const body: unknown = await readLimitedJson(req, 32768);
+    if (!body || typeof body !== "object" || Array.isArray(body)) throw new RequestBodyError("INVALID_INPUT");
+    const value = body as Record<string, unknown>;
+    if (typeof value.tool !== "string" || !["pricing-calculator", "tax-calculator", "koc-planner"].includes(value.tool) || (value.output !== undefined && typeof value.output !== "string")) throw new RequestBodyError("INVALID_INPUT");
+    return NextResponse.json(await recordAiUsage({ userId: user.id, tool: value.tool === "koc-planner" ? "koc-calculator" : value.tool, input: value.input, output: value.output as string | undefined }), { headers });
+  } catch (error) {
+    if (error instanceof RequestBodyError) return NextResponse.json({ success: false, error: error.message }, { status: error.status, headers });
+    return dataErrorResponse(error, "save-calculation-history");
   }
 }

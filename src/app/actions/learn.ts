@@ -1,4 +1,6 @@
 "use server";
+import { dataFailure } from "@/lib/db-errors";
+
 
 import { prisma } from "@/lib/prisma";
 import { getSessionUserId } from "@/lib/auth/session";
@@ -37,7 +39,7 @@ export async function toggleLessonProgress(lessonId: string, completed: boolean)
     revalidatePath("/learn");
     return { success: true, completed };
   } catch (error) {
-    console.error("Error toggling lesson progress:", error);
+    dataFailure(error, "app/actions/learn.ts");
     return { success: false, error: "Không thể cập nhật tiến độ học" };
   }
 }

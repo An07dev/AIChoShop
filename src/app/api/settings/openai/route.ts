@@ -1,3 +1,4 @@
+import { dataErrorResponse } from "@/lib/db-errors";
 import { auditOutcome } from "@/lib/auth/audit-operations";
 import { adminRouteGuard, requireAdmin } from "@/lib/auth/session";
 import { NextResponse } from "next/server";
@@ -21,16 +22,7 @@ export async function GET() {
       configured: Boolean(token && token.length > 5),
     });
   } catch (error) {
-    console.error("GET /api/settings/openai error:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Không thể lấy cấu hình OpenAI",
-
-
-      },
-      { status: 500 }
-    );
+    return dataErrorResponse(error, "app/api/settings/openai/route.ts");
   }
 }
 
@@ -80,14 +72,7 @@ export async function POST(req: Request) {
       configured: Boolean(finalToken && finalToken.length > 5),
     });
   } catch (error) {
-    console.error("POST /api/settings/openai error:", error);
-    return NextResponse.json(
-      {
-        success: false,
-        error: "Lỗi hệ thống khi lưu cấu hình OpenAI",
-      },
-      { status: 500 }
-    );
+    return dataErrorResponse(error, "app/api/settings/openai/route.ts");
   }
 
   });
