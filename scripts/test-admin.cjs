@@ -18,7 +18,7 @@ test('admin PostgreSQL: lists, payment snapshots, atomic VIP events and reportin
  try{
   await control.query(`CREATE SCHEMA "${schema}"`);created=true;pool=new Pool({connectionString:url.toString(),options:`-c search_path=${schema},public`});
   for(const name of fs.readdirSync('prisma/migrations').filter(name=>/^\d/.test(name)).sort()){const sql=fs.readFileSync(`prisma/migrations/${name}/migration.sql`,'utf8').replaceAll('"public".',`"${schema}".`).replaceAll('public."',`"${schema}"."`).replaceAll('public.%I',`${schema}.%I`).replace('CREATE SCHEMA IF NOT EXISTS "public";','');await pool.query(sql);}
-  db=new PrismaClient({adapter:new PrismaPg(pool,{schema})});const load=loader({'react/jsx-runtime':require('react/jsx-runtime'),'@/lib/prisma':{prisma:db},'./prisma':{prisma:db},'@/lib/auth/session':{requireAdmin:async()=>({id:'admin'})},'@/components/admin/UsersManager':{UsersManager:()=>null},'@/components/admin/LessonsManager':{LessonsManager:()=>null},'@/components/admin/CoursesManager':{CoursesManager:()=>null},'@/components/admin/AdminListControls':{AdminListControls:()=>null},'next/cache':{revalidatePath:()=>{}}});
+  db=new PrismaClient({adapter:new PrismaPg(pool,{schema})});const load=loader({'react/jsx-runtime':require('react/jsx-runtime'),'react':require('react'),'lucide-react':require('lucide-react'),'next/link':{__esModule:true,default:({href,children,className})=>require('react').createElement('a',{href,className},children)},'next/form':{__esModule:true,default:({action,children,className})=>require('react').createElement('form',{action,className},children)},'@/lib/prisma':{prisma:db},'./prisma':{prisma:db},'@/lib/auth/session':{requireAdmin:async()=>({id:'admin'})},'@/components/admin/UsersManager':{UsersManager:()=>null},'@/components/admin/LessonsManager':{LessonsManager:()=>null},'@/components/admin/CoursesManager':{CoursesManager:()=>null},'@/components/admin/AdminListControls':{AdminListControls:()=>null},'next/cache':{revalidatePath:()=>{}}});
   const plans=load('src/lib/admin/vip-plan-service.ts'),payments=load('src/lib/payments/service.ts'),reporting=load('src/lib/admin/reporting.ts'),audit=load('src/lib/auth/audit.ts');
   await db.user.createMany({data:Array.from({length:35},(_,i)=>({id:'u'+String(i).padStart(2,'0'),email:`member${String(i).padStart(2,'0')}@test.local`,password:'hashed',name:'Member',isVIP:i<15,vipExpiresAt:i===0?new Date(0):null,createdAt:new Date('2025-12-01')}))});
   const plan=await plans.writeVipPlan('admin',null,{name:'Month',slug:'month',price:99000,originalPrice:199000,durationDays:30,features:['VIP'],isPopular:true});
@@ -51,6 +51,11 @@ test('admin PostgreSQL: lists, payment snapshots, atomic VIP events and reportin
   assert.equal((await adminActions.recordRefundAction('outside','2099-01-01T12:00')).success,false);
   assert.equal((await adminActions.setTransactionSandboxAction('paid',true)).success,true);
   const adjusted=await reporting.getAdminReport(p.start,p.end);
+  const dashboard=await load('src/app/admin/page.tsx').default({searchParams:Promise.resolve({from:'2026-01-01',to:'2026-01-01'})});
+  const dashboardHtml=require('react-dom/server').renderToStaticMarkup(dashboard);
+  for(const title of ['Bảng Điều Khiển Quản Trị','Người Dùng Mới Đăng Ký','Chuyển Khoản Gần Đây','Lối Tắt Quản Trị','Biểu Đồ Doanh Thu VIP','Phân Bổ Học Viên','Doanh thu theo ngày','ARPU'])assert.ok(dashboardHtml.includes(title),title);
+  assert.ok(dashboardHtml.includes('/admin/users?q=member'));
+  assert.ok(!dashboardHtml.includes('/admin/users?search='));
   assert.equal(adjusted.grossRevenue,30);assert.equal(adjusted.refundAmount,30);assert.equal(adjusted.netRevenue,0);
   await plans.writeVipPlan('admin',second.id,{active:false});assert.equal((await load('src/lib/vip-plans-server.ts').getActiveVipPlans()).length,0);
  }finally{if(db)await db.$disconnect();if(pool&&!pool.ended)await pool.end();if(created)await control.query(`DROP SCHEMA "${schema}" CASCADE`);await control.end();}
