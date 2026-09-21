@@ -1,21 +1,49 @@
 "use client";
 
-import { Bell, Search, UserCircle, Sun, Moon, Palette, Crown } from 'lucide-react';
+import { Bell, Search, UserCircle, Sun, Moon, Palette, Crown, Menu } from 'lucide-react';
 import Link from 'next/link';
 import { useTheme } from '@/context/ThemeContext';
+import { useSidebar } from '@/context/SidebarContext';
 
 export function Header({ user }: { user: any }) {
   const { themeMode, toggleThemeMode } = useTheme();
+  const { toggleMobile } = useSidebar();
 
   return (
-    <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 z-10 sticky top-0 transition-colors duration-200">
-      <div className="flex items-center text-slate-400 dark:text-slate-500 w-1/3">
-        <Search size={20} className="text-slate-400 dark:text-slate-500 shrink-0" />
-        <input 
-          type="text" 
-          placeholder="Tìm kiếm công cụ AI, khóa học..." 
-          className="ml-2 bg-transparent border-none focus:outline-none text-sm w-full font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
-        />
+    <header className="h-16 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-3.5 sm:px-6 z-10 sticky top-0 transition-colors duration-200">
+      <div className="flex items-center gap-2 sm:gap-4">
+        {/* Mobile Hamburger Button */}
+        <button
+          type="button"
+          onClick={toggleMobile}
+          aria-label="Mở menu điều hướng"
+          className="lg:hidden p-2 -ml-1 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition-colors cursor-pointer"
+        >
+          <Menu size={22} />
+        </button>
+
+        {/* Mobile Brand Logo */}
+        <Link
+          href="/dashboard"
+          className="flex items-center gap-2 lg:hidden font-extrabold text-brand tracking-tight text-base select-none"
+        >
+          <div className="w-7 h-7 bg-brand text-white rounded-lg flex items-center justify-center font-black text-xs shadow-xs">
+            AI
+          </div>
+          <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-300">
+            AIChoShop
+          </span>
+        </Link>
+
+        {/* Search input (Hidden on small mobile screens to prevent clutter) */}
+        <div className="hidden sm:flex items-center text-slate-400 dark:text-slate-500 bg-slate-50 dark:bg-slate-800/60 px-3 py-1.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80 focus-within:border-brand dark:focus-within:border-brand focus-within:bg-white dark:focus-within:bg-slate-800 transition-all max-w-xs md:max-w-sm w-full">
+          <Search size={16} className="text-slate-400 dark:text-slate-500 shrink-0" />
+          <input 
+            type="text" 
+            placeholder="Tìm kiếm công cụ, khóa học..." 
+            className="ml-2 bg-transparent border-none focus:outline-none text-xs md:text-sm w-full font-medium text-slate-800 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500"
+          />
+        </div>
       </div>
 
       <div className="flex items-center gap-3">

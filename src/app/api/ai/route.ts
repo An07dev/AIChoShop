@@ -950,6 +950,18 @@ YÊU CẦU ĐẦU RA BẰNG MARKDOWN CHUYÊN NGHIỆP, RÕ RÀNG THEO CẤU TRÚ
       }
     }
 
+    const maxTokens = [
+      "script-writer",
+      "video-repurposer",
+      "vision-listing",
+      "unboxing-card",
+      "anti-return-nudge",
+      "product-validator",
+      "competitor-miner",
+      "photo-prompter",
+      "objection-killer"
+    ].includes(tool) ? 3500 : 2500;
+
     const completion = await openai.chat.completions.create({
       model,
       messages: [
@@ -957,21 +969,15 @@ YÊU CẦU ĐẦU RA BẰNG MARKDOWN CHUYÊN NGHIỆP, RÕ RÀNG THEO CẤU TRÚ
         { role: "user", content: userMessageContent }
       ],
       temperature: 0.7,
-      max_tokens: [
-        "video-repurposer",
-        "vision-listing",
-        "unboxing-card",
-        "anti-return-nudge",
-        "product-validator",
-        "competitor-miner",
-        "photo-prompter",
-        "objection-killer"
-      ].includes(tool) ? 2500 : 1500,
+      max_tokens: maxTokens,
     });
 
     const choice = completion.choices[0];
     const outputText = choice?.message?.content?.trim();
-    if (!outputText || choice?.message.refusal || choice.finish_reason !== "stop") throw new SeoError("INVALID_AI_OUTPUT", "AI chưa tạo được kết quả hoàn chỉnh. Lượt dùng chưa bị trừ.", 502);
+    const isSuccessReason = choice?.finish_reason === "stop" || (choice?.finish_reason === "length" && (outputText?.length ?? 0) >= 300);
+    if (!outputText || choice?.message?.refusal || !isSuccessReason) {
+      throw new SeoError("INVALID_AI_OUTPUT", "AI chưa tạo được kết quả hoàn chỉnh. Lượt dùng chưa bị trừ.", 502);
+    }
     await completeAi(lease, {
       userId,
       tool,

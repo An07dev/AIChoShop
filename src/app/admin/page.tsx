@@ -85,18 +85,7 @@ export default async function AdminDashboard() {
   let allUsersTimeline: any[] = [];
 
   try {
-    const [
-      uCount,
-      vCount,
-      lCount,
-      cCount,
-      revenueAgg,
-      sTxCount,
-      users,
-      txs,
-      succTxs,
-      usersTimeline,
-    ] = await Promise.all([
+    const [uCount, vCount, lCount, cCount, revenueAgg, sTxCount] = await Promise.all([
       prisma.user.count(),
       prisma.user.count({ where: { isVIP: true } }),
       prisma.lesson.count(),
@@ -106,6 +95,9 @@ export default async function AdminDashboard() {
         _sum: { amount: true },
       }),
       prisma.transaction.count({ where: { status: "SUCCESS" } }),
+    ]);
+
+    const [users, txs, succTxs, usersTimeline] = await Promise.all([
       prisma.user.findMany({
         orderBy: { createdAt: "desc" },
         take: 5,

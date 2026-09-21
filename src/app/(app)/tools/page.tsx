@@ -204,70 +204,74 @@ export default function ToolsPage() {
   ];
 
   return (
-    <div className="max-w-7xl mx-auto space-y-12 pb-12">
+    <div className="max-w-7xl mx-auto space-y-8 sm:space-y-12 pb-8">
       <div>
-        <h1 className="text-3xl font-black text-slate-900 mb-2">Hành Trình Tự Động Hóa E-commerce</h1>
-        <p className="text-slate-500 text-lg max-w-3xl">Lộ trình 19 công cụ được sắp xếp từ A-Z theo vòng đời kinh doanh của một nhà bán hàng chuyên nghiệp. Khám phá và sử dụng theo thứ tự để đạt hiệu quả cao nhất.</p>
+        <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white mb-2">
+          Hành Trình Tự Động Hóa E-commerce
+        </h1>
+        <p className="text-slate-500 dark:text-slate-400 text-sm sm:text-base max-w-3xl">
+          Lộ trình 19 công cụ được sắp xếp từ A-Z theo vòng đời kinh doanh của một nhà bán hàng chuyên nghiệp. Khám phá và sử dụng theo thứ tự để đạt hiệu quả cao nhất.
+        </p>
       </div>
 
-      <div className="space-y-12">
+      <div className="space-y-8 sm:space-y-12">
         {toolStages.map((stage, stageIndex) => (
           <div key={stageIndex} className="relative">
             {/* Stage Header */}
-            <div className="flex items-start gap-4 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-slate-900 text-white font-black flex items-center justify-center shrink-0 shadow-lg">
+            <div className="flex items-start gap-3 sm:gap-4 mb-4 sm:mb-6">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-slate-900 dark:bg-brand text-white font-black flex items-center justify-center shrink-0 shadow-md text-sm sm:text-base">
                 {stageIndex + 1}
               </div>
               <div>
-                <h2 className="text-xl font-bold text-slate-900">{stage.stage}</h2>
-                <p className="text-slate-500 text-sm mt-1">{stage.description}</p>
+                <h2 className="text-base sm:text-xl font-bold text-slate-900 dark:text-white">{stage.stage}</h2>
+                <p className="text-slate-500 dark:text-slate-400 text-xs sm:text-sm mt-0.5">{stage.description}</p>
               </div>
             </div>
 
             {/* Tools Grid for this stage */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pl-14">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 pl-0 sm:pl-14">
               {stage.tools.map((tool) => (
                 <Link href={`/tools/${tool.id}`} key={tool.id} className="block group">
-                  <div className={`h-full p-6 rounded-2xl border transition-all duration-300 bg-white ${tool.color} shadow-sm hover:shadow-md flex flex-col relative overflow-hidden`}>
+                  <div className={`h-full p-4 sm:p-6 rounded-2xl border transition-all duration-300 bg-white dark:bg-slate-900 ${tool.color} dark:border-slate-800 shadow-xs hover:shadow-md flex flex-col relative overflow-hidden`}>
                     
                     {!tool.isFree ? (
                       <div className="absolute top-0 right-0">
-                        <div className="bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[10px] font-black px-3 py-1 rounded-bl-xl shadow-xs flex items-center gap-1 uppercase tracking-wider">
+                        <div className="bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[9px] sm:text-[10px] font-black px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-bl-xl shadow-xs flex items-center gap-1 uppercase tracking-wider">
                           <span>👑</span> VIP TOOL
                         </div>
                       </div>
                     ) : (
                       <div className="absolute top-0 right-0">
-                        <div className="bg-emerald-500 text-white text-[10px] font-black px-3 py-1 rounded-bl-xl shadow-xs flex items-center gap-1 uppercase tracking-wider">
+                        <div className="bg-emerald-500 text-white text-[9px] sm:text-[10px] font-black px-2.5 sm:px-3 py-0.5 sm:py-1 rounded-bl-xl shadow-xs flex items-center gap-1 uppercase tracking-wider">
                           FREE TOOL
                         </div>
                       </div>
                     )}
 
-                    <div className="flex items-start justify-between mb-4 mt-2">
-                      <div className="p-3 bg-white rounded-xl shadow-sm border border-slate-100 group-hover:scale-110 transition-transform">
+                    <div className="flex items-start justify-between mb-3 sm:mb-4 mt-1 sm:mt-2">
+                      <div className="p-2.5 sm:p-3 bg-white dark:bg-slate-800 rounded-xl shadow-xs border border-slate-100 dark:border-slate-700/60 group-hover:scale-105 transition-transform">
                         {tool.icon}
                       </div>
                     </div>
                     
-                    <h3 className="text-lg font-bold text-slate-900 mb-2 group-hover:text-blue-600 transition-colors">
+                    <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white mb-1.5 sm:mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                       {tool.name}
                     </h3>
-                    <p className="text-slate-600 text-sm leading-relaxed mb-6 flex-1">
+                    <p className="text-slate-600 dark:text-slate-400 text-xs sm:text-sm leading-relaxed mb-4 sm:mb-6 flex-1">
                       {tool.description}
                     </p>
                     
-                    <div className="flex items-center text-sm font-bold text-slate-400 group-hover:text-blue-600 transition-colors mt-auto">
-                      Mở công cụ <ArrowRight size={16} className="ml-1 group-hover:translate-x-1 transition-transform" />
+                    <div className="flex items-center text-xs sm:text-sm font-bold text-slate-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors mt-auto">
+                      Mở công cụ <ArrowRight size={15} className="ml-1 group-hover:translate-x-1 transition-transform" />
                     </div>
                   </div>
                 </Link>
               ))}
             </div>
             
-            {/* Connecting line to next stage (except last one) */}
+            {/* Connecting line to next stage (except last one, visible only on sm+) */}
             {stageIndex < toolStages.length - 1 && (
-              <div className="absolute left-5 top-12 bottom-0 h-[calc(100%+3rem)] w-0.5 bg-slate-200 -z-10"></div>
+              <div className="hidden sm:block absolute left-5 top-12 bottom-0 h-[calc(100%+3rem)] w-0.5 bg-slate-200 dark:bg-slate-800 -z-10"></div>
             )}
           </div>
         ))}

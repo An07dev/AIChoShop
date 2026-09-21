@@ -49,6 +49,7 @@ import { readPricingHistory, writePricingHistory, type PricingCalculationSnapsho
 import type { CostMode, ExternalSalesChannel, FeeOverrideRecord, OfficialFeeCategory, Platform, PriceEvaluation, PricingInput, PricingResult, ShopType, TaxMode } from "@/lib/pricing/types";
 import BulkPricing from "./BulkPricing";
 import { CostVisuals, EmptyCalculation } from "./PricingExtras";
+import { MobileToolTabs } from "@/components/tools/MobileToolTabs";
 
 const initialInput: PricingInput = {
   platform: "shopee",
@@ -200,9 +201,7 @@ function CategorySelector({
     <div className="space-y-2.5 rounded-2xl border border-brand/20 bg-brand-light/30 dark:bg-brand-light/10 p-3.5 transition-colors">
       <div className="flex items-center justify-between">
         <span className="text-[11px] font-black uppercase tracking-wider text-brand">Ngành hàng chính thức sàn</span>
-        <span className="rounded-full bg-white dark:bg-slate-800 border border-brand/30 px-2.5 py-0.5 text-xs font-black text-brand shadow-xs">
-          {shopType === "mall" ? selected.mallRate : selected.marketplaceRate}% hoa hồng
-        </span>
+
       </div>
       <Field label="Ngành cấp 1">
         <select
@@ -271,13 +270,13 @@ function Metric({
     amber: "border-amber-200 dark:border-amber-900/50 bg-amber-50/70 dark:bg-amber-950/30 text-amber-800 dark:text-amber-300",
   };
   return (
-    <div className={`rounded-2xl border p-3.5 sm:p-4 transition-all shadow-xs ${tones[tone]}`}>
+    <div className={`rounded-2xl border p-2.5 sm:p-4 transition-all shadow-xs min-w-0 ${tones[tone]}`}>
       <div className="flex items-center justify-between gap-1">
-        <p className="text-[11px] font-bold uppercase tracking-wider opacity-70">{label}</p>
-        {icon && <div className="opacity-75">{icon}</div>}
+        <p className="text-[10px] sm:text-[11px] font-bold uppercase tracking-wider opacity-70 truncate">{label}</p>
+        {icon && <div className="opacity-75 shrink-0">{icon}</div>}
       </div>
-      <p className="mt-1 text-lg sm:text-xl font-black font-mono tracking-tight">{value}</p>
-      {subtext && <p className="mt-0.5 text-[11px] opacity-75 font-medium">{subtext}</p>}
+      <p className="mt-1 text-sm sm:text-base lg:text-xl font-black font-mono tracking-tight truncate">{value}</p>
+      {subtext && <p className="mt-0.5 text-[10px] sm:text-[11px] opacity-75 font-medium truncate">{subtext}</p>}
     </div>
   );
 }
@@ -310,6 +309,7 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
   const [saveNotice, setSaveNotice] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [productNameError, setProductNameError] = useState("");
+  const [mobileTab, setMobileTab] = useState<"form" | "result">("form");
   const productNameRef = useRef<HTMLInputElement>(null);
 
   // Lịch sử modal & hoạt động server (Hoạt động gần đây)
@@ -476,6 +476,7 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
       isLoss: computedResult.evaluation.expectedProfitPerOrder < 0,
     };
     setAppliedCalculation(applied);
+    setMobileTab("result");
 
     // Tự động lưu snapshot vào lịch sử
     const snapshotId = editingId || (globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random()}`);
@@ -634,7 +635,7 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
   const suggestion = suggestedCategoryId ? getOfficialCategory(suggestedCategoryId) : undefined;
 
   return (
-    <div className="mx-auto max-w-7xl pb-16 px-2 sm:px-4">
+    <div className="mx-auto max-w-7xl pb-6 sm:pb-12 px-2 sm:px-4 w-full min-w-0 max-w-full">
       <GateModals />
       {feeLoadWarning && <div role="alert" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">Không tải được biểu phí quản trị. Kết quả đang dùng bộ phí tích hợp; hãy kiểm tra lại trước khi quyết định giá.</div>}
       {isFeeProfileStale(feeProfile) && <div role="alert" className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">Biểu phí này đã quá 90 ngày kể từ lần xác minh hoặc ngày hiệu lực. Hãy đối chiếu Seller Center trước khi chốt giá.</div>}
@@ -859,90 +860,127 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
       )}
 
       {/* 1. Header Toolbar */}
-      <div className="mb-6 space-y-4">
-        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
-          <div>
-            <Link
-              href="/tools"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-brand transition-colors mb-2"
-            >
-              <ArrowLeft size={14} /> Kho công cụ AI
-            </Link>
-            <div className="flex items-center gap-3">
-              <div className="rounded-2xl bg-brand-light p-2.5 text-brand shadow-xs">
-                <Calculator size={24} />
-              </div>
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
-                    Tính Giá Bán & Tối Ưu Lợi Nhuận
-                  </h1>
-                  <span className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shadow-xs uppercase tracking-wider">
-                    <Sparkles size={11} className="text-emerald-600 dark:text-emerald-400" />
-                    FREE TOOL
-                  </span>
-                  {/* <span className="hidden sm:inline-flex rounded-full bg-brand-light/80 border border-brand/30 px-2.5 py-0.5 text-[10px] font-black text-brand uppercase tracking-wider">
-                    {FEE_DATA_VERSION}
-                  </span> */}
-                </div>
-                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                  Hạch toán toàn diện phí sàn TMĐT, thuế, voucher và chi phí rủi ro đơn hủy, giao thất bại, trả hàng.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Workspace Switcher: Single vs Bulk & Nút Lịch Sử ở cạnh Định giá đơn lẻ */}
-          <div className="flex items-center gap-2 flex-wrap self-start md:self-auto">
-            <div className="flex items-center rounded-2xl bg-slate-100 dark:bg-slate-800/90 p-1 border border-slate-200/80 dark:border-slate-700/80 shadow-xs">
-              <button
-                type="button"
-                onClick={() => setWorkspaceMode("single")}
-                className={`flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition-all cursor-pointer ${workspaceMode === "single"
-                  ? "bg-brand text-white shadow-sm"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                  }`}
-              >
-                <Calculator size={14} /> Định giá đơn lẻ
-              </button>
-              <button
-                type="button"
-                onClick={() => setWorkspaceMode("bulk")}
-                className={`flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition-all cursor-pointer ${workspaceMode === "bulk"
-                  ? "bg-brand text-white shadow-sm"
-                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
-                  }`}
-              >
-                <Table2 size={14} /> Định giá hàng loạt
-              </button>
-            </div>
-
-            {/* Nút Lịch sử ở cạnh Định giá đơn lẻ */}
+      <div className="mb-5 sm:mb-6 space-y-3 sm:space-y-3.5">
+        {/* Mobile top bar: Breadcrumb + FREE badge + Lịch sử */}
+        <div className="flex items-center justify-between gap-2 md:hidden">
+          <Link
+            href="/tools"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-brand transition-colors"
+          >
+            <ArrowLeft size={13} /> Kho công cụ AI
+          </Link>
+          <div className="flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shadow-2xs uppercase tracking-wider">
+              <Sparkles size={10} className="text-emerald-600 dark:text-emerald-400" />
+              FREE
+            </span>
             <button
               type="button"
               onClick={() => {
                 setViewingHistoryItem(null);
                 setIsHistoryModalOpen(true);
               }}
-              className="flex items-center gap-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-2xl text-xs font-bold text-slate-700 dark:text-slate-200 transition-all cursor-pointer shadow-xs active:scale-95"
+              className="inline-flex items-center gap-1 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 px-2.5 py-1 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 transition-all cursor-pointer shadow-xs active:scale-95"
+              title="Xem lịch sử định giá đã tính toán"
+            >
+              <Clock size={12} className="text-blue-500 shrink-0" />
+              <span>Lịch sử</span>
+              {displayActivities.length > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-blue-50 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 text-[10px] font-black">
+                  {displayActivities.length}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+
+        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+          <div>
+            {/* Desktop breadcrumb */}
+            <Link
+              href="/tools"
+              className="hidden md:inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-brand transition-colors mb-2"
+            >
+              <ArrowLeft size={14} /> Kho công cụ AI
+            </Link>
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-brand-light dark:bg-brand-light/20 flex items-center justify-center text-brand shadow-xs shrink-0">
+                <Calculator size={20} className="sm:w-6 sm:h-6" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-lg sm:text-2xl lg:text-3xl font-black tracking-tight text-slate-900 dark:text-white leading-tight">
+                    <span className="inline sm:inline">Tính Giá Bán &amp; </span>
+                    <span className="whitespace-nowrap">Tối Ưu Lợi Nhuận</span>
+                  </h1>
+                  <span className="hidden md:inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shadow-xs uppercase tracking-wider shrink-0">
+                    <Sparkles size={11} className="text-emerald-600 dark:text-emerald-400" />
+                    FREE TOOL
+                  </span>
+                </div>
+                <p className="hidden sm:block mt-1 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Hạch toán toàn diện phí sàn TMĐT, thuế, voucher và chi phí rủi ro đơn hủy, giao thất bại, trả hàng.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Workspace Switcher: Single vs Bulk */}
+          <div className="flex items-center gap-2 w-full md:w-auto">
+            <div className="grid grid-cols-2 rounded-2xl bg-slate-100 dark:bg-slate-800/90 p-1 border border-slate-200/80 dark:border-slate-700/80 shadow-xs w-full md:w-auto">
+              <button
+                type="button"
+                onClick={() => setWorkspaceMode("single")}
+                className={`flex items-center justify-center gap-1.5 rounded-xl px-3 sm:px-4 py-2.5 sm:py-2 text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${workspaceMode === "single"
+                  ? "bg-brand text-white shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  }`}
+              >
+                <Calculator size={14} /> <span>Định giá đơn lẻ</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setWorkspaceMode("bulk")}
+                className={`flex items-center justify-center gap-1.5 rounded-xl px-3 sm:px-4 py-2.5 sm:py-2 text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${workspaceMode === "bulk"
+                  ? "bg-brand text-white shadow-sm"
+                  : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
+                  }`}
+              >
+                <Table2 size={14} /> <span>Định giá hàng loạt</span>
+              </button>
+            </div>
+
+            {/* Desktop History Button */}
+            <button
+              type="button"
+              onClick={() => {
+                setViewingHistoryItem(null);
+                setIsHistoryModalOpen(true);
+              }}
+              className="hidden md:flex shrink-0 items-center gap-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 px-3 py-2 rounded-2xl text-xs font-bold text-slate-700 dark:text-slate-200 transition-all cursor-pointer shadow-xs active:scale-95"
               title="Xem lịch sử định giá đã tính toán"
             >
               <Clock size={14} className="text-blue-500 shrink-0" />
               <span>Lịch sử</span>
+              {displayActivities.length > 0 && (
+                <span className="ml-0.5 px-1.5 py-0.2 rounded-full bg-blue-50 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 text-[10px] font-black">
+                  {displayActivities.length}
+                </span>
+              )}
             </button>
           </div>
         </div>
       </div>
 
       {workspaceMode === "bulk" ? (
-        <>
+        <div className="w-full min-w-0 max-w-full">
           <BulkPricing baseInput={input} feeOverrides={feeOverrides} onSaveAll={saveMany} />
           {saveNotice && (
             <div className="mt-4 rounded-2xl border border-emerald-200 dark:border-emerald-900/50 bg-emerald-50 dark:bg-emerald-950/40 px-4 py-3 text-sm font-semibold text-emerald-800 dark:text-emerald-300">
               {saveNotice}
             </div>
           )}
-        </>
+        </div>
       ) : (
         <>
           {/* 2. Interactive Platform Selector Cards */}
@@ -1007,10 +1045,19 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
             })}
           </div>
 
+          {/* Mobile Tab Switcher */}
+          <MobileToolTabs
+            activeTab={mobileTab}
+            onChangeTab={setMobileTab}
+            hasResult={Boolean(appliedCalculation)}
+            formLabel="Thông số chi phí"
+            resultLabel="Bảng phân tích giá"
+          />
+
           {/* 3. Balanced 2-Column Core Architecture (5 cols Left - 7 cols Right) */}
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-12 items-start">
             {/* Left Column: Structured Input Form (5 cols) */}
-            <div className="space-y-5 lg:col-span-5">
+            <div className={`space-y-5 ${mobileTab === "form" ? "block" : "hidden lg:block"} lg:col-span-5`}>
               {/* Card 1: Mode & Product Setup */}
               <section className="overflow-hidden rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs transition-colors">
                 <div className="border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-800/40 p-4">
@@ -1062,15 +1109,16 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
                   </Field>
 
                   {suggestion && (
-                    <div className="flex items-center justify-between gap-3 rounded-2xl border border-brand/30 bg-brand-light/40 dark:bg-brand-light/10 p-3 text-xs text-brand transition-colors">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 rounded-2xl border border-brand/30 bg-brand-light/40 dark:bg-brand-light/10 p-3 text-xs text-brand transition-colors">
                       <span className="flex items-center gap-1.5 font-medium">
-                        <Sparkles size={15} /> Gợi ý ngành: <strong>{getCategoryLabel(suggestion)}</strong>
-                        <span className="rounded-full bg-white/70 px-2 py-0.5">Độ chắc chắn {suggestionConfidence === "high" ? "cao" : "trung bình"}</span>
+                        <Sparkles size={15} className="shrink-0" />
+                        <span>Gợi ý ngành: <strong>{getCategoryLabel(suggestion)}</strong></span>
+                        <span className="rounded-full bg-white/70 dark:bg-slate-800 px-2 py-0.5 text-[10px] shrink-0">Độ chắc chắn {suggestionConfidence === "high" ? "cao" : "trung bình"}</span>
                       </span>
                       <button
                         type="button"
                         onClick={() => applyCategory(suggestion.id)}
-                        className="btn-brand-cta rounded-lg px-3 py-1.5 font-bold text-white text-xs shadow-xs cursor-pointer"
+                        className="btn-brand-cta rounded-lg px-3 py-1.5 font-bold text-white text-xs shadow-xs cursor-pointer self-start sm:self-auto shrink-0"
                       >
                         Xác nhận
                       </button>
@@ -1097,7 +1145,7 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
                         <p className="text-[11px] font-black uppercase tracking-wider text-brand">
                           Phí thanh toán & Xử lý đơn tự bán
                         </p>
-                        <div className="grid grid-cols-3 gap-2.5">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                           <Field label="Cổng TT (%)">
                             <NumberInput
                               value={input.commissionOverride ?? 0}
@@ -1127,7 +1175,7 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
                         <button
                           type="button"
                           onClick={() => changeShopType("marketplace")}
-                          className={`flex-1 rounded-lg py-1.5 text-xs font-bold transition-all ${input.shopType === "marketplace"
+                          className={`flex-1 rounded-lg py-1.5 text-[11px] sm:text-xs font-bold transition-all ${input.shopType === "marketplace"
                             ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs"
                             : "text-slate-500 dark:text-slate-400"
                             }`}
@@ -1137,7 +1185,7 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
                         <button
                           type="button"
                           onClick={() => changeShopType("mall")}
-                          className={`flex-1 rounded-lg py-1.5 text-xs font-bold transition-all ${input.shopType === "mall"
+                          className={`flex-1 rounded-lg py-1.5 text-[11px] sm:text-xs font-bold transition-all ${input.shopType === "mall"
                             ? "bg-brand text-white shadow-xs"
                             : "text-slate-500 dark:text-slate-400"
                             }`}
@@ -1164,7 +1212,7 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
                 </h2>
 
                 {/* 2x2 Balanced Cost Inputs */}
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <Field label="Giá vốn / sản phẩm (COGS)">
                     <MoneyInput value={input.costPerUnit} onChange={(v) => update("costPerUnit", v)} />
                   </Field>
@@ -1185,7 +1233,7 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
                       <select
                         value={input.marketingMode}
                         onChange={(e) => update("marketingMode", e.target.value as CostMode)}
-                        className="w-24 border-r border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-2 text-xs font-bold text-slate-700 dark:text-slate-300 outline-none"
+                        className="w-24 border-r border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 px-2 text-xs font-bold text-slate-700 dark:text-slate-300 outline-none shrink-0"
                       >
                         <option value="percent">% GMV</option>
                         <option value="fixed">đ / đơn</option>
@@ -1194,10 +1242,10 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
                         <MoneyInput
                           value={input.marketingValue}
                           onChange={(v) => update("marketingValue", v)}
-                          className="rounded-none border-0"
+                          className="rounded-none border-0 flex-1 min-w-0"
                         />
                       ) : (
-                        <div className="flex-1">
+                        <div className="flex-1 min-w-0">
                           <NumberInput
                             value={input.marketingValue}
                             onChange={(v) => update("marketingValue", v)}
@@ -1214,11 +1262,11 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
                 {mode === "target" ? (
                   <div className="rounded-2xl border border-brand/30 bg-brand-light/30 dark:bg-brand-light/10 p-4 transition-colors">
                     <Field label="Lợi nhuận mong muốn đạt được">
-                      <div className="flex overflow-hidden rounded-xl border border-brand/30 bg-white dark:bg-slate-800 shadow-xs">
+                      <div className="flex flex-col sm:flex-row overflow-hidden rounded-xl border border-brand/30 bg-white dark:bg-slate-800 shadow-xs">
                         <select
                           value={targetMode}
                           onChange={(e) => setTargetMode(e.target.value as "margin" | "fixed")}
-                          className="w-44 border-r border-brand/20 bg-brand-light/60 dark:bg-slate-700/60 px-3 text-xs font-bold text-brand outline-none"
+                          className="w-full sm:w-44 border-b sm:border-b-0 sm:border-r border-brand/20 bg-brand-light/60 dark:bg-slate-700/60 px-3 py-2 text-xs font-bold text-brand outline-none shrink-0"
                         >
                           <option value="margin">% Doanh thu thực</option>
                           <option value="fixed">Lãi tiền mặt / đơn</option>
@@ -1227,10 +1275,10 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
                           <MoneyInput
                             value={targetValue}
                             onChange={setTargetValue}
-                            className="rounded-none border-0 bg-transparent text-brand"
+                            className="rounded-none border-0 bg-transparent text-brand flex-1 min-w-0"
                           />
                         ) : (
-                          <div className="flex-1">
+                          <div className="flex-1 min-w-0">
                             <NumberInput
                               value={targetValue}
                               onChange={setTargetValue}
@@ -1291,9 +1339,6 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
                     <strong className="flex items-center gap-2 text-sm text-slate-900 dark:text-white font-bold">
                       <ReceiptText size={18} className="text-brand" /> Chi phí vận hành, Thuế & Rủi ro hoàn hủy
                     </strong>
-                    <span className="mt-0.5 block text-xs text-slate-500 dark:text-slate-400">
-                      Voucher, Affiliate, Thuế TMĐT, Ship hoàn và hao hụt
-                    </span>
                   </span>
                   {advanced ? (
                     <ChevronUp size={18} className="text-slate-400" />
@@ -1315,7 +1360,18 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
             </div>
 
             {/* Right Column: Financial Intelligence Engine (7 cols, sticky on desktop) */}
-            <div className="space-y-5 lg:col-span-7 lg:sticky lg:top-4 self-start">
+            <div className={`space-y-5 ${mobileTab === "result" ? "block" : "hidden lg:block"} lg:col-span-7 lg:sticky lg:top-4 self-start`}>
+              {mobileTab === "result" && (
+                <div className="lg:hidden">
+                  <button
+                    type="button"
+                    onClick={() => setMobileTab("form")}
+                    className="text-xs font-semibold text-brand hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    ← Quay lại chỉnh sửa thông số chi phí
+                  </button>
+                </div>
+              )}
               {!hasCalculated || !result || !evaluation ? (
                 <EmptyCalculation />
               ) : (
@@ -1352,7 +1408,7 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
                                 : platformNames[input.platform]}
                             </span>
                           </div>
-                          <p className="mt-2 text-4xl sm:text-5xl font-black font-mono tracking-tight text-emerald-400">
+                          <p className="mt-2 text-2xl sm:text-4xl lg:text-5xl font-black font-mono tracking-tight text-emerald-400 break-words">
                             {formatMoney(evaluation.listPrice)}
                           </p>
                           <p className="mt-1.5 text-xs text-slate-400 font-medium">
@@ -1363,7 +1419,7 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
                         <button
                           type="button"
                           onClick={copyResult}
-                          className="flex h-fit items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/10 hover:bg-white/20 px-4 py-2.5 text-xs font-bold text-white transition cursor-pointer active:scale-95"
+                          className="w-full sm:w-auto flex h-fit items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/10 hover:bg-white/20 px-4 py-2.5 text-xs font-bold text-white transition cursor-pointer active:scale-95 shrink-0"
                         >
                           {copied ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
                           {copied ? "Đã sao chép" : "Sao chép báo cáo"}
@@ -1424,11 +1480,11 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
                   </div>
 
                   {/* 3. Segmented Navigation for Deep Analytical Breakdown */}
-                  <div className="flex items-center justify-between rounded-2xl bg-slate-100 dark:bg-slate-800 p-1 border border-slate-200/80 dark:border-slate-700/80 text-xs font-bold">
+                  <div className="flex items-center gap-1 rounded-2xl bg-slate-100 dark:bg-slate-800 p-1 border border-slate-200/80 dark:border-slate-700/80 text-xs font-bold overflow-x-auto custom-scrollbar">
                     <button
                       type="button"
                       onClick={() => setActiveResultTab("structure")}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl transition-all cursor-pointer ${activeResultTab === "structure"
+                      className={`shrink-0 flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap ${activeResultTab === "structure"
                         ? "bg-white dark:bg-slate-700 text-brand shadow-xs"
                         : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                         }`}
@@ -1438,7 +1494,7 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
                     <button
                       type="button"
                       onClick={() => setActiveResultTab("breakdown")}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl transition-all cursor-pointer ${activeResultTab === "breakdown"
+                      className={`shrink-0 flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap ${activeResultTab === "breakdown"
                         ? "bg-white dark:bg-slate-700 text-brand shadow-xs"
                         : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                         }`}
@@ -1448,7 +1504,7 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
                     <button
                       type="button"
                       onClick={() => setActiveResultTab("scenarios")}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-xl transition-all cursor-pointer ${activeResultTab === "scenarios"
+                      className={`shrink-0 flex items-center justify-center gap-1.5 px-3 sm:px-4 py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap ${activeResultTab === "scenarios"
                         ? "bg-white dark:bg-slate-700 text-brand shadow-xs"
                         : "text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white"
                         }`}
@@ -1458,7 +1514,7 @@ export default function PricingCalculatorClient({ feeOverrides, feeLoadWarning =
                     <button
                       type="button"
                       onClick={() => setActiveResultTab("all")}
-                      className={`px-3 py-2 rounded-xl transition-all cursor-pointer ${activeResultTab === "all"
+                      className={`shrink-0 px-3 py-2 rounded-xl transition-all cursor-pointer whitespace-nowrap ${activeResultTab === "all"
                         ? "bg-white dark:bg-slate-700 text-brand shadow-xs"
                         : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
                         }`}
@@ -1557,7 +1613,7 @@ function AdvancedFields({
   return (
     <div className="space-y-5 border-t border-slate-100 dark:border-slate-800/80 p-5">
       <Group title="Khuyến mãi & Vận hành">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Giảm giá của shop (%)">
             <NumberInput
               value={input.sellerDiscountRate}
@@ -1600,15 +1656,15 @@ function AdvancedFields({
 
       {input.platform !== "external" && (
         <Group title="Biểu phí sàn & Gói hỗ trợ">
-          <div className="grid grid-cols-3 gap-3">
-            <Field label="Hoa hồng" hint={`${feeProfile.commissionRate}%`}>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <Field label="Hoa hồng" hint={``}>
               <NumberInput
                 value={input.commissionOverride ?? feeProfile.commissionRate}
                 onChange={(v) => update("commissionOverride", v)}
                 max={100}
               />
             </Field>
-            <Field label="Giao dịch" hint={`${feeProfile.transactionRate}%`}>
+            <Field label="Giao dịch" hint={``}>
               <NumberInput
                 value={input.transactionOverride ?? feeProfile.transactionRate}
                 onChange={(v) => update("transactionOverride", v)}
@@ -1672,7 +1728,7 @@ function AdvancedFields({
         </Field>
         {input.taxMode === "household_revenue" && (
           <div className="mt-3">
-            <Field label="Phần doanh thu chịu TNCN" hint="GTGT 1% toàn doanh thu">
+            <Field label="Phần doanh thu chịu TNCN" hint="">
               <NumberInput
                 value={input.taxableRevenueShare}
                 onChange={(v) => update("taxableRevenueShare", v)}
@@ -1702,7 +1758,7 @@ function AdvancedFields({
       </Group>
 
       <Group title="Tỷ lệ tổn thất, hủy đơn & Hoàn trả">
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <Field label="Tỷ lệ hủy đơn (%)">
             <NumberInput value={input.cancellationRate} onChange={(v) => update("cancellationRate", v)} max={100} />
           </Field>
@@ -1752,9 +1808,9 @@ function Group({ title, children }: { title: string; children: ReactNode }) {
 
 function Mini({ label, value, loss = false }: { label: string; value: string; loss?: boolean }) {
   return (
-    <div>
-      <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold">{label}</p>
-      <p className={`mt-1 font-black font-mono text-sm sm:text-base ${loss ? "text-rose-400" : "text-emerald-400"}`}>
+    <div className="min-w-0">
+      <p className="text-[10px] uppercase tracking-wider text-slate-400 font-bold truncate">{label}</p>
+      <p className={`mt-1 font-black font-mono text-xs sm:text-base break-words ${loss ? "text-rose-400" : "text-emerald-400"}`}>
         {value}
       </p>
     </div>
@@ -1775,15 +1831,15 @@ function Row({
   strong?: boolean;
 }) {
   return (
-    <div className="flex items-center justify-between gap-4 py-1">
-      <div>
-        <span className={strong ? "font-black text-slate-900 dark:text-white" : "text-slate-600 dark:text-slate-300 font-medium"}>
+    <div className="flex items-start sm:items-center justify-between gap-2 py-1.5 border-b border-slate-50 dark:border-slate-800/40 last:border-0">
+      <div className="min-w-0 flex-1">
+        <span className={`block sm:inline text-xs sm:text-sm ${strong ? "font-black text-slate-900 dark:text-white" : "text-slate-600 dark:text-slate-300 font-medium"}`}>
           {label}
         </span>
-        {hint && <span className="ml-2 text-[10px] text-slate-400 dark:text-slate-500 font-normal">{hint}</span>}
+        {hint && <span className="block sm:inline sm:ml-2 text-[10px] text-slate-400 dark:text-slate-500 font-normal">{hint}</span>}
       </div>
       <span
-        className={`shrink-0 font-mono ${strong ? "text-base font-black" : "font-bold text-sm"} ${value < 0 ? "text-rose-600 dark:text-rose-400" : positive ? "text-emerald-600 dark:text-emerald-400" : "text-slate-900 dark:text-white"
+        className={`shrink-0 font-mono text-right ${strong ? "text-sm sm:text-base font-black" : "font-bold text-xs sm:text-sm"} ${value < 0 ? "text-rose-600 dark:text-rose-400" : positive ? "text-emerald-600 dark:text-emerald-400" : "text-slate-900 dark:text-white"
           }`}
       >
         {value > 0 && positive ? "+" : ""}
@@ -1872,13 +1928,13 @@ function Scenarios({ evaluation: e, isLoss }: { evaluation: ReturnType<typeof ca
         />
       </div>
       <div
-        className={`mt-4 flex items-center justify-between rounded-2xl p-4 transition-colors ${isLoss
+        className={`mt-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 rounded-2xl p-4 transition-colors ${isLoss
           ? "border border-rose-300 dark:border-rose-900/50 bg-rose-100 dark:bg-rose-950/40 text-rose-900 dark:text-rose-200"
           : "border border-emerald-300 dark:border-emerald-900/50 bg-emerald-100 dark:bg-emerald-950/40 text-emerald-900 dark:text-emerald-200"
           }`}
       >
         <span className="text-xs sm:text-sm font-bold">Tổng lãi kỳ vọng thực nhận trên 100 đơn phát sinh:</span>
-        <span className="text-lg sm:text-xl font-black font-mono">{formatMoney(e.expectedProfitPerOrder * 100)}</span>
+        <span className="text-lg sm:text-xl font-black font-mono break-words">{formatMoney(e.expectedProfitPerOrder * 100)}</span>
       </div>
     </section>
   );

@@ -77,7 +77,7 @@ export async function POST(req: NextRequest) {
     const body = await readLimitedJson(req, 32768) as Record<string, any>;
     const { tool, toolName, action, input, output } = body;
 
-    if (!["pricing-calculator", "tax-calculator", "koc-planner"].includes(tool)) {
+    if (!["pricing-calculator", "tax-calculator", "koc-planner", "koc-calculator"].includes(tool)) {
       return NextResponse.json(
         { error: "Missing required parameter: tool" },
         { status: 400 }

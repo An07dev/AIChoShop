@@ -19,6 +19,7 @@ import { useToolGate } from "@/hooks/useToolGate";
 import { CompetitorMinerOutput } from "@/components/tools/CompetitorMinerOutput";
 import { useToast } from "@/context/ToastContext";
 import { AiUsageBadge } from "@/components/tools/AiUsageBadge";
+import { MobileToolTabs } from "@/components/tools/MobileToolTabs";
 
 const CATEGORIES = [
   "Thời Trang & Phụ Kiện",
@@ -84,6 +85,7 @@ export default function CompetitorMinerPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [mobileTab, setMobileTab] = useState<"form" | "result">("form");
 
   // Form states
   const [productName, setProductName] = useState("");
@@ -97,6 +99,7 @@ export default function CompetitorMinerPage() {
     setCompetitorReviews(SAMPLE_DATA.competitorReviews);
     setShopStrength(SAMPLE_DATA.shopStrength);
     setResult(SAMPLE_OUTPUT);
+    setMobileTab("result");
   };
 
   const handleResetForm = () => {
@@ -122,6 +125,7 @@ export default function CompetitorMinerPage() {
 
     setLoading(true);
     setResult("");
+    setMobileTab("result");
 
     try {
       const response = await fetch("/api/ai", {
@@ -162,58 +166,126 @@ export default function CompetitorMinerPage() {
       {/* Modals kiểm tra quyền truy cập */}
       <GateModals />
 
-      {/* Header & Breadcrumb */}
-      <div className="shrink-0 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
-            <Link href="/tools" className="hover:text-rose-600 transition-colors flex items-center gap-1">
-              <ArrowLeft size={12} /> Kho Công Cụ AI
-            </Link>
-            <span>/</span>
-            <span className="text-slate-600 dark:text-slate-300">Chiến Lược Cạnh Tranh</span>
+      {/* 1. Header Navigation & Quick Actions */}
+      <div className="shrink-0 mb-3 space-y-2">
+        {/* Mobile Top Bar: Breadcrumb + Badges */}
+        <div className="md:hidden flex items-center justify-between pb-1">
+          <Link
+            href="/tools"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-rose-600 transition-colors"
+          >
+            <ArrowLeft size={13} /> Kho công cụ AI
+          </Link>
+          <div className="flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 shadow-2xs">
+              <Crown size={12} className="text-amber-600 dark:text-amber-400" />
+              VIP
+            </span>
+            <AiUsageBadge tool="competitor-miner" refreshTrigger={refreshTrigger} historyOnly />
           </div>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white flex flex-wrap items-center gap-2 sm:gap-3">
-            <span className="flex items-center gap-2">
-              <Target className="text-rose-600" /> AI Đọc Vị Đối Thủ & Săn &ldquo;Tử Huyệt&rdquo; Tìm USP
-            </span>
-            <span className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 shadow-xs uppercase tracking-wider">
-              <Crown size={11} className="text-amber-600 dark:text-amber-400" />
-              VIP TOOL
-            </span>
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Bóc tách đánh giá 1-3 sao cay đắng của đối thủ, biến điểm yếu đối thủ thành vũ khí định vị độc quyền và kịch bản video dìm hàng văn minh.
-          </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <AiUsageBadge tool="competitor-miner" refreshTrigger={refreshTrigger} />
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+          <div>
+            {/* Desktop Breadcrumb */}
+            <div className="hidden md:flex items-center gap-2 text-xs font-semibold text-slate-400 mb-2">
+              <Link href="/tools" className="hover:text-rose-600 transition-colors flex items-center gap-1 text-slate-500">
+                <ArrowLeft size={13} /> Kho Công Cụ AI
+              </Link>
+              <span>/</span>
+              <span className="text-slate-600 dark:text-slate-300">Chiến Lược Cạnh Tranh</span>
+            </div>
+
+            {/* Title Row: Centered icon, text & minimal mobile reset button */}
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full sm:rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200/80 dark:border-rose-800/80 flex items-center justify-center text-rose-600 dark:text-rose-400 shadow-xs shrink-0">
+                <Target size={20} className="sm:w-[22px] sm:h-[22px]" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight tracking-tight">
+                    AI Đọc Vị Đối Thủ &amp; Săn &ldquo;Tử Huyệt&rdquo; Tìm USP
+                  </h1>
+                  {/* Minimal icon-only reset button: ONLY ON MOBILE */}
+                  <button
+                    type="button"
+                    onClick={handleResetForm}
+                    className="md:hidden w-7 h-7 rounded-full bg-slate-100/80 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 flex items-center justify-center text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-all cursor-pointer shadow-2xs active:scale-90 shrink-0"
+                    title="Xóa Form / Đặt lại"
+                    aria-label="Xóa Form"
+                  >
+                    <RotateCcw size={13} />
+                  </button>
+                  <span className="hidden md:inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 shadow-xs uppercase tracking-wider shrink-0">
+                    <Crown size={11} className="text-amber-600 dark:text-amber-400" />
+                    VIP TOOL
+                  </span>
+                </div>
+                <p className="hidden sm:block text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
+                  Bóc tách review 1-3 sao cay đắng của đối thủ, tìm vũ khí USP độc quyền và kịch bản video dìm hàng văn minh nâng tầm sản phẩm của bạn.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Action Buttons (Desktop ONLY) */}
+          <div className="hidden md:flex items-center gap-2 shrink-0">
+            <AiUsageBadge tool="competitor-miner" refreshTrigger={refreshTrigger} />
+            <button
+              type="button"
+              onClick={handleUseSample}
+              className="px-2.5 sm:px-3 py-2 rounded-xl border border-rose-200 dark:border-rose-900/60 bg-rose-50/50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 text-xs font-bold hover:bg-rose-100/50 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0 active:scale-95"
+            >
+              <Sparkles size={14} /> Dữ Liệu Mẫu
+            </button>
+            <button
+              type="button"
+              onClick={handleResetForm}
+              className="px-2.5 sm:px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95"
+            >
+              <RotateCcw size={14} /> Xóa Form
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Bố cục Form & Kết quả (Cuộn độc lập) */}
+      {/* Mobile Tab Switcher */}
+      <MobileToolTabs
+        activeTab={mobileTab}
+        onChangeTab={setMobileTab}
+        hasResult={Boolean(result)}
+        loading={loading}
+        resultLabel="Vũ Khí & USP"
+      />
+
+      {/* Bố cục Form & Kết quả (Cuộn độc lập trên Desktop, Chuyển tab trên Mobile) */}
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:overflow-hidden items-stretch">
         {/* Cột trái: Form nhập liệu */}
-        <div className="lg:col-span-5 flex flex-col min-h-0 lg:h-full lg:overflow-hidden">
-          <div className="h-full overflow-y-auto custom-scrollbar space-y-4 lg:pr-1.5 pb-2">
+        <div className={`${mobileTab === "form" ? "flex" : "hidden lg:flex"} lg:col-span-5 flex-col min-h-0 lg:h-full lg:overflow-hidden`}>
+          <div className="h-full overflow-y-auto custom-scrollbar space-y-4 lg:pr-1.5 pb-24 lg:pb-2">
             <div className="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-5">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Dữ Liệu Đối Thủ & Sản Phẩm
-                </span>
+                <div className="flex items-center gap-2">
+                  <div className="p-1 rounded-lg bg-rose-500/10 text-rose-600 dark:text-rose-400">
+                    <Target size={15} />
+                  </div>
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                    Dữ Liệu Đối Thủ &amp; Sản Phẩm
+                  </h2>
+                </div>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={handleUseSample}
-                    className="text-xs text-rose-600 hover:text-rose-700 font-semibold cursor-pointer"
+                    className="text-xs text-rose-600 dark:text-rose-400 hover:underline font-semibold cursor-pointer"
                   >
                     Dữ liệu mẫu
                   </button>
-                  <span className="text-slate-300">|</span>
+                  <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">|</span>
                   <button
                     type="button"
                     onClick={handleResetForm}
-                    className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1 cursor-pointer"
+                    className="hidden sm:flex text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 items-center gap-1 cursor-pointer"
                   >
                     <RotateCcw size={12} /> Làm mới
                   </button>
@@ -315,7 +387,7 @@ export default function CompetitorMinerPage() {
         </div>
 
         {/* Cột phải: Kết quả trực quan */}
-        <div className="lg:col-span-7 flex flex-col min-h-0 lg:h-full lg:overflow-hidden">
+        <div className={`${mobileTab === "result" ? "flex" : "hidden lg:flex"} lg:col-span-7 flex-col min-h-0 lg:h-full lg:overflow-hidden`}>
           <CompetitorMinerOutput
             result={result}
             loading={loading}

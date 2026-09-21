@@ -21,6 +21,9 @@ import {
   MessageSquareCheck,
   User,
   Lightbulb,
+  LayoutList,
+  FileText,
+  Layers,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { TextShimmerWave } from "@/components/loading-ui/text-shimmer-wave";
@@ -391,78 +394,86 @@ export function ObjectionKillerOutput({
         </div>
       )}
 
-      {/* Header thanh công cụ tối giản */}
-      <div className="px-4 py-2.5 border-b border-slate-800 flex items-center justify-between gap-2.5 relative z-10 bg-slate-900/95 backdrop-blur-md shrink-0">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 shrink-0">
-            <MessageSquareCheck size={15} />
+      {/* Header thanh công cụ tối giản - Cố định 1 hàng ngang */}
+      <div className="px-3 sm:px-4 py-2 sm:py-2.5 border-b border-slate-800 flex items-center justify-between gap-1.5 sm:gap-2 relative z-10 bg-slate-900/95 backdrop-blur-md shrink-0 flex-nowrap">
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 shrink">
+          <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 shrink-0 shadow-2xs">
+            <MessageSquareCheck size={13} className="sm:w-[15px] sm:h-[15px]" />
           </div>
-          <div className="min-w-0">
-            <h2 className="font-bold text-white text-xs sm:text-sm truncate">
-              Kịch Bản Bẻ Gãy Từ Chối &amp; Trợ Lý Chốt Đơn 1-1
-            </h2>
-          </div>
+          <h2 className="font-bold text-white text-xs sm:text-sm truncate">
+            Kịch Bản Bẻ Gãy Từ Chối
+          </h2>
         </div>
 
-        {/* Nút hành động */}
+        {/* Nút hành động - Cố định 1 hàng ngang */}
         {result && !loading && (
-          <div className="flex items-center gap-1.5 shrink-0">
-            <div className="bg-slate-800/80 p-0.5 rounded-lg border border-slate-700/60 flex items-center">
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 flex-nowrap">
+            {/* Chế độ xem: Trực quan vs Gốc */}
+            <div className="bg-slate-800/80 p-0.5 rounded-lg border border-slate-700/60 flex items-center shrink-0">
               <button
                 type="button"
                 onClick={() => setViewMode("interactive")}
-                className={`px-2 py-0.5 rounded text-[11px] font-semibold transition cursor-pointer ${
+                title="Dạng giao diện trực quan"
+                className={`p-1 sm:px-2 sm:py-1 rounded text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
                   viewMode === "interactive"
                     ? "bg-emerald-600 text-white shadow-xs"
                     : "text-slate-400 hover:text-white"
                 }`}
               >
-                Mô phỏng chat
+                <LayoutList size={12} className="sm:w-[13px] sm:h-[13px]" />
+                <span className="hidden md:inline">Trực quan</span>
               </button>
               <button
                 type="button"
                 onClick={() => setViewMode("raw")}
-                className={`px-2 py-0.5 rounded text-[11px] font-semibold transition cursor-pointer ${
+                title="Dạng văn bản gốc"
+                className={`p-1 sm:px-2 sm:py-1 rounded text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
                   viewMode === "raw"
                     ? "bg-emerald-600 text-white shadow-xs"
                     : "text-slate-400 hover:text-white"
                 }`}
               >
-                Gốc
+                <FileText size={12} className="sm:w-[13px] sm:h-[13px]" />
+                <span className="hidden md:inline">Gốc</span>
               </button>
             </div>
 
+            {/* Xuất Excel */}
             <button
               type="button"
               onClick={handleExportExcel}
-              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-emerald-400 border border-slate-700 transition cursor-pointer flex items-center gap-1"
-              title="Xuất file Excel (.xlsx)"
+              title="Xuất kịch bản ra file Excel (.xlsx)"
+              className="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 text-[11px] sm:text-xs font-bold px-1.5 sm:px-2.5 py-1 sm:py-1.5 rounded-lg transition-all flex items-center gap-1 cursor-pointer active:scale-95 shadow-xs shrink-0"
             >
-              <FileSpreadsheet size={14} className="text-emerald-400" />
-              <span className="hidden xl:inline text-[11px] font-medium">Excel</span>
+              <FileSpreadsheet size={12} className="text-emerald-400 sm:w-[13px] sm:h-[13px]" />
+              <span className="hidden xs:inline">Excel</span>
             </button>
 
+            {/* Nút Tải file .txt: chỉ hiện trên màn hình lớn */}
             <button
               type="button"
               onClick={handleDownloadTxt}
-              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer"
-              title="Tải file .txt"
+              title="Tải tệp kịch bản .txt"
+              className="hidden sm:flex p-1 sm:p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg border border-slate-700 transition-colors cursor-pointer shrink-0"
             >
-              <Download size={13} />
+              <Download size={12} className="sm:w-3.5 sm:h-3.5" />
             </button>
 
+            {/* Nút Sao chép tất cả */}
             <button
               type="button"
               onClick={() => handleCopy(result, "all", "Đã sao chép toàn bộ kịch bản chốt đơn!")}
-              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition flex items-center gap-1 cursor-pointer shadow-xs"
+              className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-[11px] sm:text-xs font-bold px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg transition-all shadow-md shadow-emerald-950/40 flex items-center gap-1 cursor-pointer active:scale-95 shrink-0"
             >
               {copiedKey === "all" ? (
                 <>
-                  <Check size={12} className="stroke-[3]" /> Đã chép
+                  <Check size={12} className="stroke-[3]" />
+                  <span>Đã chép</span>
                 </>
               ) : (
                 <>
-                  <Copy size={12} /> Sao chép tất cả
+                  <Copy size={12} />
+                  <span>Chép hết</span>
                 </>
               )}
             </button>
@@ -470,73 +481,74 @@ export function ObjectionKillerOutput({
         )}
       </div>
 
-      {/* Tabs Phân Đoạn Tinh Tế */}
+      {/* Tabs Phân Loại Danh Mục Đầu Ra (Pinned Sub-Tabs) - Cố định bên dưới toolbar */}
       {result && viewMode === "interactive" && !loading && (
-        <div className="px-3.5 py-1.5 border-b border-slate-800/80 bg-slate-900/60 flex items-center gap-1 overflow-x-auto custom-scrollbar relative z-10 shrink-0">
+        <div className="px-2.5 sm:px-4 py-1.5 sm:py-2 border-b border-slate-800 bg-slate-950/70 flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar sm:custom-scrollbar shrink-0 relative z-10">
           <button
             type="button"
             onClick={() => setActiveTab("all")}
-            className={`px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer whitespace-nowrap shrink-0 ${
+            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95 ${
               activeTab === "all"
-                ? "bg-slate-800 text-emerald-400 border border-emerald-500/30"
+                ? "bg-slate-800 text-emerald-300 border border-emerald-500/40 shadow-xs"
                 : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            Tất cả
+            <Layers size={12} className="sm:w-[13px] sm:h-[13px]" />
+            <span>Tất Cả</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("psychology")}
-            className={`px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95 ${
               activeTab === "psychology"
-                ? "bg-slate-800 text-purple-400 border border-purple-500/30"
-                : "text-slate-400 hover:text-purple-300"
+                ? "bg-slate-800 text-emerald-300 border border-emerald-500/40 shadow-xs"
+                : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            <Brain size={12} />
-            <span>Giải mã tâm lý</span>
+            <Brain size={12} className="sm:w-[13px] sm:h-[13px]" />
+            <span>1. Tâm Lý</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("options")}
-            className={`px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95 ${
               activeTab === "options"
-                ? "bg-slate-800 text-emerald-400 border border-emerald-500/30"
-                : "text-slate-400 hover:text-emerald-300"
+                ? "bg-slate-800 text-emerald-300 border border-emerald-500/40 shadow-xs"
+                : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            <MessageSquare size={12} />
-            <span>3 Phương án phản hồi (3)</span>
+            <MessageSquare size={12} className="sm:w-[13px] sm:h-[13px]" />
+            <span>2. Ba Kịch Bản ({parsed?.responseOptions.length || 3})</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("questions")}
-            className={`px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95 ${
               activeTab === "questions"
-                ? "bg-slate-800 text-blue-400 border border-blue-500/30"
-                : "text-slate-400 hover:text-blue-300"
+                ? "bg-slate-800 text-emerald-300 border border-emerald-500/40 shadow-xs"
+                : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            <Send size={12} />
-            <span>Câu hỏi mở chốt đơn ({parsed?.openQuestions.length || 2})</span>
+            <Send size={12} className="sm:w-[13px] sm:h-[13px]" />
+            <span>3. Câu Hỏi Mở ({parsed?.openQuestions.length || 2})</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("rules")}
-            className={`px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
+            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95 ${
               activeTab === "rules"
-                ? "bg-slate-800 text-amber-400 border border-amber-500/30"
-                : "text-slate-400 hover:text-amber-300"
+                ? "bg-slate-800 text-emerald-300 border border-emerald-500/40 shadow-xs"
+                : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            <Clock size={12} />
-            <span>Nguyên tắc trực chat</span>
+            <Clock size={12} className="sm:w-[13px] sm:h-[13px]" />
+            <span>4. Nguyên Tắc</span>
           </button>
         </div>
       )}
 
       {/* Vùng hiển thị kết quả (cuộn nội bộ) */}
-      <div className="flex-1 min-h-0 p-3.5 sm:p-4 overflow-y-auto custom-scrollbar relative z-10">
+      <div className="flex-1 min-h-0 p-3 sm:p-4 pb-24 lg:pb-4 overflow-y-auto custom-scrollbar relative z-10">
         {loading ? (
           <div className="h-full min-h-[360px] flex flex-col items-center justify-center text-center p-6 space-y-3">
             <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-emerald-400">
@@ -574,7 +586,7 @@ export function ObjectionKillerOutput({
             ) : (
               <div className="space-y-4">
                 {/* ========================================================================= */}
-                {/* 1. GIẢI MÃ TÂM LÝ ẨN SAU LỜI TỪ CHỐI                                      */}
+                {/* 1. GIẢI MÃ TÂM LÝ KHÁCH HÀNG                                              */}
                 {/* ========================================================================= */}
                 {(activeTab === "all" || activeTab === "psychology") && (parsed.psychology.realFear || parsed.psychology.staffMistake) && (
                   <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3.5 space-y-3">
@@ -582,12 +594,9 @@ export function ObjectionKillerOutput({
                       <div className="flex items-center gap-2">
                         <Brain size={14} className="text-purple-400" />
                         <h3 className="font-bold text-white text-xs sm:text-sm uppercase tracking-wider">
-                          1. Giải Mã Tâm Lý Ẩn Sau Lời Từ Chối
+                          1. Giải Mã Tâm Lý Khách Hàng
                         </h3>
                       </div>
-                      <span className="text-[11px] text-purple-400 font-medium">
-                        Đọc vị khách hàng
-                      </span>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -596,7 +605,7 @@ export function ObjectionKillerOutput({
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
                               <AlertCircle size={13} className="text-amber-400 shrink-0" />
-                              Nỗi sợ thực sự của khách:
+                              Nỗi sợ của khách:
                             </span>
                             <button
                               type="button"
@@ -618,7 +627,7 @@ export function ObjectionKillerOutput({
                           <div className="flex items-center justify-between">
                             <span className="text-xs font-bold text-rose-300 flex items-center gap-1.5">
                               <XCircle size={13} className="text-rose-400 shrink-0" />
-                              Sai lầm nhân viên thường mắc:
+                              Sai lầm cần tránh:
                             </span>
                             <button
                               type="button"
@@ -639,7 +648,7 @@ export function ObjectionKillerOutput({
                 )}
 
                 {/* ========================================================================= */}
-                {/* 2. BA PHƯƠNG ÁN PHẢN HỒI BẺ GÃY TỪ CHỐI TỨC THÌ                           */}
+                {/* 2. BA PHƯƠNG ÁN PHẢN HỒI                                                   */}
                 {/* ========================================================================= */}
                 {(activeTab === "all" || activeTab === "options") && parsed.responseOptions.length > 0 && (
                   <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3.5 space-y-3">
@@ -647,16 +656,16 @@ export function ObjectionKillerOutput({
                       <div className="flex items-center gap-2">
                         <MessageSquare size={14} className="text-emerald-400" />
                         <h3 className="font-bold text-white text-xs sm:text-sm uppercase tracking-wider">
-                          2. Ba Phương Án Phản Hồi Bẻ Gãy Từ Chối Tức Thì
+                          2. Ba Phương Án Phản Hồi
                         </h3>
                       </div>
                       <button
                         type="button"
                         onClick={handleCopyAllOptions}
-                        className="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 transition flex items-center gap-1 cursor-pointer"
+                        className="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 transition flex items-center gap-1 cursor-pointer shrink-0"
                       >
                         {copiedKey === "options_all" ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
-                        <span>Sao chép 3 phương án</span>
+                        <span>Sao chép</span>
                       </button>
                     </div>
 
@@ -668,7 +677,7 @@ export function ObjectionKillerOutput({
                         return (
                           <div
                             key={opt.index}
-                            className={`bg-slate-900/80 rounded-xl border ${theme.border} p-3.5 space-y-3 transition-all`}
+                            className={`bg-slate-900/80 rounded-xl border ${theme.border} p-3.5 space-y-2.5 transition-all`}
                           >
                             {/* Tiêu đề & Nhãn phương án */}
                             <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -687,49 +696,43 @@ export function ObjectionKillerOutput({
                               <button
                                 type="button"
                                 onClick={() => handleCopy(opt.message, `opt_${opt.index}`, `Đã chép ${opt.title}!`)}
-                                className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 transition flex items-center gap-1 cursor-pointer shadow-xs"
+                                className="px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 transition flex items-center gap-1 cursor-pointer shadow-xs shrink-0"
                               >
                                 {copiedKey === `opt_${opt.index}` ? (
                                   <>
-                                    <Check size={12} className="stroke-[3] text-emerald-400" /> Đã chép
+                                    <Check size={12} className="stroke-[3] text-emerald-400" /> <span>Đã chép</span>
                                   </>
                                 ) : (
                                   <>
-                                    <Copy size={12} /> Sao chép tin nhắn
+                                    <Copy size={12} /> <span>Sao chép</span>
                                   </>
                                 )}
                               </button>
                             </div>
 
-                            {/* Bong bóng chat mô phỏng */}
-                            <div className="space-y-1.5">
-                              <div className="flex items-center justify-between text-[11px] text-slate-400">
-                                <span className="flex items-center gap-1.5 font-medium">
-                                  <User size={12} className="text-emerald-400" />
-                                  Tin nhắn gửi trực tiếp khách hàng:
-                                </span>
-                                <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-slate-800/60 text-slate-400 border border-slate-800">
-                                  {opt.charCount} ký tự • Chuẩn sàn
-                                </span>
-                              </div>
-
-                              <div
-                                onClick={() => handleCopy(opt.message, `opt_${opt.index}`, `Đã chép ${opt.title}!`)}
-                                className={`p-3.5 rounded-xl border text-xs text-slate-200 leading-relaxed break-words select-text cursor-pointer hover:bg-slate-950/80 transition relative group ${theme.bubbleBg}`}
-                                title="Bấm để sao chép nhanh"
-                              >
-                                {opt.message}
-                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition text-[10px] text-slate-400 bg-slate-900/90 px-1.5 py-0.5 rounded border border-slate-700 pointer-events-none">
-                                  Bấm để copy
-                                </div>
-                              </div>
+                            {/* Bong bóng tin nhắn */}
+                            <div
+                              onClick={() => handleCopy(opt.message, `opt_${opt.index}`, `Đã chép ${opt.title}!`)}
+                              className={`p-3 rounded-xl border text-xs sm:text-sm text-slate-100 leading-relaxed break-words select-text cursor-pointer hover:bg-slate-950/80 transition ${theme.bubbleBg}`}
+                              title="Bấm để sao chép nhanh"
+                            >
+                              {opt.message}
                             </div>
 
-                            {/* Thời điểm áp dụng */}
-                            {opt.timing && (
-                              <div className="text-[11px] text-slate-400 bg-slate-950/40 px-3 py-1.5 rounded-lg border border-slate-800/60 flex items-center gap-1.5">
-                                <Clock size={12} className="text-amber-400 shrink-0" />
-                                <span><b>Thời điểm áp dụng:</b> {opt.timing}</span>
+                            {/* Thông tin phụ trợ: Thời điểm áp dụng & Ký tự */}
+                            {(opt.timing || opt.charCount > 0) && (
+                              <div className="flex items-center justify-between gap-2 flex-wrap text-[11px]">
+                                {opt.timing ? (
+                                  <div className="text-slate-400 bg-slate-950/40 px-2.5 py-1 rounded-lg border border-slate-800/60 flex items-center gap-1.5">
+                                    <Clock size={11} className="text-amber-400 shrink-0" />
+                                    <span className="text-slate-300"><b>Áp dụng:</b> {opt.timing}</span>
+                                  </div>
+                                ) : <div />}
+                                {opt.charCount > 0 && (
+                                  <span className="font-mono text-[10px] text-slate-500 ml-auto">
+                                    {opt.charCount} ký tự
+                                  </span>
+                                )}
                               </div>
                             )}
                           </div>
@@ -740,7 +743,7 @@ export function ObjectionKillerOutput({
                 )}
 
                 {/* ========================================================================= */}
-                {/* 3. KỸ THUẬT "CÂU HỎI MỞ" BUỘC KHÁCH PHẢI TRẢ LỜI                          */}
+                {/* 3. CÂU HỎI MỞ CHỐT ĐƠN                                                    */}
                 {/* ========================================================================= */}
                 {(activeTab === "all" || activeTab === "questions") && parsed.openQuestions.length > 0 && (
                   <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3.5 space-y-3">
@@ -748,12 +751,9 @@ export function ObjectionKillerOutput({
                       <div className="flex items-center gap-2">
                         <Send size={14} className="text-blue-400" />
                         <h3 className="font-bold text-white text-xs sm:text-sm uppercase tracking-wider">
-                          3. Kỹ Thuật &ldquo;Câu Hỏi Mở&rdquo; Buộc Khách Phải Trả Lời
+                          3. Câu Hỏi Mở Chốt Đơn
                         </h3>
                       </div>
-                      <span className="text-[11px] text-blue-400 font-medium">
-                        Chống khách im lặng rời đi
-                      </span>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -801,7 +801,7 @@ export function ObjectionKillerOutput({
                 )}
 
                 {/* ========================================================================= */}
-                {/* 4. NGUYÊN TẮC VÀNG KHI TRỰC CHAT SÀN                                     */}
+                {/* 4. NGUYÊN TẮC TRỰC CHAT SÀN                                              */}
                 {/* ========================================================================= */}
                 {(activeTab === "all" || activeTab === "rules") && parsed.goldenRules.length > 0 && (
                   <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3.5 space-y-3">
@@ -809,46 +809,42 @@ export function ObjectionKillerOutput({
                       <div className="flex items-center gap-2">
                         <Clock size={14} className="text-amber-400" />
                         <h3 className="font-bold text-white text-xs sm:text-sm uppercase tracking-wider">
-                          4. Nguyên Tắc Vàng Khi Trực Chat Sàn
+                          4. Nguyên Tắc Trực Chat Sàn
                         </h3>
                       </div>
-                      <span className="text-[11px] text-amber-400 font-medium">
-                        Tăng tỷ lệ chốt đơn (CR) 15% ➔ 40%
-                      </span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                       {parsed.goldenRules.map((rule, idx) => (
                         <div
                           key={idx}
-                          className="bg-slate-900/70 rounded-xl border border-slate-800/80 p-3 space-y-1.5 hover:border-amber-500/30 transition-all flex flex-col justify-between"
+                          className="bg-slate-900/70 rounded-xl border border-slate-800/80 p-3 space-y-2 hover:border-amber-500/30 transition-all flex flex-col justify-between"
                         >
                           <div className="space-y-1.5">
-                            <span className="text-xs font-bold text-amber-300 flex items-center gap-1">
-                              <Lightbulb size={13} className="text-amber-400 shrink-0" />
-                              {rule.title}
-                            </span>
+                            <div className="flex items-center justify-between gap-1.5">
+                              <span className="text-xs font-bold text-amber-300 flex items-center gap-1 min-w-0 truncate">
+                                <Lightbulb size={13} className="text-amber-400 shrink-0" />
+                                <span className="truncate">{rule.title}</span>
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => handleCopy(`${rule.title}: ${rule.content}`, `rule-${idx}`, `Đã chép ${rule.title}!`)}
+                                className="text-[11px] text-slate-400 hover:text-amber-300 flex items-center gap-1 transition cursor-pointer font-medium shrink-0"
+                              >
+                                {copiedKey === `rule-${idx}` ? (
+                                  <>
+                                    <Check size={11} className="text-emerald-400" /> Đã chép
+                                  </>
+                                ) : (
+                                  <>
+                                    <Copy size={11} /> Sao chép
+                                  </>
+                                )}
+                              </button>
+                            </div>
                             <p className="text-xs text-slate-300 leading-relaxed break-words select-text">
                               {rule.content}
                             </p>
-                          </div>
-
-                          <div className="pt-2 mt-1 border-t border-slate-800/60 flex justify-end">
-                            <button
-                              type="button"
-                              onClick={() => handleCopy(`${rule.title}: ${rule.content}`, `rule-${idx}`, `Đã chép ${rule.title}!`)}
-                              className="text-[11px] text-slate-400 hover:text-amber-300 flex items-center gap-1 transition cursor-pointer font-medium"
-                            >
-                              {copiedKey === `rule-${idx}` ? (
-                                <>
-                                  <Check size={11} className="text-emerald-400" /> Đã chép
-                                </>
-                              ) : (
-                                <>
-                                  <Copy size={11} /> Chép nguyên tắc
-                                </>
-                              )}
-                            </button>
                           </div>
                         </div>
                       ))}

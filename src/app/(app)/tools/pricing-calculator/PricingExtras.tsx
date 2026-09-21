@@ -111,7 +111,7 @@ export function CalculationSummary({ evaluation }: { evaluation: PriceEvaluation
     >
       <div className="absolute -right-10 -bottom-10 w-40 h-40 bg-white/10 rounded-full blur-2xl pointer-events-none" />
       <h2 className="font-black text-base relative z-10">Tóm tắt dòng tiền định giá</h2>
-      <div className="mt-4 grid grid-cols-2 gap-4 sm:grid-cols-4 relative z-10">
+      <div className="mt-4 grid grid-cols-2 gap-3 sm:gap-4 relative z-10">
         <SummaryValue label="Tổng chi phí" value={money(totalCost)} />
         <SummaryValue label="Giá niêm yết" value={money(evaluation.listPrice)} />
         <SummaryValue label="Lãi đơn thành công" value={money(evaluation.profitOnSuccess)} />
@@ -123,9 +123,9 @@ export function CalculationSummary({ evaluation }: { evaluation: PriceEvaluation
 
 function SummaryValue({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <p className="text-xs text-white/80 font-medium">{label}</p>
-      <p className="mt-1 font-mono text-lg sm:text-xl font-black text-white">{value}</p>
+    <div className="min-w-0">
+      <p className="text-[11px] sm:text-xs text-white/80 font-medium truncate">{label}</p>
+      <p className="mt-1 font-mono text-sm sm:text-lg font-black text-white break-words">{value}</p>
     </div>
   );
 }

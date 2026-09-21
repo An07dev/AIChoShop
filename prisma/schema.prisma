@@ -248,17 +248,23 @@ model SystemSetting {
 }
 
 model AiUsageLog {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tool      String // slug: e.g. "seo-optimizer", "script-writer"
-  toolName  String // e.g. "AI Tối Ưu SEO", "AI Kịch Bản Video"
-  action    String // Tóm tắt hành động
-  input     String?  @db.Text // Tóm tắt hoặc JSON input
-  output    String?  @db.Text // Nội dung đã sinh ra
-  createdAt DateTime @default(now())
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tool             String // slug: e.g. "seo-optimizer", "script-writer"
+  toolName         String // e.g. "AI Tối Ưu SEO", "AI Kịch Bản Video"
+  action           String // Tóm tắt hành động
+  input            String?  @db.Text // Tóm tắt hoặc JSON input
+  output           String?  @db.Text // Nội dung đã sinh ra
+  model            String?  @default("gpt-4o-mini")
+  promptTokens     Int      @default(0)
+  completionTokens Int      @default(0)
+  totalTokens      Int      @default(0)
+  costUsd          Float    @default(0)
+  createdAt        DateTime @default(now())
 
   @@index([userId, createdAt])
+  @@index([tool, createdAt])
 }
 
 model SeoUsage {

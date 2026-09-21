@@ -11,11 +11,13 @@ import {
   Hash,
   Clock,
   Send,
+  Megaphone,
 } from "lucide-react";
 import { useToolGate } from "@/hooks/useToolGate";
 import { AuthModal } from "@/components/auth/AuthModal";
 import { SeoOptimizerOutput } from "@/components/tools/SeoOptimizerOutput";
 import { AiUsageBadge } from "@/components/tools/AiUsageBadge";
+import { MobileToolTabs } from "@/components/tools/MobileToolTabs";
 import { useToast } from "@/context/ToastContext";
 import {
   SEO_LIMITS,
@@ -23,6 +25,7 @@ import {
   parseSeoResult,
   validateSeoInputs,
   type SeoInputs,
+  type SeoResult,
   type SeoSnapshot,
 } from "@/lib/seo/contract";
 
@@ -48,6 +51,50 @@ const SAMPLE_DATA: SeoInputs = {
   policies: "Hỗ trợ đổi trả miễn phí trong 7 ngày nếu không vừa size, được kiểm tra hàng trước khi thanh toán",
 };
 
+const SAMPLE_OUTPUT: SeoResult = {
+  titles: [
+    "Áo polo nam ngắn tay cổ bẻ vải cá sấu gai cao cấp cotton 100% co giãn 4 chiều",
+    "Áo polo nam công sở lịch lãm chất cá sấu gai tổ ong thấm hút mồ hôi bo cổ bền đẹp",
+    "Áo thun có cổ nam basic phong cách trẻ trung năng động vải cá sấu không bai dão",
+    "Áo phông nam cổ bẻ cao cấp form chuẩn size M đến XXL tôn dáng nam tính",
+    "Áo polo nam ngắn tay vải cotton cá sấu gai co giãn 4 chiều mềm mát chính hãng",
+  ],
+  descriptions: [
+    {
+      title: "✨ ĐIỂM NHẤN ĐẶC QUYỀN (USP)",
+      content:
+        "Chất liệu cotton cá sấu gai tổ ong 100% tự nhiên, co giãn 4 chiều linh hoạt, thấm hút mồ hôi vượt trội giữ cơ thể luôn khô thoáng suốt ngày dài. Bo cổ dệt nguyên khối cao cấp không bai dão hay mất form sau nhiều lần giặt máy.",
+    },
+    {
+      title: "💎 THIẾT KẾ & TÍNH NĂNG NỔI BẬT",
+      content:
+        "Form áo Regular Fit tôn dáng hiện đại, đường may tỉ mỉ 4 kim sắc nét. Phù hợp cả khi đi làm văn phòng, gặp gỡ đối tác hay đi chơi, dạo phố cuối tuần.",
+    },
+    {
+      title: "📏 BẢNG QUY ĐỔI KÍCH CỠ CHUẨN",
+      content:
+        "• Size M: 50 - 60kg (1m60 - 1m68)\n• Size L: 60 - 70kg (1m68 - 1m75)\n• Size XL: 70 - 80kg (1m75 - 1m80)\n• Size XXL: 80 - 90kg (1m80 - 1m85)",
+    },
+    {
+      title: "🛡️ CHÍNH SÁCH BÁN HÀNG & BẢO HÀNH",
+      content:
+        "Hỗ trợ đổi trả miễn phí trong 7 ngày nếu không vừa size hoặc lỗi từ nhà sản xuất. Khách hàng được đồng kiểm tra hàng trước khi nhận.",
+    },
+  ],
+  hashtags: [
+    "#aopolonam",
+    "#aothuncoco",
+    "#aophongnam",
+    "#aopolocasau",
+    "#aopolobasic",
+    "#thoitrangnam",
+    "#aopolocongso",
+    "#aonamngantay",
+    "#aocobe",
+    "#aopolocaocap",
+  ],
+};
+
 const USP_TAGS = [
   "Chất liệu cotton",
   "Co giãn 4 chiều",
@@ -69,6 +116,7 @@ export default function SeoOptimizerPage() {
   const [loginOpen, setLoginOpen] = useState(false);
   const [remaining, setRemaining] = useState<number | null | undefined>();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [mobileTab, setMobileTab] = useState<"form" | "result">("form");
 
   const [userQuota, setUserQuota] = useState<{
     isLogged: boolean;
@@ -95,6 +143,11 @@ export default function SeoOptimizerPage() {
 
   const handleUseSample = () => {
     setInputs({ ...SAMPLE_DATA });
+    setSnapshot({
+      inputs: { ...SAMPLE_DATA },
+      output: SAMPLE_OUTPUT,
+    });
+    setMobileTab("result");
   };
 
   const handleResetForm = () => {
@@ -131,6 +184,7 @@ export default function SeoOptimizerPage() {
     }
 
     setLoading(true);
+    setMobileTab("result");
 
     try {
       const res = await fetch("/api/ai", {
@@ -183,58 +237,109 @@ export default function SeoOptimizerPage() {
   };
 
   return (
-    <div className="max-w-7xl w-full mx-auto flex-1 flex flex-col min-h-0 h-full lg:overflow-hidden">
+    <div className="max-w-7xl w-full mx-auto flex-1 flex flex-col min-h-0 lg:h-full lg:overflow-hidden">
       {/* Modals chặn quyền & đăng nhập */}
       <GateModals />
       <AuthModal isOpen={loginOpen} onClose={() => setLoginOpen(false)} initialTab="login" />
 
       {/* Header & Breadcrumb */}
-      <div className="shrink-0 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
-            <Link href="/tools" className="hover:text-emerald-600 transition-colors flex items-center gap-1">
-              <ArrowLeft size={12} /> Kho Công Cụ AI
-            </Link>
-            <span>/</span>
-            <span className="text-slate-600 dark:text-slate-300">Tối Ưu SEO & Đăng Bán</span>
-          </div>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white flex flex-wrap items-center gap-2">
-            AI Tối Ưu SEO Sản Phẩm
-            <span className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shadow-xs uppercase tracking-wider">
-              <Sparkles size={11} className="text-emerald-600 dark:text-emerald-400" />
-              FREE TOOL
+      <div className="shrink-0 pb-3 space-y-2 sm:space-y-3">
+        {/* Mobile top bar: Breadcrumb + FREE badge + Lịch sử */}
+        <div className="flex items-center justify-between gap-2 md:hidden">
+          <Link
+            href="/tools"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-brand transition-colors"
+          >
+            <ArrowLeft size={13} /> Kho công cụ AI
+          </Link>
+          <div className="flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shadow-2xs uppercase tracking-wider">
+              <Sparkles size={10} className="text-emerald-600 dark:text-emerald-400" />
+              FREE
             </span>
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Tạo 5 biến thể tiêu đề giật tít chuẩn thuật toán, dàn ý mô tả kích thích mua hàng và bộ 10 hashtag đẩy xu hướng.
-          </p>
+            <AiUsageBadge tool="seo-optimizer" refreshTrigger={refreshTrigger} historyOnly />
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <AiUsageBadge tool="seo-optimizer" refreshTrigger={refreshTrigger} />
-          <button
-            type="button"
-            onClick={handleUseSample}
-            className="px-3 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold hover:bg-emerald-100/50 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
-          >
-            <Sparkles size={14} /> Dữ Liệu Mẫu
-          </button>
-          <button
-            type="button"
-            onClick={handleResetForm}
-            className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
-          >
-            <RotateCcw size={14} /> Xóa Form
-          </button>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+          <div>
+            {/* Desktop Breadcrumb */}
+            <div className="hidden md:flex items-center gap-2 text-xs font-semibold text-slate-400 mb-2">
+              <Link href="/tools" className="hover:text-emerald-600 transition-colors flex items-center gap-1 text-slate-500">
+                <ArrowLeft size={13} /> Kho Công Cụ AI
+              </Link>
+              <span>/</span>
+              <span className="text-slate-600 dark:text-slate-300">Tối Ưu SEO &amp; Đăng Bán</span>
+            </div>
+
+            {/* Title Row: Centered icon, text & minimal mobile reset button */}
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-blue-50 dark:bg-blue-950/50 border border-blue-200 dark:border-blue-800/80 flex items-center justify-center text-blue-600 dark:text-blue-400 shadow-xs shrink-0">
+                <Megaphone size={20} className="sm:w-5 sm:h-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
+                    AI Tối Ưu SEO Sản Phẩm
+                  </h1>
+                  {/* Minimal icon-only reset button: ONLY ON MOBILE */}
+                  <button
+                    type="button"
+                    onClick={handleResetForm}
+                    className="md:hidden p-1.5 rounded-xl text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-transparent hover:border-rose-200 dark:hover:border-rose-900/60 transition-all cursor-pointer shadow-2xs active:scale-90"
+                    title="Xóa Form / Đặt lại"
+                    aria-label="Xóa Form"
+                  >
+                    <RotateCcw size={15} />
+                  </button>
+                  <span className="hidden md:inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shadow-xs uppercase tracking-wider shrink-0">
+                    <Sparkles size={11} className="text-emerald-600 dark:text-emerald-400" />
+                    FREE TOOL
+                  </span>
+                </div>
+                <p className="hidden sm:block text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
+                  Tạo 5 biến thể tiêu đề giật tít chuẩn thuật toán, dàn ý mô tả kích thích mua hàng và bộ 10 hashtag đẩy xu hướng.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Action Buttons (Desktop ONLY - Preserved exactly as original) */}
+          <div className="hidden md:flex items-center gap-2 shrink-0">
+            <AiUsageBadge tool="seo-optimizer" refreshTrigger={refreshTrigger} />
+            <button
+              type="button"
+              onClick={handleUseSample}
+              className="px-2.5 sm:px-3 py-2 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold hover:bg-emerald-100/50 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0 active:scale-95"
+            >
+              <Sparkles size={14} /> Dữ Liệu Mẫu
+            </button>
+            <button
+              type="button"
+              onClick={handleResetForm}
+              className="px-2.5 sm:px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95"
+            >
+              <RotateCcw size={14} /> Xóa Form
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Grid 2 Cột: Cuộn độc lập */}
+      {/* Mobile Tab Switcher */}
+      <MobileToolTabs
+        activeTab={mobileTab}
+        onChangeTab={setMobileTab}
+        hasResult={Boolean(snapshot)}
+        loading={loading}
+        resultLabel="Tiêu Đề & Listing"
+      />
+
+      {/* Grid 2 Cột: Cuộn độc lập trên Desktop, Chuyển tab trên Mobile */}
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:overflow-hidden items-stretch">
-        {/* CỘT TRÁI: FORM NHẬP LIỆU (cuộn độc lập) */}
-        <div className="lg:col-span-5 flex flex-col min-h-0 lg:h-full lg:overflow-hidden">
-          <div className="h-full overflow-y-auto custom-scrollbar space-y-4 lg:pr-1.5 pb-2">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
+        {/* CỘT TRÁI: FORM NHẬP LIỆU */}
+        <div className={`${mobileTab === "form" ? "flex" : "hidden lg:flex"} lg:col-span-5 flex-col min-h-0 lg:h-full lg:overflow-hidden`}>
+          <div className="lg:h-full lg:overflow-y-auto custom-scrollbar space-y-4 lg:pr-1.5 pb-20 lg:pb-2">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 shadow-xs space-y-4">
               {/* 1. SÀN THƯƠNG MẠI ĐIỆN TỬ */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
@@ -471,11 +576,37 @@ export default function SeoOptimizerPage() {
           </div>
         </div>
 
-        {/* CỘT PHẢI: KẾT QUẢ HIỂN THỊ (cuộn độc lập) */}
-        <div className="lg:col-span-7 flex flex-col min-h-0 lg:h-full lg:overflow-hidden">
-          <SeoOptimizerOutput snapshot={snapshot} loading={loading} />
+        {/* CỘT PHẢI: KẾT QUẢ HIỂN THỊ */}
+        <div className={`${mobileTab === "result" ? "flex" : "hidden lg:flex"} lg:col-span-7 flex-col min-h-0 lg:h-full lg:overflow-hidden pb-16 lg:pb-0`}>
+          <SeoOptimizerOutput
+            snapshot={snapshot}
+            loading={loading}
+            onUseSample={handleUseSample}
+          />
         </div>
       </div>
+
+      {/* Mobile Floating Sticky Action Bar (chỉ hiện khi ở tab form trên mobile) */}
+      {mobileTab === "form" && (
+        <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 z-40 lg:hidden shadow-lg">
+          <button
+            type="button"
+            onClick={handleGenerate}
+            disabled={loading}
+            className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 text-white font-bold text-sm shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99]"
+          >
+            {loading ? (
+              <>
+                <Sparkles size={16} className="animate-spin" /> Đang Tối Ưu SEO Chuẩn Sàn...
+              </>
+            ) : (
+              <>
+                <Send size={16} /> Tối Ưu SEO ({inputs.platform === "shopee" ? "Shopee" : "TikTok Shop"})
+              </>
+            )}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

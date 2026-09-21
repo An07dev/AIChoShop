@@ -34,12 +34,17 @@ export default async function AdminLessons() {
     createdAt: l.createdAt ? l.createdAt.toISOString() : new Date().toISOString(),
   }));
   return (
-    <div className="flex-1 flex flex-col min-h-0 gap-4">
-      <CoursesManager courses={courses.map(course => ({ ...course, lessonsCount: course._count.lessons }))} />
+    <div className="flex-1 flex flex-col min-h-0">
       <LessonsManager
         key={courses.map(course => `${course.id}:${course.title}`).join("|")}
         initialLessons={serializedLessons}
         courses={courses}
+        coursesSlot={
+          <CoursesManager
+            key="courses-manager"
+            courses={courses.map(course => ({ ...course, lessonsCount: course._count.lessons }))}
+          />
+        }
       />
     </div>
   );

@@ -19,6 +19,7 @@ import { useToolGate } from "@/hooks/useToolGate";
 import { ObjectionKillerOutput } from "@/components/tools/ObjectionKillerOutput";
 import { useToast } from "@/context/ToastContext";
 import { AiUsageBadge } from "@/components/tools/AiUsageBadge";
+import { MobileToolTabs } from "@/components/tools/MobileToolTabs";
 
 const COMMON_OBJECTIONS = [
   "Giá đắt quá / Shop khác bán rẻ hơn nhiều",
@@ -90,6 +91,7 @@ export default function ObjectionKillerPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [mobileTab, setMobileTab] = useState<"form" | "result">("form");
 
   // Form states
   const [productName, setProductName] = useState("");
@@ -103,6 +105,7 @@ export default function ObjectionKillerPage() {
     setCustomerObjection(SAMPLE_DATA.customerObjection);
     setFlexibleOffer(SAMPLE_DATA.flexibleOffer);
     setResult(SAMPLE_OUTPUT);
+    setMobileTab("result");
   };
 
   const handleResetForm = () => {
@@ -132,6 +135,7 @@ export default function ObjectionKillerPage() {
 
     setLoading(true);
     setResult("");
+    setMobileTab("result");
 
     try {
       const response = await fetch("/api/ai", {
@@ -172,58 +176,126 @@ export default function ObjectionKillerPage() {
       {/* Modals kiểm tra quyền truy cập */}
       <GateModals />
 
-      {/* Header & Breadcrumb */}
-      <div className="shrink-0 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
-            <Link href="/tools" className="hover:text-rose-600 transition-colors flex items-center gap-1">
-              <ArrowLeft size={12} /> Kho Công Cụ AI
-            </Link>
-            <span>/</span>
-            <span className="text-slate-600 dark:text-slate-300">Tư Vấn & Chốt Sale</span>
+      {/* 1. Header Navigation & Quick Actions */}
+      <div className="shrink-0 mb-3 space-y-2">
+        {/* Mobile Top Bar: Breadcrumb + Badges */}
+        <div className="md:hidden flex items-center justify-between pb-1">
+          <Link
+            href="/tools"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-emerald-600 transition-colors"
+          >
+            <ArrowLeft size={13} /> Kho công cụ AI
+          </Link>
+          <div className="flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 shadow-2xs">
+              <Crown size={12} className="text-amber-600 dark:text-amber-400" />
+              VIP
+            </span>
+            <AiUsageBadge tool="objection-killer" refreshTrigger={refreshTrigger} historyOnly />
           </div>
-          <h1 className="text-2xl font-black text-slate-900 dark:text-white flex flex-wrap items-center gap-2 sm:gap-3">
-            <span className="flex items-center gap-2">
-              <MessageSquareCheck className="text-emerald-500" /> Bẻ Gãy Lời Từ Chối & Trợ Lý Chốt Đơn 1-1
-            </span>
-            <span className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 shadow-xs uppercase tracking-wider">
-              <Crown size={11} className="text-amber-600 dark:text-amber-400" />
-              VIP TOOL
-            </span>
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Xử lý mượt mà câu nói &ldquo;đắt quá&rdquo;, &ldquo;suy nghĩ thêm&rdquo; trong tin nhắn chat sàn. Bẻ gãy mọi băn khoăn và chốt khách ngay trong 3 phút.
-          </p>
         </div>
 
-        <div className="flex items-center gap-2">
-          <AiUsageBadge tool="objection-killer" refreshTrigger={refreshTrigger} />
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+          <div>
+            {/* Desktop Breadcrumb */}
+            <div className="hidden md:flex items-center gap-2 text-xs font-semibold text-slate-400 mb-2">
+              <Link href="/tools" className="hover:text-emerald-600 transition-colors flex items-center gap-1 text-slate-500">
+                <ArrowLeft size={13} /> Kho Công Cụ AI
+              </Link>
+              <span>/</span>
+              <span className="text-slate-600 dark:text-slate-300">Tư Vấn &amp; Chốt Sale</span>
+            </div>
+
+            {/* Title Row: Centered icon, text & minimal mobile reset button */}
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full sm:rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200/80 dark:border-emerald-800/80 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-xs shrink-0">
+                <MessageSquareCheck size={20} className="sm:w-[22px] sm:h-[22px]" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight tracking-tight">
+                    Bẻ Gãy Lời Từ Chối &amp; Trợ Lý Chốt Đơn 1-1
+                  </h1>
+                  {/* Minimal icon-only reset button: ONLY ON MOBILE */}
+                  <button
+                    type="button"
+                    onClick={handleResetForm}
+                    className="md:hidden w-7 h-7 rounded-full bg-slate-100/80 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 flex items-center justify-center text-slate-400 hover:text-emerald-600 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-all cursor-pointer shadow-2xs active:scale-90 shrink-0"
+                    title="Xóa Form / Đặt lại"
+                    aria-label="Xóa Form"
+                  >
+                    <RotateCcw size={13} />
+                  </button>
+                  <span className="hidden md:inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 shadow-xs uppercase tracking-wider shrink-0">
+                    <Crown size={11} className="text-amber-600 dark:text-amber-400" />
+                    VIP TOOL
+                  </span>
+                </div>
+                <p className="hidden sm:block text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
+                  Xử lý mượt mà câu nói &ldquo;đắt quá&rdquo;, &ldquo;suy nghĩ thêm&rdquo; trong tin nhắn chat sàn. Bẻ gãy mọi băn khoăn và chốt khách ngay trong 3 phút.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Action Buttons (Desktop ONLY) */}
+          <div className="hidden md:flex items-center gap-2 shrink-0">
+            <AiUsageBadge tool="objection-killer" refreshTrigger={refreshTrigger} />
+            <button
+              type="button"
+              onClick={handleUseSample}
+              className="px-2.5 sm:px-3 py-2 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold hover:bg-emerald-100/50 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0 active:scale-95"
+            >
+              <Sparkles size={14} /> Dữ Liệu Mẫu
+            </button>
+            <button
+              type="button"
+              onClick={handleResetForm}
+              className="px-2.5 sm:px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95"
+            >
+              <RotateCcw size={14} /> Xóa Form
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Mobile Tab Switcher */}
+      <MobileToolTabs
+        activeTab={mobileTab}
+        onChangeTab={setMobileTab}
+        hasResult={Boolean(result)}
+        loading={loading}
+        resultLabel="Kịch Bản Chốt Đơn"
+      />
 
       {/* Bố cục Form & Kết quả (Cuộn độc lập) */}
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:overflow-hidden items-stretch">
         {/* Cột trái: Form nhập liệu */}
-        <div className="lg:col-span-5 flex flex-col min-h-0 lg:h-full lg:overflow-hidden">
-          <div className="h-full overflow-y-auto custom-scrollbar space-y-4 lg:pr-1.5 pb-2">
+        <div className={`${mobileTab === "form" ? "flex" : "hidden lg:flex"} lg:col-span-5 flex-col min-h-0 lg:h-full lg:overflow-hidden`}>
+          <div className="h-full overflow-y-auto custom-scrollbar space-y-4 lg:pr-1.5 pb-24 lg:pb-2">
             <div className="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-5">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
-                <span className="text-xs font-bold uppercase tracking-wider text-slate-400">
-                  Tình Huống Từ Chối Của Khách
-                </span>
+                <div className="flex items-center gap-2">
+                  <div className="p-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
+                    <MessageSquareCheck size={15} />
+                  </div>
+                  <h2 className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
+                    Tình Huống Từ Chối Của Khách
+                  </h2>
+                </div>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
                     onClick={handleUseSample}
-                    className="text-xs text-emerald-600 hover:text-emerald-700 font-semibold cursor-pointer"
+                    className="text-xs text-emerald-600 dark:text-emerald-400 hover:underline font-semibold cursor-pointer"
                   >
                     Dữ liệu mẫu
                   </button>
-                  <span className="text-slate-300">|</span>
+                  <span className="text-slate-300 dark:text-slate-700 hidden sm:inline">|</span>
                   <button
                     type="button"
                     onClick={handleResetForm}
-                    className="text-xs text-slate-400 hover:text-slate-600 flex items-center gap-1 cursor-pointer"
+                    className="hidden sm:flex text-xs text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 items-center gap-1 cursor-pointer"
                   >
                     <RotateCcw size={12} /> Làm mới
                   </button>
@@ -329,7 +401,7 @@ export default function ObjectionKillerPage() {
         </div>
 
         {/* Cột phải: Kết quả trực quan */}
-        <div className="lg:col-span-7 flex flex-col min-h-0 lg:h-full lg:overflow-hidden">
+        <div className={`${mobileTab === "result" ? "flex" : "hidden lg:flex"} lg:col-span-7 flex-col min-h-0 lg:h-full lg:overflow-hidden`}>
           <ObjectionKillerOutput
             result={result}
             loading={loading}

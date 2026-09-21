@@ -159,9 +159,9 @@ export default function CoursesClient({
   }, [courses, selectedCourseId, searchQuery, filterType, selectedModule]);
 
   return (
-    <div className="max-w-[1600px] mx-auto space-y-8 pb-16">
+    <div className="max-w-[1600px] mx-auto space-y-6 sm:space-y-8 pb-10 sm:pb-16">
       {/* ── 1. HERO HEADER ──────────────────────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 p-8 sm:p-10 text-white border border-slate-800 shadow-2xl">
+      <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 p-5 sm:p-8 md:p-10 text-white border border-slate-800 shadow-2xl">
         {/* Glow background effects adapting to theme */}
         <div 
           className="absolute top-0 right-0 w-96 h-96 rounded-full blur-3xl pointer-events-none -translate-y-1/2 translate-x-1/2 opacity-25"
@@ -172,9 +172,9 @@ export default function CoursesClient({
           style={{ backgroundColor: "var(--brand-primary)" }}
         />
 
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-8">
-          <div className="max-w-2xl space-y-3">
-            <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight">
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6 sm:gap-8">
+          <div className="max-w-2xl space-y-2 sm:space-y-3">
+            <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight">
               Tất Cả Khóa Học &{" "}
               <span 
                 className="bg-clip-text text-transparent font-black"
@@ -184,14 +184,14 @@ export default function CoursesClient({
               </span>
             </h1>
 
-            <p className="text-slate-300 text-sm sm:text-base leading-relaxed">
+            <p className="text-slate-300 text-xs sm:text-sm sm:text-base leading-relaxed">
               Trọn bộ kiến thức thực chiến ứng dụng AI vào bán hàng đa sàn (Shopee, TikTok Shop, Lazada).
               Xem video theo từng học phần, lưu tiến độ học tập và bứt phá doanh số.
             </p>
           </div>
 
           {/* Quick CTA to continue learning */}
-          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/15 w-full lg:w-80 shrink-0 space-y-3 shadow-xl">
+          <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 sm:p-5 border border-white/15 w-full lg:w-80 shrink-0 space-y-3 shadow-xl">
             <div className="flex items-center justify-between">
               <span className="text-xs font-bold text-slate-300">
                 {selectedCourseId === "ALL" ? "Tiến độ học tập tổng quan" : "Tiến độ khóa học đang xem"}
@@ -199,7 +199,7 @@ export default function CoursesClient({
               <span className="text-xs font-black text-brand">{currentProgressPercent}%</span>
             </div>
 
-            <div className="w-full bg-slate-800/80 rounded-full h-2.5 overflow-hidden">
+            <div className="w-full bg-slate-800/80 rounded-full h-2 sm:h-2.5 overflow-hidden">
               <div
                 className="bg-brand h-full rounded-full transition-all duration-500"
                 style={{ width: `${currentProgressPercent}%` }}
@@ -223,7 +223,7 @@ export default function CoursesClient({
                   ? `/learn?lessonId=${scopeLessons[0].id}`
                   : "/learn"
               }
-              className="w-full bg-brand hover:bg-brand-hover text-white text-xs font-bold py-2.5 rounded-xl transition-all shadow-md shadow-brand/25 flex items-center justify-center gap-2 group cursor-pointer"
+              className="w-full bg-brand hover:bg-brand-hover text-white text-xs sm:text-sm font-bold py-2.5 sm:py-3 px-4 rounded-xl transition-all shadow-md shadow-brand/25 flex items-center justify-center gap-2 group cursor-pointer"
             >
               <GraduationCap size={15} />
               <span>Vào Trình Phát Video Học Tập</span>
@@ -233,48 +233,48 @@ export default function CoursesClient({
         </div>
 
         {/* ── 2. STATS CARDS ──────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4 mt-8 pt-6 border-t border-slate-800/80">
-          <div className="bg-slate-800/50 rounded-xl p-3.5 border border-slate-700/50">
-            <span className="text-slate-400 text-xs font-medium block">
-              {selectedCourseId === "ALL" ? "Khóa học" : "Khóa học"}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4 mt-6 sm:mt-8 pt-5 sm:pt-6 border-t border-slate-800/80">
+          <div className="bg-slate-800/50 rounded-xl p-3 sm:p-3.5 border border-slate-700/50">
+            <span className="text-slate-400 text-[11px] sm:text-xs font-medium block">
+              Khóa học
             </span>
-            <span className="text-2xl font-black text-white mt-0.5 block truncate">
+            <span className="text-xl sm:text-2xl font-black text-white mt-0.5 block truncate">
               {selectedCourseId === "ALL" ? `${totalCourses} khóa` : "1 khóa"}
             </span>
           </div>
 
-          <div className="bg-slate-800/50 rounded-xl p-3.5 border border-slate-700/50">
-            <span className="text-slate-400 text-xs font-medium block">Tổng số video</span>
-            <span className="text-2xl font-black text-white mt-0.5 block">{currentTotalLessons} bài</span>
+          <div className="bg-slate-800/50 rounded-xl p-3 sm:p-3.5 border border-slate-700/50">
+            <span className="text-slate-400 text-[11px] sm:text-xs font-medium block">Tổng số video</span>
+            <span className="text-xl sm:text-2xl font-black text-white mt-0.5 block">{currentTotalLessons} bài</span>
           </div>
 
-          <div className="bg-slate-800/50 rounded-xl p-3.5 border border-slate-700/50">
-            <span className="text-emerald-400 text-xs font-medium block flex items-center gap-1">
-              <Sparkles size={12} /> Bài học FREE
+          <div className="bg-slate-800/50 rounded-xl p-3 sm:p-3.5 border border-slate-700/50">
+            <span className="text-emerald-400 text-[11px] sm:text-xs font-medium block flex items-center gap-1">
+              <Sparkles size={11} /> Bài học FREE
             </span>
-            <span className="text-2xl font-black text-emerald-400 mt-0.5 block">{currentFreeLessons} bài</span>
+            <span className="text-xl sm:text-2xl font-black text-emerald-400 mt-0.5 block">{currentFreeLessons} bài</span>
           </div>
 
-          <div className="bg-slate-800/50 rounded-xl p-3.5 border border-slate-700/50">
-            <span className="text-amber-400 text-xs font-medium block flex items-center gap-1">
-              <Crown size={12} /> Bài học VIP PRO
+          <div className="bg-slate-800/50 rounded-xl p-3 sm:p-3.5 border border-slate-700/50">
+            <span className="text-amber-400 text-[11px] sm:text-xs font-medium block flex items-center gap-1">
+              <Crown size={11} /> Bài học VIP PRO
             </span>
-            <span className="text-2xl font-black text-amber-400 mt-0.5 block">{currentVipLessons} bài</span>
+            <span className="text-xl sm:text-2xl font-black text-amber-400 mt-0.5 block">{currentVipLessons} bài</span>
           </div>
         </div>
       </div>
 
       {/* ── 3. SEARCH & FILTER BAR ──────────────────────────────────────────────── */}
-      <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row gap-4 md:items-center md:justify-between">
+      <div className="bg-white dark:bg-slate-900 p-3.5 sm:p-5 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col md:flex-row gap-3 sm:gap-4 md:items-center md:justify-between">
         {/* Input Tìm kiếm */}
-        <div className="relative flex-1 min-w-[260px]">
+        <div className="relative flex-1 w-full min-w-0 md:min-w-[240px]">
           <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Tìm theo tên bài học, số thứ tự (STT), nội dung..."
-            className="w-full pl-10 pr-4 py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm font-medium focus:ring-2 focus:ring-brand/20 focus:border-brand bg-slate-50/50 dark:bg-slate-800/60 text-slate-900 dark:text-white placeholder-slate-400 transition-colors"
+            className="w-full pl-10 pr-4 py-2 sm:py-2.5 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm font-medium focus:ring-2 focus:ring-brand/20 focus:border-brand bg-slate-50/50 dark:bg-slate-800/60 text-slate-900 dark:text-white placeholder-slate-400 transition-colors"
           />
           {searchQuery && (
             <button
@@ -287,12 +287,12 @@ export default function CoursesClient({
         </div>
 
         {/* Bộ lọc Type (ALL / FREE / VIP) & Module */}
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap items-stretch sm:items-center gap-2 sm:gap-2.5 w-full md:w-auto">
           {/* Lọc VIP/FREE */}
-          <div className="inline-flex rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100/80 dark:bg-slate-800/80 p-1 text-xs font-bold">
+          <div className="grid grid-cols-3 sm:inline-flex rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-100/80 dark:bg-slate-800/80 p-1 text-xs font-bold w-full sm:w-auto">
             <button
               onClick={() => setFilterType("ALL")}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${filterType === "ALL"
+              className={`px-2 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer text-center justify-center flex items-center ${filterType === "ALL"
                 ? "bg-white dark:bg-slate-700 text-slate-900 dark:text-white shadow-xs font-black"
                 : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
                 }`}
@@ -301,56 +301,58 @@ export default function CoursesClient({
             </button>
             <button
               onClick={() => setFilterType("FREE")}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${filterType === "FREE"
+              className={`px-2 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1 ${filterType === "FREE"
                 ? "bg-emerald-500 text-white shadow-xs font-black"
                 : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
                 }`}
             >
-              <Sparkles size={12} /> FREE ({currentFreeLessons})
+              <Sparkles size={11} /> FREE ({currentFreeLessons})
             </button>
             <button
               onClick={() => setFilterType("VIP")}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center gap-1 ${filterType === "VIP"
+              className={`px-2 sm:px-3 py-1.5 rounded-lg transition-all cursor-pointer flex items-center justify-center gap-1 ${filterType === "VIP"
                 ? "bg-amber-500 text-white shadow-xs font-black"
                 : "text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white"
                 }`}
             >
-              <Crown size={12} /> VIP ({currentVipLessons})
+              <Crown size={11} /> VIP ({currentVipLessons})
             </button>
           </div>
 
-          {/* Chọn Khóa Học */}
-          {courses.length > 1 && (
-            <div className="flex items-center gap-1.5">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+            {/* Chọn Khóa Học */}
+            {courses.length > 1 && (
+              <div className="flex items-center w-full sm:w-auto">
+                <select
+                  value={selectedCourseId}
+                  onChange={(e) => handleCourseChange(e.target.value)}
+                  className="w-full sm:w-auto px-3 py-2 border border-brand/30 dark:border-brand/40 rounded-xl text-xs font-bold text-brand bg-brand-light cursor-pointer hover:border-brand focus:ring-2 focus:ring-brand/20 sm:max-w-[210px] truncate"
+                >
+                  <option value="ALL">🎓 Tất cả khóa học ({courses.length})</option>
+                  {courses.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.title} ({c.lessons.length} bài)
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Chọn Học Phần */}
+            <div className="flex items-center w-full sm:w-auto">
               <select
-                value={selectedCourseId}
-                onChange={(e) => handleCourseChange(e.target.value)}
-                className="px-3 py-2 border border-brand/30 dark:border-brand/40 rounded-xl text-xs font-bold text-brand bg-brand-light cursor-pointer hover:border-brand focus:ring-2 focus:ring-brand/20 max-w-[210px] truncate"
+                value={selectedModule}
+                onChange={(e) => handleModuleChange(e.target.value)}
+                className="w-full sm:w-auto px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 cursor-pointer hover:border-brand focus:ring-2 focus:ring-brand/20 sm:max-w-[210px] truncate"
               >
-                <option value="ALL">🎓 Tất cả khóa học ({courses.length})</option>
-                {courses.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.title} ({c.lessons.length} bài)
+                <option value="ALL">📁 Tất cả các phần ({uniqueModules.length} phần)</option>
+                {uniqueModules.map((m) => (
+                  <option key={m} value={m}>
+                    📂 {m}
                   </option>
                 ))}
               </select>
             </div>
-          )}
-
-          {/* Chọn Học Phần */}
-          <div className="flex items-center gap-1.5">
-            <select
-              value={selectedModule}
-              onChange={(e) => handleModuleChange(e.target.value)}
-              className="px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 cursor-pointer hover:border-brand focus:ring-2 focus:ring-brand/20"
-            >
-              <option value="ALL">📁 Tất cả các phần ({uniqueModules.length} phần)</option>
-              {uniqueModules.map((m) => (
-                <option key={m} value={m}>
-                  📂 {m}
-                </option>
-              ))}
-            </select>
           </div>
         </div>
       </div>
@@ -396,7 +398,7 @@ export default function CoursesClient({
             return (
               <div key={course.id} id={`course-${course.id}`} className="space-y-8 scroll-mt-6">
                 {/* Course Header Banner */}
-                <div className="bg-white dark:bg-slate-900 p-6 sm:p-7 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="bg-white dark:bg-slate-900 p-4 sm:p-6 md:p-7 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
                       <span className="px-2.5 py-0.5 rounded-md bg-brand-light text-brand text-[10px] font-black uppercase tracking-wider">
@@ -406,17 +408,17 @@ export default function CoursesClient({
                         {course.lessons.length} bài giảng
                       </span>
                     </div>
-                    <h2 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
+                    <h2 className="text-lg sm:text-xl md:text-2xl font-black text-slate-900 dark:text-white tracking-tight">
                       {course.title}
                     </h2>
                     {course.description && (
-                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1 max-w-2xl">{course.description}</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 max-w-2xl">{course.description}</p>
                     )}
                   </div>
 
                   <Link
                     href={`/learn?lessonId=${course.lessons[0]?.id || ""}`}
-                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-brand hover:bg-brand-hover shadow-md shadow-brand/20 transition-all shrink-0 cursor-pointer"
+                    className="inline-flex items-center justify-center gap-2 px-4 sm:px-5 py-2.5 rounded-xl text-xs font-bold text-white bg-brand hover:bg-brand-hover shadow-md shadow-brand/20 transition-all shrink-0 cursor-pointer w-full sm:w-auto"
                   >
                     <Play size={14} className="fill-white" />
                     <span>Học theo lộ trình chuyên sâu</span>
@@ -424,24 +426,24 @@ export default function CoursesClient({
                 </div>
 
                 {/* Các Module & Bài học bên trong */}
-                <div className="space-y-8">
+                <div className="space-y-6 sm:space-y-8">
                   {Array.from(moduleGroups.entries()).map(([moduleName, lessons]) => (
-                    <div key={moduleName} className="space-y-4">
+                    <div key={moduleName} className="space-y-3 sm:space-y-4">
                       {/* Module Title Ribbon */}
                       <div className="flex items-center gap-2 px-1">
                         <div className="p-1.5 rounded-lg bg-brand-light text-brand">
-                          <Layers size={16} />
+                          <Layers size={15} />
                         </div>
-                        <h3 className="text-base sm:text-lg font-black text-slate-800 dark:text-slate-100">
+                        <h3 className="text-sm sm:text-base md:text-lg font-black text-slate-800 dark:text-slate-100">
                           {moduleName}
                         </h3>
-                        <span className="text-xs text-slate-400 dark:text-slate-400 font-semibold bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
+                        <span className="text-[11px] sm:text-xs text-slate-400 dark:text-slate-400 font-semibold bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-full">
                           {lessons.length} video
                         </span>
                       </div>
 
                       {/* Video Cards Grid */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-5">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 sm:gap-5">
                         {lessons.map((lesson) => {
                           const isCompleted = completedLessonIds.includes(lesson.id);
                           const videoInfo = parseVideoUrl(lesson.videoUrl);
@@ -576,20 +578,20 @@ export default function CoursesClient({
 
       {/* ── 5. QUICK VIDEO WATCH MODAL ──────────────────────────────────────────── */}
       {previewLesson && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-150">
-          <div className="bg-slate-900 text-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[92vh] flex flex-col overflow-hidden border border-slate-800 animate-in zoom-in-95 duration-150">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-150">
+          <div className="bg-slate-900 text-white rounded-2xl sm:rounded-3xl shadow-2xl w-full max-w-4xl max-h-[94vh] flex flex-col overflow-hidden border border-slate-800 animate-in zoom-in-95 duration-150">
             {/* Modal Header */}
-            <div className="px-5 py-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-950/90 shrink-0">
-              <div className="flex items-center gap-2.5 min-w-0 pr-4">
+            <div className="px-3.5 sm:px-5 py-2.5 sm:py-3.5 border-b border-slate-800 flex items-center justify-between bg-slate-950/90 shrink-0">
+              <div className="flex items-center gap-2 sm:gap-2.5 min-w-0 pr-2 sm:pr-4">
                 <div className="p-1.5 rounded-lg bg-brand-light text-brand shrink-0">
-                  <PlayCircle size={18} />
+                  <PlayCircle size={17} />
                 </div>
                 <div className="min-w-0">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
                     <span className="text-xs font-mono font-bold text-brand">
                       Bài #{previewLesson.order}
                     </span>
-                    <span className="text-[10px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded">
+                    <span className="text-[10px] bg-slate-800 text-slate-300 px-1.5 py-0.5 rounded truncate max-w-[120px] sm:max-w-none">
                       {previewLesson.moduleName}
                     </span>
                     {previewLesson.isVIP ? (
@@ -602,7 +604,7 @@ export default function CoursesClient({
                       </span>
                     )}
                   </div>
-                  <h4 className="font-bold text-sm text-white truncate mt-0.5">
+                  <h4 className="font-bold text-xs sm:text-sm text-white truncate mt-0.5 max-w-[220px] sm:max-w-md">
                     {previewLesson.title}
                   </h4>
                 </div>
@@ -610,6 +612,7 @@ export default function CoursesClient({
 
               <button
                 onClick={() => setPreviewLesson(null)}
+                aria-label="Đóng video"
                 className="text-slate-400 hover:text-white p-1.5 rounded-lg hover:bg-slate-800 transition-colors shrink-0 cursor-pointer"
               >
                 <X size={18} />
@@ -617,33 +620,33 @@ export default function CoursesClient({
             </div>
 
             {/* Video Player Container */}
-            <div className="relative aspect-video w-full max-h-[60vh] bg-black flex items-center justify-center overflow-hidden shrink-0">
+            <div className="relative aspect-video w-full max-h-[50vh] sm:max-h-[60vh] bg-black flex items-center justify-center overflow-hidden shrink-0">
               {previewLesson.isVIP && !isUserVIP ? (
                 /* Paywall Overlay khi là bài VIP và tài khoản FREE */
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-center p-6 z-10 space-y-3">
-                  <div className="w-14 h-14 bg-gradient-to-br from-amber-400 via-yellow-500 to-amber-600 rounded-2xl flex items-center justify-center shadow-lg shadow-amber-500/25">
-                    <Crown size={28} className="text-slate-950 fill-slate-950" />
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-slate-950 via-slate-900 to-slate-950 text-center p-4 sm:p-6 z-10 space-y-2 sm:space-y-3">
+                  <div className="w-12 h-12 sm:w-14 sm:h-14 bg-gradient-to-br from-amber-400 via-yellow-500 to-amber-600 rounded-2xl flex items-center justify-center shadow-lg shadow-amber-500/25">
+                    <Crown size={24} className="text-slate-950 fill-slate-950" />
                   </div>
-                  <span className="text-xs font-black text-amber-400 uppercase tracking-wider">
-                    Bài Học Dành Riêng Cho Thành Viên VIP PRO
+                  <span className="text-[11px] sm:text-xs font-black text-amber-400 uppercase tracking-wider">
+                    Bài Học Dành Riêng Cho VIP PRO
                   </span>
-                  <h3 className="text-lg sm:text-xl font-black text-white max-w-md">
-                    Nâng Cấp VIP Để Xem Toàn Bộ Video Chuyên Sâu
+                  <h3 className="text-base sm:text-xl font-black text-white max-w-md">
+                    Nâng Cấp VIP Để Xem Video Chuyên Sâu
                   </h3>
-                  <p className="text-xs text-slate-300 max-w-sm">
+                  <p className="text-xs text-slate-300 max-w-sm leading-relaxed hidden sm:block">
                     Bài giảng này chứa kiến thức thực chiến nâng cao. Nâng cấp ngay để mở khóa trọn bộ 100% video và công cụ AI.
                   </p>
-                  <div className="pt-2 flex flex-wrap items-center justify-center gap-3">
+                  <div className="pt-2 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2 sm:gap-3 w-full sm:w-auto px-4">
                     <Link
                       href="/profile#pricing-section"
-                      className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black px-5 py-2.5 rounded-xl text-xs shadow-lg shadow-amber-500/20 transition-all flex items-center gap-1.5 cursor-pointer"
+                      className="bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-slate-950 font-black px-4 sm:px-5 py-2.5 rounded-xl text-xs shadow-lg shadow-amber-500/20 transition-all flex items-center justify-center gap-1.5 cursor-pointer"
                     >
                       <Crown size={14} className="fill-slate-950" /> Nâng Cấp VIP Ngay
                     </Link>
                     {!isLogged && (
                       <Link
                         href="/login"
-                        className="bg-slate-800 hover:bg-slate-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-colors cursor-pointer"
+                        className="bg-slate-800 hover:bg-slate-700 text-white font-bold px-4 py-2.5 rounded-xl text-xs transition-colors cursor-pointer text-center"
                       >
                         Đã có tài khoản? Đăng nhập
                       </Link>
@@ -654,9 +657,9 @@ export default function CoursesClient({
                 const info = parseVideoUrl(previewLesson.videoUrl);
                 if (!info.embedUrl) {
                   return (
-                    <div className="flex flex-col items-center justify-center text-slate-400 p-8 text-center space-y-2">
-                      <Video size={40} className="text-slate-600" />
-                      <p className="font-bold text-sm text-slate-300">Bài học này chưa có link video hợp lệ</p>
+                    <div className="flex flex-col items-center justify-center text-slate-400 p-6 sm:p-8 text-center space-y-2">
+                      <Video size={36} className="text-slate-600" />
+                      <p className="font-bold text-xs sm:text-sm text-slate-300">Bài học này chưa có link video hợp lệ</p>
                       <p className="text-xs text-slate-500">Quản trị viên đang cập nhật video cho bài này.</p>
                     </div>
                   );
@@ -688,30 +691,30 @@ export default function CoursesClient({
             </div>
 
             {/* Modal Body & Notes */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-3 bg-slate-900/60">
-              <h5 className="text-xs font-bold text-slate-400 uppercase tracking-wider">
+            <div className="flex-1 overflow-y-auto p-3.5 sm:p-5 space-y-2 sm:space-y-3 bg-slate-900/60">
+              <h5 className="text-[11px] sm:text-xs font-bold text-slate-400 uppercase tracking-wider">
                 Ghi Chú & Tóm Tắt Bài Giảng
               </h5>
-              <div className="text-xs sm:text-sm text-slate-300 leading-relaxed bg-slate-950/60 p-4 rounded-xl border border-slate-800/80 whitespace-pre-wrap">
+              <div className="text-xs sm:text-sm text-slate-300 leading-relaxed bg-slate-950/60 p-3 sm:p-4 rounded-xl border border-slate-800/80 whitespace-pre-wrap">
                 {previewLesson.content || "Bài giảng chưa có tài liệu ghi chú đính kèm. Vui lòng theo dõi video hướng dẫn chi tiết."}
               </div>
             </div>
 
             {/* Modal Footer */}
-            <div className="px-5 py-3 border-t border-slate-800 flex items-center justify-between bg-slate-950/90 shrink-0">
+            <div className="px-3.5 sm:px-5 py-2.5 sm:py-3 border-t border-slate-800 flex items-center justify-between gap-2 bg-slate-950/90 shrink-0">
               <button
                 onClick={() => setPreviewLesson(null)}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+                className="px-3 sm:px-4 py-2 rounded-xl text-xs font-bold text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
               >
                 Đóng
               </button>
 
               <Link
                 href={`/learn?lessonId=${previewLesson.id}`}
-                className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-brand hover:bg-brand-hover shadow-md shadow-brand/20 transition-all flex items-center gap-1.5 cursor-pointer"
+                className="px-3.5 sm:px-5 py-2 rounded-xl text-xs font-bold text-white bg-brand hover:bg-brand-hover shadow-md shadow-brand/20 transition-all flex items-center gap-1.5 cursor-pointer text-center"
               >
                 <GraduationCap size={15} />
-                <span>Mở Trong Trình Học Chuyên Sâu</span>
+                <span>Vào Trình Học Chuyên Sâu</span>
                 <ChevronRight size={14} />
               </Link>
             </div>

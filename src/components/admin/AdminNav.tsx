@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Users, BookOpen, Settings, UserCog, Database, Crown, CreditCard } from "lucide-react";
+import { LayoutDashboard, Users, BookOpen, Settings, UserCog, Database, Crown, CreditCard, Coins } from "lucide-react";
 
 export function AdminNav() {
   const pathname = usePathname();
 
   const links = [
     { href: "/admin", label: "Tổng quan", icon: LayoutDashboard, exact: true },
+    { href: "/admin/ai-costs", label: "Chi phí AI & Margin", icon: Coins },
     { href: "/admin/sepay", label: "SePay & Webhook", icon: CreditCard },
     { href: "/admin/vip-plans", label: "Cấu hình Gói VIP", icon: Crown },
     { href: "/admin/pricing-fees", label: "Biểu phí bán hàng", icon: Database, exact: true },

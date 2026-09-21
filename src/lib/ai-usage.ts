@@ -91,6 +91,9 @@ export async function recordAiUsage(params: {
 
     const logId = "log_" + Date.now() + "_" + Math.random().toString(36).substring(2, 8);
 
+    const isCalculator = ["pricing-calculator", "tax-calculator", "koc-planner", "koc-calculator"].includes(params.tool);
+    const model = isCalculator ? "Thuật toán (Calculator)" : "gpt-4o-mini";
+
     if ((prisma as any).aiUsageLog?.create) {
       try {
         await (prisma as any).aiUsageLog.create({
@@ -102,30 +105,37 @@ export async function recordAiUsage(params: {
             action,
             input: inputStr,
             output: params.output || null,
+            model,
+            promptTokens: 0,
+            completionTokens: 0,
+            totalTokens: 0,
+            costUsd: 0,
           },
         });
       } catch (ormErr) {
         await prisma.$executeRawUnsafe(
-          'INSERT INTO "AiUsageLog" ("id", "userId", "tool", "toolName", "action", "input", "output", "createdAt") VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())',
+          'INSERT INTO "AiUsageLog" ("id", "userId", "tool", "toolName", "action", "input", "output", "model", "promptTokens", "completionTokens", "totalTokens", "costUsd", "createdAt") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 0, 0, 0, 0, NOW())',
           logId,
           params.userId,
           params.tool,
           toolName,
           action,
           inputStr,
-          params.output || null
+          params.output || null,
+          model
         );
       }
     } else {
       await prisma.$executeRawUnsafe(
-        'INSERT INTO "AiUsageLog" ("id", "userId", "tool", "toolName", "action", "input", "output", "createdAt") VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())',
+        'INSERT INTO "AiUsageLog" ("id", "userId", "tool", "toolName", "action", "input", "output", "model", "promptTokens", "completionTokens", "totalTokens", "costUsd", "createdAt") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 0, 0, 0, 0, NOW())',
         logId,
         params.userId,
         params.tool,
         toolName,
         action,
         inputStr,
-        params.output || null
+        params.output || null,
+        model
       );
     }
 

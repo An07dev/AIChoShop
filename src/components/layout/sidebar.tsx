@@ -2,9 +2,20 @@
 
 import Link from 'next/link';
 import { usePathname, useSearchParams } from 'next/navigation';
-import { Home, BookOpen, Wrench, UserCircle, Settings, ChevronDown, LogOut, LogIn } from 'lucide-react';
+import {
+  Home,
+  BookOpen,
+  Wrench,
+  UserCircle,
+  Settings,
+  ChevronDown,
+  LogOut,
+  LogIn,
+  X,
+} from 'lucide-react';
 import { useState, useEffect, useTransition } from 'react';
 import { logoutUser } from '@/app/actions/auth';
+import { useSidebar } from '@/context/SidebarContext';
 
 export interface SidebarCourseItem {
   id: string;
@@ -28,6 +39,7 @@ export function Sidebar({
   const currentLessonId = searchParams.get('lessonId');
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [isLoggingOut, startLogoutTransition] = useTransition();
+  const { isMobileOpen, closeMobile } = useSidebar();
 
   const handleLogout = () => {
     startLogoutTransition(async () => {
@@ -36,8 +48,6 @@ export function Sidebar({
   };
 
   const totalLessonsCount = dynamicModules?.reduce((a, b) => a + b.count, 0) || 0;
-
-  // Dữ liệu đã được lọc trạng thái xuất bản ở server layout.
   const displayCourses = courses;
 
   const courseSubItems = [
@@ -127,20 +137,39 @@ export function Sidebar({
 
   const toggleExpand = (id: number, hasSub: boolean, e: React.MouseEvent) => {
     if (!hasSub) return;
-    e.preventDefault(); // Prevent navigation if we are just toggling the menu
+    e.preventDefault();
     setExpandedId(expandedId === id ? null : id);
   };
 
-  return (
-    <aside className={`w-72 xl:w-80 sidebar-theme border-r min-h-screen flex-col relative z-20 ${pathname === '/tools/seo-optimizer' ? 'hidden lg:flex shrink-0' : 'flex'}`}>
-      <div className="p-5 pb-2">
-        <h1 
-          className="text-2xl font-black bg-clip-text text-transparent"
-          style={{ backgroundImage: "var(--brand-gradient)" }}
-        >
-          AIChoShop
-        </h1>
-        <p className="text-xs text-[var(--sidebar-text-muted)] mt-1 font-medium">Hành trình X10 Doanh Số</p>
+  const renderNavContent = (isMobileView: boolean) => (
+    <>
+      <div className="p-4 sm:p-5 pb-2 flex items-center justify-between">
+        <div>
+          <Link
+            href="/dashboard"
+            onClick={() => isMobileView && closeMobile()}
+            className="inline-block"
+          >
+            <h1 
+              className="text-2xl font-black bg-clip-text text-transparent"
+              style={{ backgroundImage: "var(--brand-gradient)" }}
+            >
+              AIChoShop
+            </h1>
+          </Link>
+          <p className="text-xs text-[var(--sidebar-text-muted)] mt-1 font-medium">Hành trình X10 Doanh Số</p>
+        </div>
+
+        {isMobileView && (
+          <button
+            type="button"
+            onClick={closeMobile}
+            aria-label="Đóng menu"
+            className="p-2 -mr-1 rounded-xl text-[var(--sidebar-text-muted)] hover:text-white hover:bg-slate-800/80 transition-colors cursor-pointer"
+          >
+            <X size={20} />
+          </button>
+        )}
       </div>
 
       <div className="flex-1 px-4 py-4 overflow-y-auto custom-scrollbar">
@@ -163,7 +192,13 @@ export function Sidebar({
                 <div key={step.id} className="relative">
                   <Link
                     href={step.href}
-                    onClick={(e) => hasSub ? toggleExpand(step.id, hasSub, e) : null}
+                    onClick={(e) => {
+                      if (hasSub) {
+                        toggleExpand(step.id, hasSub, e);
+                      } else if (isMobileView) {
+                        closeMobile();
+                      }
+                    }}
                     className="relative flex gap-4 group cursor-pointer"
                   >
                     {/* Timeline Node */}
@@ -216,6 +251,7 @@ export function Sidebar({
                               key={i} 
                               href={sub.href}
                               title={sub.name}
+                              onClick={() => isMobileView && closeMobile()}
                               className={`flex items-center justify-between text-[12px] py-1.5 px-2.5 rounded-lg transition-colors group ${
                                 isSubActive
                                   ? 'bg-white/90 dark:bg-brand-light text-brand font-bold border-l-2 border-brand pl-2 shadow-xs'
@@ -231,10 +267,10 @@ export function Sidebar({
                             </Link>
                           );
                         })}
-                        {/* A link to go to the main page if they want to view all */}
                         {step.viewAllHref && (
                           <Link
                             href={step.viewAllHref}
+                            onClick={() => isMobileView && closeMobile()}
                             className="block text-[11px] py-1.5 px-2.5 text-[var(--sidebar-text-muted)] hover:text-brand hover:bg-[var(--sidebar-hover-bg)] rounded-lg transition-colors italic mt-1 font-semibold"
                           >
                             Xem toàn bộ 19 công cụ &rarr;
@@ -250,9 +286,10 @@ export function Sidebar({
         </div>
 
         {/* Other static links */}
-        <div className="mt-12 pt-6 border-t" style={{ borderColor: "var(--sidebar-border)" }}>
+        <div className="mt-8 pt-5 border-t" style={{ borderColor: "var(--sidebar-border)" }}>
           <Link
             href="/settings"
+            onClick={() => isMobileView && closeMobile()}
             className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
               pathname === '/settings'
                 ? 'bg-brand text-white font-semibold shadow-md shadow-brand/20'
@@ -279,6 +316,7 @@ export function Sidebar({
         ) : (
           <Link
             href="/login"
+            onClick={() => isMobileView && closeMobile()}
             className="w-full flex items-center justify-center gap-2 py-2.5 px-4 rounded-xl text-sm font-bold bg-brand hover:bg-brand-hover text-white transition-all shadow-md shadow-brand/20 active:scale-[0.98]"
           >
             <LogIn size={16} />
@@ -286,6 +324,40 @@ export function Sidebar({
           </Link>
         )}
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* 1. DESKTOP STATIC SIDEBAR (Visible on lg and larger) */}
+      <aside
+        className={`hidden lg:flex w-72 xl:w-80 sidebar-theme border-r min-h-screen flex-col relative z-20 shrink-0 ${
+          pathname === '/tools/seo-optimizer' ? 'hidden lg:flex' : 'flex'
+        }`}
+      >
+        {renderNavContent(false)}
+      </aside>
+
+      {/* 2. MOBILE DRAWER OVERLAY & OFF-CANVAS (Visible on mobile screens) */}
+      {/* Backdrop */}
+      <div
+        className={`fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-40 lg:hidden transition-opacity duration-300 ${
+          isMobileOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+        onClick={closeMobile}
+        aria-hidden="true"
+      />
+
+      {/* Sliding Mobile Drawer */}
+      <aside
+        className={`fixed inset-y-0 left-0 w-80 max-w-[85vw] z-50 flex flex-col sidebar-theme shadow-2xl transition-transform duration-300 ease-in-out lg:hidden border-r ${
+          isMobileOpen ? "translate-x-0" : "-translate-x-full pointer-events-none"
+        }`}
+        style={{ borderColor: "var(--sidebar-border)" }}
+      >
+        {renderNavContent(true)}
+      </aside>
+    </>
   );
 }
+export default Sidebar;

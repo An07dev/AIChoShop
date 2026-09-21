@@ -1,5 +1,6 @@
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
+import { SidebarProvider } from "@/context/SidebarContext";
 import { getSessionUserId } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 
@@ -67,17 +68,19 @@ export default async function AppLayout({
   }));
 
   return (
-    <div className="flex h-screen bg-slate-50 dark:bg-slate-950 overflow-hidden text-slate-900 dark:text-slate-100 transition-colors duration-200">
-      <Sidebar user={currentUser} dynamicModules={dynamicModules} courses={coursesList} />
-      <div className="flex-1 flex flex-col min-w-0 h-full overflow-hidden">
-        <Header user={currentUser} />
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 flex flex-col min-h-0">
-          <div className="flex-1 flex flex-col min-h-0 w-full">
-            {children}
-          </div>
-          {/* <Footer /> */}
-        </main>
+    <SidebarProvider>
+      <div className="flex h-screen bg-slate-50 dark:bg-slate-950 overflow-hidden text-slate-900 dark:text-slate-100 transition-colors duration-200">
+        <Sidebar user={currentUser} dynamicModules={dynamicModules} courses={coursesList} />
+        <div className="flex-1 flex flex-col min-w-0 max-w-full h-full overflow-hidden relative">
+          <Header user={currentUser} />
+          <main className="flex-1 overflow-y-auto overflow-x-hidden p-3.5 sm:p-5 md:p-6 pb-6 flex flex-col min-h-0 min-w-0 max-w-full">
+            <div className="flex-1 flex flex-col min-h-0 min-w-0 w-full max-w-full">
+              {children}
+            </div>
+            {/* <Footer /> */}
+          </main>
+        </div>
       </div>
-    </div>
+    </SidebarProvider>
   );
 }
