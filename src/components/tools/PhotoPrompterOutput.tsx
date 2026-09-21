@@ -18,6 +18,7 @@ import {
   CheckCircle2,
   Sparkle,
   Eye,
+  LayoutList,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { TextShimmerWave } from "@/components/loading-ui/text-shimmer-wave";
@@ -324,78 +325,86 @@ export function PhotoPrompterOutput({
         </div>
       )}
 
-      {/* Header thanh công cụ tối giản */}
-      <div className="px-4 py-2.5 border-b border-slate-800 flex items-center justify-between gap-2.5 relative z-10 bg-slate-900/95 backdrop-blur-md shrink-0">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-purple-500/15 text-purple-400 border border-purple-500/25 shrink-0">
-            <Camera size={15} />
+      {/* Header thanh công cụ tối giản - Cố định 1 hàng ngang */}
+      <div className="px-3 sm:px-4 py-2 sm:py-2.5 border-b border-slate-800 flex items-center justify-between gap-1.5 sm:gap-2 relative z-10 bg-slate-900/95 backdrop-blur-md shrink-0 flex-nowrap">
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 shrink">
+          <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center bg-purple-500/15 text-purple-400 border border-purple-500/25 shrink-0 shadow-2xs">
+            <Camera size={13} className="sm:w-[15px] sm:h-[15px]" />
           </div>
-          <div className="min-w-0">
-            <h2 className="font-bold text-white text-xs sm:text-sm truncate">
-              AI Photo Studio Prompts (8K Commercial)
-            </h2>
-          </div>
+          <h2 className="font-bold text-white text-xs sm:text-sm truncate">
+            Bộ Prompt Studio (8K)
+          </h2>
         </div>
 
-        {/* Nút hành động */}
+        {/* Nút hành động - Cố định 1 hàng ngang */}
         {result && !loading && (
-          <div className="flex items-center gap-1.5 shrink-0">
-            <div className="bg-slate-800/80 p-0.5 rounded-lg border border-slate-700/60 flex items-center">
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 flex-nowrap">
+            {/* Chế độ xem: Trực quan vs Gốc */}
+            <div className="bg-slate-800/80 p-0.5 rounded-lg border border-slate-700/60 flex items-center shrink-0">
               <button
                 type="button"
                 onClick={() => setViewMode("interactive")}
-                className={`px-2 py-0.5 rounded text-[11px] font-semibold transition cursor-pointer ${
+                title="Dạng giao diện trực quan"
+                className={`p-1 sm:px-2 sm:py-1 rounded text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
                   viewMode === "interactive"
                     ? "bg-purple-600 text-white shadow-xs"
                     : "text-slate-400 hover:text-white"
                 }`}
               >
-                Trực quan
+                <LayoutList size={12} className="sm:w-[13px] sm:h-[13px]" />
+                <span className="hidden md:inline">Trực quan</span>
               </button>
               <button
                 type="button"
                 onClick={() => setViewMode("raw")}
-                className={`px-2 py-0.5 rounded text-[11px] font-semibold transition cursor-pointer ${
+                title="Dạng văn bản markdown gốc"
+                className={`p-1 sm:px-2 sm:py-1 rounded text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
                   viewMode === "raw"
                     ? "bg-purple-600 text-white shadow-xs"
                     : "text-slate-400 hover:text-white"
                 }`}
               >
-                Gốc
+                <FileText size={12} className="sm:w-[13px] sm:h-[13px]" />
+                <span className="hidden md:inline">Gốc</span>
               </button>
             </div>
 
+            {/* Xuất Excel */}
             <button
               type="button"
               onClick={handleExportExcel}
-              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-purple-400 border border-slate-700 transition cursor-pointer flex items-center gap-1"
               title="Xuất file Excel (.xlsx)"
+              className="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 text-[11px] sm:text-xs font-bold px-1.5 sm:px-2.5 py-1 sm:py-1.5 rounded-lg transition-all flex items-center gap-1 cursor-pointer active:scale-95 shadow-xs shrink-0"
             >
-              <FileSpreadsheet size={14} className="text-emerald-400" />
-              <span className="hidden xl:inline text-[11px] font-medium">Excel</span>
+              <FileSpreadsheet size={12} className="text-emerald-400 sm:w-[13px] sm:h-[13px]" />
+              <span className="hidden xs:inline">Excel</span>
             </button>
 
+            {/* Nút Tải .txt: Chỉ hiện trên sm+ */}
             <button
               type="button"
               onClick={handleDownloadTxt}
-              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer"
               title="Tải file .txt"
+              className="hidden sm:flex p-1 sm:p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg border border-slate-700 transition-colors cursor-pointer shrink-0"
             >
-              <Download size={13} />
+              <Download size={12} className="sm:w-3.5 sm:h-3.5" />
             </button>
 
+            {/* Nút Sao chép tất cả */}
             <button
               type="button"
               onClick={() => handleCopy(result, "all", "Đã sao chép toàn bộ bộ prompt!")}
-              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-600 hover:bg-purple-500 text-white transition flex items-center gap-1 cursor-pointer shadow-xs"
+              className="bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-500 hover:to-violet-500 text-white text-[11px] sm:text-xs font-bold px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg transition-all shadow-md shadow-purple-950/40 flex items-center gap-1 cursor-pointer active:scale-95 shrink-0"
             >
               {copiedKey === "all" ? (
                 <>
-                  <Check size={12} className="stroke-[3]" /> Đã chép
+                  <Check size={12} className="stroke-[3]" />
+                  <span>Đã chép</span>
                 </>
               ) : (
                 <>
-                  <Copy size={12} /> Sao chép tất cả
+                  <Copy size={12} />
+                  <span>Chép hết</span>
                 </>
               )}
             </button>
@@ -403,33 +412,34 @@ export function PhotoPrompterOutput({
         )}
       </div>
 
-      {/* Tabs Phân Đoạn Nhanh */}
+      {/* Tabs Phân Loại Danh Mục Đầu Ra (Pinned Sub-Tabs) - Cố định bên dưới toolbar */}
       {result && viewMode === "interactive" && !loading && (
-        <div className="px-3.5 py-1.5 border-b border-slate-800/80 bg-slate-900/60 flex items-center gap-1 overflow-x-auto custom-scrollbar relative z-10 shrink-0">
+        <div className="px-2.5 sm:px-4 py-1.5 sm:py-2 border-b border-slate-800 bg-slate-950/70 flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar sm:custom-scrollbar shrink-0 relative z-10">
           <button
             type="button"
             onClick={() => setActiveTab("all")}
-            className={`px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer whitespace-nowrap shrink-0 ${
+            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95 ${
               activeTab === "all"
-                ? "bg-slate-800 text-purple-400 border border-purple-500/30"
+                ? "bg-slate-800 text-purple-300 border border-purple-500/40 shadow-xs"
                 : "text-slate-400 hover:text-slate-200"
             }`}
           >
-            Tất cả ({parsed?.prompts.length || 5})
+            <Layers size={12} className="sm:w-[13px] sm:h-[13px]" />
+            <span>Tất Cả ({parsed?.prompts.length || 5})</span>
           </button>
           {parsed?.prompts.map((p) => (
             <button
               key={p.index}
               type="button"
               onClick={() => setActiveTab(`p${p.index}` as any)}
-              className={`px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1 ${
+              className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shrink-0 active:scale-95 ${
                 activeTab === `p${p.index}`
-                  ? "bg-slate-800 text-purple-400 border border-purple-500/30"
-                  : "text-slate-400 hover:text-purple-300"
+                  ? "bg-slate-800 text-purple-300 border border-purple-500/40 shadow-xs"
+                  : "text-slate-400 hover:text-purple-200"
               }`}
             >
               <span>P{p.index}</span>
-              <span className="text-[10px] opacity-70">
+              <span className="text-[10px] opacity-75 hidden xs:inline">
                 {p.index === 1 ? "Toàn cảnh" : p.index === 2 ? "Macro" : p.index === 3 ? "Lookbook" : p.index === 4 ? "Lifestyle" : "Editorial"}
               </span>
             </button>
@@ -437,20 +447,20 @@ export function PhotoPrompterOutput({
           <button
             type="button"
             onClick={() => setActiveTab("negative")}
-            className={`px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1 ${
+            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shrink-0 active:scale-95 ${
               activeTab === "negative"
-                ? "bg-slate-800 text-rose-400 border border-rose-500/30"
-                : "text-slate-400 hover:text-rose-300"
+                ? "bg-slate-800 text-rose-300 border border-rose-500/40 shadow-xs"
+                : "text-slate-400 hover:text-rose-200"
             }`}
           >
-            <Ban size={12} />
+            <Ban size={12} className="sm:w-[13px] sm:h-[13px]" />
             <span>Negative &amp; Mẹo</span>
           </button>
         </div>
       )}
 
       {/* Vùng hiển thị kết quả (cuộn độc lập) */}
-      <div className="flex-1 min-h-0 p-3.5 sm:p-4 overflow-y-auto custom-scrollbar relative z-10">
+      <div className="flex-1 min-h-0 p-3 sm:p-5 overflow-y-auto custom-scrollbar relative z-10 pb-24 lg:pb-4 space-y-4 sm:space-y-5">
         {loading ? (
           <div className="h-full min-h-[360px] flex flex-col items-center justify-center text-center p-6 space-y-3">
             <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-purple-400">
@@ -505,7 +515,7 @@ export function PhotoPrompterOutput({
                         className="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 transition flex items-center gap-1 cursor-pointer"
                       >
                         {copiedKey === "prompts_all" ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
-                        <span>Sao chép cả 5 Prompt</span>
+                        <span>Sao chép</span>
                       </button>
                     </div>
 
@@ -614,7 +624,7 @@ export function PhotoPrompterOutput({
                           </>
                         ) : (
                           <>
-                            <Copy size={11} /> Sao chép Negative
+                            <Copy size={11} /> Sao chép
                           </>
                         )}
                       </button>
@@ -646,9 +656,6 @@ export function PhotoPrompterOutput({
                           3. Mẹo Thực Chiến Từ Nhiếp Ảnh Gia AI
                         </h3>
                       </div>
-                      <span className="text-[11px] text-amber-400 font-medium">
-                        Tối ưu thương mại TMĐT
-                      </span>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">

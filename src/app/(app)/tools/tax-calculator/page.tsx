@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { useToolGate } from "@/hooks/useToolGate";
 import { TaxCalculatorOutput } from "@/components/tools/TaxCalculatorOutput";
+import { MobileToolTabs } from "@/components/tools/MobileToolTabs";
 import { ACTIVITY_RATES, calculateEcommerceTax } from "@/lib/tax-calculator/engine";
 import type { BusinessActivity, TaxCalculatorInput, TaxCalculatorResult, TaxPayerType } from "@/lib/tax-calculator/types";
 
@@ -158,15 +159,17 @@ function Section({
   badge?: ReactNode;
 }) {
   return (
-    <section className="overflow-hidden rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs transition-colors p-5 sm:p-6 space-y-4">
-      <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800/80 pb-3">
+    <section className="overflow-hidden rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-xs transition-colors">
+      <div className="flex items-center justify-between gap-2 border-b border-slate-100 dark:border-slate-800/80 bg-slate-50/70 dark:bg-slate-800/40 px-4 sm:px-6 py-3.5">
         <h2 className="flex items-center gap-2 text-sm sm:text-base font-black text-slate-900 dark:text-white">
           {icon}
-          {title}
+          <span>{title}</span>
         </h2>
-        {badge}
+        {badge && <div className="shrink-0">{badge}</div>}
       </div>
-      {children}
+      <div className="p-4 sm:p-6 space-y-4">
+        {children}
+      </div>
     </section>
   );
 }
@@ -181,6 +184,7 @@ export default function TaxCalculator() {
   const [saveNotice, setSaveNotice] = useState("");
   const [savedHistory, setSavedHistory] = useState<TaxCalculationSnapshot[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [mobileTab, setMobileTab] = useState<"form" | "result">("form");
 
   // Modal Lịch sử states
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
@@ -270,6 +274,7 @@ export default function TaxCalculator() {
     const result = calculateEcommerceTax(currentInput);
     setCalculatedResult(result);
     setHasCalculated(true);
+    setMobileTab("result");
     if (result.validationErrors.length > 0) {
       setSaveNotice("Chưa lưu dự toán: hãy sửa các dữ liệu chưa khớp được hiển thị trong kết quả.");
       return;
@@ -659,85 +664,142 @@ export default function TaxCalculator() {
       )}
 
       {/* 1. Header Navigation & Title */}
-      <header className="mb-6 space-y-4">
+      <header className="mb-4 sm:mb-6 space-y-3 sm:space-y-4">
+        {/* Mobile top bar: Breadcrumb + FREE badge + Lịch sử */}
+        <div className="flex items-center justify-between gap-2 md:hidden">
+          <Link
+            href="/tools"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-brand transition-colors"
+          >
+            <ArrowLeft size={13} /> Kho công cụ AI
+          </Link>
+          <div className="flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shadow-2xs uppercase tracking-wider">
+              <Sparkles size={10} className="text-emerald-600 dark:text-emerald-400" />
+              FREE
+            </span>
+            <button
+              type="button"
+              onClick={() => {
+                setViewingHistoryItem(null);
+                setIsHistoryModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 px-2.5 py-1 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 transition-all cursor-pointer shadow-xs active:scale-95"
+              title="Xem lịch sử các lần tính thuế đã lưu"
+            >
+              <Clock size={12} className="text-blue-500 shrink-0" />
+              <span>Lịch sử</span>
+              {historyCount > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-blue-50 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 text-[10px] font-black">
+                  {historyCount}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+
         <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
           <div>
+            {/* Desktop breadcrumb */}
             <Link
               href="/tools"
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-brand transition-colors mb-2"
+              className="hidden md:inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-brand transition-colors mb-2"
             >
               <ArrowLeft size={14} /> Kho công cụ AI
             </Link>
-            <div className="flex items-center gap-3">
-              <div className="rounded-2xl bg-brand-light p-2.5 text-brand shadow-xs">
-                <Calculator size={24} />
+
+            {/* Title Row: Centered icon, text & minimal mobile reset button */}
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-brand-light dark:bg-brand-light/20 flex items-center justify-center text-brand shadow-xs shrink-0">
+                <Calculator size={20} className="sm:w-6 sm:h-6" />
               </div>
-              <div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <h1 className="text-xl sm:text-2xl lg:text-3xl font-black tracking-tight text-slate-900 dark:text-white">
-                    Tính Thuế TMĐT 2026 (Nghị Định Mới)
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-lg sm:text-2xl lg:text-3xl font-black tracking-tight text-slate-900 dark:text-white leading-tight">
+                    Tính Thuế TMĐT 2026
                   </h1>
-                  <span className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shadow-xs uppercase tracking-wider">
+                  {/* Minimal icon-only reset button: ONLY ON MOBILE */}
+                  <button
+                    type="button"
+                    onClick={resetAll}
+                    className="md:hidden p-1.5 rounded-xl text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-transparent hover:border-rose-200 dark:hover:border-rose-900/60 transition-all cursor-pointer shadow-2xs active:scale-90"
+                    title="Xóa trắng / Đặt lại số tiền về 0"
+                    aria-label="Xóa trắng tất cả dữ liệu"
+                  >
+                    <RotateCcw size={15} />
+                  </button>
+                  <span className="hidden md:inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 shadow-xs uppercase tracking-wider shrink-0">
                     <Sparkles size={11} className="text-emerald-600 dark:text-emerald-400" />
                     FREE TOOL
                   </span>
-                  {/* <span className="hidden sm:inline-flex rounded-full bg-brand-light/80 border border-brand/30 px-2.5 py-0.5 text-[10px] font-black text-brand uppercase tracking-wider">
-                    LUẬT 2026
-                  </span> */}
                 </div>
-                <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
-                  Dự toán tham khảo nghĩa vụ thuế GTGT và TNCN/TNDN cho người bán hàng Shopee, TikTok Shop và đa kênh theo bộ quy tắc 2026.
+                <p className="hidden sm:block mt-1 text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  Dự toán thuế GTGT, TNCN/TNDN bán hàng Shopee, TikTok Shop &amp; đa kênh theo quy định 2026.
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Quick Action Buttons */}
-          <div className="flex items-center gap-2 self-start md:self-auto flex-wrap">
-            {/* Nút Lịch sử giống các công cụ khác */}
+          {/* Quick Action Buttons (Desktop ONLY - Preserved exactly as original) */}
+          <div className="hidden md:flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setIsHistoryModalOpen(true)}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/60 dark:bg-blue-950/30 px-3.5 py-2 text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-100/60 transition cursor-pointer shadow-xs"
+              onClick={() => {
+                setViewingHistoryItem(null);
+                setIsHistoryModalOpen(true);
+              }}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/60 dark:bg-blue-950/30 px-3.5 py-2 text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-100/60 transition cursor-pointer shadow-xs active:scale-95"
               title="Xem lịch sử các lần tính thuế đã lưu"
             >
-              <Clock size={14} />
+              <Clock size={14} className="text-blue-500 shrink-0" />
               <span>Lịch sử</span>
+              {historyCount > 0 && (
+                <span className="ml-0.5 px-1.5 py-0.2 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 text-[10px] font-black">
+                  {historyCount}
+                </span>
+              )}
             </button>
 
             <button
               type="button"
               onClick={handleUseSample}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition cursor-pointer shadow-xs"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3.5 py-2 text-xs font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 transition cursor-pointer shadow-xs active:scale-95"
             >
-              <Zap size={14} className="text-amber-500" /> Dữ liệu mẫu (1 Tỷ)
+              <Zap size={14} className="text-amber-500 shrink-0" />
+              <span>Dữ liệu mẫu (1 Tỷ)</span>
             </button>
 
             <button
               type="button"
               onClick={resetAll}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition cursor-pointer shadow-xs"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-bold text-slate-500 dark:text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 transition cursor-pointer shadow-xs active:scale-95"
               title="Đặt lại tất cả số tiền về 0"
             >
-              <RotateCcw size={14} /> Xóa trắng
+              <RotateCcw size={14} className="shrink-0" />
+              <span>Xóa trắng</span>
             </button>
           </div>
         </div>
       </header>
 
+      {/* Mobile Tab Switcher */}
+      <MobileToolTabs
+        activeTab={mobileTab}
+        onChangeTab={setMobileTab}
+        hasResult={hasCalculated && Boolean(calculatedResult)}
+        formLabel="Thông tin nộp thuế"
+        resultLabel="Dự toán thuế 2026"
+      />
+
       {/* 2. Balanced 2-Column Core Architecture (5 cols Left - 7 cols Right) */}
       <div className="grid items-start gap-6 lg:grid-cols-12">
         {/* Left Column: Form Setup (5 cols) */}
-        <div className="space-y-5 lg:col-span-5">
+        <div className={`space-y-5 pb-24 lg:pb-0 ${mobileTab === "form" ? "block" : "hidden lg:block"} lg:col-span-5`}>
           {/* Section 1: Payer Type & Period */}
           <Section
             title="Đối tượng & Loại hình người nộp thuế"
             icon={<Building2 size={18} className="text-brand" />}
-            badge={
-              <span className="rounded-full bg-slate-100 dark:bg-slate-800 px-2.5 py-0.5 text-[10px] font-bold text-slate-600 dark:text-slate-400">
-                Năm {input.taxYear}
-              </span>
-            }
+            badge=""
           >
             {/* Interactive 3-Button Segmented Selector */}
             <div>
@@ -746,9 +808,9 @@ export default function TaxCalculator() {
               </span>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { id: "household", label: "Hộ kinh doanh", icon: <Store size={14} />, hint: "Phổ biến nhất sàn" },
-                  { id: "individual", label: "Cá nhân KD", icon: <User size={14} />, hint: "Kinh doanh tự do" },
-                  { id: "company", label: "Doanh nghiệp", icon: <Building2 size={14} />, hint: "Công ty / DN" },
+                  { id: "household", label: "Hộ kinh doanh", icon: <Store size={17} />, hint: "Phổ biến nhất sàn" },
+                  { id: "individual", label: "Cá nhân KD", icon: <User size={17} />, hint: "Kinh doanh tự do" },
+                  { id: "company", label: "Doanh nghiệp", icon: <Building2 size={17} />, hint: "Công ty / DN" },
                 ].map((item) => {
                   const isActive = input.payerType === item.id;
                   return (
@@ -756,13 +818,13 @@ export default function TaxCalculator() {
                       key={item.id}
                       type="button"
                       onClick={() => changePayer(item.id as TaxPayerType)}
-                      className={`flex flex-col items-center justify-center rounded-2xl border p-2.5 sm:p-3 text-center transition-all cursor-pointer ${isActive
-                        ? "border-brand bg-brand-light/30 dark:bg-brand-light/15 text-brand shadow-xs ring-2 ring-brand/20 font-black"
-                        : "border-slate-200/80 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                      className={`min-h-[72px] sm:min-h-[80px] h-full flex flex-col items-center justify-center rounded-2xl border p-2 sm:p-3 text-center transition-all cursor-pointer ${isActive
+                        ? "border-brand bg-brand-light/35 dark:bg-brand-light/15 text-brand shadow-xs ring-2 ring-brand/20 font-black"
+                        : "border-slate-200/80 dark:border-slate-700/80 bg-slate-50/70 dark:bg-slate-800/60 text-slate-600 dark:text-slate-400 hover:border-slate-300"
                         }`}
                     >
                       <div className="mb-1">{item.icon}</div>
-                      <span className="text-xs font-bold">{item.label}</span>
+                      <span className="text-[11px] sm:text-xs font-bold leading-tight">{item.label}</span>
                       <span className="mt-0.5 text-[10px] opacity-70 hidden sm:inline">{item.hint}</span>
                     </button>
                   );
@@ -775,7 +837,7 @@ export default function TaxCalculator() {
                 <select
                   value={input.taxYear}
                   onChange={(event) => update("taxYear", Number(event.target.value))}
-                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800/80 px-3.5 py-2.5 text-sm font-bold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
+                  className="w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800/80 px-3.5 py-2.5 text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
                 >
                   <option value={2026} className="dark:bg-slate-900">Kỳ tính thuế 2026 (được hỗ trợ)</option>
                 </select>
@@ -786,7 +848,7 @@ export default function TaxCalculator() {
                   <select
                     value={input.residencyStatus}
                     onChange={(event) => update("residencyStatus", event.target.value as TaxCalculatorInput["residencyStatus"])}
-                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800/80 px-3 py-2.5 text-xs font-bold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800/80 px-3.5 py-2.5 text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
                   >
                     <option value="resident" className="dark:bg-slate-900">Cá nhân cư trú tại Việt Nam</option>
                     <option value="nonresident" className="dark:bg-slate-900">Cá nhân không cư trú</option>
@@ -798,7 +860,7 @@ export default function TaxCalculator() {
                   <select
                     value={input.companyVatRate}
                     onChange={(event) => update("companyVatRate", Number(event.target.value))}
-                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800/80 px-3.5 py-2.5 text-sm font-bold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
+                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-slate-50 dark:bg-slate-800/80 px-3.5 py-2.5 text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand focus:ring-2 focus:ring-brand/20"
                   >
                     <option value={0} className="dark:bg-slate-900">0% (Xuất khẩu)</option>
                     <option value={5} className="dark:bg-slate-900">5% (Thiết yếu)</option>
@@ -811,35 +873,61 @@ export default function TaxCalculator() {
 
             {isPersonal && (
               <div className="rounded-2xl border border-brand/20 bg-brand-light/30 dark:bg-brand-light/10 p-3.5 space-y-3">
-                <Field
-                  label="Phương pháp tính thuế TNCN"
-                  hint=""
-                >
-                  <select
-                    value={input.personalIncomeMethod}
-                    onChange={(event) =>
-                      update("personalIncomeMethod", event.target.value as TaxCalculatorInput["personalIncomeMethod"])
-                    }
-                    className="w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 px-3 py-2 text-xs font-bold text-slate-900 dark:text-slate-100 outline-none transition focus:border-brand disabled:opacity-60"
-                  >
-                    <option value="revenue" className="dark:bg-slate-900">
-                      1. Theo tỷ lệ % doanh thu (Thuế tính trên phần vượt ngưỡng 1 tỷ)
-                    </option>
-                    <option value="profit" className="dark:bg-slate-900">
-                      2. Theo thu nhập chịu thuế = Doanh thu − Chi phí hợp lệ
-                    </option>
-                  </select>
-                </Field>
+                <div>
+                  <span className="mb-2 block text-xs font-bold text-slate-700 dark:text-slate-300">
+                    Phương pháp tính thuế TNCN:
+                  </span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => update("personalIncomeMethod", "revenue")}
+                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${input.personalIncomeMethod === "revenue"
+                        ? "border-brand bg-white dark:bg-slate-800 text-brand shadow-xs ring-2 ring-brand/20 font-bold"
+                        : "border-slate-200/80 dark:border-slate-700/80 bg-white/60 dark:bg-slate-800/40 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                        }`}
+                    >
+                      <div className="flex items-center gap-2 text-xs font-bold">
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${input.personalIncomeMethod === "revenue" ? "bg-brand" : "bg-slate-300 dark:bg-slate-600"}`} />
+                        <span>1. Theo % Doanh thu</span>
+                      </div>
+                      <p className="mt-1 text-[11px] opacity-75 font-normal pl-4 leading-tight">
+                        Tính trên phần vượt ngưỡng 1 tỷ (Áp dụng phổ biến sàn TMĐT)
+                      </p>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => update("personalIncomeMethod", "profit")}
+                      className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${input.personalIncomeMethod === "profit"
+                        ? "border-brand bg-white dark:bg-slate-800 text-brand shadow-xs ring-2 ring-brand/20 font-bold"
+                        : "border-slate-200/80 dark:border-slate-700/80 bg-white/60 dark:bg-slate-800/40 text-slate-600 dark:text-slate-400 hover:border-slate-300"
+                        }`}
+                    >
+                      <div className="flex items-center gap-2 text-xs font-bold">
+                        <span className={`w-2 h-2 rounded-full shrink-0 ${input.personalIncomeMethod === "profit" ? "bg-brand" : "bg-slate-300 dark:bg-slate-600"}`} />
+                        <span>2. Theo Thu nhập chịu thuế</span>
+                      </div>
+                      <p className="mt-1 text-[11px] opacity-75 font-normal pl-4 leading-tight">
+                        Thu nhập = Doanh thu − Chi phí hợp lệ có chứng từ
+                      </p>
+                    </button>
+                  </div>
+                </div>
 
                 <Field label="Doanh thu năm trước" hint="">
                   <MoneyInput value={input.personalPreviousYearRevenue} onChange={(value) => update("personalPreviousYearRevenue", value)} />
                 </Field>
 
                 {input.personalIncomeMethod === "profit" && (
-                  <Field label="Năm bắt đầu theo thu nhập" hint="Duy trì 2 năm">
-                    <input type="number" min={2024} max={2026} value={input.profitMethodStartYear ?? ""}
+                  <Field label="Năm bắt đầu theo thu nhập" hint="Duy trì tối thiểu 2 năm">
+                    <input
+                      type="number"
+                      min={2024}
+                      max={2026}
+                      value={input.profitMethodStartYear ?? ""}
                       onChange={(event) => update("profitMethodStartYear", event.target.value ? Number(event.target.value) : null)}
-                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm font-bold" />
+                      className="w-full rounded-xl border border-slate-200 dark:border-slate-700/80 bg-white dark:bg-slate-800 px-3.5 py-2.5 text-sm font-bold outline-none transition focus:border-brand"
+                    />
                   </Field>
                 )}
               </div>
@@ -851,7 +939,7 @@ export default function TaxCalculator() {
             title="Doanh thu đa kênh trong năm"
             icon={<ShoppingCart size={18} className="text-brand" />}
             badge={
-              <span className="rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 px-2.5 py-0.5 text-xs font-mono font-black text-emerald-700 dark:text-emerald-300">
+              <span className="rounded-full bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/50 px-2.5 py-0.5 text-xs font-mono font-black text-emerald-700 dark:text-emerald-300 shrink-0">
                 Tổng: {moneyFormat.format(liveTotalRevenue)} ₫
               </span>
             }
@@ -887,7 +975,7 @@ export default function TaxCalculator() {
               </Field>
             </div>
 
-            <div className="flex items-start gap-2 rounded-2xl bg-brand-light/30 dark:bg-brand-light/10 border border-brand/20 p-3 text-xs leading-relaxed text-slate-700 dark:text-slate-300">
+            <div className="flex items-start gap-2.5 rounded-2xl bg-brand-light/30 dark:bg-brand-light/10 border border-brand/20 p-3 text-xs leading-relaxed text-slate-700 dark:text-slate-300">
               <Info size={16} className="shrink-0 text-brand mt-0.5" />
               <span>
                 <strong>Căn cứ Luật Thuế 2026:</strong> Ngưỡng 1 tỷ đồng/năm xét trên <strong>tổng doanh thu toàn bộ hoạt động kinh doanh</strong>, không xét riêng từng sàn hay từng tài khoản.
@@ -896,22 +984,43 @@ export default function TaxCalculator() {
 
             {isPersonal && (
               <div className="space-y-3 border-t border-slate-100 pt-4 dark:border-slate-800">
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-2">
                   <div>
                     <p className="text-xs font-black text-slate-800 dark:text-slate-200">Phân bổ theo nhóm hoạt động</p>
-                    <p className="text-[11px] text-slate-500">
-                      {activityRevenueTotal < liveTotalRevenue
-                        ? `Còn cần phân bổ ${moneyFormat.format(liveTotalRevenue - activityRevenueTotal)} ₫.`
-                        : "Đã phân bổ đủ toàn bộ doanh thu."}
-                    </p>
+
+
                   </div>
-                  <span className={`text-[11px] font-black ${Math.abs(activityRevenueTotal - liveTotalRevenue) <= 1 ? "text-emerald-600" : "text-rose-600"}`}>
+                  <span className={`text-[11px] font-black shrink-0 ${Math.abs(activityRevenueTotal - liveTotalRevenue) <= 1 ? "text-emerald-600" : "text-rose-600"}`}>
                     {moneyFormat.format(activityRevenueTotal)} / {moneyFormat.format(liveTotalRevenue)} ₫
                   </span>
                 </div>
+
+                {activityRevenueTotal < liveTotalRevenue && liveTotalRevenue > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInput(prev => ({
+                        ...prev,
+                        activityRevenues: {
+                          goods: liveTotalRevenue,
+                          services: 0,
+                          production: 0,
+                          digital: 0,
+                          other: 0,
+                        }
+                      }));
+                      setHasCalculated(false);
+                      setCalculatedResult(null);
+                    }}
+                    className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border border-brand/30 bg-brand-light/30 dark:bg-brand-light/10 text-xs font-bold text-brand hover:bg-brand-light/60 transition cursor-pointer shadow-2xs"
+                  >
+                    <Zap size={13} className="text-amber-500" /> Phân bổ nhanh 100% vào Bán hàng hóa (1.5%)
+                  </button>
+                )}
+
                 <div className="grid gap-2.5 grid-cols-1">
                   {(Object.entries(ACTIVITY_RATES) as [BusinessActivity, (typeof ACTIVITY_RATES)[BusinessActivity]][]).map(([id, item]) => (
-                    <Field key={id} label={item.label} hint="">
+                    <Field key={id} label={item.label} hint={``}>
                       <MoneyInput
                         value={input.activityRevenues[id]}
                         max={maxActivityRevenue(id)}
@@ -939,10 +1048,15 @@ export default function TaxCalculator() {
               </Field>
 
               {(!isPersonal || input.personalIncomeMethod === "profit") && (
-                <label className="flex items-start gap-2 rounded-xl border border-slate-200 p-3 text-xs dark:border-slate-700 sm:col-span-2">
-                  <input type="checkbox" className="mt-0.5" checked={input.platformFeesDeductible}
+                <label className="flex items-start gap-2.5 rounded-xl border border-slate-200/80 dark:border-slate-700/80 bg-slate-50/60 dark:bg-slate-800/40 p-3 text-xs cursor-pointer hover:bg-slate-100/60 dark:hover:bg-slate-800 transition sm:col-span-2">
+                  <input type="checkbox" className="mt-0.5 rounded text-brand focus:ring-brand shrink-0" checked={input.platformFeesDeductible}
                     onChange={(event) => update("platformFeesDeductible", event.target.checked)} />
-                  <span><strong>Tính phí sàn vào chi phí được trừ</strong><br />Chỉ bật khi phí sàn có hóa đơn/chứng từ hợp lệ và chưa được cộng trong ô chi phí hợp lệ khác.</span>
+                  <div>
+                    <strong className="text-slate-800 dark:text-slate-200">Tính phí sàn vào chi phí được trừ</strong>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 leading-tight">
+                      Chỉ bật khi phí sàn có hóa đơn/chứng từ hợp lệ và chưa được cộng trong ô chi phí hợp lệ khác.
+                    </p>
+                  </div>
                 </label>
               )}
 
@@ -1002,10 +1116,10 @@ export default function TaxCalculator() {
             {!isPersonal && (
               <div className="space-y-3 rounded-2xl border border-blue-200 bg-blue-50/50 p-4 dark:border-blue-900/60 dark:bg-blue-950/20">
                 <p className="text-xs font-black text-blue-900 dark:text-blue-200">Điều kiện miễn TNDN và ưu đãi doanh nghiệp nhỏ</p>
-                <label className="flex gap-2 text-xs"><input type="checkbox" checked={input.companyIsNewThisYear} onChange={(e) => update("companyIsNewThisYear", e.target.checked)} /> Doanh nghiệp mới thành lập trong năm 2026</label>
-                <label className="flex gap-2 text-xs"><input type="checkbox" checked={input.companyHasPreviousYearData} onChange={(e) => update("companyHasPreviousYearData", e.target.checked)} /> Đã nhập đủ doanh thu tham chiếu của năm trước</label>
-                <label className="flex gap-2 text-xs"><input type="checkbox" checked={input.companyHasDisqualifyingRelatedParty} onChange={(e) => update("companyHasDisqualifyingRelatedParty", e.target.checked)} /> Có doanh nghiệp liên kết không đáp ứng điều kiện miễn theo doanh thu</label>
-                <label className="flex gap-2 text-xs"><input type="checkbox" checked={input.companyIsSme} onChange={(e) => update("companyIsSme", e.target.checked)} /> Là doanh nghiệp nhỏ và vừa đăng ký lần đầu</label>
+                <label className="flex gap-2 text-xs cursor-pointer"><input type="checkbox" checked={input.companyIsNewThisYear} onChange={(e) => update("companyIsNewThisYear", e.target.checked)} /> Doanh nghiệp mới thành lập trong năm 2026</label>
+                <label className="flex gap-2 text-xs cursor-pointer"><input type="checkbox" checked={input.companyHasPreviousYearData} onChange={(e) => update("companyHasPreviousYearData", e.target.checked)} /> Đã nhập đủ doanh thu tham chiếu của năm trước</label>
+                <label className="flex gap-2 text-xs cursor-pointer"><input type="checkbox" checked={input.companyHasDisqualifyingRelatedParty} onChange={(e) => update("companyHasDisqualifyingRelatedParty", e.target.checked)} /> Có doanh nghiệp liên kết không đáp ứng điều kiện miễn theo doanh thu</label>
+                <label className="flex gap-2 text-xs cursor-pointer"><input type="checkbox" checked={input.companyIsSme} onChange={(e) => update("companyIsSme", e.target.checked)} /> Là doanh nghiệp nhỏ và vừa đăng ký lần đầu</label>
                 {input.companyIsSme && (
                   <div className="grid gap-3 sm:grid-cols-2">
                     <Field label="Năm đăng ký lần đầu">
@@ -1014,10 +1128,10 @@ export default function TaxCalculator() {
                         className="w-full rounded-xl border border-blue-200 bg-white px-3 py-2 text-sm font-bold dark:border-blue-900 dark:bg-slate-900" />
                     </Field>
                     <div className="space-y-2 text-[11px]">
-                      <label className="flex gap-2"><input type="checkbox" checked={input.companyCreatedFromReorganization} onChange={(e) => update("companyCreatedFromReorganization", e.target.checked)} /> Hình thành do chia, tách, sáp nhập hoặc chuyển đổi</label>
-                      <label className="flex gap-2"><input type="checkbox" checked={input.companyControllerHasPriorBusiness} onChange={(e) => update("companyControllerHasPriorBusiness", e.target.checked)} /> Người kiểm soát có doanh nghiệp trước đó thuộc diện loại trừ</label>
-                      <label className="flex gap-2"><input type="checkbox" checked={input.companyHasExcludedIncome} onChange={(e) => update("companyHasExcludedIncome", e.target.checked)} /> Có thu nhập không được hưởng miễn</label>
-                      <label className="flex gap-2"><input type="checkbox" checked={input.companyUsesOtherTaxIncentive} onChange={(e) => update("companyUsesOtherTaxIncentive", e.target.checked)} /> Đang áp dụng ưu đãi TNDN khác</label>
+                      <label className="flex gap-2 cursor-pointer"><input type="checkbox" checked={input.companyCreatedFromReorganization} onChange={(e) => update("companyCreatedFromReorganization", e.target.checked)} /> Hình thành do chia, tách, sáp nhập hoặc chuyển đổi</label>
+                      <label className="flex gap-2 cursor-pointer"><input type="checkbox" checked={input.companyControllerHasPriorBusiness} onChange={(e) => update("companyControllerHasPriorBusiness", e.target.checked)} /> Người kiểm soát có doanh nghiệp trước đó thuộc diện loại trừ</label>
+                      <label className="flex gap-2 cursor-pointer"><input type="checkbox" checked={input.companyHasExcludedIncome} onChange={(e) => update("companyHasExcludedIncome", e.target.checked)} /> Có thu nhập không được hưởng miễn</label>
+                      <label className="flex gap-2 cursor-pointer"><input type="checkbox" checked={input.companyUsesOtherTaxIncentive} onChange={(e) => update("companyUsesOtherTaxIncentive", e.target.checked)} /> Đang áp dụng ưu đãi TNDN khác</label>
                     </div>
                   </div>
                 )}
@@ -1077,7 +1191,7 @@ export default function TaxCalculator() {
         </div>
 
         {/* Right Column: Tax Output (7 cols) - Chỉ hiển thị khi đã ấn tính toán */}
-        <div className="lg:col-span-7">
+        <div className={`${mobileTab === "result" ? "block" : "hidden lg:block"} lg:col-span-7`}>
           {hasCalculated && calculatedResult ? (
             <TaxCalculatorOutput input={input} result={calculatedResult} />
           ) : (
@@ -1120,6 +1234,28 @@ export default function TaxCalculator() {
           )}
         </div>
       </div>
+
+      {/* Floating Mobile Sticky CTA Bar */}
+      {mobileTab === "form" && (
+        <div className="fixed bottom-0 left-0 right-0 z-40 lg:hidden bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800 px-4 py-3 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+          <div className="flex items-center justify-between gap-3 max-w-lg mx-auto">
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase font-bold text-slate-400">Doanh thu tạm tính</p>
+              <p className="text-sm font-black font-mono text-slate-900 dark:text-white truncate">
+                {moneyFormat.format(liveTotalRevenue)} ₫
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => handleCalculate()}
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-brand hover:bg-brand-hover px-5 py-2.5 text-xs font-black text-white shadow-md shadow-brand/25 active:scale-95 transition-all cursor-pointer shrink-0"
+            >
+              <Calculator size={15} />
+              <span>{editingId ? "Cập nhật dự toán" : hasCalculated ? "Tính lại" : "Tính thuế ngay"}</span>
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

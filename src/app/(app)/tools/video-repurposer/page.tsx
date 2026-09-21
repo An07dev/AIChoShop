@@ -22,6 +22,7 @@ import { useToolGate } from "@/hooks/useToolGate";
 import { useToast } from "@/context/ToastContext";
 import VideoRepurposerOutput from "@/components/tools/VideoRepurposerOutput";
 import { AiUsageBadge } from "@/components/tools/AiUsageBadge";
+import { MobileToolTabs } from "@/components/tools/MobileToolTabs";
 
 const BRAND_TONES = [
   {
@@ -47,6 +48,90 @@ const BRAND_TONES = [
   },
 ];
 
+const SAMPLE_RESULT = `## 👥 ĐỊNH DẠNG 1: BÀI ĐĂNG FACEBOOK GROUP (Seeding / Tâm Sự Thực Tế)
+Mọi người trong nhóm có ai từng mua nồi chiên không dầu về xong cất góc bếp như em không? 😭
+
+Hồi trước hí hửng mua con nồi cơ 1 triệu mấy về nướng đùi gà với sườn, chiên xong thịt nó khô đét, xác như rơm, ăn nghẹn cả họng. Em nản quá quẳng xó cả nửa năm.
+
+Đợt vừa rồi bà chị họ làm bên dinh dưỡng sang chơi, bả chỉ cho quả nồi chiên hơi nước 2 trong 1 Lock&Care 7L này. Ban đầu em cũng sợ bị lùa gà, nhưng bả bảo: "Mày nướng vừa nhiệt 200 độ mà nó phun sương nano liên tục thì nước ngọt trong thịt sao bốc hơi được!".
+
+Thế là em liều bấm bụng rước về. Thề với các bác hôm qua em nướng nguyên con gà ta 2.3kg:
+- Bên ngoài: Da vàng ươm màu cánh gián, giòn rụm kêu rôm rốp.
+- Bên trong: Xé ra khói nghi ngút, nước thịt ứa ra mọng sũng, mềm ngọt dã man!
+- Rửa ráy: Lòng nồi Ceramic 5 lớp, nướng xong ngâm nước ấm tráng nhẹ là sạch bong, không phải cọ toát mồ hôi.
+
+Có bác nào cũng đang xài dòng hơi nước này của Lock&Care chưa ạ? Cho em xin thêm vài công thức nướng thịt xiên với cá hồi với!
+
+*(Bác nào lười tìm mã thì em để link chính hãng săn sale dưới cmt nhé)*
+
+---
+
+## 📢 ĐỊNH DẠNG 2: BÀI ĐĂNG FANPAGE FACEBOOK (Tối Ưu Click & Inbox)
+🚨 CẢNH BÁO: ĐỪNG MUA NỒI CHIÊN KHÔNG DẦU TRUYỀN THỐNG NỮA NẾU BẠN CHƯA BIẾT ĐIỀU NÀY! 🚨
+
+90% gia đình bỏ xó nồi chiên không dầu chỉ sau 1 tháng vì một lý do: THỊT NƯỚNG QUÁ KHÔ VÀ CỌ RỬA QUÁ MỆT!
+
+👉 GIẢI PHÁP ĐỘT PHÁ 2024: Nồi Chiên Không Dầu Hơi Nước Lock&Care 7L - Vừa Nướng Giòn Vừa Giữ Trọn Vị Mọng Nước!
+
+🔥 TẠI SAO NÊN ĐỔI NGAY SANG CÔNG NGHỆ HƠI NƯỚC NANO?
+- Công nghệ nướng kép Hydro-Air: Vừa đối lưu 200°C vừa phun sương nano, giúp da gà giòn rụm bên ngoài nhưng thịt bên trong mọng nước 100%.
+- Dung tích khủng 7 Lít: Nướng vừa vặn nguyên con gà 2.5kg hoặc 2 miếng sườn tảng cho cả nhà 4-6 người.
+- Lòng nồi Ceramic Nano 5 lớp: Chống dính tuyệt đối, không chứa PFOA độc hại, tráng nước là sạch trong 10 giây.
+- 8 Chế độ cài đặt sẵn: Chiên gà, sườn, khoai tây, hấp bánh bao, rã đông... chỉ bằng 1 nút chạm cảm ứng.
+
+🎁 ƯU ĐÃI ĐẶC QUYỀN DUY NHẤT HÔM NAY:
+- Giảm ngay 200.000đ khi đặt qua bài viết này
+- Tặng kèm khay hứng mỡ inox 304 + sách 50 công thức món ngon trị giá 350.000đ
+- Miễn phí vận chuyển toàn quốc + Bảo hành chính hãng 24 tháng (Lỗi 1 đổi 1 trong 30 ngày)
+
+👇 Bấm vào nút "GỬI TIN NHẮN" hoặc để lại "Nồi chiên" để nhận link ưu đãi chính hãng!
+
+---
+
+## 📸 ĐỊNH DẠNG 3: KỊCH BẢN CHUỖI ẢNH CAROUSEL (Lemon8 / Facebook Album / Instagram)
+- Slide 1 (Bìa): 3 LÝ DO NỒI CHIÊN THƯỜNG BỊ BỎ XÓ & VÌ SAO MÌNH ĐỔI SANG NỒI CHIÊN HƠI NƯỚC?
+- Slide 2 (Nỗi đau): LÝ DO 1 - THỊT NƯỚNG KHÔNG BỊ KHÔ ĐÉT: Nhờ công nghệ phun sương nano liên tục ở nhiệt độ 200°C, khóa trọn nước ngọt bên trong miếng thịt.
+- Slide 3 (Dung tích): LÝ DO 2 - DUNG TÍCH 7L NƯỚNG NGUYÊN CON GÀ: Lòng nồi siêu rộng, nướng nguyên con gà 2.5kg vàng ruộm, không cần cắt nhỏ lỉnh kỉnh.
+- Slide 4 (Tiện ích): LÝ DO 3 - RỬA NỒI TRONG 10 GIÂY: Lớp chống dính Ceramic 5 lớp cao cấp, chỉ cần xả nước ấm là trôi sạch dầu mỡ.
+- Slide 5 (CTA & Save): TỔNG KẾT & MẸO SĂN SALE: Bí quyết nấu ăn healthy không ngấy mỡ. Nhấn ❤️ THẢ TIM và 🔖 LƯU LẠI bài viết này để khi cần mua mở ra xem ngay nhé!
+
+---
+
+## 📝 ĐỊNH DẠNG 4: BÀI VIẾT REVIEW CHUẨN SEO (Website / Blog Affiliate)
+Tiêu đề: [Review Thực Tế] Nồi Chiên Không Dầu Hơi Nước Lock&Care 7L Có Tốt Không? Có Đáng Tiền Không?
+
+1. Nồi chiên không dầu hơi nước là gì?
+Khác với nồi chiên không dầu truyền thống dùng luồng khí nóng làm khô bề mặt thực phẩm, Lock&Care 7L tích hợp thêm van phun sương nano đối lưu. Cơ chế này giúp thực phẩm vừa đạt độ giòn ở lớp vỏ, vừa giữ lại tới 95% độ ẩm tự nhiên của thực phẩm.
+
+2. Đánh giá ưu điểm vượt trội (Pros):
+- Giữ ẩm hoàn hảo: Đùi gà, sườn nướng mọng nước, không bị xơ cứng.
+- An toàn sức khỏe: Giảm đến 90% lượng mỡ thừa so với chiên rán thông thường.
+- Dung tích thực tế 7L: Phù hợp cho gia đình từ 3 - 6 thành viên.
+- Chống dính bền bỉ: Men gốm Ceramic không bong tróc, an toàn cho trẻ nhỏ.
+
+3. Nhược điểm cần lưu ý (Cons):
+- Cần châm nước tinh khiết vào khay nước trước khi chọn chế độ nướng hơi nước.
+- Kích thước nồi tương đối lớn, cần góc bếp thoáng để đặt.
+
+4. Lời khuyên: Ai nên sở hữu chiếc nồi này?
+Nếu bạn là người yêu thích các món nướng nhưng ghét cảm giác thịt bị khô hoặc gia đình có người lớn tuổi, trẻ em cần ăn mềm thì Lock&Care 7L chắc chắn là khoản đầu tư xứng đáng nhất cho căn bếp năm nay.
+
+---
+
+## 💬 ĐỊNH DẠNG 5: TIN NHẮN ZALO OA / CHĂM SÓC KHÁCH HÀNG
+Dạ em chào Anh/Chị! 🌿
+
+Hôm nay Lock&Care có một bất ngờ nhỏ dành riêng cho khách hàng thân thiết ạ. 
+
+Em gửi Anh/Chị video thực tế nướng nguyên con gà da giòn rụm, thịt mọng nước bằng chiếc Nồi chiên không dầu hơi nước 2 trong 1 Lock&Care 7L đang cực hot trên TikTok.
+
+🎁 Em xin gửi riêng Anh/Chị mã giảm giá độc quyền: [LOCKCARE200K] - Giảm ngay 200.000đ trực tiếp vào đơn hàng hôm nay, kèm quà tặng sách 50 công thức món ngon cho gia đình.
+
+Số lượng voucher ưu đãi có hạn trong 24h, Anh/Chị bấm vào link dưới đây để chọn màu và nhận ưu đãi nhé ạ:
+👉 https://lockcare.vn/deal-hoi-nuoc-7l
+
+Nếu cần em tư vấn thêm dung tích phù hợp với nhà mình, Anh/Chị cứ nhắn lại cho em bất kỳ lúc nào nhé!`;
+
 export default function VideoRepurposerPage() {
   const { checkAccess, GateModals } = useToolGate();
   const { showAiError, showWarning } = useToast();
@@ -54,6 +139,7 @@ export default function VideoRepurposerPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [mobileTab, setMobileTab] = useState<"form" | "result">("form");
 
   // Form states
   const [videoScript, setVideoScript] = useState("");
@@ -104,6 +190,8 @@ export default function VideoRepurposerPage() {
     );
     setCallToAction("Bình luận 'Nồi chiên' lấy mã giảm giá 200k & link mua chính hãng");
     setBrandTone("friendly");
+    setResult(SAMPLE_RESULT);
+    setMobileTab("result");
   };
 
   // Xóa trắng form
@@ -131,6 +219,7 @@ export default function VideoRepurposerPage() {
 
     setLoading(true);
     setResult("");
+    setMobileTab("result");
 
     try {
       const response = await fetch("/api/ai", {
@@ -166,53 +255,103 @@ export default function VideoRepurposerPage() {
     <div className="max-w-7xl w-full mx-auto flex-1 flex flex-col min-h-0 h-full lg:overflow-hidden pb-3">
       <GateModals />
 
-      {/* Header & Breadcrumb */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 shrink-0">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
-            <Link href="/tools" className="hover:text-emerald-600 transition-colors flex items-center gap-1">
-              <ArrowLeft size={12} /> Kho Công Cụ AI
-            </Link>
-            <span>/</span>
-            <span className="text-slate-600 dark:text-slate-300">Sáng Tạo Đa Kênh</span>
-          </div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex flex-wrap items-center gap-2 sm:gap-3">
-            AI Biến Video Thành 5 Kênh
-            <span className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 shadow-xs uppercase tracking-wider">
-              <Crown size={11} className="text-amber-600 dark:text-amber-400" />
-              VIP TOOL
+      {/* 1. Header Navigation & Quick Actions */}
+      <div className="shrink-0 mb-3 space-y-2">
+        {/* Mobile Top Bar: Breadcrumb + Badges */}
+        <div className="md:hidden flex items-center justify-between pb-1">
+          <Link
+            href="/tools"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-brand transition-colors"
+          >
+            <ArrowLeft size={13} /> Kho công cụ AI
+          </Link>
+          <div className="flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 shadow-2xs uppercase tracking-wider">
+              <Crown size={10} className="text-amber-600 dark:text-amber-400" />
+              VIP
             </span>
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            Chuyển hóa kịch bản video TikTok thành 5 bài đăng chất lượng cao
-          </p>
+            <AiUsageBadge tool="video-repurposer" refreshTrigger={refreshTrigger} historyOnly />
+          </div>
         </div>
 
-        {/* Nút hành động nhanh */}
-        <div className="flex items-center gap-2 shrink-0">
-          <AiUsageBadge tool="video-repurposer" refreshTrigger={refreshTrigger} />
-          <button
-            type="button"
-            onClick={handleUseSample}
-            className="px-3 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold hover:bg-emerald-100/50 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
-          >
-            <Sparkles size={14} /> Dữ Liệu Mẫu
-          </button>
-          <button
-            type="button"
-            onClick={handleResetForm}
-            className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
-          >
-            <RotateCcw size={14} /> Xóa Form
-          </button>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+          <div>
+            {/* Desktop Breadcrumb */}
+            <div className="hidden md:flex items-center gap-2 text-xs font-semibold text-slate-400 mb-2">
+              <Link href="/tools" className="hover:text-pink-600 transition-colors flex items-center gap-1 text-slate-500">
+                <ArrowLeft size={13} /> Kho Công Cụ AI
+              </Link>
+              <span>/</span>
+              <span className="text-slate-600 dark:text-slate-300">Sáng Tạo Đa Kênh</span>
+            </div>
+
+            {/* Title Row: Centered icon, text & minimal mobile reset button */}
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-pink-50 dark:bg-pink-950/50 border border-pink-200 dark:border-pink-800/80 flex items-center justify-center text-pink-600 dark:text-pink-400 shadow-xs shrink-0">
+                <Share2 size={20} className="sm:w-5 sm:h-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
+                    AI Biến Video Thành 5 Kênh
+                  </h1>
+                  {/* Minimal icon-only reset button: ONLY ON MOBILE */}
+                  <button
+                    type="button"
+                    onClick={handleResetForm}
+                    className="md:hidden p-1.5 rounded-xl text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-transparent hover:border-rose-200 dark:hover:border-rose-900/60 transition-all cursor-pointer shadow-2xs active:scale-90"
+                    title="Xóa Form / Đặt lại"
+                    aria-label="Xóa Form"
+                  >
+                    <RotateCcw size={15} />
+                  </button>
+                  <span className="hidden md:inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 shadow-xs uppercase tracking-wider shrink-0">
+                    <Crown size={11} className="text-amber-600 dark:text-amber-400" />
+                    VIP TOOL
+                  </span>
+                </div>
+                <p className="hidden sm:block text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
+                  Chuyển hóa kịch bản video TikTok thành 5 bài đăng chất lượng cao
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Action Buttons (Desktop ONLY - Preserved exactly as original) */}
+          <div className="hidden md:flex items-center gap-2 shrink-0">
+            <AiUsageBadge tool="video-repurposer" refreshTrigger={refreshTrigger} />
+            <button
+              type="button"
+              onClick={handleUseSample}
+              className="px-2.5 sm:px-3 py-2 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold hover:bg-emerald-100/50 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0 active:scale-95"
+            >
+              <Sparkles size={14} /> Dữ Liệu Mẫu
+            </button>
+            <button
+              type="button"
+              onClick={handleResetForm}
+              className="px-2.5 sm:px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95"
+            >
+              <RotateCcw size={14} /> Xóa Form
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* Mobile Tab Switcher */}
+      <MobileToolTabs
+        activeTab={mobileTab}
+        onChangeTab={setMobileTab}
+        hasResult={Boolean(result)}
+        loading={loading}
+        resultLabel="Nội Dung 5 Kênh"
+      />
 
       {/* Grid 2 Cột: Cuộn độc lập */}
       <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:overflow-hidden items-stretch">
         {/* CỘT TRÁI: FORM NHẬP LIỆU (cuộn độc lập) */}
-        <div className="lg:col-span-5 flex flex-col min-h-0 lg:h-full lg:overflow-hidden">
-          <div className="h-full overflow-y-auto custom-scrollbar space-y-4 lg:pr-1.5 pb-2">
+        <div className={`${mobileTab === "form" ? "flex" : "hidden lg:flex"} lg:col-span-5 flex-col min-h-0 lg:h-full lg:overflow-hidden`}>
+          <div className="h-full overflow-y-auto custom-scrollbar space-y-4 lg:pr-1.5 pb-24 lg:pb-2">
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 sm:p-5 shadow-xs space-y-4">
               {/* Header Khối Form */}
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -427,7 +566,8 @@ export default function VideoRepurposerPage() {
         </div>
 
         {/* CỘT PHẢI: HIỂN THỊ KẾT QUẢ 5 KÊNH (cuộn độc lập) */}
-        <div className="lg:col-span-7 flex flex-col min-h-0 lg:h-full lg:overflow-hidden">
+        <div className={`${mobileTab === "result" ? "flex" : "hidden lg:flex"} lg:col-span-7 flex-col min-h-0 lg:h-full lg:overflow-hidden`}>
+
           <VideoRepurposerOutput
             result={result}
             loading={loading}

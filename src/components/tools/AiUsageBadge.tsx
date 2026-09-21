@@ -18,10 +18,17 @@ interface AiUsageBadgeProps {
   tool?: string;
   refreshTrigger?: number;
   onSelectOutput?: (output: string) => void;
-  showHistory?: boolean;
+  className?: string;
+  historyOnly?: boolean;
 }
 
-export function AiUsageBadge({ tool, refreshTrigger = 0, onSelectOutput, showHistory = true }: AiUsageBadgeProps) {
+export function AiUsageBadge({
+  tool,
+  refreshTrigger = 0,
+  onSelectOutput,
+  className = "",
+  historyOnly = false,
+}: AiUsageBadgeProps) {
   const [stats, setStats] = useState<{
     isLogged: boolean;
     isVIP: boolean;
@@ -87,50 +94,73 @@ export function AiUsageBadge({ tool, refreshTrigger = 0, onSelectOutput, showHis
 
   return (
     <>
-      <div className="flex items-center gap-2">
-        {/* Badge Lượt Dùng Hôm Nay */}
-        <div
-          className="flex items-center gap-1.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs"
-          title={
-            stats.isVIP
-              ? "Tài khoản VIP: Sử dụng không giới hạn"
-              : `Hôm nay bạn còn ${stats.remainingFree ?? 0}/${stats.dailyFreeLimit} lượt miễn phí`
-          }
-        >
-          <Zap size={13} className="text-amber-500 fill-amber-500 shrink-0" />
-          {stats.isVIP ? (
-            <>
-              <span className="font-bold text-slate-900 dark:text-white">Không giới hạn</span>
-              <span className="bg-amber-100 dark:bg-amber-950/70 text-amber-700 dark:text-amber-400 text-[10px] font-black px-1.5 py-0.2 rounded-sm ml-0.5">
-                VIP
-              </span>
-            </>
-          ) : (
-            <>
-              <span className="hidden sm:inline text-slate-400 font-normal">Còn:</span>
-              <span
-                className={`font-black ${(stats.remainingFree ?? 0) <= 2
-                  ? "text-rose-600 dark:text-rose-400"
-                  : "text-slate-900 dark:text-white"
-                  }`}
-              >
-                {stats.remainingFree ?? 0}/{stats.dailyFreeLimit} lượt
-              </span>
-              <span className="text-[10px] text-slate-400 font-medium">Free</span>
-            </>
-          )}
-        </div>
-
-        {/* Nút Xem Nội Dung Đã Tạo Gần Đây */}
-        {showHistory && <button
+      {historyOnly ? (
+        <button
+          type="button"
           onClick={() => setIsOpen(true)}
-          className="flex items-center gap-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 transition-all cursor-pointer shadow-2xs active:scale-95"
+          className="inline-flex items-center gap-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 px-3 py-1 rounded-full text-xs font-bold text-slate-700 dark:text-slate-200 transition-all cursor-pointer shadow-2xs active:scale-95 whitespace-nowrap"
           title="Xem các nội dung bạn đã tạo trước đây"
         >
           <Clock size={13} className="text-blue-500 shrink-0" />
-          <span className="hidden sm:inline">Lịch sử</span>
-        </button>}
-      </div>
+          <span>Lịch sử</span>
+          {filteredActivities.length > 0 && (
+            <span className="px-1.5 py-0.2 rounded-full bg-blue-50 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 text-[10px] font-black">
+              {filteredActivities.length}
+            </span>
+          )}
+        </button>
+      ) : (
+        <div className={`flex items-center gap-1.5 sm:gap-2 shrink-0 ${className}`}>
+          {/* Badge Lượt Dùng Hôm Nay */}
+          <div
+            className={`${stats.isVIP ? "hidden sm:flex" : "flex"} items-center gap-1.5 bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-700 dark:text-slate-200 shadow-2xs shrink-0 whitespace-nowrap`}
+            title={
+              stats.isVIP
+                ? "Tài khoản VIP: Sử dụng không giới hạn"
+                : `Hôm nay bạn còn ${stats.remainingFree ?? 0}/${stats.dailyFreeLimit} lượt miễn phí`
+            }
+          >
+            <Zap size={13} className="text-amber-500 fill-amber-500 shrink-0" />
+            {stats.isVIP ? (
+              <>
+                <span className="font-bold text-slate-900 dark:text-white">Không giới hạn</span>
+                <span className="bg-amber-100 dark:bg-amber-950/70 text-amber-700 dark:text-amber-400 text-[10px] font-black px-1.5 py-0.2 rounded-sm ml-0.5">
+                  VIP
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="hidden sm:inline text-slate-400 font-normal">Còn:</span>
+                <span
+                  className={`font-black ${(stats.remainingFree ?? 0) <= 2
+                    ? "text-rose-600 dark:text-rose-400"
+                    : "text-slate-900 dark:text-white"
+                    }`}
+                >
+                  {stats.remainingFree ?? 0}/{stats.dailyFreeLimit} lượt
+                </span>
+                <span className="text-[10px] text-slate-400 font-medium">Free</span>
+              </>
+            )}
+          </div>
+
+          {/* Nút Xem Nội Dung Đã Tạo Gần Đây */}
+          <button
+            type="button"
+            onClick={() => setIsOpen(true)}
+            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 px-2.5 sm:px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 transition-all cursor-pointer shadow-xs active:scale-95 text-center whitespace-nowrap"
+            title="Xem các nội dung bạn đã tạo trước đây"
+          >
+            <Clock size={13} className="text-blue-500 shrink-0" />
+            <span>Lịch sử</span>
+            {filteredActivities.length > 0 && (
+              <span className="ml-0.5 px-1.5 py-0.2 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 text-[10px] font-black">
+                {filteredActivities.length}
+              </span>
+            )}
+          </button>
+        </div>
+      )}
 
       {/* Modal Lịch Sử Đã Tạo */}
       {showHistory && isOpen && (

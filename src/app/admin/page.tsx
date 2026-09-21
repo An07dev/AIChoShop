@@ -49,39 +49,46 @@ function timeAgo(date: Date | string) {
         return `${days} ngày trước`;
     return formatDate(d);
 }
-export default async function AdminDashboard({ searchParams }: {
-    searchParams: Promise<SearchValues>;
-}) {
-    await requireAdmin();
-    const values = await searchParams, q = listQuery(values);
-    let period;
-    try {
-        period = reportPeriod(q.value("from"), q.value("to"));
-    }
-    catch (error) {
-        return <div className="space-y-4"><AdminPageHeader title="Bảng Điều Khiển Quản Trị" subtitle="Chọn kỳ báo cáo hợp lệ." icon={LayoutDashboard}/><p role="alert">{error instanceof Error ? error.message : "Kỳ không hợp lệ."}</p><Link href="/admin">Về báo cáo 30 ngày</Link></div>;
-    }
-    const now = new Date();
-    const [report, userRows, recentTransactions, registrations] = await Promise.all([
-        getAdminReport(period.start, period.end, now),
-        prisma.user.findMany({ orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: 5, select: { id: true, email: true, name: true, phone: true, role: true, isVIP: true, vipExpiresAt: true, createdAt: true } }),
-        prisma.transaction.findMany({ orderBy: [{ createdAt: "desc" }, { id: "asc" }], take: 5, select: { id: true, amount: true, currency: true, status: true, sepayId: true, paymentCode: true, isSandbox: true, createdAt: true, paidAt: true, user: { select: { name: true, email: true } } } }),
-        prisma.$queryRaw<{
-            month: string;
-            vip: number;
-            free: number;
-        }[]>`SELECT to_char("createdAt"+interval '7 hours','YYYY-MM') AS month,count(*) FILTER (WHERE "isVIP" AND ("vipExpiresAt" IS NULL OR "vipExpiresAt">${now}))::int AS vip,count(*) FILTER (WHERE NOT "isVIP" OR ("vipExpiresAt" IS NOT NULL AND "vipExpiresAt"<=${now}))::int AS free FROM "User" WHERE "createdAt">=${period.start} AND "createdAt"<${period.end} GROUP BY 1 ORDER BY 1`
+
+export default async function AdminDashboard() {
+  await requireAdmin();
+  let userCount = 0;
+  let vipCount = 0;
+  let lessonCount = 0;
+  let courseCount = 0;
+  let totalRevenue = 0;
+  let successTxCount = 0;
+  let recentUsers: any[] = [];
+  let recentTransactions: any[] = [];
+  let allSuccessfulTxs: any[] = [];
+  let allUsersTimeline: any[] = [];
+
+  try {
+    const [uCount, vCount, lCount, cCount, revenueAgg, sTxCount] = await Promise.all([
+      prisma.user.count(),
+      prisma.user.count({ where: { isVIP: true } }),
+      prisma.lesson.count(),
+      prisma.course.count(),
+      prisma.transaction.aggregate({
+        where: { status: "SUCCESS" },
+        _sum: { amount: true },
+      }),
+      prisma.transaction.count({ where: { status: "SUCCESS" } }),
     ]);
-    const recentUsers = userRows.map(user => ({ ...user, isVIP: isVipActive(user, now) }));
-    const userCount = report.currentUsers, vipCount = report.currentVip, lessonCount = report.lessons, courseCount = report.courses, totalRevenue = report.netRevenue, successTxCount = report.paidCount;
-    const stats = [
-        {
-            name: "Tổng Học Viên",
-            value: userCount.toLocaleString("vi-VN"),
-            subtext: `${vipCount} VIP • ${Math.max(0, userCount - vipCount)} Thường`,
-            icon: <Users size={24} className="text-blue-600"/>,
-            color: "bg-blue-50 text-blue-600 border-blue-100",
-            link: "/admin/users",
+
+    const [users, txs, succTxs, usersTimeline] = await Promise.all([
+      prisma.user.findMany({
+        orderBy: { createdAt: "desc" },
+        take: 5,
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          phone: true,
+          role: true,
+          isVIP: true,
+          vipExpiresAt: true,
+          createdAt: true,
         },
         {
             name: "VIP Còn Hạn Hiện Tại",

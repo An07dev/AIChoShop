@@ -57,6 +57,7 @@ import {
 } from "lucide-react";
 import { useToolGate } from "@/hooks/useToolGate";
 import { AiUsageBadge } from "@/components/tools/AiUsageBadge";
+import { MobileToolTabs } from "@/components/tools/MobileToolTabs";
 import { calculateKocForecast, calculateKocPlan, validateKocPlanInput } from "@/lib/koc-planner/engine";
 import { isFeeProfileStale, resolveFeeProfile } from "@/lib/pricing/fee-resolver";
 import type { FeeOverrideRecord } from "@/lib/pricing/types";
@@ -290,9 +291,8 @@ function SectionCard({
             setIsOpen(!isOpen);
           }
         }}
-        className={`flex items-center justify-between p-3 sm:p-3.5 cursor-pointer select-none transition-colors hover:bg-slate-100/70 dark:hover:bg-slate-800/60 ${
-          isOpen ? "border-b border-slate-200/60 dark:border-slate-700/60" : ""
-        }`}
+        className={`flex items-center justify-between p-3 sm:p-3.5 cursor-pointer select-none transition-colors hover:bg-slate-100/70 dark:hover:bg-slate-800/60 ${isOpen ? "border-b border-slate-200/60 dark:border-slate-700/60" : ""
+          }`}
       >
         <h3 className="flex items-center gap-2 text-xs sm:text-sm font-black text-slate-900 dark:text-white">
           <span className="text-brand flex items-center">{icon}</span>
@@ -334,11 +334,10 @@ function ToggleCard({
           onChange(!checked);
         }
       }}
-      className={`flex cursor-pointer items-start justify-between gap-3 rounded-xl border p-3 transition select-none shadow-2xs ${
-        checked
-          ? "border-brand/40 bg-brand/5 dark:bg-brand/10 dark:border-brand/30"
-          : "border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800/60 hover:border-slate-300 dark:hover:border-slate-600"
-      }`}
+      className={`flex cursor-pointer items-start justify-between gap-3 rounded-xl border p-3 transition select-none shadow-2xs ${checked
+        ? "border-brand/40 bg-brand/5 dark:bg-brand/10 dark:border-brand/30"
+        : "border-slate-200/80 dark:border-slate-700/80 bg-white dark:bg-slate-800/60 hover:border-slate-300 dark:hover:border-slate-600"
+        }`}
     >
       <div className="space-y-0.5 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
@@ -352,14 +351,12 @@ function ToggleCard({
         {note && <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">{note}</p>}
       </div>
       <div
-        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out mt-0.5 ${
-          checked ? "bg-brand" : "bg-slate-200 dark:bg-slate-700"
-        }`}
+        className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition-colors duration-200 ease-in-out mt-0.5 ${checked ? "bg-brand" : "bg-slate-200 dark:bg-slate-700"
+          }`}
       >
         <span
-          className={`pointer-events-none inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-md transition duration-200 ease-in-out ${
-            checked ? "translate-x-4.5" : "translate-x-0.5"
-          }`}
+          className={`pointer-events-none inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow-md transition duration-200 ease-in-out ${checked ? "translate-x-4.5" : "translate-x-0.5"
+            }`}
         />
       </div>
     </div>
@@ -391,18 +388,18 @@ function ResultRow({
 
   return (
     <div
-      className={`flex items-center justify-between gap-3 py-2 text-xs transition-colors ${highlight
+      className={`flex items-start sm:items-center justify-between gap-2.5 sm:gap-3 py-2 text-xs transition-colors ${highlight
         ? "rounded-xl bg-brand-light/30 dark:bg-brand-light/10 px-3 border border-brand/20 my-1"
         : "border-b border-slate-100 dark:border-slate-800/80"
         }`}
     >
-      <div className="space-y-0.5 min-w-0">
-        <span className={`${strong ? "font-bold text-slate-900 dark:text-white" : "text-slate-600 dark:text-slate-400"}`}>
+      <div className="space-y-0.5 min-w-0 pr-1">
+        <span className={`${strong ? "font-bold text-slate-900 dark:text-white" : "text-slate-600 dark:text-slate-400"} text-[11px] sm:text-xs leading-snug block`}>
           {label}
         </span>
-        {subtext && <p className="text-[10px] text-slate-400 dark:text-slate-500">{subtext}</p>}
+        {subtext && <p className="text-[10px] text-slate-400 dark:text-slate-500 leading-tight">{subtext}</p>}
       </div>
-      <span className={`font-mono shrink-0 ${tones[tone]} ${strong ? "text-sm font-black" : "font-bold"}`}>
+      <span className={`font-mono shrink-0 text-right ${tones[tone]} ${strong ? "text-xs sm:text-sm font-black" : "text-xs font-bold"}`}>
         {value}
       </span>
     </div>
@@ -478,6 +475,7 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
   const [activeTab, setActiveTab] = useState<"budget" | "funnel" | "pnl">("budget");
   const [searchFilter, setSearchFilter] = useState("");
   const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [mobileTab, setMobileTab] = useState<"form" | "result">("form");
 
   const categories = useMemo(() => getAvailableCategories("tiktok", shopType), [shopType]);
   const category = categories.find((item) => item.id === categoryId) ?? categories[0];
@@ -531,10 +529,36 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
     } catch {
       setSavedPlans([]);
     }
-    setSavedProducts(readPricingHistory(historyStorage).filter((item) => item.input.platform === "tiktok"));
-    });
+    setSavedProducts(readPricingHistory(localStorage).filter((item) => item.input.platform === "tiktok"));
 
-  }, [historyStorage, historyReady]);
+    // Tự động đồng bộ lịch sử từ Server (/api/ai/usage)
+    fetch("/api/ai/usage?tool=koc-planner")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.recentActivities && Array.isArray(data.recentActivities)) {
+          const serverPlans: SavedPlan[] = [];
+          for (const act of data.recentActivities) {
+            if (act.input?.snapshot && act.input.snapshot.id && act.input.snapshot.input && act.input.snapshot.result) {
+              serverPlans.push(act.input.snapshot);
+            }
+          }
+          if (serverPlans.length > 0) {
+            setSavedPlans((current) => {
+              const existingIds = new Set(current.map((p) => p.id));
+              const merged = [...current];
+              for (const sp of serverPlans) {
+                if (!existingIds.has(sp.id)) {
+                  merged.push(sp);
+                  existingIds.add(sp.id);
+                }
+              }
+              return merged;
+            });
+          }
+        }
+      })
+      .catch(() => { });
+  }, []);
 
   const changeShopType = (next: ShopType) => {
     setShopType(next);
@@ -597,6 +621,36 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
     setTimeout(() => setSaveNotice(""), 3000);
   };
 
+  const logPlanToServer = (calcInput: KocPlanInput, res: KocPlanResult, snapshotItem?: SavedPlan) => {
+    const campaignTitle = calcInput.campaignName.trim() || "Chiến dịch KOC TikTok Shop";
+    fetch("/api/ai/usage", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        tool: "koc-planner",
+        toolName: "Lập Kế Hoạch KOC Campaign",
+        action: snapshotItem
+          ? `Lưu phương án KOC "${campaignTitle}" (Ngân sách: ${money(calcInput.totalBudget)})`
+          : `Lập kế hoạch KOC "${campaignTitle}" (Ngân sách: ${money(calcInput.totalBudget)})`,
+        input: {
+          campaignName: campaignTitle,
+          shopType,
+          category: getCategoryLabel(category),
+          totalBudget: calcInput.totalBudget,
+          invitedKocs: res.invitedKocs,
+          effectiveKocs: res.effectiveKocs,
+          videos: res.videos,
+          netRevenue: res.netRevenue,
+          netProfit: res.netProfit,
+          roi: res.roi,
+          snapshotId: snapshotItem?.id,
+          snapshot: snapshotItem,
+        },
+        output: `Kế hoạch KOC: ${campaignTitle}\nNgành hàng: ${getCategoryLabel(category)}\nNgân sách: ${money(calcInput.totalBudget)}\nKOC có thể mời: ${res.invitedKocs} người (${res.effectiveKocs} KOC ra ${res.videos} video)\nDoanh thu sau hoàn: ${money(res.netRevenue)}\nTổng chi phí: ${money(res.totalCost)}\nLợi nhuận ròng: ${money(res.netProfit)}\nROI: ${res.roi.toFixed(1)}%`,
+      }),
+    }).catch((err) => console.warn("Failed to log KOC plan to server:", err));
+  };
+
   const calculate = () => {
     const validationError = validateKocPlanInput(calculationInput);
     if (validationError) { setError(validationError); return; }
@@ -608,6 +662,8 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
       setLastCalculatedInput(calculationInput);
       setHasCalculated(true);
       setIsCalculating(false);
+      setMobileTab("result");
+      logPlanToServer(calculationInput, res);
     }, 300);
   };
 
@@ -633,6 +689,8 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
       setError("");
       setHasCalculated(true);
       setIsCalculating(false);
+      setMobileTab("result");
+      logPlanToServer(sampleCalcInput, res);
     }, 300);
   };
 
@@ -666,31 +724,7 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
     setSaveNotice("Đã lưu phương án thành công!");
     setTimeout(() => setSaveNotice(""), 3000);
 
-    const campaignTitle = lastCalculatedInput.campaignName.trim() || "Chiến dịch KOC TikTok Shop";
-    historyFetch("/api/ai/usage", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        tool: "koc-planner",
-        toolName: "AI Kế Hoạch KOC",
-        action: `Kế hoạch KOC "${campaignTitle}" (Ngân sách: ${money(lastCalculatedInput.totalBudget)})`,
-        input: {
-          campaignName: campaignTitle,
-          shopType,
-          category: getCategoryLabel(category),
-          totalBudget: lastCalculatedInput.totalBudget,
-          invitedKocs: calculatedResult.invitedKocs,
-          effectiveKocs: calculatedResult.effectiveKocs,
-          videos: calculatedResult.videos,
-          netRevenue: calculatedResult.netRevenue,
-          netProfit: calculatedResult.netProfit,
-          roi: calculatedResult.roi,
-          snapshotId: item.id,
-          snapshot: item,
-        },
-        output: `Kế hoạch KOC: ${campaignTitle}\nNgành hàng: ${getCategoryLabel(category)}\nNgân sách: ${money(lastCalculatedInput.totalBudget)}\nKOC có thể mời: ${calculatedResult.invitedKocs} người (${calculatedResult.effectiveKocs} KOC ra ${calculatedResult.videos} video)\nDoanh thu sau hoàn: ${money(calculatedResult.netRevenue)}\nTổng chi phí: ${money(calculatedResult.totalCost)}\nLợi nhuận ròng: ${money(calculatedResult.netProfit)}\nROI: ${calculatedResult.roi.toFixed(1)}%`,
-      }),
-    }).catch(() => setSaveNotice("Đã lưu trên thiết bị; chưa lưu được nhật ký server. Hãy kiểm tra đăng nhập và kết nối."));
+    logPlanToServer(lastCalculatedInput, calculatedResult, item);
   };
 
   const openPlan = (item: SavedPlan) => {
@@ -985,64 +1019,136 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
       )}
 
       {/* 1. Header Navigation & Quick Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3 shrink-0">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
-            <Link href="/tools" className="hover:text-brand transition-colors flex items-center gap-1">
-              <ArrowLeft size={12} /> Kho Công Cụ
-            </Link>
-            <span>/</span>
-            <span className="text-slate-600 dark:text-slate-300">Tăng Trưởng Doanh Số</span>
-          </div>
-          <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white flex flex-wrap items-center gap-2 sm:gap-3">
-            Lập Kế Hoạch KOC Campaign TikTok Shop
-            <span className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 shadow-xs uppercase tracking-wider">
-              <Crown size={11} className="text-amber-600 dark:text-amber-400" />
-              VIP TOOL
+      <div className="shrink-0 mb-3 space-y-2">
+        {/* Mobile Top Bar: Breadcrumb + Badges */}
+        <div className="md:hidden flex items-center justify-between pb-1">
+          <Link
+            href="/tools"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-brand transition-colors"
+          >
+            <ArrowLeft size={13} /> Kho công cụ AI
+          </Link>
+          <div className="flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 shadow-2xs uppercase tracking-wider">
+              <Crown size={10} className="text-amber-600 dark:text-amber-400" />
+              VIP
             </span>
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Lập kế hoạch ngân sách, dự phóng phễu KOC, đơn hàng, hạch toán phí sàn TikTok Shop và P&L tài chính chi tiết.
-          </p>
+            <button
+              type="button"
+              onClick={() => setIsHistoryModalOpen(true)}
+              className="inline-flex items-center gap-1 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 px-2.5 py-1 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 transition-all cursor-pointer shadow-xs active:scale-95"
+              title="Xem lịch sử các phương án KOC đã lưu"
+            >
+              <Clock size={12} className="text-blue-500 shrink-0" />
+              <span>Lịch sử</span>
+              {savedPlans.length > 0 && (
+                <span className="px-1.5 py-0.2 rounded-full bg-blue-50 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 text-[10px] font-black">
+                  {savedPlans.length}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
 
-        {/* Quick Actions Bar */}
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
-          <AiUsageBadge tool="koc-planner" refreshTrigger={savedPlans.length} showHistory={false} />
-          {saveNotice && (
-            <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-800">
-              <Check size={13} /> {saveNotice}
-            </span>
-          )}
-          <button
-            type="button"
-            onClick={() => setIsHistoryModalOpen(true)}
-            className="px-3 py-1.5 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/60 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 text-xs font-bold hover:bg-blue-100/60 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
-            title="Xem lịch sử các phương án KOC đã lưu"
-          >
-            <Clock size={14} /> Kế hoạch đã lưu ({savedPlans.length})
-          </button>
-          <button
-            type="button"
-            onClick={runSample}
-            className="px-3 py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 text-xs font-bold hover:bg-indigo-100/50 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
-          >
-            <Sparkles size={14} /> Dữ Liệu Mẫu
-          </button>
-          <button
-            type="button"
-            onClick={handleResetForm}
-            className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
-          >
-            <RotateCcw size={14} /> Xóa Form
-          </button>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+          <div>
+            {/* Desktop Breadcrumb */}
+            <div className="hidden md:flex items-center gap-2 text-xs font-semibold text-slate-400 mb-2">
+              <Link href="/tools" className="hover:text-indigo-600 transition-colors flex items-center gap-1 text-slate-500">
+                <ArrowLeft size={13} /> Kho Công Cụ AI
+              </Link>
+              <span>/</span>
+              <span className="text-slate-600 dark:text-slate-300">Tăng Trưởng Doanh Số</span>
+            </div>
+
+            {/* Title Row: Centered icon, text & minimal mobile reset button */}
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-indigo-50 dark:bg-indigo-950/50 border border-indigo-200 dark:border-indigo-800/80 flex items-center justify-center text-indigo-600 dark:text-indigo-400 shadow-xs shrink-0">
+                <Presentation size={20} className="sm:w-5 sm:h-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
+                    Lập Kế Hoạch KOC Campaign
+                  </h1>
+                  {/* Minimal icon-only reset button: ONLY ON MOBILE */}
+                  <button
+                    type="button"
+                    onClick={handleResetForm}
+                    className="md:hidden p-1.5 rounded-xl text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-transparent hover:border-rose-200 dark:hover:border-rose-900/60 transition-all cursor-pointer shadow-2xs active:scale-90"
+                    title="Xóa Form / Đặt lại"
+                    aria-label="Xóa Form"
+                  >
+                    <RotateCcw size={15} />
+                  </button>
+                  <span className="hidden md:inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 shadow-xs uppercase tracking-wider shrink-0">
+                    <Crown size={11} className="text-amber-600 dark:text-amber-400" />
+                    VIP TOOL
+                  </span>
+                </div>
+                <p className="hidden sm:block text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
+                  Lập kế hoạch ngân sách, dự phóng phễu KOC, đơn hàng, hạch toán phí sàn TikTok Shop và P&L tài chính chi tiết.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Action Buttons (Desktop ONLY - Preserved exactly as original) */}
+          <div className="hidden md:flex flex-wrap items-center gap-2 shrink-0">
+            <AiUsageBadge tool="koc-planner" refreshTrigger={savedPlans.length} />
+            {saveNotice && (
+              <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-800">
+                <Check size={13} /> {saveNotice}
+              </span>
+            )}
+            <button
+              type="button"
+              onClick={() => setIsHistoryModalOpen(true)}
+              className="px-3 py-1.5 rounded-xl border border-blue-200 dark:border-blue-900/60 bg-blue-50/60 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 text-xs font-bold hover:bg-blue-100/60 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+              title="Xem lịch sử các phương án KOC đã lưu"
+            >
+              <Clock size={14} /> Kế hoạch đã lưu {savedPlans.length > 0 ? `(${savedPlans.length})` : ""}
+            </button>
+            <button
+              type="button"
+              onClick={runSample}
+              className="px-3 py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-900/60 bg-indigo-50/50 dark:bg-indigo-950/30 text-indigo-600 dark:text-indigo-400 text-xs font-bold hover:bg-indigo-100/50 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
+            >
+              <Sparkles size={14} /> Dữ Liệu Mẫu
+            </button>
+            <button
+              type="button"
+              onClick={handleResetForm}
+              className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
+            >
+              <RotateCcw size={14} /> Xóa Form
+            </button>
+          </div>
         </div>
+
+        {/* Mobile Save Notice Banner if active */}
+        {saveNotice && (
+          <div className="md:hidden flex items-center gap-1.5 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800/80 px-3 py-1.5 rounded-xl text-xs font-semibold animate-in fade-in slide-in-from-top-1">
+            <Check size={14} className="shrink-0 text-emerald-500" />
+            <span>{saveNotice}</span>
+          </div>
+        )}
       </div>
+
+      {/* Mobile Tab Switcher */}
+      <MobileToolTabs
+        activeTab={mobileTab}
+        onChangeTab={setMobileTab}
+        hasResult={hasCalculated && Boolean(calculatedResult)}
+        loading={isCalculating}
+        formLabel="Cấu hình ngân sách"
+        resultLabel="Dự phóng P&L KOC"
+      />
 
       {/* 2. Main 2-Column Core Architecture: Cả 2 cuộn độc lập, trang ngoài không cuộn */}
       <div className="flex-1 min-h-0 flex flex-col lg:flex-row gap-4 lg:overflow-hidden items-stretch">
         {/* CỘT TRÁI: FORM NHẬP LIỆU */}
-        <div className="w-full lg:w-[510px] xl:w-[540px] shrink-0 flex flex-col h-full min-h-0 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden">
+        <div className={`w-full lg:w-[510px] xl:w-[540px] shrink-0 ${mobileTab === "form" ? "flex" : "hidden lg:flex"} flex-col h-full min-h-0 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs overflow-hidden`}>
           {/* Header cột trái */}
           <div className="px-4 py-2.5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/70 dark:bg-slate-800/50 shrink-0">
             <div className="flex items-center gap-2">
@@ -1616,61 +1722,81 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
         </div>
 
         {/* CỘT PHẢI: KẾT QUẢ DỰ PHÓNG TÀI CHÍNH */}
-        <div className="flex-1 min-h-0 h-full flex flex-col overflow-hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl relative">
+        <div className={`flex-1 min-h-0 h-full ${mobileTab === "result" ? "flex" : "hidden lg:flex"} flex-col overflow-hidden bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xl relative`}>
           {/* Header cột phải */}
-          <div className="px-4 py-2.5 border-b border-slate-200 dark:border-slate-800 flex flex-wrap items-center justify-between gap-2.5 relative z-10 bg-slate-50/70 dark:bg-slate-800/50 backdrop-blur-md shrink-0">
-            <div className="flex items-center gap-2">
-              <div className="p-1 rounded-lg bg-brand/10 text-brand">
+          <div className="px-3 sm:px-4 py-2.5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 relative z-10 bg-slate-50/70 dark:bg-slate-800/50 backdrop-blur-md shrink-0">
+            <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+              {mobileTab === "result" && (
+                <button
+                  type="button"
+                  onClick={() => setMobileTab("form")}
+                  className="lg:hidden inline-flex items-center gap-1 text-xs font-bold text-brand hover:text-brand-hover p-1 rounded-lg hover:bg-brand/10 transition-colors cursor-pointer mr-0.5 shrink-0"
+                  title="Quay lại cấu hình"
+                >
+                  <ArrowLeft size={15} />
+                  <span className="hidden xs:inline">Cấu hình</span>
+                </button>
+              )}
+              <div className="p-1 rounded-lg bg-brand/10 text-brand shrink-0">
                 <BarChart3 size={16} />
               </div>
-              <div>
-                <h2 className="font-bold text-slate-900 dark:text-white text-sm leading-none">
+              <div className="min-w-0">
+                <h2 className="font-bold text-slate-900 dark:text-white text-xs sm:text-sm leading-none truncate">
                   Dự Phóng Tài Chính KOC
                 </h2>
-                <span className="text-[10px] text-slate-400 font-medium">TikTok Shop P&L Model</span>
+                <span className="text-[10px] text-slate-400 font-medium hidden sm:inline-block">TikTok Shop P&L Model</span>
               </div>
             </div>
 
             {/* Cụm nút hành động */}
-            <div className="flex items-center gap-1.5 flex-wrap">
+            <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
               <button
                 type="button"
                 onClick={save}
                 disabled={!hasCalculated}
-                className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 dark:border-emerald-700/80 bg-emerald-50 dark:bg-emerald-950/40 px-2.5 py-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 disabled:opacity-40 transition shadow-xs cursor-pointer"
+                className="inline-flex items-center gap-1 rounded-lg border border-emerald-300 dark:border-emerald-700/80 bg-emerald-50 dark:bg-emerald-950/40 px-2 sm:px-2.5 py-1 text-[11px] font-bold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-100 dark:hover:bg-emerald-900/60 disabled:opacity-40 transition shadow-xs cursor-pointer active:scale-95"
               >
-                <Save size={12} /> Lưu
-              </button>
-              <button
-                type="button"
-                disabled={!hasCalculated}
-                onClick={exportCsv}
-                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 transition shadow-xs cursor-pointer"
-              >
-                <Download size={12} /> CSV
-              </button>
-              <button
-                type="button"
-                disabled={!hasCalculated}
-                onClick={exportExcel}
-                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 transition shadow-xs cursor-pointer"
-              >
-                <FileSpreadsheet size={12} /> Excel
+                <Save size={12} /> <span className="hidden xs:inline">Lưu</span>
               </button>
               <button
                 type="button"
                 disabled={!hasCalculated}
                 onClick={copyResult}
-                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 transition shadow-xs cursor-pointer active:scale-95"
+                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 sm:px-2.5 py-1 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 transition shadow-xs cursor-pointer active:scale-95"
               >
                 {copied ? <Check size={12} className="text-emerald-500" /> : <ClipboardCopy size={12} />}
-                {copied ? "Đã chép" : "Sao chép"}
+                <span>{copied ? "Đã chép" : "Sao chép"}</span>
+              </button>
+              <button
+                type="button"
+                disabled={!hasCalculated}
+                onClick={exportExcel}
+                className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 sm:px-2.5 py-1 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 transition shadow-xs cursor-pointer active:scale-95"
+              >
+                <FileSpreadsheet size={12} /> <span className="hidden sm:inline">Excel</span>
+              </button>
+              <button
+                type="button"
+                disabled={!hasCalculated}
+                onClick={exportCsv}
+                className="hidden sm:inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 transition shadow-xs cursor-pointer"
+              >
+                <Download size={12} /> CSV
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsHistoryModalOpen(true)}
+                className="hidden sm:inline-flex items-center gap-1 rounded-lg border border-blue-200 dark:border-blue-900/60 bg-blue-50/60 dark:bg-blue-950/30 px-2.5 py-1 text-[11px] font-bold text-blue-600 dark:text-blue-400 hover:bg-blue-100/60 transition shadow-xs cursor-pointer"
+                title="Xem lịch sử các phương án KOC đã lưu"
+              >
+                <Clock size={12} />
+                <span>Lịch sử {savedPlans.length > 0 ? `(${savedPlans.length})` : ""}</span>
               </button>
             </div>
           </div>
 
           {/* Nội dung kết quả cuộn mượt */}
-          <div className="p-3.5 sm:p-4 flex-1 min-h-0 relative z-10 overflow-y-auto custom-scrollbar space-y-4">
+          <div className="p-3 sm:p-4 flex-1 min-h-0 relative z-10 overflow-y-auto custom-scrollbar space-y-4 pb-24 lg:pb-4">
             {isCalculating ? (
               <div className="min-h-[360px] flex flex-col items-center justify-center text-center p-6 space-y-4">
                 <div className="w-14 h-14 rounded-2xl bg-brand-light text-brand flex items-center justify-center mb-1 shadow-lg shadow-brand/15">
@@ -1723,10 +1849,10 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                     style={{ background: isLoss ? "#e11d48" : "var(--brand-primary)" }}
                   />
 
-                  <div className="relative p-5 sm:p-6 text-white">
+                  <div className="relative p-4 sm:p-6 text-white">
                     <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">
                             Lợi nhuận ròng dự kiến
                           </span>
@@ -1738,7 +1864,7 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                           </span>
                         </div>
                         <p
-                          className={`mt-1.5 text-3xl sm:text-4xl lg:text-5xl font-black font-mono tracking-tight ${isLoss ? "text-rose-400" : "text-emerald-400"
+                          className={`mt-1 text-2xl sm:text-4xl lg:text-5xl font-black font-mono tracking-tight ${isLoss ? "text-rose-400" : "text-emerald-400"
                             }`}
                         >
                           {money(result.netProfit)}
@@ -1753,39 +1879,39 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                         </p>
                       </div>
 
-                      <div className="flex flex-col items-end gap-2">
+                      <div className="w-full sm:w-auto pt-1 sm:pt-0 shrink-0">
                         <button
                           type="button"
                           onClick={copyResult}
-                          className="flex h-fit items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/10 hover:bg-white/20 px-3 py-1.5 text-xs font-bold text-white transition cursor-pointer active:scale-95"
+                          className="w-full sm:w-auto flex h-fit items-center justify-center gap-1.5 rounded-xl border border-white/15 bg-white/10 hover:bg-white/20 px-3.5 py-2 text-xs font-bold text-white transition cursor-pointer active:scale-95"
                         >
                           {copied ? <Check size={13} className="text-emerald-400" /> : <ClipboardCopy size={13} />}
-                          {copied ? "Đã chép" : "Sao chép"}
+                          <span>{copied ? "Đã chép báo cáo" : "Sao chép báo cáo"}</span>
                         </button>
                       </div>
                     </div>
 
                     {/* 4 Core Financial Metrics */}
-                    <div className="mt-4 grid grid-cols-2 gap-2.5 border-t border-white/10 pt-4 sm:grid-cols-4">
-                      <div className="rounded-xl bg-white/5 p-2.5">
-                        <p className="text-[10px] uppercase tracking-wider text-slate-400">Tổng ngân sách</p>
-                        <p className="mt-0.5 text-xs sm:text-sm font-black font-mono text-white">{money(input.totalBudget)}</p>
+                    <div className="mt-4 grid grid-cols-2 gap-2 sm:gap-2.5 border-t border-white/10 pt-3.5 sm:pt-4 sm:grid-cols-4">
+                      <div className="rounded-xl bg-white/[0.06] sm:bg-white/5 p-2 sm:p-2.5">
+                        <p className="text-[10px] uppercase tracking-wider text-slate-400 truncate">Tổng ngân sách</p>
+                        <p className="mt-0.5 text-xs sm:text-sm font-black font-mono text-white truncate">{money(input.totalBudget)}</p>
                       </div>
-                      <div className="rounded-xl bg-white/5 p-2.5">
-                        <p className="text-[10px] uppercase tracking-wider text-slate-400">KOC làm video</p>
-                        <p className="mt-0.5 text-xs sm:text-sm font-black font-mono text-white">
+                      <div className="rounded-xl bg-white/[0.06] sm:bg-white/5 p-2 sm:p-2.5">
+                        <p className="text-[10px] uppercase tracking-wider text-slate-400 truncate">KOC làm video</p>
+                        <p className="mt-0.5 text-xs sm:text-sm font-black font-mono text-white truncate">
                           {number(result.effectiveKocs)} / {number(result.invitedKocs)}
                         </p>
                       </div>
-                      <div className="rounded-xl bg-white/5 p-2.5">
-                        <p className="text-[10px] uppercase tracking-wider text-slate-400">Đơn thành công</p>
-                        <p className="mt-0.5 text-xs sm:text-sm font-black font-mono text-emerald-400">
+                      <div className="rounded-xl bg-white/[0.06] sm:bg-white/5 p-2 sm:p-2.5">
+                        <p className="text-[10px] uppercase tracking-wider text-slate-400 truncate">Đơn thành công</p>
+                        <p className="mt-0.5 text-xs sm:text-sm font-black font-mono text-emerald-400 truncate">
                           {number(result.successfulOrders, 1)}
                         </p>
                       </div>
-                      <div className="rounded-xl bg-white/5 p-2.5">
-                        <p className="text-[10px] uppercase tracking-wider text-slate-400">Đơn hòa vốn</p>
-                        <p className="mt-0.5 text-xs sm:text-sm font-black font-mono text-white">
+                      <div className="rounded-xl bg-white/[0.06] sm:bg-white/5 p-2 sm:p-2.5">
+                        <p className="text-[10px] uppercase tracking-wider text-slate-400 truncate">Đơn hòa vốn</p>
+                        <p className="mt-0.5 text-xs sm:text-sm font-black font-mono text-white truncate">
                           {result.breakEvenOrders === null ? "—" : number(result.breakEvenOrders, 1)}
                         </p>
                       </div>
@@ -1794,77 +1920,79 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                 </section>
 
                 {/* 2. Four Financial Intelligence KPI Cards Grid */}
-                <div className="grid grid-cols-2 gap-2.5 xl:grid-cols-4">
-                  <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 shadow-xs">
+                <div className="grid grid-cols-2 gap-2 sm:gap-2.5 xl:grid-cols-4">
+                  <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-2.5 sm:p-3 shadow-xs">
                     <div className="flex items-center justify-between text-slate-400">
-                      <span className="text-[10px] font-bold uppercase">ROI Toàn bộ</span>
-                      <Percent size={13} className="text-brand" />
+                      <span className="text-[10px] font-bold uppercase truncate">ROI Toàn bộ</span>
+                      <Percent size={13} className="text-brand shrink-0" />
                     </div>
                     <p
-                      className={`mt-1 font-mono text-base font-black ${result.roi < 0
+                      className={`mt-1 font-mono text-sm sm:text-base font-black ${result.roi < 0
                         ? "text-rose-600 dark:text-rose-400"
                         : "text-emerald-600 dark:text-emerald-400"
                         }`}
                     >
                       {result.roi.toFixed(1)}%
                     </p>
-                    <span className="mt-0.5 block text-[10px] text-slate-400">
+                    <span className="mt-0.5 block text-[10px] text-slate-400 truncate">
                       {result.roi > 50 ? "Hiệu quả cao" : result.roi > 0 ? "Khả quan" : "Cần tối ưu"}
                     </span>
                   </div>
 
-                  <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 shadow-xs">
+                  <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-2.5 sm:p-3 shadow-xs">
                     <div className="flex items-center justify-between text-slate-400">
-                      <span className="text-[10px] font-bold uppercase">ROAS Ads</span>
-                      <Tv size={13} className="text-brand" />
+                      <span className="text-[10px] font-bold uppercase truncate">ROAS Ads</span>
+                      <Tv size={13} className="text-brand shrink-0" />
                     </div>
-                    <p className="mt-1 font-mono text-base font-black text-slate-900 dark:text-white">
+                    <p className="mt-1 font-mono text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
                       {result.roas === null ? "—" : `${result.roas.toFixed(2)}x`}
                     </p>
-                    <span className="mt-0.5 block text-[10px] text-slate-400">
+                    <span className="mt-0.5 block text-[10px] text-slate-400 truncate">
                       {input.useAds ? `Đơn Ads: ${number(result.adOrders, 1)}` : "Tắt Ads"}
                     </span>
                   </div>
 
-                  <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 shadow-xs">
+                  <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-2.5 sm:p-3 shadow-xs">
                     <div className="flex items-center justify-between text-slate-400">
-                      <span className="text-[10px] font-bold uppercase">Chi phí / Đơn</span>
-                      <Package size={13} className="text-brand" />
+                      <span className="text-[10px] font-bold uppercase truncate">Chi phí / Đơn</span>
+                      <Package size={13} className="text-brand shrink-0" />
                     </div>
-                    <p className="mt-1 font-mono text-base font-black text-slate-900 dark:text-white">
+                    <p className="mt-1 font-mono text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
                       {result.costPerSuccessfulOrder === null ? "—" : money(result.costPerSuccessfulOrder)}
                     </p>
-                    <span className="mt-0.5 block text-[10px] text-slate-400">Trên mỗi đơn đạt</span>
+                    <span className="mt-0.5 block text-[10px] text-slate-400 truncate">Trên mỗi đơn đạt</span>
                   </div>
 
-                  <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-3 shadow-xs">
+                  <div className="rounded-xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-2.5 sm:p-3 shadow-xs">
                     <div className="flex items-center justify-between text-slate-400">
-                      <span className="text-[10px] font-bold uppercase">CPA Hòa vốn</span>
-                      <Target size={13} className="text-brand" />
+                      <span className="text-[10px] font-bold uppercase truncate">CPA Hòa vốn</span>
+                      <Target size={13} className="text-brand shrink-0" />
                     </div>
-                    <p className="mt-1 font-mono text-base font-black text-slate-900 dark:text-white">
+                    <p className="mt-1 font-mono text-sm sm:text-base font-black text-slate-900 dark:text-white truncate">
                       {result.breakEvenCpa === null ? "—" : money(result.breakEvenCpa)}
                     </p>
-                    <span className="mt-0.5 block text-[10px] text-slate-400">Mức trần chi phí Ads</span>
+                    <span className="mt-0.5 block text-[10px] text-slate-400 truncate">Mức trần chi phí Ads</span>
                   </div>
                 </div>
 
                 {forecast && (
-                  <section className="space-y-4 rounded-3xl border border-slate-200/80 bg-white p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900">
+                  <section className="space-y-3.5 sm:space-y-4 rounded-2xl sm:rounded-3xl border border-slate-200/80 bg-white p-3.5 sm:p-5 shadow-xs dark:border-slate-800 dark:bg-slate-900">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div>
-                        <h3 className="flex items-center gap-2 text-sm font-black text-slate-900 dark:text-white"><TrendingUp size={16} className="text-brand" /> Ba kịch bản dự phóng</h3>
-                        <p className="mt-1 text-[11px] text-slate-500">So sánh khoảng kết quả khi hiệu suất KOC, đơn tự nhiên, CPA và hoàn hàng thay đổi.</p>
+                        <h3 className="flex items-center gap-2 text-xs sm:text-sm font-black text-slate-900 dark:text-white"><TrendingUp size={16} className="text-brand" /> Ba kịch bản dự phóng</h3>
+                        <p className="mt-0.5 text-[11px] text-slate-500">So sánh khoảng kết quả khi hiệu suất KOC, đơn tự nhiên, CPA và hoàn hàng thay đổi.</p>
                       </div>
-                      <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-bold text-slate-500 dark:bg-slate-800">{forecast.modelVersion}</span>
+                      <span className="rounded-full bg-slate-100 px-2 py-0.5 sm:py-1 text-[10px] font-bold text-slate-500 dark:bg-slate-800">{forecast.modelVersion}</span>
                     </div>
-                    <div className="grid gap-3 sm:grid-cols-3">
+                    <div className="grid gap-2 sm:gap-3 sm:grid-cols-3">
                       {forecast.scenarios.map((scenario) => (
-                        <div key={scenario.key} className={`rounded-2xl border p-3 ${scenario.key === "base" ? "border-brand/40 bg-brand-light/20" : "border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50"}`}>
-                          <p className="text-xs font-black text-slate-800 dark:text-slate-100">{scenario.label}</p>
-                          <p className={`mt-1 font-mono text-base font-black ${scenario.result.netProfit < 0 ? "text-rose-600" : "text-emerald-600"}`}>{money(scenario.result.netProfit)}</p>
+                        <div key={scenario.key} className={`rounded-xl sm:rounded-2xl border p-2.5 sm:p-3 ${scenario.key === "base" ? "border-brand/40 bg-brand-light/20" : "border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800/50"}`}>
+                          <div className="flex items-center justify-between sm:block">
+                            <p className="text-xs font-black text-slate-800 dark:text-slate-100">{scenario.label}</p>
+                            <p className={`sm:mt-1 font-mono text-sm sm:text-base font-black ${scenario.result.netProfit < 0 ? "text-rose-600" : "text-emerald-600"}`}>{money(scenario.result.netProfit)}</p>
+                          </div>
                           <p className="mt-1 text-[10px] text-slate-500">{number(scenario.result.successfulOrders, 1)} đơn thành công · ROI {scenario.result.roi.toFixed(1)}%</p>
-                          <p className="mt-2 text-[10px] leading-relaxed text-slate-400">{scenario.adjustments.join(" · ")}</p>
+                          <p className="mt-1 sm:mt-2 text-[10px] leading-relaxed text-slate-400">{scenario.adjustments.join(" · ")}</p>
                         </div>
                       ))}
                     </div>
@@ -1882,7 +2010,7 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                         ))}
                       </div>
                     </div>
-                    <details className="rounded-xl bg-slate-50 p-3 text-[11px] text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
+                    <details className="rounded-xl bg-slate-50 p-2.5 sm:p-3 text-[11px] text-slate-600 dark:bg-slate-800/60 dark:text-slate-300">
                       <summary className="cursor-pointer font-black">Các giả định của kịch bản cơ sở</summary>
                       <ul className="mt-2 list-disc space-y-1 pl-4">{(result.assumptions ?? ["Bản lưu cũ chưa có mô tả giả định; hãy tính lại để cập nhật."]).map((assumption) => <li key={assumption}>{assumption}</li>)}</ul>
                     </details>
@@ -1901,7 +2029,7 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                         : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
                         }`}
                     >
-                      <PieChart size={13} /> Phân bổ Ngân sách
+                      <PieChart size={13} /> <span className="hidden sm:inline">Phân bổ </span>Ngân sách
                     </button>
                     <button
                       type="button"
@@ -1911,7 +2039,7 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                         : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
                         }`}
                     >
-                      <Layers size={13} /> Sản lượng & Funnel
+                      <Layers size={13} /> <span className="hidden sm:inline">Sản lượng & </span>Funnel
                     </button>
                     <button
                       type="button"
@@ -1921,19 +2049,19 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                         : "text-slate-500 hover:text-slate-900 dark:hover:text-white"
                         }`}
                     >
-                      <ReceiptText size={13} /> Báo cáo P&L Doanh thu
+                      <ReceiptText size={13} /> <span className="hidden sm:inline">Báo cáo </span>P&L
                     </button>
                   </div>
 
-                  <div className="p-4 sm:p-5">
+                  <div className="p-3 sm:p-5">
                     {/* Tab 1: Phân bổ ngân sách */}
                     {activeTab === "budget" && (
                       <div className="space-y-4">
                         {/* Visual Allocation Bar */}
                         <div>
-                          <div className="mb-2 flex items-center justify-between text-xs font-bold text-slate-600 dark:text-slate-300">
+                          <div className="mb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-1 text-xs font-bold text-slate-600 dark:text-slate-300">
                             <span>Biểu đồ tỷ lệ ngân sách ({money(input.totalBudget)})</span>
-                            <span className="text-brand">
+                            <span className="text-brand text-[11px] sm:text-xs">
                               {((result.sampleAndCastCost / input.totalBudget) * 100).toFixed(0)}% Mẫu & Booking •{" "}
                               {((result.adSpend / input.totalBudget) * 100).toFixed(0)}% Ads
                             </span>
@@ -1955,7 +2083,7 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                               title="Ngân sách chưa phân bổ"
                             />
                           </div>
-                          <div className="mt-2 flex flex-wrap gap-4 text-[11px] text-slate-500">
+                          <div className="mt-2 flex flex-wrap gap-2.5 sm:gap-4 text-[10px] sm:text-[11px] text-slate-500">
                             <span className="flex items-center gap-1.5">
                               <span className="h-2 w-2 rounded-full bg-brand" /> Mẫu & Booking KOC
                             </span>
@@ -2000,53 +2128,50 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                     {/* Tab 2: Sản lượng KOC & Funnel */}
                     {activeTab === "funnel" && (
                       <div className="space-y-3">
-                        <div className="grid gap-2 sm:grid-cols-3">
-                          <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-3.5">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          <div className="rounded-xl sm:rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-2.5 sm:p-3.5">
                             <span className="text-[10px] uppercase font-bold text-slate-400">1. KOC Mời</span>
-                            <p className="mt-1 text-lg font-black font-mono text-slate-900 dark:text-white">
+                            <p className="mt-0.5 sm:mt-1 text-base sm:text-lg font-black font-mono text-slate-900 dark:text-white">
                               {number(result.invitedKocs)}
                             </p>
-                            <span className="text-[11px] text-slate-400">Được gửi mẫu</span>
+                            <span className="text-[10px] sm:text-[11px] text-slate-400">Được gửi mẫu</span>
                           </div>
-                          <div className="rounded-2xl border border-brand/20 bg-brand-light/20 dark:bg-brand-light/10 p-3.5">
+                          <div className="rounded-xl sm:rounded-2xl border border-brand/20 bg-brand-light/20 dark:bg-brand-light/10 p-2.5 sm:p-3.5">
                             <span className="text-[10px] uppercase font-bold text-brand">2. KOC Lên clip</span>
-                            <p className="mt-1 text-lg font-black font-mono text-brand">
+                            <p className="mt-0.5 sm:mt-1 text-base sm:text-lg font-black font-mono text-brand">
                               {number(result.effectiveKocs)}
                             </p>
-                            <span className="text-[11px] text-brand">Tỷ lệ {input.effectiveKocRate}%</span>
+                            <span className="text-[10px] sm:text-[11px] text-brand">Tỷ lệ {input.effectiveKocRate}%</span>
                           </div>
-                          <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-3.5">
+                          <div className="rounded-xl sm:rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-2.5 sm:p-3.5">
                             <span className="text-[10px] uppercase font-bold text-slate-400">3. Video clip</span>
-                            <p className="mt-1 text-lg font-black font-mono text-slate-900 dark:text-white">
+                            <p className="mt-0.5 sm:mt-1 text-base sm:text-lg font-black font-mono text-slate-900 dark:text-white">
                               {number(result.videos)}
                             </p>
-                            <span className="text-[11px] text-slate-400">{input.videosPerKoc} video/KOC</span>
+                            <span className="text-[10px] sm:text-[11px] text-slate-400">{input.videosPerKoc} video/KOC</span>
                           </div>
-                        </div>
-
-                        <div className="grid gap-2 sm:grid-cols-3">
-                          <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-3.5">
+                          <div className="rounded-xl sm:rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-2.5 sm:p-3.5">
                             <span className="text-[10px] uppercase font-bold text-slate-400">4. Đơn tự nhiên</span>
-                            <p className="mt-1 text-lg font-black font-mono text-slate-900 dark:text-white">
+                            <p className="mt-0.5 sm:mt-1 text-base sm:text-lg font-black font-mono text-slate-900 dark:text-white">
                               {number(result.organicOrders, 1)}
                             </p>
-                            <span className="text-[11px] text-slate-400">Từ video KOC</span>
+                            <span className="text-[10px] sm:text-[11px] text-slate-400">Từ video KOC</span>
                           </div>
-                          <div className="rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-3.5">
+                          <div className="rounded-xl sm:rounded-2xl border border-slate-100 dark:border-slate-800 bg-slate-50/60 dark:bg-slate-800/40 p-2.5 sm:p-3.5">
                             <span className="text-[10px] uppercase font-bold text-slate-400">5. Đơn từ Ads</span>
-                            <p className="mt-1 text-lg font-black font-mono text-slate-900 dark:text-white">
+                            <p className="mt-0.5 sm:mt-1 text-base sm:text-lg font-black font-mono text-slate-900 dark:text-white">
                               {number(result.adOrders, 1)}
                             </p>
-                            <span className="text-[11px] text-slate-400">Chạy Spark Ads</span>
+                            <span className="text-[10px] sm:text-[11px] text-slate-400">Chạy Spark Ads</span>
                           </div>
-                          <div className="rounded-2xl border border-emerald-500/30 bg-emerald-50 dark:bg-emerald-950/30 p-3.5">
+                          <div className="rounded-xl sm:rounded-2xl border border-emerald-500/30 bg-emerald-50 dark:bg-emerald-950/30 p-2.5 sm:p-3.5">
                             <span className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400">
                               6. Đơn thành công
                             </span>
-                            <p className="mt-1 text-lg font-black font-mono text-emerald-600 dark:text-emerald-400">
+                            <p className="mt-0.5 sm:mt-1 text-base sm:text-lg font-black font-mono text-emerald-600 dark:text-emerald-400">
                               {number(result.successfulOrders, 1)}
                             </p>
-                            <span className="text-[11px] text-emerald-600/80">Sau trừ hủy/hoàn</span>
+                            <span className="text-[10px] sm:text-[11px] text-emerald-600/80">Sau trừ hủy/hoàn</span>
                           </div>
                         </div>
 
@@ -2179,9 +2304,9 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                 )}
 
                 {/* 5. Policy & Reference Citations */}
-                <section className="rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 p-5 text-xs text-slate-600 dark:text-slate-400 space-y-2.5">
+                <section className="rounded-2xl sm:rounded-3xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-900/60 p-3.5 sm:p-5 text-xs text-slate-600 dark:text-slate-400 space-y-2.5">
                   <div className="flex items-center gap-2 font-bold text-slate-800 dark:text-slate-200">
-                    <FileText size={16} className="text-brand" />
+                    <FileText size={16} className="text-brand shrink-0" />
                     <span>Căn cứ pháp lý & Biểu phí TikTok Shop Việt Nam</span>
                   </div>
                   <p className="text-[11px] leading-relaxed">
@@ -2192,12 +2317,12 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                     Mô hình dự phóng: <strong>{result.modelVersion ?? "legacy"}</strong> · Biểu phí tính toán: <strong>{feeProfile.dataVersion}</strong>
                     {lastCalculatedInput?.sourcePricingSnapshotId ? ` · Nguồn định giá: ${lastCalculatedInput.sourcePricingProductName} (${lastCalculatedInput.sourcePricingFeeVersion})` : " · Dữ liệu sản phẩm nhập trực tiếp"}.
                   </p>
-                  <div className="flex flex-wrap gap-2.5 pt-1">
+                  <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-2 pt-1">
                     <a
                       href={SOURCES.tiktok}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold text-brand hover:border-brand transition"
+                      className="inline-flex items-center justify-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-[11px] font-bold text-brand hover:border-brand transition"
                     >
                       Phí nhà bán hàng <ExternalLink size={10} />
                     </a>
@@ -2205,7 +2330,7 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                       href={SOURCES.tiktokTransaction}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold text-brand hover:border-brand transition"
+                      className="inline-flex items-center justify-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-[11px] font-bold text-brand hover:border-brand transition"
                     >
                       Phí giao dịch <ExternalLink size={10} />
                     </a>
@@ -2213,7 +2338,7 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                       href={SOURCES.tiktokVxp}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold text-brand hover:border-brand transition"
+                      className="inline-flex items-center justify-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-[11px] font-bold text-brand hover:border-brand transition"
                     >
                       Voucher Extra <ExternalLink size={10} />
                     </a>
@@ -2221,7 +2346,7 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
                       href={SOURCES.tax}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1 text-[11px] font-bold text-brand hover:border-brand transition"
+                      className="inline-flex items-center justify-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-2.5 py-1.5 text-[11px] font-bold text-brand hover:border-brand transition"
                     >
                       Thuế TMĐT <ExternalLink size={10} />
                     </a>

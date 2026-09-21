@@ -15,6 +15,9 @@ import {
   ShieldCheck,
   Lightbulb,
   Store,
+  LayoutList,
+  FileText,
+  Layers,
 } from "lucide-react";
 import * as XLSX from "xlsx";
 import { TextShimmerWave } from "@/components/loading-ui/text-shimmer-wave";
@@ -111,8 +114,8 @@ export function parseAntiReturnNudge(text: string): ParsedAntiReturnData | null 
       const badge = /dưới 350/i.test(rawTitle)
         ? "< 350 ký tự"
         : /quà tặng|trách nhiệm|quyền lợi/i.test(rawTitle)
-        ? "Kèm Quà Tặng"
-        : "Chuẩn CSKH";
+          ? "Kèm Quà Tặng"
+          : "Chuẩn CSKH";
 
       chatMessages.push({
         sampleNumber,
@@ -329,78 +332,87 @@ export function AntiReturnNudgeOutput({
         </div>
       )}
 
-      {/* Header thanh công cụ tối giản */}
-      <div className="px-4 py-2.5 border-b border-slate-800 flex items-center justify-between gap-2.5 relative z-10 bg-slate-900/95 backdrop-blur-md shrink-0">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 shrink-0">
-            <PackageCheck size={15} />
+      {/* Header thanh công cụ (Toolbar) - 1 hàng ngang duy nhất trên cả mobile & desktop */}
+      <div className="px-2.5 sm:px-4 py-2 sm:py-2.5 border-b border-slate-800 flex items-center justify-between gap-1.5 sm:gap-2 relative z-20 bg-slate-900/90 backdrop-blur-md shrink-0 flex-nowrap">
+        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+          <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 shrink-0 shadow-2xs">
+            <PackageCheck size={14} className="sm:w-3.5 sm:h-3.5" />
           </div>
-          <div className="min-w-0">
-            <h2 className="font-bold text-white text-xs sm:text-sm truncate">
-              Kịch Bản Cứu Đơn &amp; Chống Bom COD
-            </h2>
-          </div>
+          <h2 className="font-bold text-white text-xs sm:text-sm truncate">
+            Kịch Bản Cứu Đơn COD
+          </h2>
+          <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hidden md:inline truncate">
+            Tối Ưu Giao Hàng
+          </span>
         </div>
 
-        {/* Nút hành động */}
+        {/* Hàng nút hành động - Cố định 1 hàng ngang */}
         {result && !loading && (
-          <div className="flex items-center gap-1.5 shrink-0">
-            <div className="bg-slate-800/80 p-0.5 rounded-lg border border-slate-700/60 flex items-center">
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 flex-nowrap">
+            {/* Chế độ xem: Trực quan vs Gốc */}
+            <div className="bg-slate-800/80 p-0.5 rounded-lg border border-slate-700/60 flex items-center shrink-0">
               <button
                 type="button"
                 onClick={() => setViewMode("interactive")}
-                className={`px-2 py-0.5 rounded text-[11px] font-semibold transition cursor-pointer ${
-                  viewMode === "interactive"
-                    ? "bg-emerald-600 text-white shadow-xs"
-                    : "text-slate-400 hover:text-white"
-                }`}
+                title="Dạng giao diện trực quan"
+                className={`p-1 sm:px-2 sm:py-1 rounded text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${viewMode === "interactive"
+                  ? "bg-emerald-600 text-white shadow-xs"
+                  : "text-slate-400 hover:text-white"
+                  }`}
               >
-                Trực quan
+                <LayoutList size={12} className="sm:w-[13px] sm:h-[13px]" />
+                <span className="hidden md:inline">Trực quan</span>
               </button>
               <button
                 type="button"
                 onClick={() => setViewMode("raw")}
-                className={`px-2 py-0.5 rounded text-[11px] font-semibold transition cursor-pointer ${
-                  viewMode === "raw"
-                    ? "bg-emerald-600 text-white shadow-xs"
-                    : "text-slate-400 hover:text-white"
-                }`}
+                title="Dạng văn bản markdown gốc"
+                className={`p-1 sm:px-2 sm:py-1 rounded text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${viewMode === "raw"
+                  ? "bg-emerald-600 text-white shadow-xs"
+                  : "text-slate-400 hover:text-white"
+                  }`}
               >
-                Gốc
+                <FileText size={12} className="sm:w-[13px] sm:h-[13px]" />
+                <span className="hidden md:inline">Gốc</span>
               </button>
             </div>
 
+            {/* Xuất Excel */}
             <button
               type="button"
               onClick={handleExportExcel}
-              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-emerald-400 border border-slate-700 transition cursor-pointer flex items-center gap-1"
-              title="Xuất Excel (.xlsx)"
+              title="Xuất kịch bản ra file Excel (.xlsx)"
+              className="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 text-[11px] sm:text-xs font-bold px-1.5 sm:px-2.5 py-1 sm:py-1.5 rounded-lg transition-all flex items-center gap-1 cursor-pointer active:scale-95 shadow-xs shrink-0"
             >
-              <FileSpreadsheet size={14} className="text-emerald-400" />
-              <span className="hidden xl:inline text-[11px] font-medium">Excel</span>
+              <FileSpreadsheet size={12} className="text-emerald-400 sm:w-[13px] sm:h-[13px]" />
+              <span className="hidden xs:inline">Excel</span>
             </button>
 
+            {/* Nút Tải báo cáo (.txt): chỉ hiện trên màn lớn */}
             <button
               type="button"
               onClick={handleDownloadTxt}
-              className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white border border-slate-700 transition cursor-pointer"
-              title="Tải file .txt"
+              title="Tải tệp kịch bản .txt"
+              className="hidden sm:flex p-1 sm:p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg border border-slate-700 transition-colors cursor-pointer shrink-0"
             >
-              <Download size={13} />
+              <Download size={12} className="sm:w-3.5 sm:h-3.5" />
             </button>
 
+            {/* Nút Sao chép tất cả */}
             <button
               type="button"
               onClick={() => handleCopy(result, "all", "Đã sao chép toàn bộ kịch bản!")}
-              className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-emerald-600 hover:bg-emerald-500 text-white transition flex items-center gap-1 cursor-pointer shadow-xs"
+              className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-[11px] sm:text-xs font-bold px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg transition-all shadow-md shadow-emerald-950/40 flex items-center gap-1 cursor-pointer active:scale-95 shrink-0"
             >
               {copiedKey === "all" ? (
                 <>
-                  <Check size={12} className="stroke-[3]" /> Đã chép
+                  <Check size={12} className="stroke-[3]" />
+                  <span>Đã chép</span>
                 </>
               ) : (
                 <>
-                  <Copy size={12} /> Sao chép tất cả
+                  <Copy size={12} />
+                  <span>Chép hết</span>
                 </>
               )}
             </button>
@@ -408,73 +420,69 @@ export function AntiReturnNudgeOutput({
         )}
       </div>
 
-      {/* Tabs Phân Đoạn Tinh Tế */}
+      {/* Tabs Phân Loại Danh Mục Đầu Ra (Pinned Sub-Tabs) - Cố định bên dưới toolbar */}
       {result && viewMode === "interactive" && !loading && (
-        <div className="px-3.5 py-1.5 border-b border-slate-800/80 bg-slate-900/60 flex items-center gap-1 overflow-x-auto custom-scrollbar relative z-10 shrink-0">
+        <div className="px-2.5 sm:px-4 py-1.5 sm:py-2 border-b border-slate-800 bg-slate-950/70 flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar sm:custom-scrollbar shrink-0 relative z-10">
           <button
             type="button"
             onClick={() => setActiveTab("all")}
-            className={`px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer whitespace-nowrap shrink-0 ${
-              activeTab === "all"
-                ? "bg-slate-800 text-emerald-400 border border-emerald-500/30"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
+            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95 ${activeTab === "all"
+              ? "bg-slate-800 text-emerald-300 border border-emerald-500/40 shadow-xs"
+              : "text-slate-400 hover:text-slate-200"
+              }`}
           >
-            Tất cả
+            <Layers size={12} className="sm:w-[13px] sm:h-[13px]" />
+            <span>Tất Cả</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("chat")}
-            className={`px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
-              activeTab === "chat"
-                ? "bg-slate-800 text-emerald-400 border border-emerald-500/30"
-                : "text-slate-400 hover:text-emerald-300"
-            }`}
+            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95 ${activeTab === "chat"
+              ? "bg-slate-800 text-emerald-300 border border-emerald-500/40 shadow-xs"
+              : "text-slate-400 hover:text-slate-200"
+              }`}
           >
-            <MessageSquare size={12} />
-            <span>Chat sàn ({parsed?.chatMessages.length || 2})</span>
+            <MessageSquare size={12} className="sm:w-[13px] sm:h-[13px]" />
+            <span>Chat Sàn ({parsed?.chatMessages.length || 2})</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("call")}
-            className={`px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
-              activeTab === "call"
-                ? "bg-slate-800 text-slate-200 border border-slate-700"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
+            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95 ${activeTab === "call"
+              ? "bg-slate-800 text-emerald-300 border border-emerald-500/40 shadow-xs"
+              : "text-slate-400 hover:text-slate-200"
+              }`}
           >
-            <PhoneCall size={12} />
-            <span>Cuộc gọi 45s &amp; SMS</span>
+            <PhoneCall size={12} className="sm:w-[13px] sm:h-[13px]" />
+            <span>Gọi &amp; SMS</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("planb")}
-            className={`px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
-              activeTab === "planb"
-                ? "bg-slate-800 text-slate-200 border border-slate-700"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
+            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95 ${activeTab === "planb"
+              ? "bg-slate-800 text-emerald-300 border border-emerald-500/40 shadow-xs"
+              : "text-slate-400 hover:text-slate-200"
+              }`}
           >
-            <ShieldCheck size={12} />
-            <span>Plan B Seller Center</span>
+            <ShieldCheck size={12} className="sm:w-[13px] sm:h-[13px]" />
+            <span>Plan B Sàn</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("psychology")}
-            className={`px-2.5 py-1 rounded-md text-xs font-semibold transition cursor-pointer whitespace-nowrap shrink-0 flex items-center gap-1.5 ${
-              activeTab === "psychology"
-                ? "bg-slate-800 text-slate-200 border border-slate-700"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
+            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95 ${activeTab === "psychology"
+              ? "bg-slate-800 text-emerald-300 border border-emerald-500/40 shadow-xs"
+              : "text-slate-400 hover:text-slate-200"
+              }`}
           >
-            <Lightbulb size={12} />
-            <span>Mẹo tâm lý</span>
+            <Lightbulb size={12} className="sm:w-[13px] sm:h-[13px]" />
+            <span>Mẹo Tâm Lý</span>
           </button>
         </div>
       )}
 
       {/* Vùng hiển thị nội dung: cuộn nội bộ */}
-      <div className="flex-1 min-h-0 p-3.5 sm:p-4 overflow-y-auto custom-scrollbar relative z-10">
+      <div className="flex-1 min-h-0 p-3 sm:p-4 overflow-y-auto custom-scrollbar relative z-10 pb-24 lg:pb-4">
         {loading ? (
           <div className="h-full min-h-[360px] flex flex-col items-center justify-center text-center p-6 space-y-3">
             <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-emerald-400">
@@ -523,9 +531,6 @@ export function AntiReturnNudgeOutput({
                           1. Kịch Bản Tin Nhắn Chat Sàn
                         </h3>
                       </div>
-                      <span className="text-[11px] text-slate-400">
-                        {parsed.chatMessages.length} mẫu tin nhắn
-                      </span>
                     </div>
 
                     <div className="space-y-3">
@@ -540,15 +545,7 @@ export function AntiReturnNudgeOutput({
                               <span className="text-xs font-bold text-white">
                                 {msg.title}
                               </span>
-                              <span
-                                className={`text-[10px] font-semibold px-2 py-0.2 rounded-full border ${
-                                  msg.isSafe
-                                    ? "bg-emerald-500/10 text-emerald-300 border-emerald-500/25"
-                                    : "bg-amber-500/10 text-amber-300 border-amber-500/25"
-                                }`}
-                              >
-                                {msg.charCount} ký tự • {msg.badge}
-                              </span>
+
                             </div>
 
                             <button
@@ -590,9 +587,7 @@ export function AntiReturnNudgeOutput({
                           2. Lời Thoại Gọi Điện CSKH (45s) &amp; SMS
                         </h3>
                       </div>
-                      <span className="text-[11px] text-slate-400">
-                        Xưng tên shop • Tháo gỡ lo lắng
-                      </span>
+
                     </div>
 
                     {/* Lời thoại cuộc gọi 45 giây */}
@@ -613,7 +608,7 @@ export function AntiReturnNudgeOutput({
                             </>
                           ) : (
                             <>
-                              <Copy size={11} /> Sao chép lời thoại
+                              <Copy size={11} /> Sao chép
                             </>
                           )}
                         </button>
@@ -685,9 +680,7 @@ export function AntiReturnNudgeOutput({
                             <span className="text-xs font-bold text-white flex items-center gap-1.5">
                               📩 Mẫu SMS / Zalo Nhắn Tin Nhanh
                             </span>
-                            <span className="text-[10px] text-slate-400 font-mono">
-                              ({parsed.smsScript.charCount} ký tự)
-                            </span>
+
                           </div>
 
                           <button
@@ -701,7 +694,7 @@ export function AntiReturnNudgeOutput({
                               </>
                             ) : (
                               <>
-                                <Copy size={11} /> Sao chép SMS
+                                <Copy size={11} /> Sao chép
                               </>
                             )}
                           </button>

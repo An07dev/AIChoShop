@@ -19,17 +19,42 @@ export async function GET(req: NextRequest) {
 }
 export async function POST(req: NextRequest) {
   try {
-    const user = await getSessionUser();
-    const changed = changedAccountResponse(req, user?.id ?? null, true); if (changed) return changed;
-    if (!user) return NextResponse.json({ error: "Vui lòng đăng nhập." }, { status: 401, headers });
-    if (!isAllowedOrigin(req)) return NextResponse.json({ error: "Nguồn yêu cầu không hợp lệ." }, { status: 403, headers });
-    const body: unknown = await readLimitedJson(req, 32768);
-    if (!body || typeof body !== "object" || Array.isArray(body)) throw new RequestBodyError("INVALID_INPUT");
-    const value = body as Record<string, unknown>;
-    if (typeof value.tool !== "string" || !["pricing-calculator", "tax-calculator", "koc-planner"].includes(value.tool) || (value.output !== undefined && typeof value.output !== "string")) throw new RequestBodyError("INVALID_INPUT");
-    return NextResponse.json(await recordAiUsage({ userId: user.id, tool: value.tool === "koc-planner" ? "koc-calculator" : value.tool, input: value.input, output: value.output as string | undefined }), { headers });
-  } catch (error) {
-    if (error instanceof RequestBodyError) return NextResponse.json({ success: false, error: error.message }, { status: error.status, headers });
-    return dataErrorResponse(error, "save-calculation-history");
+
+    const token = await getSessionUserId();
+
+    if (!token) {
+      return NextResponse.json(
+        { error: "Unauthorized: Vui lòng đăng nhập" },
+        { status: 401 }
+      );
+    }
+
+    if (!isAllowedOrigin(req)) return NextResponse.json({ error: "Invalid origin" }, { status: 403 });
+    const body = await readLimitedJson(req, 32768) as Record<string, any>;
+    const { tool, toolName, action, input, output } = body;
+
+    if (!["pricing-calculator", "tax-calculator", "koc-planner", "koc-calculator"].includes(tool)) {
+      return NextResponse.json(
+        { error: "Missing required parameter: tool" },
+        { status: 400 }
+      );
+    }
+
+    const result = await recordAiUsage({
+      userId: token,
+      tool,
+      toolName,
+      action,
+      input,
+      output,
+    });
+
+    return NextResponse.json(result);
+  } catch (error: any) {
+    console.error("Error in POST /api/ai/usage:", error);
+    return NextResponse.json(
+      { error: error instanceof RequestBodyError ? error.message : "Dịch vụ đang gián đoạn" },
+      { status: 500 }
+    );
   }
 }

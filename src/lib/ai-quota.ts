@@ -12,6 +12,7 @@ import {
   summarizeAiAction,
   sanitizeAiInput,
 } from "./ai-tools-config";
+import { calculateTokenCost } from "./ai-cost";
 
 export { AI_TOOLS };
 export function vnDayStart(now = new Date()) {
@@ -82,16 +83,39 @@ export async function completeAi(
       const toolName = data.toolName || TOOL_NAMES[data.tool] || data.tool;
       const action = data.action || summarizeAiAction(data.tool, data.input);
       const inputStr = sanitizeAiInput(data.input);
-      await tx.aiUsageLog.create({
-        data: {
-          userId: data.userId,
-          tool: data.tool,
-          toolName,
-          action: redactText(action).slice(0, 300),
-          input: inputStr,
-          output: sanitizeHistoryOutput(data.output),
-        },
-      });
+      const promptTokens = Number(data.inputTokens) || 0;
+      const completionTokens = Number(data.outputTokens) || 0;
+      const totalTokens = promptTokens + completionTokens;
+      const costUsd = calculateTokenCost(data.model, promptTokens, completionTokens);
+      try {
+        await tx.aiUsageLog.create({
+          data: {
+            userId: data.userId,
+            tool: data.tool,
+            toolName,
+            action,
+            input: inputStr,
+            output: data.output,
+            model: data.model,
+            promptTokens,
+            completionTokens,
+            totalTokens,
+            costUsd,
+          } as any,
+        });
+      } catch (logErr) {
+        // Dự phòng ghi nhận trực tiếp bằng raw query nếu memory cache Prisma cũ
+        const logId = randomUUID();
+        await tx.$executeRaw`
+          INSERT INTO "AiUsageLog" (
+            id, "userId", tool, "toolName", action, input, output,
+            model, "promptTokens", "completionTokens", "totalTokens", "costUsd", "createdAt"
+          ) VALUES (
+            ${logId}, ${data.userId}, ${data.tool}, ${toolName}, ${action}, ${inputStr}, ${data.output},
+            ${data.model}, ${promptTokens}, ${completionTokens}, ${totalTokens}, ${costUsd}, NOW()
+          )
+        `;
+      }
     }
     if (finalize) await finalize(tx);
   });

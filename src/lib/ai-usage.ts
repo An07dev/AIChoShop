@@ -82,18 +82,88 @@ export async function getAiUsageStats(userId: string, filterTool?: string) {
 export async function recordAiUsage(params: {
   userId: string; tool: string; input?: unknown; output?: string;
 }) {
-  const log = await prisma.$transaction(async tx => {
-    await expireHistoryContent(tx);
-    return tx.aiUsageLog.create({ data: {
-    userId: params.userId, tool: params.tool,
-    toolName: TOOL_NAMES[params.tool] || params.tool,
-    action: redactText(summarizeAiAction(params.tool, params.input)).slice(0, 300),
-    input: sanitizeAiInput(params.input), output: sanitizeHistoryOutput(params.output),
-    } });
-  });
-  const [todayCount, totalGenerated] = await Promise.all([
-    prisma.aiUsageLog.count({ where: { userId: params.userId, tool: { in: AI_TOOLS }, createdAt: { gte: vnDayStart() } } }),
-    prisma.aiUsageLog.count({ where: { userId: params.userId } }),
-  ]);
-  return { success: true, logId: log.id, todayCount, totalGenerated };
+  try {
+    const toolName = params.toolName || TOOL_NAMES[params.tool] || params.tool;
+    const action = params.action || summarizeAiAction(params.tool, params.input);
+    const inputStr = sanitizeAiInput(params.input);
+
+    const logId = "log_" + Date.now() + "_" + Math.random().toString(36).substring(2, 8);
+
+    const isCalculator = ["pricing-calculator", "tax-calculator", "koc-planner", "koc-calculator"].includes(params.tool);
+    const model = isCalculator ? "Thuật toán (Calculator)" : "gpt-4o-mini";
+
+    if ((prisma as any).aiUsageLog?.create) {
+      try {
+        await (prisma as any).aiUsageLog.create({
+          data: {
+            id: logId,
+            userId: params.userId,
+            tool: params.tool,
+            toolName,
+            action,
+            input: inputStr,
+            output: params.output || null,
+            model,
+            promptTokens: 0,
+            completionTokens: 0,
+            totalTokens: 0,
+            costUsd: 0,
+          },
+        });
+      } catch (ormErr) {
+        await prisma.$executeRawUnsafe(
+          'INSERT INTO "AiUsageLog" ("id", "userId", "tool", "toolName", "action", "input", "output", "model", "promptTokens", "completionTokens", "totalTokens", "costUsd", "createdAt") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 0, 0, 0, 0, NOW())',
+          logId,
+          params.userId,
+          params.tool,
+          toolName,
+          action,
+          inputStr,
+          params.output || null,
+          model
+        );
+      }
+    } else {
+      await prisma.$executeRawUnsafe(
+        'INSERT INTO "AiUsageLog" ("id", "userId", "tool", "toolName", "action", "input", "output", "model", "promptTokens", "completionTokens", "totalTokens", "costUsd", "createdAt") VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 0, 0, 0, 0, NOW())',
+        logId,
+        params.userId,
+        params.tool,
+        toolName,
+        action,
+        inputStr,
+        params.output || null,
+        model
+      );
+    }
+
+    const startOfToday = getStartOfTodayVn();
+    let todayCount = 1;
+    let totalGenerated = 1;
+    try {
+      const [todayRes, totalRes]: [any, any] = await Promise.all([
+        prisma.$queryRawUnsafe(
+          'SELECT COUNT(*)::int as count FROM "AiUsageLog" WHERE "userId" = $1 AND "createdAt" >= $2',
+          params.userId,
+          startOfToday
+        ),
+        prisma.$queryRawUnsafe(
+          'SELECT COUNT(*)::int as count FROM "AiUsageLog" WHERE "userId" = $1',
+          params.userId
+        ),
+      ]);
+      todayCount = Number(todayRes?.[0]?.count) || 1;
+      totalGenerated = Number(totalRes?.[0]?.count) || 1;
+    } catch {}
+
+    return {
+      success: true,
+      logId,
+      todayCount,
+      totalGenerated,
+    };
+  } catch (error) {
+    console.error("Error saving AI usage log:", error);
+    return { success: false, error: "Failed to record AI usage" };
+  }
 }

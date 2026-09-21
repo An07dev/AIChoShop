@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef, type ReactNode } from "react";
+import { useState, useMemo, useTransition, useEffect, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 import {
@@ -70,9 +70,10 @@ interface LessonsManagerProps {
   listControls?: ReactNode;
   initialLessons: AdminLessonItem[];
   courses: AdminCourseItem[];
+  coursesSlot?: React.ReactNode;
 }
 
-export function LessonsManager({ initialLessons, courses, listControls }: LessonsManagerProps) {
+export function LessonsManager({ initialLessons, courses, coursesSlot }: LessonsManagerProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const requestedCourseId = searchParams.get("courseId");
@@ -86,6 +87,46 @@ export function LessonsManager({ initialLessons, courses, listControls }: Lesson
       : "all"
   );
   useEffect(()=>{queueMicrotask(()=>setSelectedCourseId(requestedCourseId&&courses.some(course=>course.id===requestedCourseId)?requestedCourseId:"all"));},[requestedCourseId,courses]);
+
+  const tableSectionRef = useRef<HTMLDivElement>(null);
+  const tableScrollRef = useRef<HTMLDivElement>(null);
+
+  // Xử lý cuộn thông minh:
+  // - Khi cuộn xuống: cuộn trang ngoài cho tới khi bảng bài học chiếm Full màn hình thì CHẶN cuộn trang ngoài và chuyển sang cuộn nội dung bảng.
+  // - Khi cuộn lên: cuộn bảng lên đầu (STT #1), sau đó cuộn trang ngoài lên để hiển thị lại Header & KPIs.
+  useEffect(() => {
+    const tableScrollEl = tableScrollRef.current;
+    if (!tableScrollEl) return;
+
+    const outerContainer = tableScrollEl.closest(".overflow-y-auto") as HTMLElement | null;
+    if (!outerContainer) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      const maxOuterScroll = outerContainer.scrollHeight - outerContainer.clientHeight;
+      const currentOuterScroll = outerContainer.scrollTop;
+      const isOuterAtBottom = currentOuterScroll >= maxOuterScroll - 2;
+
+      // 1. Cuộn xuống: nếu trang ngoài chưa cuộn hết (bảng chưa chiếm trọn màn hình)
+      if (e.deltaY > 0 && !isOuterAtBottom) {
+        e.preventDefault();
+        outerContainer.scrollTop = Math.min(maxOuterScroll, currentOuterScroll + e.deltaY);
+        return;
+      }
+
+      // 2. Cuộn lên: nếu bảng đã ở đầu (STT #1) và trang ngoài đang bị cuộn xuống
+      if (e.deltaY < 0 && tableScrollEl.scrollTop <= 0 && currentOuterScroll > 0) {
+        e.preventDefault();
+        outerContainer.scrollTop = Math.max(0, currentOuterScroll + e.deltaY);
+        return;
+      }
+    };
+
+    const sectionEl = tableSectionRef.current || tableScrollEl;
+    sectionEl.addEventListener("wheel", handleWheel, { passive: false });
+    return () => {
+      sectionEl.removeEventListener("wheel", handleWheel);
+    };
+  }, []);
 
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
@@ -546,6 +587,9 @@ export function LessonsManager({ initialLessons, courses, listControls }: Lesson
         }
       />
 
+      {/* Section Xuất bản khóa học */}
+      {coursesSlot ? <div>{coursesSlot}</div> : null}
+
       {/* 4 Thẻ Thống Kê KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 shrink-0">
         {/* Tổng số bài học */}
@@ -612,9 +656,13 @@ export function LessonsManager({ initialLessons, courses, listControls }: Lesson
         </div>
       </div>
 
-      {/* Thanh Tìm Kiếm, Bộ Lọc & Nút Thêm Mới */}
-      <div className="bg-white rounded-2xl border border-slate-200 p-3 sm:p-3.5 shadow-sm space-y-2.5 shrink-0">
-        {listControls}
+      {/* Khu vực Bảng Bài Học Full Màn Hình & Chặn Cuộn Ngoài Khi Full */}
+      <div
+        ref={tableSectionRef}
+        className="flex flex-col h-[calc(100dvh-5.5rem)] sm:h-[calc(100dvh-6rem)] lg:h-[calc(100dvh-6.5rem)] min-h-[500px] shrink-0 space-y-2.5 sm:space-y-3"
+      >
+        {/* Thanh Tìm Kiếm, Bộ Lọc & Nút Thêm Mới */}
+        <div className="bg-white rounded-2xl border border-slate-200 p-3 sm:p-3.5 shadow-sm space-y-2.5 shrink-0">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2 w-full">
             {/* Nút Khôi phục dữ liệu gốc nếu cần */}
@@ -665,9 +713,9 @@ export function LessonsManager({ initialLessons, courses, listControls }: Lesson
 
       </div>
 
-      {/* Bảng Danh Sách Bài Học (Chỉ cuộn trong bảng) */}
-      <div className="flex-1 min-h-[260px] bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
-        <div className="flex-1 min-h-0 overflow-auto custom-scrollbar">
+        {/* Bảng Danh Sách Bài Học (Chỉ cuộn trong bảng) */}
+        <div className="flex-1 min-h-0 bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
+          <div ref={tableScrollRef} className="flex-1 min-h-0 overflow-auto custom-scrollbar">
           <table className="w-full text-left border-collapse">
             <thead className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200 shadow-2xs">
               <tr className="bg-slate-50 border-b border-slate-200 text-xs text-slate-600 uppercase tracking-wider">
@@ -828,6 +876,7 @@ export function LessonsManager({ initialLessons, courses, listControls }: Lesson
             </tbody>
           </table>
         </div>
+      </div>
       </div>
 
       {/* MODAL: Thêm Mới / Chỉnh Sửa Bài Học */}

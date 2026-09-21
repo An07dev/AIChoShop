@@ -17,6 +17,7 @@ import { useToolGate } from "@/hooks/useToolGate";
 import { VisionListingOutput } from "@/components/tools/VisionListingOutput";
 import { useToast } from "@/context/ToastContext";
 import { AiUsageBadge } from "@/components/tools/AiUsageBadge";
+import { MobileToolTabs } from "@/components/tools/MobileToolTabs";
 
 const PLATFORMS = [
   "Shopee & TikTok Shop",
@@ -93,6 +94,7 @@ export default function VisionListingPage() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
+  const [mobileTab, setMobileTab] = useState<"form" | "result">("form");
 
   // Form states
   const [platform, setPlatform] = useState(PLATFORMS[0]);
@@ -133,6 +135,7 @@ export default function VisionListingPage() {
     setImageBase64(SAMPLE_HINT.mockImage);
     setImageFileName("lo-vi-song-toshiba-20l.png");
     setResult(SAMPLE_OUTPUT);
+    setMobileTab("result");
   };
 
   const handleResetForm = () => {
@@ -155,6 +158,7 @@ export default function VisionListingPage() {
 
     setLoading(true);
     setResult("");
+    setMobileTab("result");
 
     try {
       const response = await fetch("/api/ai", {
@@ -192,57 +196,109 @@ export default function VisionListingPage() {
   };
 
   return (
-    <div className="max-w-7xl w-full mx-auto flex-1 flex flex-col min-h-0 h-full lg:overflow-hidden">
+    <div className="max-w-7xl w-full mx-auto flex-1 flex flex-col lg:min-h-0 lg:h-full lg:overflow-hidden">
       <GateModals />
 
       {/* Header & Breadcrumb */}
-      <div className="shrink-0 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 mb-1">
-            <Link href="/tools" className="hover:text-emerald-600 transition-colors flex items-center gap-1">
-              <ArrowLeft size={12} /> Kho Công Cụ AI
-            </Link>
-            <span>/</span>
-            <span className="text-slate-600 dark:text-slate-300">Tối Ưu SEO & Đăng Bán</span>
-          </div>
-          <h1 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white flex flex-wrap items-center gap-2 sm:gap-3">
-            AI Phân Tích Ảnh Sản Phẩm
-            <span className="inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 shadow-xs uppercase tracking-wider">
-              <Crown size={11} className="text-amber-600 dark:text-amber-400" />
-              VIP TOOL
+      <div className="shrink-0 pb-3 space-y-2 sm:space-y-3">
+        {/* Mobile top bar: Breadcrumb + VIP badge + Lịch sử */}
+        <div className="flex items-center justify-between gap-2 md:hidden">
+          <Link
+            href="/tools"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 hover:text-brand transition-colors"
+          >
+            <ArrowLeft size={13} /> Kho công cụ AI
+          </Link>
+          <div className="flex items-center gap-1.5">
+            <span className="inline-flex items-center gap-1 text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 shadow-2xs uppercase tracking-wider">
+              <Crown size={10} className="text-amber-600 dark:text-amber-400" />
+              VIP
             </span>
-          </h1>
-          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
-            Tải ảnh chụp sản phẩm lên, AI tự động quét nhận diện chất liệu, kiểu dáng và tạo trọn bộ Listing chuẩn SEO sàn.
-          </p>
+            <AiUsageBadge tool="vision-listing" refreshTrigger={refreshTrigger} historyOnly />
+          </div>
         </div>
 
-        {/* Thanh thao tác nhanh */}
-        <div className="flex items-center gap-2">
-          <AiUsageBadge tool="vision-listing" refreshTrigger={refreshTrigger} />
-          <button
-            type="button"
-            onClick={handleUseSample}
-            className="px-3 py-1.5 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 text-xs font-bold hover:bg-emerald-100/50 transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs"
-          >
-            <Sparkles size={14} /> Dữ Liệu Mẫu
-          </button>
-          <button
-            type="button"
-            onClick={handleResetForm}
-            className="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 text-xs font-semibold transition-colors flex items-center gap-1.5 cursor-pointer"
-          >
-            <RotateCcw size={14} /> Xóa Form
-          </button>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+          <div>
+            {/* Desktop Breadcrumb */}
+            <div className="hidden md:flex items-center gap-2 text-xs font-semibold text-slate-400 mb-2">
+              <Link href="/tools" className="hover:text-emerald-600 transition-colors flex items-center gap-1 text-slate-500">
+                <ArrowLeft size={13} /> Kho Công Cụ AI
+              </Link>
+              <span>/</span>
+              <span className="text-slate-600 dark:text-slate-300">Tối Ưu SEO &amp; Đăng Bán</span>
+            </div>
+
+            {/* Title Row: Centered icon, text & minimal mobile reset button */}
+            <div className="flex items-center gap-2.5 sm:gap-3">
+              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800/80 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-xs shrink-0">
+                <ImageIcon size={20} className="sm:w-5 sm:h-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <h1 className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
+                    AI Phân Tích Ảnh Sản Phẩm
+                  </h1>
+                  {/* Minimal icon-only reset button: ONLY ON MOBILE */}
+                  <button
+                    type="button"
+                    onClick={handleResetForm}
+                    className="md:hidden p-1.5 rounded-xl text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-transparent hover:border-rose-200 dark:hover:border-rose-900/60 transition-all cursor-pointer shadow-2xs active:scale-90"
+                    title="Xóa Form / Đặt lại"
+                    aria-label="Xóa Form"
+                  >
+                    <RotateCcw size={15} />
+                  </button>
+                  <span className="hidden md:inline-flex items-center gap-1 text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700/60 shadow-xs uppercase tracking-wider shrink-0">
+                    <Crown size={11} className="text-amber-600 dark:text-amber-400" />
+                    VIP TOOL
+                  </span>
+                </div>
+                <p className="hidden sm:block text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
+                  Tải ảnh chụp sản phẩm lên, AI tự động quét nhận diện chất liệu, kiểu dáng và tạo trọn bộ Listing chuẩn SEO sàn.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Action Buttons (Desktop ONLY - Preserved exactly as original) */}
+          <div className="hidden md:flex items-center gap-2 shrink-0">
+            <AiUsageBadge tool="vision-listing" refreshTrigger={refreshTrigger} className="w-full sm:w-auto" />
+            <button
+              type="button"
+              onClick={handleUseSample}
+              className="inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl border border-emerald-200 dark:border-emerald-900/60 bg-emerald-50/60 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 text-xs font-bold hover:bg-emerald-100/60 transition-colors cursor-pointer shadow-2xs text-center active:scale-95 whitespace-nowrap"
+            >
+              <Sparkles size={13} className="shrink-0" />
+              <span>Dữ Liệu Mẫu</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleResetForm}
+              className="inline-flex items-center justify-center gap-1 px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800/80 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold transition-colors cursor-pointer shadow-2xs text-center active:scale-95 whitespace-nowrap"
+            >
+              <RotateCcw size={13} className="shrink-0" />
+              <span>Xóa Form</span>
+            </button>
+          </div>
         </div>
       </div>
 
+      {/* Mobile Tab Switcher */}
+      <MobileToolTabs
+        activeTab={mobileTab}
+        onChangeTab={setMobileTab}
+        hasResult={Boolean(result)}
+        loading={loading}
+        resultLabel="Bộ Listing AI"
+      />
+
       {/* Grid 2 Cột: Cấu hình bên trái & Output bên phải */}
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:overflow-hidden items-stretch">
+      <div className="flex-1 lg:min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:overflow-hidden items-stretch">
         {/* CỘT TRÁI: FORM TẢI ẢNH & THÔNG TIN */}
-        <div className="lg:col-span-5 flex flex-col min-h-0 lg:h-full lg:overflow-hidden">
-          <div className="h-full overflow-y-auto custom-scrollbar space-y-4 lg:pr-1.5 pb-2">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-xs space-y-4">
+        <div className={`${mobileTab === "form" ? "flex" : "hidden lg:flex"} lg:col-span-5 flex-col lg:min-h-0 lg:h-full lg:overflow-hidden`}>
+          <div className="lg:h-full lg:overflow-y-auto custom-scrollbar space-y-4 lg:pr-1.5 pb-24 lg:pb-2">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 shadow-xs space-y-4">
               {/* 1. UPLOAD ẢNH SẢN PHẨM */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-2">
@@ -389,7 +445,8 @@ export default function VisionListingPage() {
         </div>
 
         {/* CỘT PHẢI: KẾT QUẢ HIỂN THỊ */}
-        <div className="lg:col-span-7 flex flex-col min-h-0 lg:h-full lg:overflow-hidden">
+        <div className={`${mobileTab === "result" ? "flex" : "hidden lg:flex"} lg:col-span-7 flex-col lg:min-h-0 lg:h-full lg:overflow-hidden`}>
+
           <VisionListingOutput
             output={result}
             isLoading={loading}
@@ -398,6 +455,28 @@ export default function VisionListingPage() {
           />
         </div>
       </div>
+
+      {/* Mobile Floating Sticky Action Bar (chỉ hiện khi ở tab form trên mobile) */}
+      {mobileTab === "form" && (
+        <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 z-40 lg:hidden shadow-lg">
+          <button
+            type="button"
+            onClick={handleGenerate}
+            disabled={loading || !imageBase64}
+            className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 text-white font-bold text-sm shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99]"
+          >
+            {loading ? (
+              <>
+                <Sparkles size={16} className="animate-spin" /> Đang Phân Tích Ảnh &amp; Viết Listing...
+              </>
+            ) : (
+              <>
+                <Send size={16} /> Phân Tích &amp; Tạo Listing AI
+              </>
+            )}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
