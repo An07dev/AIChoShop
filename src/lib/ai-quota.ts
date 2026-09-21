@@ -1,3 +1,5 @@
+import { redactText, sanitizeHistoryOutput } from "./privacy/policy";
+import { expireHistoryContent } from "./privacy/service";
 import { randomUUID } from "node:crypto";
 import type { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
@@ -64,7 +66,7 @@ export async function completeAi(
     model: string;
     inputTokens: number;
     outputTokens: number;
-    input?: any;
+    input?: unknown;
     toolName?: string;
     action?: string;
   },
@@ -77,6 +79,7 @@ export async function completeAi(
     });
     if (result.count !== 1) throw new SeoError("REQUEST_EXPIRED", "Yêu cầu đã hết thời gian xử lý. Vui lòng thử lại.", 409);
     if (data.userId) {
+      await expireHistoryContent(tx);
       const toolName = data.toolName || TOOL_NAMES[data.tool] || data.tool;
       const action = data.action || summarizeAiAction(data.tool, data.input);
       const inputStr = sanitizeAiInput(data.input);

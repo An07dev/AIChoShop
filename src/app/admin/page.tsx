@@ -1,74 +1,53 @@
-
 import { requireAdmin } from "@/lib/auth/session";
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
-import { AdminCharts } from "@/components/admin/AdminCharts";
+import Form from "next/form";
+import { AdminReportChart } from "@/components/admin/AdminReportChart";
+import { AdminMemberChart } from "@/components/admin/AdminMemberChart";
+import { AdminReportDetails } from "@/components/admin/AdminReportDetails";
+import { getAdminReport, reportPeriod } from "@/lib/admin/reporting";
+import { listQuery, type SearchValues } from "@/lib/admin/list-query";
+import { isVipActive } from "@/lib/vip-expiration";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import type { Metadata } from "next";
-import {
-  LayoutDashboard,
-  Users,
-  BookOpen,
-  Crown,
-  DollarSign,
-  UserPlus,
-  CreditCard,
-  ArrowUpRight,
-  ArrowRight,
-  Clock,
-  CheckCircle2,
-  AlertCircle,
-  ShieldCheck,
-  TrendingUp,
-  Sparkles,
-  Settings,
-  Phone,
-  Mail,
-  Calendar,
-  Layers,
-  ChevronRight,
-  ExternalLink,
-  GraduationCap,
-} from "lucide-react";
-
+import { LayoutDashboard, Users, BookOpen, Crown, DollarSign, UserPlus, CreditCard, ArrowUpRight, ArrowRight, Clock, CheckCircle2, Settings, GraduationCap } from "lucide-react";
 export const dynamic = "force-dynamic";
-
 export const metadata: Metadata = {
-  title: "Bảng Điều Khiển Quản Trị",
-  description: "Tổng quan tình hình kinh doanh, số liệu học viên, nội dung đào tạo và doanh thu VIP hệ thống AIChoShop.",
+    title: "Bảng Điều Khiển Quản Trị",
+    description: "Tổng quan tình hình kinh doanh, số liệu học viên, nội dung đào tạo và doanh thu VIP hệ thống AIChoShop.",
 };
-
-const formatMoney = (val: number) =>
-  new Intl.NumberFormat("vi-VN", {
+const formatMoney = (val: number) => new Intl.NumberFormat("vi-VN", {
     style: "currency",
     currency: "VND",
     maximumFractionDigits: 0,
-  }).format(val);
-
+}).format(val);
 const formatDate = (date: Date | string) => {
-  const d = typeof date === "string" ? new Date(date) : date;
-  return new Intl.DateTimeFormat("vi-VN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(d);
+    const d = typeof date === "string" ? new Date(date) : date;
+    return new Intl.DateTimeFormat("vi-VN", {
+        timeZone: "Asia/Ho_Chi_Minh",
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+    }).format(d);
 };
-
 function timeAgo(date: Date | string) {
-  const d = typeof date === "string" ? new Date(date) : date;
-  const now = new Date();
-  const seconds = Math.floor((now.getTime() - d.getTime()) / 1000);
-
-  if (seconds < 60) return "Vừa xong";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes} phút trước`;
-  const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} giờ trước`;
-  const days = Math.floor(hours / 24);
-  if (days < 30) return `${days} ngày trước`;
-  return formatDate(d);
+    const d = typeof date === "string" ? new Date(date) : date;
+    const now = new Date();
+    const seconds = Math.floor((now.getTime() - d.getTime()) / 1000);
+    if (seconds < 60)
+        return "Vừa xong";
+    const minutes = Math.floor(seconds / 60);
+    if (minutes < 60)
+        return `${minutes} phút trước`;
+    const hours = Math.floor(minutes / 60);
+    if (hours < 24)
+        return `${hours} giờ trước`;
+    const days = Math.floor(hours / 24);
+    if (days < 30)
+        return `${days} ngày trước`;
+    return formatDate(d);
 }
 
 export default async function AdminDashboard() {
@@ -111,136 +90,48 @@ export default async function AdminDashboard() {
           vipExpiresAt: true,
           createdAt: true,
         },
-      }),
-      prisma.transaction.findMany({
-        orderBy: { createdAt: "desc" },
-        take: 5,
-        include: {
-          user: {
-            select: {
-              id: true,
-              email: true,
-              name: true,
-              phone: true,
-              isVIP: true,
-            },
-          },
+        {
+            name: "VIP Còn Hạn Hiện Tại",
+            value: vipCount.toLocaleString("vi-VN"),
+            subtext: `${userCount > 0 ? Math.round((vipCount / userCount) * 100) : 0}% tổng học viên`,
+            icon: <Crown size={24} className="text-amber-600"/>,
+            color: "bg-amber-50 text-amber-600 border-amber-100",
+            link: "/admin/users",
         },
-      }),
-      prisma.transaction.findMany({
-        where: { status: "SUCCESS" },
-        select: {
-          id: true,
-          amount: true,
-          createdAt: true,
+        {
+            name: "Nội Dung Đào Tạo",
+            value: `${lessonCount} bài`,
+            subtext: `${courseCount} khóa học thực chiến`,
+            icon: <BookOpen size={24} className="text-emerald-600"/>,
+            color: "bg-emerald-50 text-emerald-600 border-emerald-100",
+            link: "/admin/lessons",
         },
-        orderBy: { createdAt: "asc" },
-      }),
-      prisma.user.findMany({
-        select: {
-          id: true,
-          isVIP: true,
-          createdAt: true,
+        {
+            name: "Doanh Thu VIP Sau Hoàn Tiền",
+            value: formatMoney(totalRevenue),
+            subtext: `${successTxCount} lượt thanh toán trong kỳ đã chọn`,
+            icon: <DollarSign size={24} className="text-purple-600"/>,
+            color: "bg-purple-50 text-purple-600 border-purple-100",
+            link: "/admin/sepay",
         },
-        orderBy: { createdAt: "asc" },
-      }),
-    ]);
-
-    userCount = uCount;
-    vipCount = vCount;
-    lessonCount = lCount;
-    courseCount = cCount;
-    totalRevenue = revenueAgg._sum.amount || 0;
-    successTxCount = sTxCount;
-    recentUsers = users;
-    recentTransactions = txs;
-    allSuccessfulTxs = succTxs;
-    allUsersTimeline = usersTimeline;
-  } catch (error) {
-    console.error("Lỗi khi tải dữ liệu dashboard:", error);
-  }
-
-  const serializedTransactions = (allSuccessfulTxs || []).map((t) => ({
-    id: String(t.id),
-    amount: Number(t.amount) || 0,
-    createdAt: t.createdAt instanceof Date ? t.createdAt.toISOString() : String(t.createdAt),
-  }));
-
-  const serializedUsersTimeline = (allUsersTimeline || []).map((u) => ({
-    id: String(u.id),
-    isVIP: Boolean(u.isVIP),
-    createdAt: u.createdAt instanceof Date ? u.createdAt.toISOString() : String(u.createdAt),
-  }));
-
-  const stats = [
-    {
-      name: "Tổng Học Viên",
-      value: userCount.toLocaleString("vi-VN"),
-      subtext: `${vipCount} VIP • ${Math.max(0, userCount - vipCount)} Thường`,
-      icon: <Users size={24} className="text-blue-600" />,
-      color: "bg-blue-50 text-blue-600 border-blue-100",
-      link: "/admin/users",
-    },
-    {
-      name: "Thành Viên VIP",
-      value: vipCount.toLocaleString("vi-VN"),
-      subtext: `${userCount > 0 ? Math.round((vipCount / userCount) * 100) : 0}% tổng học viên`,
-      icon: <Crown size={24} className="text-amber-600" />,
-      color: "bg-amber-50 text-amber-600 border-amber-100",
-      link: "/admin/users",
-    },
-    {
-      name: "Nội Dung Đào Tạo",
-      value: `${lessonCount} bài`,
-      subtext: `${courseCount} khóa học thực chiến`,
-      icon: <BookOpen size={24} className="text-emerald-600" />,
-      color: "bg-emerald-50 text-emerald-600 border-emerald-100",
-      link: "/admin/lessons",
-    },
-    {
-      name: "Doanh Thu VIP Đã Thu",
-      value: formatMoney(totalRevenue),
-      subtext: `${successTxCount} giao dịch thành công`,
-      icon: <DollarSign size={24} className="text-purple-600" />,
-      color: "bg-purple-50 text-purple-600 border-purple-100",
-      link: "/admin/sepay",
-    },
-  ];
-
-  return (
-    <div className="space-y-4 sm:space-y-5 pb-6">
+    ];
+    return (<div className="space-y-4 sm:space-y-5 pb-6">
       {/* TIÊU ĐỀ TRANG TỔNG QUAN DASHBOARD */}
-      <AdminPageHeader
-        title="Bảng Điều Khiển Quản Trị"
-        subtitle="Tổng quan tình hình kinh doanh, số liệu học viên, tiến độ đào tạo và doanh thu nạp VIP."
-        icon={LayoutDashboard}
-        iconGradient="from-blue-600 to-indigo-600"
-        badge={
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-            Trực Tuyến 24/7
-          </span>
-        }
-      />
+      <AdminPageHeader title="Bảng Điều Khiển Quản Trị" subtitle="Tổng quan tình hình kinh doanh, số liệu học viên, tiến độ đào tạo và doanh thu nạp VIP." icon={LayoutDashboard} iconGradient="from-blue-600 to-indigo-600" badge={<span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 shadow-2xs">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"/>
+            Quản trị hệ thống
+          </span>}/>
+
+      <Form key={period.from + ":" + period.to} action="/admin" scroll={false} className="flex flex-wrap items-end gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs"><label className="grid gap-1 text-xs font-bold text-slate-600">Từ ngày<input type="date" name="from" defaultValue={period.from} className="rounded-xl border border-slate-200 px-3 py-2 text-sm"/></label><label className="grid gap-1 text-xs font-bold text-slate-600">Đến hết ngày<input type="date" name="to" defaultValue={period.to} className="rounded-xl border border-slate-200 px-3 py-2 text-sm"/></label><button className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white">Xem báo cáo</button><Link href="/admin" className="py-2 text-xs font-bold text-blue-600">30 ngày gần nhất</Link><p className="w-full text-xs text-slate-500">Kỳ {period.from} → {period.to} · Theo ngày Việt Nam. Thẻ tài khoản/VIP phản ánh hiện tại; danh sách gần đây là 5 bản ghi mới nhất toàn hệ thống.</p></Form>
 
       {/* 1. METRICS CARDS (4 THẺ TỔNG QUAN) */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
-        {stats.map((stat, idx) => (
-          <Link
-            key={idx}
-            href={stat.link}
-            className="group bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs hover:shadow-md hover:border-slate-300 transition-all duration-200 flex flex-col justify-between"
-          >
+        {stats.map((stat, idx) => (<Link key={idx} href={stat.link} className="group bg-white p-4 sm:p-5 rounded-2xl border border-slate-200 shadow-xs hover:shadow-md hover:border-slate-300 transition-all duration-200 flex flex-col justify-between">
             <div className="flex items-center justify-between mb-2.5">
-              <div
-                className={`w-10 h-10 rounded-xl border flex items-center justify-center ${stat.color} shadow-2xs`}
-              >
+              <div className={`w-10 h-10 rounded-xl border flex items-center justify-center ${stat.color} shadow-2xs`}>
                 {stat.icon}
               </div>
-              <ArrowUpRight
-                size={16}
-                className="text-slate-300 group-hover:text-slate-600 transition-colors"
-              />
+              <ArrowUpRight size={16} className="text-slate-300 group-hover:text-slate-600 transition-colors"/>
             </div>
             <div>
               <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
@@ -253,19 +144,11 @@ export default async function AdminDashboard() {
                 {stat.subtext}
               </p>
             </div>
-          </Link>
-        ))}
+          </Link>))}
       </div>
 
       {/* ── 1.5. BIỂU ĐỒ DOANH THU & PHÂN BỔ HỌC VIÊN VIP/FREE ───────────── */}
-      <AdminCharts
-        transactions={serializedTransactions}
-        usersTimeline={serializedUsersTimeline}
-        userCount={userCount}
-        vipCount={vipCount}
-        totalRevenue={totalRevenue}
-        successTxCount={successTxCount}
-      />
+      <div className="grid grid-cols-1 xl:grid-cols-12 gap-4 lg:gap-5 items-stretch"><div className="xl:col-span-7 min-w-0"><AdminReportChart days={report.daily}/></div><div className="xl:col-span-5 min-w-0"><AdminMemberChart userCount={userCount} vipCount={vipCount} registrations={registrations}/></div></div>
 
       {/* ── 2. TWO-COLUMN MAIN WORKSPACE (NGƯỜI DÙNG MỚI & CHUYỂN KHOẢN GẦN ĐÂY) ── */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 lg:gap-5 items-stretch">
@@ -275,7 +158,7 @@ export default async function AdminDashboard() {
           <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 flex items-center justify-between min-h-[64px]">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600 shadow-2xs shrink-0">
-                <UserPlus size={17} />
+                <UserPlus size={17}/>
               </div>
               <div>
                 <div className="flex items-center gap-2">
@@ -291,44 +174,29 @@ export default async function AdminDashboard() {
                 </p>
               </div>
             </div>
-            <Link
-              href="/admin/users"
-              className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700 transition shrink-0"
-            >
-              Xem tất cả <ArrowRight size={13} />
+            <Link href="/admin/users" className="inline-flex items-center gap-1 text-xs font-bold text-blue-600 hover:text-blue-700 transition shrink-0">
+              Xem tất cả <ArrowRight size={13}/>
             </Link>
           </div>
 
           {/* List Users (Always exactly 5 rows) */}
           <div className="divide-y divide-slate-100 flex-1 flex flex-col">
-            {recentUsers.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-400 text-xs">
-                <UserPlus size={28} className="text-slate-300 stroke-[1.5] mb-2" />
+            {recentUsers.length === 0 ? (<div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-slate-400 text-xs">
+                <UserPlus size={28} className="text-slate-300 stroke-[1.5] mb-2"/>
                 Chưa có người dùng nào đăng ký gần đây.
-              </div>
-            ) : (
-              <>
+              </div>) : (<>
                 {recentUsers.map((user) => {
-                  const initial = (user.name || user.email).charAt(0).toUpperCase();
-                  return (
-                    <div
-                      key={user.id}
-                      className="px-4 sm:px-5 py-2.5 sm:py-3 hover:bg-slate-50/70 transition-colors flex items-center justify-between gap-3 h-[64px]"
-                    >
+                const initial = (user.name || user.email).charAt(0).toUpperCase();
+                return (<div key={user.id} className="px-4 sm:px-5 py-2.5 sm:py-3 hover:bg-slate-50/70 transition-colors flex items-center justify-between gap-3 h-[64px]">
                       <div className="flex items-center gap-3 min-w-0">
                         {/* Avatar */}
                         <div className="relative shrink-0">
                           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-slate-100 to-slate-200 border border-slate-200 flex items-center justify-center font-bold text-slate-700 text-xs shadow-2xs">
                             {initial}
                           </div>
-                          {user.isVIP && (
-                            <span
-                              className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-500 text-white flex items-center justify-center shadow-xs"
-                              title="VIP Member"
-                            >
-                              <Crown size={8} className="fill-white" />
-                            </span>
-                          )}
+                          {user.isVIP && (<span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-500 text-white flex items-center justify-center shadow-xs" title="VIP Member">
+                              <Crown size={8} className="fill-white"/>
+                            </span>)}
                         </div>
 
                         {/* Info */}
@@ -337,19 +205,13 @@ export default async function AdminDashboard() {
                             <strong className="text-xs sm:text-sm font-bold text-slate-900 truncate max-w-[130px] sm:max-w-[200px]">
                               {user.name || "Học viên mới"}
                             </strong>
-                            {user.role === "ADMIN" ? (
-                              <span className="px-1.5 py-0.2 rounded bg-purple-100 text-purple-700 text-[9px] font-black border border-purple-200 shrink-0">
+                            {user.role === "ADMIN" ? (<span className="px-1.5 py-0.2 rounded bg-purple-100 text-purple-700 text-[9px] font-black border border-purple-200 shrink-0">
                                 ADMIN
-                              </span>
-                            ) : user.isVIP ? (
-                              <span className="px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 text-[9px] font-black border border-amber-300 shrink-0 flex items-center gap-0.5">
-                                <Crown size={8} className="fill-amber-600 text-amber-600" /> VIP
-                              </span>
-                            ) : (
-                              <span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 text-[9px] font-bold border border-slate-200 shrink-0">
+                              </span>) : user.isVIP ? (<span className="px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 text-[9px] font-black border border-amber-300 shrink-0 flex items-center gap-0.5">
+                                <Crown size={8} className="fill-amber-600 text-amber-600"/> VIP
+                              </span>) : (<span className="px-1.5 py-0.2 rounded bg-slate-100 text-slate-600 text-[9px] font-bold border border-slate-200 shrink-0">
                                 Thường
-                              </span>
-                            )}
+                              </span>)}
                           </div>
                           <div className="flex items-center gap-1.5 text-[11px] text-slate-400 truncate mt-0.5 font-mono">
                             <span className="truncate max-w-[130px] sm:max-w-[210px]">{user.email}</span>
@@ -363,27 +225,19 @@ export default async function AdminDashboard() {
                         <span className="text-[11px] font-medium text-slate-400 block">
                           {timeAgo(user.createdAt)}
                         </span>
-                        <Link
-                          href={`/admin/users?search=${encodeURIComponent(user.email)}`}
-                          className="text-[10px] font-bold text-blue-600 hover:underline inline-block"
-                        >
+                        <Link href={`/admin/users?q=${encodeURIComponent(user.email)}`} className="text-[10px] font-bold text-blue-600 hover:underline inline-block">
                           Quản lý →
                         </Link>
                       </div>
-                    </div>
-                  );
-                })}
+                    </div>);
+            })}
 
                 {/* Empty slot filler to keep exact 5 rows and match right column height */}
                 {recentUsers.length < 5 &&
-                  Array.from({ length: 5 - recentUsers.length }).map((_, i) => (
-                    <div
-                      key={`empty-user-slot-${i}`}
-                      className="px-4 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between gap-3 h-[64px] bg-slate-50/40 text-slate-400"
-                    >
+                Array.from({ length: 5 - recentUsers.length }).map((_, i) => (<div key={`empty-user-slot-${i}`} className="px-4 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between gap-3 h-[64px] bg-slate-50/40 text-slate-400">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl border border-dashed border-slate-300 flex items-center justify-center text-slate-400 text-xs shrink-0">
-                          <UserPlus size={14} className="opacity-50" />
+                          <UserPlus size={14} className="opacity-50"/>
                         </div>
                         <div>
                           <span className="text-xs font-medium text-slate-400 block">
@@ -397,10 +251,8 @@ export default async function AdminDashboard() {
                       <span className="text-[10px] font-semibold text-slate-400 px-2 py-0.5 rounded-md bg-slate-100 shrink-0">
                         Vị trí {recentUsers.length + i + 1}
                       </span>
-                    </div>
-                  ))}
-              </>
-            )}
+                    </div>))}
+              </>)}
           </div>
 
           {/* Footer Card */}
@@ -408,10 +260,7 @@ export default async function AdminDashboard() {
             <span>
               Tổng cộng: <strong className="text-slate-900 font-mono font-bold">{userCount}</strong> tài khoản
             </span>
-            <Link
-              href="/admin/users"
-              className="text-xs font-bold text-blue-600 hover:text-blue-700"
-            >
+            <Link href="/admin/users" className="text-xs font-bold text-blue-600 hover:text-blue-700">
               Xem danh sách đầy đủ →
             </Link>
           </div>
@@ -423,7 +272,7 @@ export default async function AdminDashboard() {
           <div className="px-4 sm:px-5 py-3.5 border-b border-slate-100 flex items-center justify-between min-h-[64px]">
             <div className="flex items-center gap-3">
               <div className="w-9 h-9 rounded-xl bg-emerald-50 border border-emerald-100 flex items-center justify-center text-emerald-600 shadow-2xs shrink-0">
-                <CreditCard size={17} />
+                <CreditCard size={17}/>
               </div>
               <div>
                 <div className="flex items-center gap-2">
@@ -439,48 +288,32 @@ export default async function AdminDashboard() {
                 </p>
               </div>
             </div>
-            <Link
-              href="/admin/sepay"
-              className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 hover:text-emerald-700 transition shrink-0"
-            >
-              Cổng SePay <ArrowRight size={13} />
+            <Link href="/admin/sepay" className="inline-flex items-center gap-1 text-xs font-bold text-emerald-600 hover:text-emerald-700 transition shrink-0">
+              Cổng SePay <ArrowRight size={13}/>
             </Link>
           </div>
 
           {/* List Transactions (Always exactly 5 rows) */}
           <div className="divide-y divide-slate-100 flex-1 flex flex-col">
-            {recentTransactions.length === 0 ? (
-              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-2">
-                <Clock size={28} className="mx-auto text-slate-300" />
+            {recentTransactions.length === 0 ? (<div className="flex-1 flex flex-col items-center justify-center p-8 text-center space-y-2">
+                <Clock size={28} className="mx-auto text-slate-300"/>
                 <p className="text-xs text-slate-500 font-bold">Chưa có giao dịch chuyển khoản nào</p>
                 <p className="text-[11px] text-slate-400">
                   Giao dịch tự động ghi nhận khi học viên quét mã VietQR SePay
                 </p>
-                <Link
-                  href="/admin/sepay"
-                  className="inline-block mt-1 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 font-bold text-xs border border-emerald-200"
-                >
+                <Link href="/admin/sepay" className="inline-block mt-1 px-3 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 font-bold text-xs border border-emerald-200">
                   Cấu hình SePay ngay
                 </Link>
-              </div>
-            ) : (
-              <>
+              </div>) : (<>
                 {recentTransactions.map((tx) => {
-                  const isSuccess = tx.status === "SUCCESS";
-                  return (
-                    <div
-                      key={tx.id}
-                      className="px-4 sm:px-5 py-2.5 sm:py-3 hover:bg-slate-50/70 transition-colors flex items-center justify-between gap-3 h-[64px]"
-                    >
+                const isSuccess = tx.status === "SUCCESS";
+                return (<div key={tx.id} className="px-4 sm:px-5 py-2.5 sm:py-3 hover:bg-slate-50/70 transition-colors flex items-center justify-between gap-3 h-[64px]">
                       <div className="flex items-center gap-3 min-w-0">
                         {/* Icon Status */}
-                        <div
-                          className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 shadow-2xs ${isSuccess
-                            ? "bg-emerald-50 text-emerald-600 border-emerald-100"
-                            : "bg-amber-50 text-amber-600 border-amber-100"
-                            }`}
-                        >
-                          {isSuccess ? <CheckCircle2 size={16} /> : <Clock size={16} />}
+                        <div className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 shadow-2xs ${isSuccess
+                        ? "bg-emerald-50 text-emerald-600 border-emerald-100"
+                        : "bg-amber-50 text-amber-600 border-amber-100"}`}>
+                          {isSuccess ? <CheckCircle2 size={16}/> : <Clock size={16}/>}
                         </div>
 
                         {/* Transaction details */}
@@ -489,18 +322,15 @@ export default async function AdminDashboard() {
                             <strong className="text-xs sm:text-sm font-bold text-slate-900 truncate max-w-[130px] sm:max-w-[200px]">
                               {tx.user?.name || tx.user?.email || "Học viên"}
                             </strong>
-                            {isSuccess ? (
-                              <span className="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 text-[9px] font-black border border-emerald-200 shrink-0">
+                            {tx.isSandbox && <span className="text-[9px] font-bold text-amber-700">THỬ</span>}
+                            {isSuccess ? (<span className="px-1.5 py-0.2 rounded bg-emerald-100 text-emerald-800 text-[9px] font-black border border-emerald-200 shrink-0">
                                 Thành công
-                              </span>
-                            ) : (
-                              <span className="px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 text-[9px] font-black border border-amber-200 shrink-0">
-                                Chờ duyệt
-                              </span>
-                            )}
+                              </span>) : (<span className="px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 text-[9px] font-black border border-amber-200 shrink-0">
+                                {({ PENDING: "Chờ thanh toán", REVIEW: "Cần đối soát", FAILED: "Thất bại", EXPIRED: "Hết hạn", CANCELLED: "Đã hủy", REFUNDED: "Đã hoàn tiền" } as Record<string, string>)[tx.status] || tx.status}
+                              </span>)}
                           </div>
                           <div className="flex items-center gap-1.5 text-[11px] text-slate-400 truncate mt-0.5 font-mono">
-                            <span className="shrink-0 font-semibold text-slate-500">Mã: {tx.sepayId || tx.id.slice(0, 8)}</span>
+                            <span className="shrink-0 font-semibold text-slate-500">Mã: {tx.paymentCode || tx.sepayId || tx.id.slice(0, 8)}</span>
                             <span>• {tx.user?.email}</span>
                           </div>
                         </div>
@@ -508,66 +338,55 @@ export default async function AdminDashboard() {
 
                       {/* Amount & Time */}
                       <div className="text-right shrink-0">
-                        <span
-                          className={`text-xs sm:text-sm font-black font-mono block ${isSuccess ? "text-emerald-600" : "text-amber-600"
-                            }`}
-                        >
-                          +{formatMoney(tx.amount)}
+                        <span className={`text-xs sm:text-sm font-black font-mono block ${isSuccess ? "text-emerald-600" : "text-amber-600"}`}>
+                          +{tx.currency === "VND" ? formatMoney(tx.amount) : tx.amount.toLocaleString("vi-VN") + " " + tx.currency}
                         </span>
                         <span className="text-[10px] font-medium text-slate-400 block mt-0.5">
                           {timeAgo(tx.createdAt)}
                         </span>
                       </div>
-                    </div>
-                  );
-                })}
+                    </div>);
+            })}
 
                 {/* Empty slot filler if fewer than 5 transactions */}
                 {recentTransactions.length < 5 &&
-                  Array.from({ length: 5 - recentTransactions.length }).map((_, i) => (
-                    <div
-                      key={`empty-tx-slot-${i}`}
-                      className="px-4 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between gap-3 h-[64px] bg-slate-50/40 text-slate-400"
-                    >
+                Array.from({ length: 5 - recentTransactions.length }).map((_, i) => (<div key={`empty-tx-slot-${i}`} className="px-4 sm:px-5 py-2.5 sm:py-3 flex items-center justify-between gap-3 h-[64px] bg-slate-50/40 text-slate-400">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl border border-dashed border-slate-300 flex items-center justify-center text-slate-400 text-xs shrink-0">
-                          <CreditCard size={14} className="opacity-50" />
+                          <CreditCard size={14} className="opacity-50"/>
                         </div>
                         <div>
                           <span className="text-xs font-medium text-slate-400 block">
                             Đang chờ giao dịch tiếp theo...
                           </span>
                           <span className="text-[10px] text-slate-400">
-                            Tự động kích hoạt ngay khi quét VietQR
+                            Đối soát trước khi cấp quyền VIP
                           </span>
                         </div>
                       </div>
                       <span className="text-[10px] font-semibold text-slate-400 px-2 py-0.5 rounded-md bg-slate-100 shrink-0">
                         Vị trí {recentTransactions.length + i + 1}
                       </span>
-                    </div>
-                  ))}
-              </>
-            )}
+                    </div>))}
+              </>)}
           </div>
 
           {/* Footer Card */}
           <div className="px-4 sm:px-5 py-2.5 sm:py-3 bg-slate-50/70 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 min-h-[46px]">
             <span>
-              Tổng đã thu:{" "}
+              Sau hoàn tiền trong kỳ:{" "}
               <strong className="text-emerald-600 font-mono font-bold">
                 {formatMoney(totalRevenue)}
               </strong>
             </span>
-            <Link
-              href="/admin/sepay"
-              className="text-xs font-bold text-emerald-600 hover:text-emerald-700"
-            >
+            <Link href="/admin/sepay" className="text-xs font-bold text-emerald-600 hover:text-emerald-700">
               Kiểm tra cổng SePay →
             </Link>
           </div>
         </div>
       </div>
+
+      <AdminReportDetails report={report} period={period}/>
 
       {/* ── 3. QUICK MANAGEMENT HUBS (TIỆN ÍCH QUẢN TRỊ TRUNG TÂM) ─────────── */}
       <div>
@@ -575,12 +394,9 @@ export default async function AdminDashboard() {
           Lối Tắt Quản Trị Chuyên Mục
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-3.5">
-          <Link
-            href="/admin/users"
-            className="group bg-white p-3.5 rounded-xl border border-slate-200 hover:border-blue-400 hover:shadow-xs transition flex items-center gap-3"
-          >
+          <Link href="/admin/users" className="group bg-white p-3.5 rounded-xl border border-slate-200 hover:border-blue-400 hover:shadow-xs transition flex items-center gap-3">
             <div className="p-2 rounded-lg bg-blue-50 text-blue-600 border border-blue-100 group-hover:scale-105 transition-transform shrink-0">
-              <Users size={17} />
+              <Users size={17}/>
             </div>
             <div className="min-w-0">
               <h3 className="text-xs font-bold text-slate-900 group-hover:text-blue-600 transition-colors">
@@ -592,12 +408,9 @@ export default async function AdminDashboard() {
             </div>
           </Link>
 
-          <Link
-            href="/admin/lessons"
-            className="group bg-white p-3.5 rounded-xl border border-slate-200 hover:border-emerald-400 hover:shadow-xs transition flex items-center gap-3"
-          >
+          <Link href="/admin/lessons" className="group bg-white p-3.5 rounded-xl border border-slate-200 hover:border-emerald-400 hover:shadow-xs transition flex items-center gap-3">
             <div className="p-2 rounded-lg bg-emerald-50 text-emerald-600 border border-emerald-100 group-hover:scale-105 transition-transform shrink-0">
-              <GraduationCap size={17} />
+              <GraduationCap size={17}/>
             </div>
             <div className="min-w-0">
               <h3 className="text-xs font-bold text-slate-900 group-hover:text-emerald-600 transition-colors">
@@ -609,12 +422,9 @@ export default async function AdminDashboard() {
             </div>
           </Link>
 
-          <Link
-            href="/admin/sepay"
-            className="group bg-white p-3.5 rounded-xl border border-slate-200 hover:border-amber-400 hover:shadow-xs transition flex items-center gap-3"
-          >
+          <Link href="/admin/sepay" className="group bg-white p-3.5 rounded-xl border border-slate-200 hover:border-amber-400 hover:shadow-xs transition flex items-center gap-3">
             <div className="p-2 rounded-lg bg-amber-50 text-amber-600 border border-amber-100 group-hover:scale-105 transition-transform shrink-0">
-              <CreditCard size={17} />
+              <CreditCard size={17}/>
             </div>
             <div className="min-w-0">
               <h3 className="text-xs font-bold text-slate-900 group-hover:text-amber-600 transition-colors">
@@ -626,12 +436,9 @@ export default async function AdminDashboard() {
             </div>
           </Link>
 
-          <Link
-            href="/admin/settings"
-            className="group bg-white p-3.5 rounded-xl border border-slate-200 hover:border-purple-400 hover:shadow-xs transition flex items-center gap-3"
-          >
+          <Link href="/admin/settings" className="group bg-white p-3.5 rounded-xl border border-slate-200 hover:border-purple-400 hover:shadow-xs transition flex items-center gap-3">
             <div className="p-2 rounded-lg bg-purple-50 text-purple-600 border border-purple-100 group-hover:scale-105 transition-transform shrink-0">
-              <Settings size={17} />
+              <Settings size={17}/>
             </div>
             <div className="min-w-0">
               <h3 className="text-xs font-bold text-slate-900 group-hover:text-purple-600 transition-colors">
@@ -644,6 +451,5 @@ export default async function AdminDashboard() {
           </Link>
         </div>
       </div>
-    </div>
-  );
+    </div>);
 }

@@ -1,66 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionUserId } from "@/lib/auth/session";
+import { getSessionUser } from "@/lib/auth/session";
 import { readLimitedJson, RequestBodyError } from "@/lib/http/body";
-import { prisma } from "@/lib/prisma";
 import { getAiUsageStats, recordAiUsage } from "@/lib/ai-usage";
 import { isAllowedOrigin } from "@/lib/http/origin";
-
+import { dataErrorResponse } from "@/lib/db-errors";
+import { changedAccountResponse } from "@/lib/history/owner";
 export const dynamic = "force-dynamic";
-
-/**
- * GET /api/ai/usage
- * Lấy số liệu: Lượt dùng hôm nay, Tổng nội dung đã tạo, Hoạt động gần đây của User hiện tại
- */
+const headers = { "Cache-Control": "no-store" };
 export async function GET(req: NextRequest) {
   try {
-
-    const token = await getSessionUserId();
-
-    if (!token) {
-      return NextResponse.json({
-        isLogged: false,
-        isVIP: false,
-        todayCount: 0,
-        totalGenerated: 0,
-        recentActivities: [],
-      });
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { id: token },
-      select: { id: true, isVIP: true, isLocked: true },
-    });
-
-    if (!user || user.isLocked) {
-      return NextResponse.json({
-        isLogged: false,
-        isVIP: false,
-        todayCount: 0,
-        totalGenerated: 0,
-        recentActivities: [],
-      });
-    }
-
+    const user = await getSessionUser();
+    const changed = changedAccountResponse(req, user?.id ?? null); if (changed) return changed;
+    if (!user) return NextResponse.json({ isLogged: false, isVIP: false, todayCount: 0, totalGenerated: 0, recentActivities: [] }, { headers });
     const tool = req.nextUrl.searchParams.get("tool") || undefined;
-    const stats = await getAiUsageStats(user.id, tool);
-
-    return NextResponse.json({
-      isLogged: true,
-      ...stats,
-    });
-  } catch (error: any) {
-    console.error("Error in GET /api/ai/usage:", error);
-    return NextResponse.json(
-      { error: error instanceof RequestBodyError ? error.message : "Dịch vụ đang gián đoạn" },
-      { status: 500 }
-    );
-  }
+    if (tool && !/^[a-z-]{1,50}$/.test(tool)) return NextResponse.json({ error: "Công cụ không hợp lệ." }, { status: 400, headers });
+    return NextResponse.json({ isLogged: true, ...(await getAiUsageStats(user.id, tool)) }, { headers });
+  } catch (error) { return dataErrorResponse(error, "get-ai-history"); }
 }
-
-/**
- * POST /api/ai/usage
- * Ghi nhận một lần sử dụng công cụ AI (dành cho client hoặc công cụ phụ trợ)
- */
 export async function POST(req: NextRequest) {
   try {
 

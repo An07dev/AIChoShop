@@ -111,6 +111,7 @@ export default async function ProfilePage() {
   };
 
   return (
+    <><a href="/profile/data" className="mb-4 inline-block text-blue-600 underline">Dữ liệu cá nhân · Xuất và xóa lịch sử</a>
     <ProfileClient
       user={serializedUser}
       totalCourses={totalCourses}
@@ -122,6 +123,6 @@ export default async function ProfilePage() {
         accountHolder: sePayConfig.accountHolder,
         syntaxPrefix: sePayConfig.syntaxPrefix,
       }}
-    />
+    /></>
   );
 }

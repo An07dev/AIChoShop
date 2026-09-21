@@ -1,141 +1,64 @@
-
 import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { UsersManager } from "@/components/admin/UsersManager";
-import { syncAllExpiredVipUsers } from "@/lib/sepay-server";
-import { computeVipDaysLeft } from "@/lib/vip-expiration";
+import { computeVipDaysLeft, isVipActive } from "@/lib/vip-expiration";
 import { getActiveVipPlans } from "@/lib/vip-plans-server";
-import { getStartOfTodayVn } from "@/lib/ai-usage";
+import { AI_TOOLS, getStartOfTodayVn } from "@/lib/ai-usage";
 import type { Metadata } from "next";
-
+import type { Prisma } from "@prisma/client";
+import { listQuery, pageWindow, type SearchValues } from "@/lib/admin/list-query";
+import { AdminListControls } from "@/components/admin/AdminListControls";
 export const dynamic = "force-dynamic";
-
 export const metadata: Metadata = {
-  title: "Quản Lý Người Dùng & Học Viên",
-  description: "Quản lý danh sách tài khoản học viên, cấp quyền VIP, phân bổ lượt dùng AI và đổi mật khẩu người dùng.",
+    title: "Quản Lý Người Dùng & Học Viên",
+    description: "Quản lý tài khoản học viên, quyền VIP và hạn mức AI.",
 };
-
-export default async function AdminUsers() {
-  await requireAdmin();
-  try {
-    // Tự động kiểm tra và hạ cấp các tài khoản đã hết hạn VIP về FREE
-    await syncAllExpiredVipUsers();
-
-    const startOfToday = getStartOfTodayVn();
-
-    const [users, vipPlans] = await Promise.all([
-      prisma.user.findMany({
-        orderBy: { createdAt: "desc" },
-        select: {
-          id: true,
-          email: true,
-          name: true,
-          phone: true,
-          role: true,
-          isVIP: true,
-          vipExpiresAt: true,
-          isLocked: true,
-          createdAt: true,
-          userCredit: {
-            select: { balance: true },
-          },
-        },
-      }),
-      getActiveVipPlans(),
+export default async function AdminUsers({ searchParams }: {
+    searchParams: Promise<SearchValues>;
+}) {
+    await requireAdmin();
+    const values = await searchParams, query = listQuery(values), now = new Date();
+    const activeVip: Prisma.UserWhereInput = { isVIP: true, OR: [{ vipExpiresAt: null }, { vipExpiresAt: { gt: now } }] };
+    const vip = query.choice("vip", ["all", "vip", "free"], "all"), status = query.choice("status", ["all", "active", "locked"], "all");
+    const where: Prisma.UserWhereInput = { AND: [...(query.q ? [{ OR: [{ email: { contains: query.q, mode: "insensitive" as const } }, { name: { contains: query.q, mode: "insensitive" as const } }, { phone: { contains: query.q } }] }] : []), ...(vip === "vip" ? [activeVip] : vip === "free" ? [{ NOT: activeVip }] : []), ...(status !== "all" ? [{ isLocked: status === "locked" }] : [])] };
+    const window = pageWindow(await prisma.user.count({ where }), query.page, query.size);
+    const sort = query.choice("sort", ["newest", "oldest", "email"], "newest");
+    const [users, vipPlans, setting] = await Promise.all([
+        prisma.user.findMany({
+            where, skip: window.skip, take: window.size,
+            orderBy: sort === "email" ? [{ email: "asc" }, { id: "asc" }] : [{ createdAt: sort === "oldest" ? "asc" : "desc" }, { id: "asc" }],
+            select: {
+                id: true, email: true, name: true, phone: true, role: true,
+                isVIP: true, vipExpiresAt: true, dailyFreeLimit: true,
+                isLocked: true, createdAt: true, userCredit: { select: { balance: true } },
+            },
+        }),
+        getActiveVipPlans(),
+        prisma.systemSetting.findUnique({ where: { id: "default" }, select: { defaultDailyFreeLimit: true } }),
     ]);
-
-    // Lấy định mức lượt Free mỗi ngày an toàn (tương thích cả khi client dev cache)
-    const freeLimitsMap = new Map<string, number>();
-    let globalDailyFreeLimit = 12;
-    try {
-      const [rawLimits, settingRows]: [any, any] = await Promise.all([
-        (prisma as any).$queryRawUnsafe('SELECT id, "dailyFreeLimit" FROM "User"'),
-        (prisma as any).$queryRawUnsafe(
-          'SELECT "defaultDailyFreeLimit" FROM "SystemSetting" WHERE id = \'default\' LIMIT 1;'
-        ),
-      ]);
-
-      if (Array.isArray(rawLimits)) {
-        rawLimits.forEach((row) => {
-          if (row.id) {
-            freeLimitsMap.set(row.id, Number(row.dailyFreeLimit) || 12);
-          }
-        });
-      }
-
-      if (settingRows && settingRows[0]?.defaultDailyFreeLimit !== undefined) {
-        globalDailyFreeLimit = Number(settingRows[0].defaultDailyFreeLimit) || 12;
-      }
-    } catch (err) {
-      console.warn("Could not query dailyFreeLimit via raw SQL:", err);
-    }
-
-    const todayUsageMap = new Map<string, number>();
-    try {
-      if (typeof (prisma as any).aiUsageLog?.groupBy === "function") {
-        const todayUsages = await (prisma as any).aiUsageLog.groupBy({
-          by: ["userId"],
-          where: { createdAt: { gte: startOfToday } },
-          _count: { id: true },
-        });
-        todayUsages.forEach((u: any) => {
-          todayUsageMap.set(u.userId, u._count?.id || 0);
-        });
-      } else {
-        const rows: any = await prisma.$queryRawUnsafe(
-          'SELECT "userId", COUNT(*)::int as count FROM "AiUsageLog" WHERE "createdAt" >= $1 GROUP BY "userId"',
-          startOfToday
-        );
-        rows.forEach((r: any) => {
-          todayUsageMap.set(r.userId, Number(r.count) || 0);
-        });
-      }
-    } catch (err) {
-      console.warn("Could not query aiUsageLog groupBy, trying raw SQL:", err);
-      try {
-        const rows: any = await prisma.$queryRawUnsafe(
-          'SELECT "userId", COUNT(*)::int as count FROM "AiUsageLog" WHERE "createdAt" >= $1 GROUP BY "userId"',
-          startOfToday
-        );
-        rows.forEach((r: any) => {
-          todayUsageMap.set(r.userId, Number(r.count) || 0);
-        });
-      } catch (sqlErr) {
-        console.warn("Could not query aiUsageLog via raw SQL:", sqlErr);
-      }
-    }
-
-    const serializedUsers = users.map((u: any) => {
-      const usedToday = todayUsageMap.get(u.id) || 0;
-      const dailyLimit = freeLimitsMap.get(u.id) ?? u.dailyFreeLimit ?? globalDailyFreeLimit ?? 12;
-      const remainingFree = u.isVIP ? null : Math.max(0, dailyLimit - usedToday);
-
-      return {
-        ...u,
-        dailyFreeLimit: dailyLimit,
-        remainingFree,
-        usedToday,
-        createdAt: u.createdAt ? u.createdAt.toISOString() : new Date().toISOString(),
-        vipExpiresAt: u.vipExpiresAt ? u.vipExpiresAt.toISOString() : null,
-        vipDaysLeft: computeVipDaysLeft(u.vipExpiresAt),
-      };
+    const usage = await prisma.aiUsageLog.groupBy({
+        by: ["userId"],
+        where: { userId: { in: users.map(user => user.id) }, createdAt: { gte: getStartOfTodayVn() }, tool: { in: AI_TOOLS } },
+        _count: { id: true },
     });
-
-    return (
-      <UsersManager
-        initialUsers={serializedUsers}
-        initialPlans={vipPlans}
-        initialGlobalFreeLimit={globalDailyFreeLimit}
-      />
-    );
-  } catch (error: any) {
-    console.error("ADMIN USERS ERROR:", error);
-    return (
-      <div className="p-8 text-red-500 bg-red-50 rounded-xl border border-red-200">
-        <h2 className="text-xl font-bold mb-2">Error loading users:</h2>
-        <pre className="text-sm whitespace-pre-wrap">{error?.stack || error?.message || String(error)}</pre>
-      </div>
-    );
-  }
+    const todayUsage = new Map(usage.map(row => [row.userId, row._count.id]));
+    const serializedUsers = users.map(user => {
+        const activeVip = isVipActive(user);
+        const usedToday = todayUsage.get(user.id) ?? 0;
+        return {
+            ...user,
+            isVIP: activeVip,
+            usedToday,
+            remainingFree: activeVip ? null : Math.max(0, user.dailyFreeLimit - usedToday),
+            createdAt: user.createdAt.toISOString(),
+            vipExpiresAt: user.vipExpiresAt?.toISOString() ?? null,
+            vipDaysLeft: computeVipDaysLeft(user.vipExpiresAt),
+        };
+    });
+    const listControls = <AdminListControls embedded path="/admin/users" values={values} window={window} filters={[
+            { name: "vip", label: "Quyền", options: [{ value: "all", label: "Tất cả" }, { value: "vip", label: "VIP còn hạn" }, { value: "free", label: "Free / VIP hết hạn" }] },
+            { name: "status", label: "Tài khoản", options: [{ value: "all", label: "Tất cả" }, { value: "active", label: "Hoạt động" }, { value: "locked", label: "Đã khóa" }] },
+            { name: "sort", label: "Sắp xếp", options: [{ value: "newest", label: "Mới nhất" }, { value: "oldest", label: "Cũ nhất" }, { value: "email", label: "Email A–Z" }] }
+        ]}/>;
+    return <div className="space-y-4"><UsersManager listControls={listControls} initialUsers={serializedUsers} initialPlans={vipPlans} initialGlobalFreeLimit={setting?.defaultDailyFreeLimit ?? 12}/></div>;
 }
-

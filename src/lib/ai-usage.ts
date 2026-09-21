@@ -1,3 +1,6 @@
+import { historyCutoff, redactText, sanitizeHistoryOutput } from "./privacy/policy";
+import { ERASED_ACTION, expireHistoryContent } from "./privacy/service";
+import { sanitizeHistoryValue } from "./privacy/policy";
 import { vnDayStart } from "./ai-quota";
 import {
   AI_TOOLS,
@@ -54,7 +57,7 @@ export function formatRelativeTime(dateInput: Date | string): string {
  * Lấy toàn bộ số liệu thống kê AI của người dùng
  */
 export async function getAiUsageStats(userId: string, filterTool?: string) {
-  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId } });
+  const user = await prisma.user.findUniqueOrThrow({ where: { id: userId }, select: { isVIP: true, vipExpiresAt: true, dailyFreeLimit: true } });
   const where = {
     userId,
     ...(filterTool
@@ -66,23 +69,18 @@ export async function getAiUsageStats(userId: string, filterTool?: string) {
   const [todayCount, totalGenerated, activities] = await Promise.all([
     prisma.aiUsageLog.count({ where: { userId, tool: { in: AI_TOOLS }, createdAt: { gte: vnDayStart() } } }),
     prisma.aiUsageLog.count({ where }),
-    prisma.aiUsageLog.findMany({ where, orderBy: { createdAt: "desc" }, take: filterTool ? 50 : 10 }),
+    prisma.aiUsageLog.findMany({ where: { ...where, action: { not: ERASED_ACTION }, createdAt: { gte: historyCutoff() } }, orderBy: { createdAt: "desc" }, take: filterTool ? 50 : 10 }),
   ]);
   return { todayCount, totalGenerated, dailyFreeLimit: user.dailyFreeLimit,
     remainingFree: isVipActive(user) ? null : Math.max(0, user.dailyFreeLimit - todayCount), isVIP: isVipActive(user),
-    recentActivities: activities.map(act => ({ ...act, input: (() => { try { return act.input ? JSON.parse(act.input) : null; } catch { return null; } })(), time: formatRelativeTime(act.createdAt), createdAt: act.createdAt.toISOString() })) };
+    recentActivities: activities.map(act => ({ ...act, action: redactText(act.action), output: sanitizeHistoryOutput(act.output), input: (() => { try { return act.input ? sanitizeHistoryValue(JSON.parse(act.input)) : null; } catch { return null; } })(), time: formatRelativeTime(act.createdAt), createdAt: act.createdAt.toISOString() })) };
 }
 
 /**
  * Lưu bản ghi sử dụng AI vào Database
  */
 export async function recordAiUsage(params: {
-  userId: string;
-  tool: string;
-  toolName?: string;
-  action?: string;
-  input?: any;
-  output?: string;
+  userId: string; tool: string; input?: unknown; output?: string;
 }) {
   try {
     const toolName = params.toolName || TOOL_NAMES[params.tool] || params.tool;

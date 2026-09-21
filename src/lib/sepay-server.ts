@@ -1,3 +1,4 @@
+import { dataFailure } from "@/lib/db-errors";
 import { audit } from "@/lib/auth/audit";
 import { isVipActive } from "@/lib/vip-expiration";
 import { prisma } from "@/lib/prisma";
@@ -108,7 +109,7 @@ export async function syncAllExpiredVipUsers(): Promise<number> {
     });
     return result.count;
   } catch (error) {
-    console.error("Failed to sync expired VIP users:", error);
+    dataFailure(error, "lib/sepay-server.ts");
     return 0;
   }
 }

@@ -1,3 +1,4 @@
+import { AccountHistoryProvider } from "@/context/AccountHistoryContext";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { SidebarProvider } from "@/context/SidebarContext";

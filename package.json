@@ -18,7 +18,7 @@
     "db:seo": "node scripts/setup-seo.cjs",
     "postinstall": "prisma generate",
     "db:push": "prisma db push",
-    "db:seed": "npx tsx prisma/seed.ts",
+    "db:seed": "node scripts/seed.cjs bootstrap",
     "test:ai:db": "node --test scripts/test-ai-quota-db.cjs",
     "test:media": "node --test scripts/test-media.cjs",
     "test:accounts:db": "node --test scripts/test-account-security-db.cjs",
@@ -27,7 +27,16 @@
     "test:audit": "node --test scripts/test-audit.cjs",
     "test:audit:db": "node --test scripts/test-audit-db.cjs",
     "test:learning": "node --experimental-strip-types --test src/lib/learning/policy.test.ts && node --test scripts/test-media.cjs",
-    "test:learning:db": "node --test scripts/test-learning-db.cjs"
+    "test:learning:db": "node --test scripts/test-learning-db.cjs",
+    "db:seed:demo": "node scripts/seed.cjs demo",
+    "db:baseline": "node scripts/baseline-database.cjs",
+    "db:migrate": "prisma migrate deploy",
+    "db:status": "prisma migrate status",
+    "db:drift": "prisma migrate diff --from-config-datasource --to-schema prisma/schema.prisma --exit-code",
+    "test:data": "node --test scripts/test-data.cjs",
+    "test:data:extended": "node --test scripts/test-data-extended.cjs",
+    "test:admin": "node --test scripts/test-admin.cjs",
+    "db:privacy:cleanup": "node scripts/privacy-cleanup.cjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",

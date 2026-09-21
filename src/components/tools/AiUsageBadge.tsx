@@ -8,7 +8,7 @@ interface ActivityItem {
   tool: string;
   toolName: string;
   action: string;
-  input?: any;
+  input?: Record<string, unknown> | null;
   output?: string | null;
   time: string;
   createdAt: string;
@@ -73,7 +73,7 @@ export function AiUsageBadge({
   }, [tool]);
 
   useEffect(() => {
-    fetchStats();
+    queueMicrotask(() => { void fetchStats(); });
   }, [fetchStats, refreshTrigger]);
 
   const handleCopy = (id: string, text: string) => {
@@ -89,7 +89,7 @@ export function AiUsageBadge({
   }
 
   const filteredActivities = tool
-    ? stats.recentActivities.filter((a) => a.tool === tool)
+    ? stats.recentActivities.filter((a) => a.tool === tool || (tool === "koc-planner" && a.tool === "koc-calculator"))
     : stats.recentActivities;
 
   return (
@@ -163,7 +163,7 @@ export function AiUsageBadge({
       )}
 
       {/* Modal Lịch Sử Đã Tạo */}
-      {isOpen && (
+      {showHistory && isOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs"
@@ -187,7 +187,7 @@ export function AiUsageBadge({
                   <p className="text-xs text-slate-400">
                     {viewingItem
                       ? viewingItem.toolName
-                      : `Tổng cộng ${stats.totalGenerated} bản ghi đã lưu vào tài khoản`}
+                      : `${filteredActivities.length} mục lịch sử gần đây còn lưu`}
                   </p>
                 </div>
               </div>

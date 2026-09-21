@@ -1,8 +1,6 @@
 
 import { requireAdmin } from "@/lib/auth/session";
-import { auditedWrite } from "@/lib/auth/audit-operations";
 import { prisma } from "@/lib/prisma";
-import { DEFAULT_VIP_PLANS } from "@/lib/vip-plans";
 import VipPlansManager from "./VipPlansManager";
 import { Metadata } from "next";
 
@@ -14,24 +12,10 @@ export const metadata: Metadata = {
 };
 
 export default async function AdminVipPlansPage() {
-  const admin = await requireAdmin();
-  let plans = await prisma.vipPlan.findMany({
+  await requireAdmin();
+  const plans = await prisma.vipPlan.findMany({
     orderBy: { order: "asc" },
   });
-
-  // Tự khởi tạo 3 gói chuẩn nếu bảng chưa có dữ liệu
-  if (plans.length === 0) {
-    for (const plan of DEFAULT_VIP_PLANS) {
-      await auditedWrite(admin.id, "VIP_PLAN_SEEDED", tx => tx.vipPlan.upsert({
-        where: { slug: plan.slug },
-        update: {},
-        create: plan,
-      }));
-    }
-    plans = await prisma.vipPlan.findMany({
-      orderBy: { order: "asc" },
-    });
-  }
 
   return (
     <div className="max-w-7xl mx-auto">

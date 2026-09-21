@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import {
   Settings,
   Key,
@@ -83,6 +83,7 @@ export function SystemSettingsManager({ initialSettings }: SystemSettingsManager
   const [isOpenAiActive, setIsOpenAiActive] = useState(initialSettings.isOpenAiActive);
 
   const [showApiKey, setShowApiKey] = useState(false);
+  const saving=useRef(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isTesting, setIsTesting] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -96,7 +97,7 @@ export function SystemSettingsManager({ initialSettings }: SystemSettingsManager
 
   // Live API Tester
   const [isCallingApi, setIsCallingApi] = useState(false);
-  const [apiResponse, setApiResponse] = useState<any>(null);
+  const [apiResponse, setApiResponse] = useState<unknown>(null);
 
   // Toast
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -128,6 +129,7 @@ export function SystemSettingsManager({ initialSettings }: SystemSettingsManager
 
   const handleChangeAdminPassword = async (e: React.FormEvent) => {
     e.preventDefault();
+    if(isChangingPassword)return;
     setPasswordError("");
     setPasswordSuccess("");
 
@@ -167,14 +169,15 @@ export function SystemSettingsManager({ initialSettings }: SystemSettingsManager
         setPasswordError(res.error || "Không thể đổi mật khẩu Admin.");
         showToast(res.error || "Đổi mật khẩu thất bại!", "error");
       }
-    } catch (err: any) {
+    } catch (err) {
       setIsChangingPassword(false);
-      setPasswordError(err?.message || "Lỗi xử lý kết nối máy chủ.");
+      setPasswordError((err instanceof Error ? err.message : undefined) || "Lỗi xử lý kết nối máy chủ.");
     }
   };
 
   // Kiểm tra kết nối thử nghiệm
   const handleTestConnection = async () => {
+    if(isTesting)return;
     setTestResult(null);
     if (!configured && (!apiKey || !apiKey.trim())) {
       setTestResult({
@@ -207,11 +210,11 @@ export function SystemSettingsManager({ initialSettings }: SystemSettingsManager
         });
         showToast("Kiểm tra kết nối thất bại! ❌", "error");
       }
-    } catch (err: any) {
+    } catch (err) {
       setIsTesting(false);
       setTestResult({
         type: "error",
-        message: err.message || "Lỗi kết nối máy chủ",
+        message: (err instanceof Error ? err.message : undefined) || "Lỗi kết nối máy chủ",
       });
     }
   };
@@ -219,6 +222,9 @@ export function SystemSettingsManager({ initialSettings }: SystemSettingsManager
   // Lưu cấu hình hệ thống
   const handleSave = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
+    if(saving.current)return;
+    if(!confirm("Ghi đè cấu hình AI hiện tại?"))return;
+    saving.current=true;
     setIsSaving(true);
 
     try {
@@ -237,14 +243,15 @@ export function SystemSettingsManager({ initialSettings }: SystemSettingsManager
       } else {
         showToast(res.error || "Không thể lưu cấu hình.", "error");
       }
-    } catch (err: any) {
+    } catch (err) {
       setIsSaving(false);
-      showToast(err.message || "Lỗi khi lưu cấu hình", "error");
-    }
+      showToast(err instanceof Error ? err.message : "Không lưu được cấu hình.", "error");
+    } finally { saving.current=false;setIsSaving(false); }
   };
 
   // Test gọi API /api/settings/openai thực tế
   const handleCallApiDirectly = async () => {
+    if(isCallingApi)return;
     setIsCallingApi(true);
     setApiResponse(null);
     try {
@@ -252,8 +259,8 @@ export function SystemSettingsManager({ initialSettings }: SystemSettingsManager
       const data = await res.json();
       setApiResponse(data);
       setIsCallingApi(false);
-    } catch (err: any) {
-      setApiResponse({ success: false, error: err.message || "Lỗi gọi API" });
+    } catch (err) {
+      setApiResponse({ success: false, error: (err instanceof Error ? err.message : undefined) || "Lỗi gọi API" });
       setIsCallingApi(false);
     }
   };

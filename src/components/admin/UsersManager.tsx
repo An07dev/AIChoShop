@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useTransition } from "react";
+import { useState, useMemo, useEffect, type ReactNode } from "react";
 import {
   Crown,
   Lock,
@@ -32,6 +32,7 @@ import {
   Pencil,
   UserCog,
 } from "lucide-react";
+import { useAdminMutation } from "@/hooks/useAdminMutation";
 import { AdminPageHeader } from "@/components/admin/AdminPageHeader";
 import {
   toggleUserVip,
@@ -44,7 +45,7 @@ import {
   updateGlobalDailyFreeLimit,
 } from "@/app/admin/users/actions";
 import { computeVipDaysLeft, getVipStatusInfo } from "@/lib/vip-expiration";
-import { VipPlanItem, DEFAULT_VIP_PLANS } from "@/lib/vip-plans";
+import { VipPlanItem } from "@/lib/vip-plans";
 
 export interface AdminUserItem {
   id: string;
@@ -64,25 +65,24 @@ export interface AdminUserItem {
 }
 
 interface UsersManagerProps {
+  listControls?: ReactNode;
   initialUsers: AdminUserItem[];
   initialPlans?: VipPlanItem[];
   initialGlobalFreeLimit?: number;
 }
 
 export function UsersManager({
+  listControls,
   initialUsers,
   initialPlans,
   initialGlobalFreeLimit = 12,
 }: UsersManagerProps) {
   const [users, setUsers] = useState<AdminUserItem[]>(initialUsers);
+  useEffect(() => { queueMicrotask(() => setUsers(initialUsers)); }, [initialUsers]);
   const [globalFreeLimit, setGlobalFreeLimit] = useState<number>(initialGlobalFreeLimit);
   const [showGlobalFreeModal, setShowGlobalFreeModal] = useState<boolean>(false);
   const [globalFreeLimitValue, setGlobalFreeLimitValue] = useState<number>(initialGlobalFreeLimit);
-  const vipPlans = initialPlans && initialPlans.length > 0 ? initialPlans : (DEFAULT_VIP_PLANS as unknown as VipPlanItem[]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [vipFilter, setVipFilter] = useState<"all" | "vip" | "free">("all");
-  const [statusFilter, setStatusFilter] = useState<"all" | "active" | "locked">("all");
-  const [isPending, startTransition] = useTransition();
+  const vipPlans = initialPlans ?? [];
 
   // Modals
   const [showAddModal, setShowAddModal] = useState(false);
@@ -147,7 +147,7 @@ export function UsersManager({
           })
         );
         showToast(
-          `Đã áp dụng định mức ${newLimit} lượt/ngày cho toàn bộ ${stats.freeCount} tài khoản FREE! ⚡`
+          `Đã áp dụng định mức ${newLimit} lượt/ngày cho tài khoản FREE trong hệ thống! ⚡`
         );
         setShowGlobalFreeModal(false);
       } else {
@@ -163,8 +163,9 @@ export function UsersManager({
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
   };
+  const [isPending, startTransition] = useAdminMutation((message) => showToast(message, "error"));
 
-  // Thống kê số liệu tổng quan
+  // Thống kê số liệu trang hiện tại
   const stats = useMemo(() => {
     const total = users.length;
     const vipCount = users.filter((u) => u.isVIP).length;
@@ -176,31 +177,7 @@ export function UsersManager({
     return { total, vipCount, freeCount, lockedCount, activeCount, vipPercent };
   }, [users]);
 
-  // Bộ lọc danh sách
-  const filteredUsers = useMemo(() => {
-    return users.filter((user) => {
-      // Tìm kiếm theo Email, Tên hoặc SĐT
-      const matchSearch =
-        !searchTerm.trim() ||
-        user.email.toLowerCase().includes(searchTerm.toLowerCase().trim()) ||
-        (user.name && user.name.toLowerCase().includes(searchTerm.toLowerCase().trim())) ||
-        (user.phone && user.phone.includes(searchTerm.trim()));
-
-      // Lọc VIP
-      const matchVip =
-        vipFilter === "all" ||
-        (vipFilter === "vip" && user.isVIP) ||
-        (vipFilter === "free" && !user.isVIP);
-
-      // Lọc Trạng thái Khóa
-      const matchStatus =
-        statusFilter === "all" ||
-        (statusFilter === "active" && !user.isLocked) ||
-        (statusFilter === "locked" && user.isLocked);
-
-      return matchSearch && matchVip && matchStatus;
-    });
-  }, [users, searchTerm, vipFilter, statusFilter]);
+  const filteredUsers = users;
 
   // Xử lý bật/tắt VIP
   const handleToggleVip = (user: AdminUserItem) => {
@@ -481,10 +458,10 @@ export function UsersManager({
         <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-slate-200 shadow-sm flex items-center justify-between">
           <div>
             <span className="text-xs font-bold text-slate-500 uppercase tracking-wider block mb-1">
-              Tổng Người Dùng
+              Tài Khoản Trên Trang
             </span>
             <div className="text-2xl font-black text-slate-900">{stats.total}</div>
-            <span className="text-xs text-slate-400 mt-1 block">Tài khoản trên hệ thống</span>
+            <span className="text-xs text-slate-400 mt-1 block">Trong trang đang xem</span>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center">
             <Users size={24} />
@@ -499,7 +476,7 @@ export function UsersManager({
             </span>
             <div className="text-2xl font-black text-amber-600">{stats.vipCount}</div>
             <span className="text-xs text-amber-700/80 mt-1 block font-semibold">
-              Chiếm {stats.vipPercent}% tổng số
+              Chiếm {stats.vipPercent}% trên trang
             </span>
           </div>
           <div className="w-12 h-12 rounded-2xl bg-amber-100 text-amber-600 flex items-center justify-center relative z-10">
@@ -557,110 +534,20 @@ export function UsersManager({
 
       {/* Thanh Công Cụ Tìm Kiếm & Bộ Lọc */}
       <div className="bg-white rounded-2xl border border-slate-200 p-3 sm:p-3.5 shadow-sm space-y-2.5 shrink-0">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
-          {/* Ô tìm kiếm */}
-          <div className="relative flex-1 w-full">
-            <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
-            <input
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Tìm kiếm theo Email, Tên hiển thị, Số điện thoại..."
-              className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium placeholder:text-slate-400"
-            />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm("")}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-0.5"
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
-
+        <div className="flex flex-col xl:flex-row xl:items-start gap-4">
+          <div className="min-w-0 flex-1">{listControls}</div>
           {/* Nút Thêm User Mới */}
           <button
             onClick={() => {
               setModalError("");
               setShowAddModal(true);
             }}
-            className="w-full sm:w-auto bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold px-4 py-2.5 rounded-xl shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 transition-all cursor-pointer whitespace-nowrap active:scale-95"
+            className="w-full sm:w-auto sm:self-start xl:mt-5 shrink-0 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold px-4 py-2.5 rounded-xl shadow-md shadow-blue-500/20 flex items-center justify-center gap-2 transition-all cursor-pointer whitespace-nowrap active:scale-95"
           >
             <Plus size={16} /> Thêm Người Dùng
           </button>
         </div>
 
-        {/* Thanh chip bộ lọc nhanh */}
-        <div className="flex flex-wrap items-center gap-2 pt-1 border-t border-slate-100">
-          <span className="text-xs font-bold text-slate-400 flex items-center gap-1 mr-1">
-            <Filter size={12} /> Bộ lọc:
-          </span>
-
-          {/* Lọc VIP */}
-          <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50 text-xs">
-            <button
-              onClick={() => setVipFilter("all")}
-              className={`px-2.5 py-1 rounded-md font-semibold transition-all cursor-pointer ${vipFilter === "all" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-800"
-                }`}
-            >
-              Tất cả ({stats.total})
-            </button>
-            <button
-              onClick={() => setVipFilter("vip")}
-              className={`px-2.5 py-1 rounded-md font-semibold transition-all cursor-pointer flex items-center gap-1 ${vipFilter === "vip"
-                ? "bg-amber-500 text-white shadow-sm"
-                : "text-amber-600 hover:text-amber-700"
-                }`}
-            >
-              <Crown size={11} />VIP ({stats.vipCount})
-            </button>
-            <button
-              onClick={() => setVipFilter("free")}
-              className={`px-2.5 py-1 rounded-md font-semibold transition-all cursor-pointer ${vipFilter === "free" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-800"
-                }`}
-            >
-              FREE ({stats.freeCount})
-            </button>
-          </div>
-
-          {/* Lọc Trạng Thái Khóa */}
-          <div className="inline-flex rounded-lg border border-slate-200 p-0.5 bg-slate-50 text-xs">
-            <button
-              onClick={() => setStatusFilter("all")}
-              className={`px-2.5 py-1 rounded-md font-semibold transition-all cursor-pointer ${statusFilter === "all" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-800"
-                }`}
-            >
-              Mọi trạng thái
-            </button>
-            <button
-              onClick={() => setStatusFilter("active")}
-              className={`px-2.5 py-1 rounded-md font-semibold transition-all cursor-pointer text-emerald-700 ${statusFilter === "active" ? "bg-emerald-600 text-white shadow-sm" : "hover:text-emerald-800"
-                }`}
-            >
-              Hoạt động ({stats.activeCount})
-            </button>
-            <button
-              onClick={() => setStatusFilter("locked")}
-              className={`px-2.5 py-1 rounded-md font-semibold transition-all cursor-pointer text-rose-700 ${statusFilter === "locked" ? "bg-rose-600 text-white shadow-sm" : "hover:text-rose-800"
-                }`}
-            >
-              Bị khóa ({stats.lockedCount})
-            </button>
-          </div>
-
-          {(searchTerm || vipFilter !== "all" || statusFilter !== "all") && (
-            <button
-              onClick={() => {
-                setSearchTerm("");
-                setVipFilter("all");
-                setStatusFilter("all");
-              }}
-              className="text-xs text-rose-600 hover:underline font-semibold ml-auto cursor-pointer"
-            >
-              Xóa bộ lọc
-            </button>
-          )}
-        </div>
       </div>
 
       {/* Bảng Danh Sách Người Dùng (Chỉ cuộn trong bảng) */}

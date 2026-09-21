@@ -54,7 +54,7 @@ const STYLES = [
   },
 ];
 
-export const IMAGE_TYPE_GROUPS = [
+const IMAGE_TYPE_GROUPS = [
   {
     group: "👗 Người Mẫu & Lookbook (Model & Lookbook)",
     options: [
@@ -110,9 +110,9 @@ export const IMAGE_TYPE_GROUPS = [
   },
 ];
 
-export const IMAGE_TYPES = IMAGE_TYPE_GROUPS.flatMap((g) => g.options);
+const IMAGE_TYPES = IMAGE_TYPE_GROUPS.flatMap((g) => g.options);
 
-export const AI_TOOL_GROUPS = [
+const AI_TOOL_GROUPS = [
   {
     group: "🎨 Midjourney (Đỉnh cao thẩm mỹ & ánh sáng thương mại)",
     options: [
@@ -151,7 +151,7 @@ export const AI_TOOL_GROUPS = [
   },
 ];
 
-export const AI_TOOLS = AI_TOOL_GROUPS.flatMap((g) => g.options);
+const AI_TOOLS = AI_TOOL_GROUPS.flatMap((g) => g.options);
 
 const SAMPLE_DATA = {
   productName: "Túi xách kẹp nách da bò dập vân cá sấu màu nâu caramel",

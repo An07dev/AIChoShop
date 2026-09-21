@@ -20,7 +20,7 @@ test('AI quota: concurrent requests, failures, midnight, zero limit and expired 
     const sql = fs.readFileSync('scripts/fixtures/schema.sql', 'utf8').replaceAll('"public".', `"${schema}".`).replace('CREATE SCHEMA IF NOT EXISTS "public";', '');
     await pool.query(sql);
     db = new PrismaClient({ adapter: new PrismaPg(pool, { schema }) });
-    const quota = loader({ './prisma': { prisma: db } })('src/lib/ai-quota.ts');
+    const quota = loader({ './prisma': { prisma: db }, '@/lib/prisma': { prisma: db } })('src/lib/ai-quota.ts');
     await db.user.create({ data: { id: 'u', email: 'quota@example.test', password: 'fixture', dailyFreeLimit: 1 } });
     const reservations = await Promise.allSettled(Array.from({ length: 5 }, () => quota.reserveAi('u')));
     assert.equal(reservations.filter(r => r.status === 'fulfilled').length, 1);

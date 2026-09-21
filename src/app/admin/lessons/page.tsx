@@ -1,15 +1,15 @@
-
 import { requireAdmin } from "@/lib/auth/session";
 import { prisma } from "@/lib/prisma";
 import { LessonsManager } from "@/components/admin/LessonsManager";
 import { CoursesManager } from "@/components/admin/CoursesManager";
 import type { Metadata } from "next";
-
+import type { Prisma } from "@prisma/client";
+import { listQuery, pageWindow, type SearchValues } from "@/lib/admin/list-query";
+import { AdminListControls } from "@/components/admin/AdminListControls";
 export const dynamic = "force-dynamic";
-
 export const metadata: Metadata = {
-  title: "Nội Dung Khóa Học & Video Bài Giảng",
-  description: "Quản lý bài giảng video, gắn link YouTube/Vimeo, tổ chức học phần và phân quyền học viên Free hoặc VIP.",
+    title: "Nội Dung Khóa Học & Video Bài Giảng",
+    description: "Quản lý bài giảng video, gắn link YouTube/Vimeo, tổ chức học phần và phân quyền học viên Free hoặc VIP.",
 };
 
 export default async function AdminLessons() {

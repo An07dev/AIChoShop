@@ -1,3 +1,4 @@
+import { classifyDatabaseError, dataErrorResponse, dataFailure } from "@/lib/db-errors";
 import { AI_TOOLS, reserveAi, completeAi, releaseAi } from "@/lib/ai-quota";
 import { SeoError } from "@/lib/seo/contract";
 import { readLimitedJson, RequestBodyError } from "@/lib/http/body";
@@ -13,13 +14,14 @@ export async function POST(req: Request) {
   let lease: string | undefined;
   try {
     if (!isAllowedOrigin(req)) throw new SeoError("INVALID_ORIGIN", "Yêu cầu không hợp lệ.", 403);
-    const body = await readLimitedJson(req, 6 * 1024 * 1024) as { tool: string; inputs: Record<string, any> };
+    const body = await readLimitedJson(req, 6 * 1024 * 1024) as { tool: string; inputs: Record<string, unknown> };
     if (!body || typeof body !== "object") throw new RequestBodyError("INVALID_INPUT");
-    const { tool, inputs } = body;
-    if (!AI_TOOLS.includes(tool) || !inputs || typeof inputs !== "object" || Array.isArray(inputs)) throw new RequestBodyError("INVALID_INPUT");
-    if (JSON.stringify({ ...inputs, imageBase64: undefined }).length > 32_000) throw new RequestBodyError("INPUT_TOO_LARGE", 413);
-    if (inputs.imageBase64 && (typeof inputs.imageBase64 !== "string" || !/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(inputs.imageBase64))) throw new RequestBodyError("INVALID_IMAGE");
-    if (tool === "seo-optimizer") return handleSeo(req, inputs);
+    const { tool, inputs: rawInputs } = body;
+    if (!AI_TOOLS.includes(tool) || !rawInputs || typeof rawInputs !== "object" || Array.isArray(rawInputs)) throw new RequestBodyError("INVALID_INPUT");
+    if (JSON.stringify({ ...rawInputs, imageBase64: undefined }).length > 32_000) throw new RequestBodyError("INPUT_TOO_LARGE", 413);
+    if (rawInputs.imageBase64 && (typeof rawInputs.imageBase64 !== "string" || !/^data:image\/(png|jpeg|webp);base64,[A-Za-z0-9+/=]+$/.test(rawInputs.imageBase64))) throw new RequestBodyError("INVALID_IMAGE");
+    if (tool === "seo-optimizer") return handleSeo(req, rawInputs);
+    const inputs: Record<string, string> = Object.fromEntries(Object.entries(rawInputs).map(([key, value]) => [key, typeof value === "string" ? value : value === null ? "" : typeof value === "object" ? JSON.stringify(value) : String(value)]));
     const userId = await getSessionUserId();
     if (!userId) throw new SeoError("LOGIN_REQUIRED", "Vui lòng đăng nhập để sử dụng công cụ.", 401);
 
@@ -930,7 +932,7 @@ YÊU CẦU ĐẦU RA BẰNG MARKDOWN CHUYÊN NGHIỆP, RÕ RÀNG THEO CẤU TRÚ
         return NextResponse.json({ success: false, error: "Công cụ không hợp lệ." }, { status: 400 });
     }
 
-    let userMessageContent: any = userPrompt;
+    let userMessageContent: string | OpenAI.Chat.Completions.ChatCompletionContentPart[] = userPrompt;
 
     // Xử lý ảnh nếu có
     if ((tool === "appeal-generator" || tool === "vision-listing") && inputs.imageBase64) {
@@ -988,16 +990,18 @@ YÊU CẦU ĐẦU RA BẰNG MARKDOWN CHUYÊN NGHIỆP, RÕ RÀNG THEO CẤU TRÚ
       input: inputs,
     });
     lease = undefined;
-    const usageStats = await getAiUsageStats(userId).catch(() => null);
+    const usageStats = await getAiUsageStats(userId).catch(error => { dataFailure(error, "ai-result-usage-stats"); return null; });
 
     return NextResponse.json({
       success: true,
       data: outputText,
       usage: usageStats,
+      usageUnavailable: usageStats === null,
     });
 
   } catch (error) {
     if (lease) await releaseAi(lease).catch(() => console.error("ai_lease_release_failed", { lease }));
+    if (classifyDatabaseError(error)) return dataErrorResponse(error, "ai-request");
     const known = error instanceof SeoError || error instanceof RequestBodyError;
     return NextResponse.json({ success: false, code: error instanceof SeoError ? error.code : "AI_UNAVAILABLE", error: known ? error.message : "Dịch vụ AI đang gián đoạn. Vui lòng thử lại; lượt dùng chưa bị trừ." }, { status: known ? error.status : 503, headers: { "Cache-Control": "no-store" } });
   }

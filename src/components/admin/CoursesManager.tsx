@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState } from "react";
+import { useAdminMutation } from "@/hooks/useAdminMutation";
 import { useRouter } from "next/navigation";
 import {
   BookOpen,
@@ -43,7 +44,7 @@ export function CoursesManager({ courses }: { courses: CourseRow[] }) {
     status: "PUBLISHED" as LearningContentStatus,
   });
   const [message, setMessage] = useState<{ type: "error" | "success"; text: string } | null>(null);
-  const [pending, startTransition] = useTransition();
+  const [pending, startTransition] = useAdminMutation((text)=>setMessage({type:"error",text}));
 
   const openEdit = (course: CourseRow) => {
     setEditingCourse(course);

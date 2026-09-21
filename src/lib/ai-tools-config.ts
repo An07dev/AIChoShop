@@ -45,25 +45,13 @@ export const TOOL_NAMES: Record<string, string> = {
  * Làm sạch và chuẩn hóa dữ liệu đầu vào trước khi lưu trữ
  * Lược bỏ ảnh base64 lớn để tránh phình database
  */
-export function sanitizeAiInput(input: any): string | null {
-  if (!input) return null;
-  try {
-    if (typeof input === "string") return input.slice(0, 8000);
-    const copy = { ...input };
-    if ("imageBase64" in copy && typeof copy.imageBase64 === "string") {
-      copy.imageBase64 = `[Ảnh đính kèm ${Math.round(copy.imageBase64.length / 1024)} KB]`;
-    }
-    const str = JSON.stringify(copy);
-    return str.length > 8000 ? str.slice(0, 8000) + "..." : str;
-  } catch {
-    return null;
-  }
-}
+export { serializeHistoryInput as sanitizeAiInput } from "./privacy/policy";
 
 /**
  * Tự động tạo tóm tắt hành động từ công cụ và thông số đầu vào
  */
-export function summarizeAiAction(tool: string, inputs: any): string {
+export function summarizeAiAction(tool: string, value: unknown): string {
+  const inputs = value && typeof value === "object" ? Object.fromEntries(Object.entries(value).map(([key, item]) => [key, typeof item === "string" ? item : typeof item === "number" ? String(item) : ""])) : {};
   switch (tool) {
     case "seo-optimizer":
       return inputs?.productName
