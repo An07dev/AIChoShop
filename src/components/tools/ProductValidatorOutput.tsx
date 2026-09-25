@@ -1,22 +1,19 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Copy,
   Check,
-  Sparkles,
   Download,
   FileSpreadsheet,
-  CheckCircle2,
   AlertTriangle,
-  XCircle,
+  RotateCcw,
   TrendingUp,
   BarChart3,
   ShieldAlert,
   Lightbulb,
   Scale,
   Package,
-  Flame,
   Target,
   DollarSign,
   Search,
@@ -24,216 +21,163 @@ import {
   Boxes,
   Coins,
   Crown,
-  Info,
-  ChevronRight,
   LayoutList,
   FileText,
   Layers,
+  Maximize2,
+  Minimize2,
+  Sparkles,
+  Clock,
 } from "lucide-react";
 import * as XLSX from "xlsx";
-import { TextShimmerWave } from "@/components/loading-ui/text-shimmer-wave";
+import { ToolLoadingState } from "@/components/tools/ToolLoadingState";
+import {
+  parseProductValidator,
+  type ProductValidatorData,
+  type FinancialBreakdown,
+  type ValidationCriterion,
+  type OperationalPitfall,
+  type DifferentiationTactic,
+  type SafeTestRoadmap,
+} from "@/lib/product-validator/contract";
 
-export interface CriterionItem {
-  criteria: string;
-  score: number;
-  maxScore: number;
-  comment: string;
-}
-
-export interface RiskItem {
-  title: string;
-  content: string;
-}
-
-export interface StrategyItem {
-  title: string;
-  content: string;
-}
-
-export interface ParsedProductValidatorData {
-  totalScore: number | null;
-  verdict: string;
-  summary: string;
-  criteriaList: CriterionItem[];
-  risks: RiskItem[];
-  strategies: StrategyItem[];
-  sampleQuantity: string;
-  maxAdsBudget: string;
-  expertAdvice: string;
-  raw: string;
-}
+export type {
+  ProductValidatorData,
+  FinancialBreakdown,
+  ValidationCriterion,
+  OperationalPitfall,
+  DifferentiationTactic,
+  SafeTestRoadmap,
+};
 
 interface ProductValidatorOutputProps {
   result: string;
   loading: boolean;
   productName: string;
+  elapsedSeconds?: number;
+  onCancel?: () => void;
+  onUseSample?: () => void;
+  isOfflineMode?: boolean;
+  onRetryWithAi?: () => void;
 }
 
-export function parseProductValidatorOutput(text: string): ParsedProductValidatorData | null {
-  if (!text) return null;
+const VALIDATOR_STAGES = [
+  { upToSeconds: 4, text: "📊 Đang phân tích dung lượng thị trường & nhu cầu tìm kiếm 2026..." },
+  { upToSeconds: 10, text: "💰 Tính toán chi phí sàn ẩn (12-16%) & xác định CPA trần hòa vốn..." },
+  { upToSeconds: 20, text: "🚚 Bóc tách cước quy đổi thể tích & rủi ro hoàn đơn COD thực tế..." },
+  { upToSeconds: 35, text: "💡 Thiết kế chiến lược biến thể ngách & combo đẩy AOV né bão giá..." },
+  { upToSeconds: 60, text: "🎯 Hoàn thiện bảng điểm, mốc cắt lỗ & lộ trình test đợt 1 an toàn..." },
+];
 
-  const findSection = (keywords: string[], nextKeywords: string[] = []) => {
-    let bestStart = -1;
-    let headerLen = 0;
-    for (const kw of keywords) {
-      const match = text.match(new RegExp(`^[ \\t]*(?:##|#)?\\s*[^\\n]*?${kw}[^\\n]*$`, "im"));
-      if (match && match.index !== undefined) {
-        bestStart = match.index;
-        headerLen = match[0].length;
-        break;
-      }
-    }
-    if (bestStart === -1) return "";
-
-    const contentStart = text.slice(bestStart + headerLen);
-    let endIdx = contentStart.length;
-
-    for (const nextKw of nextKeywords) {
-      const nextMatch = contentStart.match(new RegExp(`^[ \\t]*(?:---|##|#)\\s*[^\\n]*?${nextKw}`, "im"));
-      if (nextMatch && nextMatch.index !== undefined && nextMatch.index < endIdx) {
-        endIdx = nextMatch.index;
-      }
-    }
-    return contentStart.slice(0, endIdx).trim();
-  };
-
-  const s1 = findSection(["BẢNG ĐIỂM", "TIỀM NĂNG", "TIỀN NĂNG"], ["CẢNH BÁO", "TỬ HUYỆT", "RỦI RO ẨN"]);
-  const s2 = findSection(["CẢNH BÁO", "TỬ HUYỆT", "RỦI RO ẨN"], ["CHIẾN LƯỢC", "BIẾN THỂ", "NÉ BẪY"]);
-  const s3 = findSection(["CHIẾN LƯỢC", "BIẾN THỂ", "NÉ BẪY"], ["KẾT LUẬN", "LỘ TRÌNH", "TEST ĐƠN"]);
-  const s4 = findSection(["KẾT LUẬN", "LỘ TRÌNH", "TEST ĐƠN"], []);
-
-  // Section 1: Score, Verdict, Summary & Criteria Table
-  let totalScore: number | null = null;
-  let verdict = "";
-  let summary = "";
-
-  const scoreMatch = text.match(/(\d{1,3})\s*\/\s*100/i);
-  if (scoreMatch) {
-    totalScore = parseInt(scoreMatch[1], 10);
-  }
-
-  const verdictMatch = text.match(/(?:Điểm tổng quan:?)[^—\n-]*[—\-]\s*\**([^*—\n]+)\**/i);
-  if (verdictMatch) {
-    verdict = verdictMatch[1].replace(/\*\*/g, "").trim();
-  } else if (totalScore !== null) {
-    verdict = totalScore >= 75 ? "KHUYÊN NÊN LÀM" : totalScore >= 50 ? "CÂN NHẮC KỸ" : "RỦI RO CAO - NÊN BỎ";
-  }
-
-  const summaryMatch = text.match(/(?:Đánh giá ngắn gọn:?)\s*\**([^\n]+)\**/i);
-  if (summaryMatch) {
-    summary = summaryMatch[1].replace(/^\*+|\*+$/g, "").trim();
-  }
-
-  // Criteria Table
-  const criteriaList: CriterionItem[] = [];
-  const tableRows = (s1 || text).split("\n").filter((line) => line.includes("|") && !line.includes(":---") && !line.includes("Tiêu chí"));
-  for (const row of tableRows) {
-    const cols = row.split("|").map((c) => c.trim()).filter(Boolean);
-    if (cols.length >= 3) {
-      const criteriaName = cols[0].replace(/\*\*/g, "").trim();
-      const rawScore = cols[1].replace(/\*\*/g, "").trim();
-      const scoreSubMatch = rawScore.match(/(\d+(?:\.\d+)?)\s*\/\s*(\d+)/);
-      const scoreVal = scoreSubMatch ? parseFloat(scoreSubMatch[1]) : parseFloat(rawScore) || 7;
-      const maxScoreVal = scoreSubMatch ? parseFloat(scoreSubMatch[2]) : 10;
-      const comment = cols[2].replace(/\*\*/g, "").trim();
-      criteriaList.push({
-        criteria: criteriaName,
-        score: scoreVal,
-        maxScore: maxScoreVal,
-        comment,
-      });
+/**
+ * Hàm sao chép 2 tầng chống lỗi webview / iOS Safari
+ */
+async function safeCopyToClipboard(text: string): Promise<boolean> {
+  if (!text) return false;
+  if (typeof navigator !== "undefined" && navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Fallback tầng 2
     }
   }
-
-  // Section 2: Risks
-  const risks: RiskItem[] = [];
-  const riskLines = (s2 || "").split("\n");
-  for (const line of riskLines) {
-    const trimmed = line.trim();
-    if (!trimmed.startsWith("-") && !trimmed.startsWith("*")) continue;
-    const m = trimmed.match(/^[-*]\s*\*\*(.+?)(?:\*\*:|\*\*)\s*(.+)$/);
-    if (m) {
-      risks.push({
-        title: m[1].replace(/[:*]/g, "").trim(),
-        content: m[2].replace(/^\*+/, "").trim(),
-      });
-    }
+  try {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.position = "fixed";
+    textArea.style.left = "-9999px";
+    textArea.style.opacity = "0";
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    const success = document.execCommand("copy");
+    document.body.removeChild(textArea);
+    return success;
+  } catch {
+    return false;
   }
+}
 
-  // Section 3: Strategies
-  const strategies: StrategyItem[] = [];
-  const stratLines = (s3 || "").split("\n");
-  for (const line of stratLines) {
-    const trimmed = line.trim();
-    if (!trimmed.startsWith("-") && !trimmed.startsWith("*")) continue;
-    const m = trimmed.match(/^[-*]\s*\*\*(.+?)(?:\*\*:|\*\*)\s*(.+)$/);
-    if (m) {
-      strategies.push({
-        title: m[1].replace(/[:*]/g, "").trim(),
-        content: m[2].replace(/^\*+/, "").trim(),
-      });
-    }
-  }
+function cleanLossText(val?: string): string {
+  if (!val) return "";
+  return val.replace(/^(thiệt hại\s*(khoảng|ước tính)?:?|mất:?|lỗ:?)\s*/i, "").trim();
+}
 
-  // Section 4: Conclusions
-  let sampleQuantity = "";
-  let maxAdsBudget = "";
-  let expertAdvice = "";
+function cleanTriggerText(val?: string): string {
+  if (!val) return "";
+  return val.replace(/^(cơ chế\s*(sàn\s*)?quét:?|máy quét\/sàn:?|máy quét:?|thuật toán:?)\s*/i, "").trim();
+}
 
-  const qMatch = (s4 || "").match(/(?:Khuyến nghị số lượng nhập|Số lượng nhập thử nghiệm)[^:]*:(?:\s*\*\*)?\s*(.+)$/im);
-  if (qMatch) sampleQuantity = qMatch[1].replace(/\*\*/g, "").trim();
+function cleanAddonText(val?: string): string {
+  if (!val) return "";
+  return val.replace(/^(quà\s*(\/\s*phụ kiện)?\s*(sỉ|gợi ý)?:?|gợi ý món quà:?)\s*/i, "").trim();
+}
 
-  const bMatch = (s4 || "").match(/(?:Ngân sách Ads tối đa)[^:]*:(?:\s*\*\*)?\s*(.+)$/im);
-  if (bMatch) maxAdsBudget = bMatch[1].replace(/\*\*/g, "").trim();
+function cleanPricingText(val?: string): string {
+  if (!val) return "";
+  return val.replace(/^(chiến lược\s*)?(định giá\s*(phễu)?:?)\s*/i, "").trim();
+}
 
-  const aMatch = (s4 || "").match(/(?:Lời khuyên vàng từ chuyên gia|Lời khuyên sống còn)[^:]*:(?:\s*\*\*)?\s*(.+)$/im);
-  if (aMatch) expertAdvice = aMatch[1].replace(/\*\*/g, "").trim();
-
-  return {
-    totalScore,
-    verdict,
-    summary,
-    criteriaList,
-    risks,
-    strategies,
-    sampleQuantity,
-    maxAdsBudget,
-    expertAdvice,
-    raw: text,
-  };
+function cleanAovText(val?: string): string {
+  if (!val) return "";
+  return val.replace(/^(tác động\s*(aov)?:?)\s*/i, "").trim();
 }
 
 export function ProductValidatorOutput({
   result,
   loading,
   productName,
+  elapsedSeconds = 0,
+  onCancel,
+  onUseSample,
+  isOfflineMode = false,
+  onRetryWithAi,
 }: ProductValidatorOutputProps) {
-  const [activeTab, setActiveTab] = useState<"all" | "scores" | "risks" | "strategies" | "roadmap">("all");
+  const [activeTab, setActiveTab] = useState<"all" | "financials" | "scores" | "risks" | "strategies" | "roadmap">("all");
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-  const [copiedAll, setCopiedAll] = useState(false);
-  const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<"analysis" | "raw">("analysis");
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"interactive" | "raw">("interactive");
+  const [isFullScreen, setIsFullScreen] = useState(false);
+
+  // Thoát fullscreen khi nhấn Escape
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isFullScreen) {
+        setIsFullScreen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isFullScreen]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 2200);
+    setTimeout(() => setToastMessage(null), 2000);
   };
 
-  const parsedData = useMemo(() => parseProductValidatorOutput(result), [result]);
+  const parsedData = useMemo(() => {
+    if (!result) return null;
+    return parseProductValidator(result, { productName });
+  }, [result, productName]);
 
-  const handleCopyAll = () => {
+  const handleCopySnippet = async (text: string, key: string) => {
+    const success = await safeCopyToClipboard(text);
+    if (success) {
+      setCopiedKey(key);
+      showToast("Đã sao chép nội dung!");
+      setTimeout(() => setCopiedKey(null), 1800);
+    }
+  };
+
+  const handleCopyAll = async () => {
     if (!result) return;
-    navigator.clipboard.writeText(result);
-    setCopiedAll(true);
-    showToast("Đã sao chép toàn bộ báo cáo thẩm định!");
-    setTimeout(() => setCopiedAll(false), 2000);
-  };
-
-  const handleCopySnippet = (text: string, key: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedSnippet(key);
-    showToast("Đã sao chép nội dung!");
-    setTimeout(() => setCopiedSnippet(null), 2000);
+    const success = await safeCopyToClipboard(result);
+    if (success) {
+      setCopiedKey("all");
+      showToast("Đã sao chép toàn bộ báo cáo thẩm định!");
+      setTimeout(() => setCopiedKey(null), 2000);
+    }
   };
 
   const handleDownloadTxt = () => {
@@ -252,42 +196,67 @@ export function ProductValidatorOutput({
     if (!parsedData) return;
 
     const rows: (string | number)[][] = [
-      ["BÁO CÁO THẨM ĐỊNH SẢN PHẨM TREND & RỦI RO THƯƠNG MẠI"],
-      ["Sản phẩm", productName || "Sản phẩm thẩm định"],
+      ["BÁO CÁO THẨM ĐỊNH SẢN PHẨM TREND & QUẢN TRỊ RỦI RO ĐẦU TƯ TMĐT 2026"],
+      ["Sản phẩm", parsedData.productName || productName || "Sản phẩm thẩm định"],
       ["Thời gian xuất", new Date().toLocaleString("vi-VN")],
-      ["Điểm tổng quan", `${parsedData.totalScore ?? 0}/100 - ${parsedData.verdict}`],
-      ["Đánh giá ngắn gọn", parsedData.summary],
+      ["Điểm tổng quan", `${parsedData.overallScore}/100 - ${parsedData.verdict}`],
+      ["Nhận định", parsedData.verdictSubtitle],
+      ["Đánh giá ngắn", parsedData.executiveSummary],
       [],
-      ["--- 1. BẢNG ĐIỂM TIÊU CHÍ THẨM ĐỊNH ---"],
-      ["Tiêu chí", "Điểm (1-10)", "Nhận xét chi tiết từ chuyên gia"],
+      ["--- 1. BÓC TÁCH CƠ CẤU TÀI CHÍNH (UNIT ECONOMICS 2026) ---"],
+      ["Giá vốn nhập (COGS)", parsedData.financials.costPriceFormatted],
+      ["Giá bán mục tiêu", parsedData.financials.targetPriceFormatted],
+      ["Tỷ lệ biên lãi gộp", parsedData.financials.grossMarginPercent],
+      ["Phí sàn ước tính (12-16%)", parsedData.financials.estimatedPlatformFee],
+      ["Dự phòng hoàn COD & Bao bì", parsedData.financials.packagingAndReturnRisk],
+      ["CPA TRẦN HÒA VỐN (Ads tối đa)", parsedData.financials.maxBreakevenCpa],
+      ["Lợi nhuận ròng kỳ vọng", parsedData.financials.projectedNetProfit],
+      ["Đánh giá tài chính", parsedData.financials.financialVerdict],
+      [],
+      ["--- 2. BẢNG ĐIỂM TIÊU CHÍ THẨM ĐỊNH ---"],
+      ["Tiêu chí", "Điểm (1-10)", "Trạng thái", "Nhận xét chi tiết từ chuyên gia", "Hành động khắc phục"],
     ];
 
     for (const c of parsedData.criteriaList) {
-      rows.push([c.criteria, `${c.score}/${c.maxScore}`, c.comment]);
+      rows.push([c.name, `${c.score}/${c.maxScore}`, c.statusBadge, c.expertComment, c.actionAdvice]);
     }
 
     rows.push([]);
-    rows.push(["--- 2. CẢNH BÁO TỬ HUYỆT VẬN HÀNH & RỦI RO ẨN ---"]);
-    rows.push(["Tên rủi ro", "Phân tích chi tiết"]);
-    for (const r of parsedData.risks) {
-      rows.push([r.title, r.content]);
+    rows.push(["--- 3. CẢNH BÁO TỬ HUYỆT VẬN HÀNH & RỦI RO ẨN ---"]);
+    rows.push(["Tên tử huyệt", "Mức độ", "Thiệt hại ước tính (VNĐ)", "Cơ chế sàn quét", "Bản chất rủi ro", "Giải pháp phòng ngừa"]);
+    for (const p of parsedData.pitfalls) {
+      rows.push([p.title, p.severityBadge, p.estimatedLoss || "", p.platformTrigger || "", p.rootCause, p.preventionTip]);
     }
 
     rows.push([]);
-    rows.push(["--- 3. CHIẾN LƯỢC BIẾN THỂ NGÁCH & NÉ BẪY GIÁ RẺ ---"]);
-    rows.push(["Chiến lược", "Đề xuất triển khai"]);
-    for (const s of parsedData.strategies) {
-      rows.push([s.title, s.content]);
+    rows.push(["--- 4. CHIẾN LƯỢC BIẾN THỂ NGÁCH & NÉ BẪY GIÁ RẺ ---"]);
+    rows.push(["Chiến lược", "Loại hình", "Cách đóng gói / triển khai", "Món quà/Phụ kiện sỉ", "Định giá phễu", "Tác động AOV"]);
+    for (const d of parsedData.differentiation) {
+      rows.push([d.title, d.badge, d.executionSteps, d.suggestedAddOn || "", d.pricingStrategy || "", d.aovImpact]);
     }
 
     rows.push([]);
-    rows.push(["--- 4. KẾT LUẬN & LỘ TRÌNH TEST ĐƠN AN TOÀN ---"]);
-    rows.push(["Khuyến nghị số lượng nhập thử nghiệm", parsedData.sampleQuantity]);
-    rows.push(["Ngân sách Ads tối đa cho phép", parsedData.maxAdsBudget]);
-    rows.push(["Lời khuyên vàng từ chuyên gia", parsedData.expertAdvice]);
+    rows.push(["--- 5. LỘ TRÌNH TEST ĐƠN AN TOÀN & ĐIỂM CẮT LỖ ---"]);
+    rows.push(["Số lượng nhập test đợt 1", parsedData.roadmap.initialUnits]);
+    rows.push(["Ngân sách Ads trần / đơn", parsedData.roadmap.maxAdSpendPerOrder]);
+    rows.push(["Target ROAS", parsedData.roadmap.targetRoas]);
+    rows.push(["Điều kiện cắt lỗ dừng test", parsedData.roadmap.stopLossCondition]);
+    if (parsedData.roadmap.phases && parsedData.roadmap.phases.length > 0) {
+      rows.push([]);
+      rows.push(["--- TIẾN TRÌNH 3 GIAI ĐOẠN TEST ĐƠN THỰC CHIẾN ---"]);
+      rows.push(["Giai đoạn", "Thời gian", "Ngân sách", "Hành động thực tế", "KPI đạt chuẩn"]);
+      for (const ph of parsedData.roadmap.phases) {
+        rows.push([ph.phase, ph.duration, ph.budget, ph.action, ph.kpiGoal]);
+      }
+    }
+    if (parsedData.roadmap.liquidationPlan) {
+      rows.push([]);
+      rows.push(["Kế hoạch xả hàng & thu hồi vốn", parsedData.roadmap.liquidationPlan]);
+    }
+    rows.push(["Lời khuyên vàng từ chuyên gia", parsedData.roadmap.expertVerdictAdvice]);
 
     const worksheet = XLSX.utils.aoa_to_sheet(rows);
-    worksheet["!cols"] = [{ wch: 35 }, { wch: 20 }, { wch: 60 }];
+    worksheet["!cols"] = [{ wch: 32 }, { wch: 18 }, { wch: 25 }, { wch: 40 }, { wch: 55 }, { wch: 45 }];
 
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Thẩm Định Sản Phẩm");
@@ -298,448 +267,489 @@ export function ProductValidatorOutput({
     showToast("Đã xuất file Excel!");
   };
 
-  const getCriterionIcon = (criteria: string) => {
-    const low = criteria.toLowerCase();
-    if (low.includes("dung lượng") || low.includes("nhu cầu")) return <Search size={15} className="text-blue-400" />;
-    if (low.includes("bão hòa") || low.includes("cạnh tranh")) return <Flame size={15} className="text-orange-400" />;
-    if (low.includes("lợi nhuận") || low.includes("biên")) return <DollarSign size={15} className="text-emerald-400" />;
-    if (low.includes("vòng đời") || low.includes("bền vững")) return <TrendingUp size={15} className="text-purple-400" />;
-    if (low.includes("vận hành") || low.includes("vận chuyển")) return <Package size={15} className="text-amber-400" />;
-    return <BarChart3 size={15} className="text-indigo-400" />;
+  const getCriterionIcon = (cat: string) => {
+    switch (cat) {
+      case "market":
+        return <Search size={14} className="text-white shrink-0" />;
+      case "competition":
+        return <Scale size={14} className="text-white shrink-0" />;
+      case "finance":
+        return <DollarSign size={14} className="text-white shrink-0" />;
+      case "lifecycle":
+        return <TrendingUp size={14} className="text-white shrink-0" />;
+      case "operation":
+        return <Package size={14} className="text-white shrink-0" />;
+      default:
+        return <BarChart3 size={14} className="text-white shrink-0" />;
+    }
   };
 
-  const scoreNum = parsedData?.totalScore;
+  const scoreNum = parsedData?.overallScore ?? null;
 
   return (
-    <div className="bg-slate-900 rounded-2xl shadow-xl h-full flex flex-col min-h-0 relative overflow-hidden border border-slate-800">
-      {/* Toast mini */}
+    <div
+      className={`bg-black rounded-2xl border border-zinc-800 flex flex-col relative transition-all ${
+        isFullScreen
+          ? "fixed inset-0 z-50 rounded-none border-none h-screen w-screen overflow-hidden"
+          : "h-auto lg:h-full lg:min-h-0 lg:overflow-hidden"
+      }`}
+    >
+      {/* Toast thông báo */}
       {toastMessage && (
-        <div className="absolute top-12 left-1/2 -translate-x-1/2 z-50 px-3.5 py-1.5 rounded-full bg-slate-950/95 text-blue-400 text-xs font-semibold shadow-xl border border-blue-500/30 flex items-center gap-1.5 animate-in fade-in slide-in-from-top-2 duration-150 backdrop-blur-md">
-          <Check size={13} className="stroke-[2.5]" />
+        <div className="absolute top-12 left-1/2 -translate-x-1/2 z-50 px-3.5 py-1.5 rounded-full bg-zinc-900 text-white text-xs font-semibold shadow-2xl border border-zinc-700 flex items-center gap-1.5 animate-in fade-in slide-in-from-top-2 duration-150 backdrop-blur-md">
+          <Check size={13} className="text-emerald-400 stroke-[3]" />
           <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* Hiệu ứng nền ambient */}
-      <div className="absolute top-0 right-0 p-40 bg-blue-500/10 rounded-full blur-[110px] pointer-events-none" />
-      <div className="absolute bottom-0 left-0 p-40 bg-indigo-500/10 rounded-full blur-[110px] pointer-events-none" />
-
-      {/* Header thanh công cụ (Toolbar) - 1 hàng ngang duy nhất trên cả mobile & desktop */}
-      <div className="px-2.5 sm:px-4 py-2 sm:py-2.5 border-b border-slate-800 flex items-center justify-between gap-1.5 sm:gap-2 relative z-20 bg-slate-900/90 backdrop-blur-md shrink-0 flex-nowrap">
-        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-          <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center bg-blue-500/20 text-blue-400 shrink-0 shadow-2xs">
-            <BarChart3 size={14} className="sm:w-3.5 sm:h-3.5" />
+      {/* 1. Header Toolbar Tối Giản (Chữ trắng nền đen, 1 hàng ngang duy nhất) */}
+      <div className="px-3 sm:px-4 py-2.5 border-b border-zinc-800 bg-black flex items-center justify-between gap-1.5 sm:gap-2 shrink-0 z-20 flex-nowrap sticky top-0 rounded-t-2xl">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-7 h-7 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-white shrink-0">
+            <TrendingUp size={15} />
           </div>
-          <h2 className="font-bold text-white text-xs sm:text-sm truncate">
-            Báo Cáo Thẩm Định
+          <h2 className="font-bold text-white text-xs sm:text-sm tracking-wide uppercase whitespace-nowrap">
+            <span className="xs:hidden">Thẩm Định Trend</span>
+            <span className="hidden xs:inline">Thẩm Định Sản Phẩm Trend</span>
           </h2>
-          {scoreNum !== null && scoreNum !== undefined && (
-            <span
-              className={`text-[10px] font-bold px-2 py-0.5 rounded-full border hidden md:inline truncate ${
-                scoreNum >= 75
-                  ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
-                  : scoreNum >= 50
-                  ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                  : "bg-rose-500/20 text-rose-300 border-rose-500/40"
-              }`}
-            >
-              {scoreNum}/100 • {parsedData?.verdict || (scoreNum >= 75 ? "NÊN LÀM" : "CÂN NHẮC")}
+
+          {isOfflineMode && (
+            <span className="hidden sm:inline-flex items-center text-[10px] font-medium px-2 py-0.5 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-300 shrink-0">
+              ⚡ Dự Phòng
             </span>
           )}
         </div>
 
-        {/* Hàng nút hành động - Cố định 1 hàng ngang */}
+        {/* Nút hành động Toolbar (100% Icon Only, Không Text Thừa) */}
         {result && !loading && (
           <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 flex-nowrap">
-            {/* Chế độ xem: Trực quan vs Gốc */}
-            <div className="bg-slate-800/80 p-0.5 rounded-lg border border-slate-700/60 flex items-center shrink-0">
+            {/* Chuyển chế độ: Trực quan vs Gốc (Icon Only) */}
+            <div className="bg-zinc-900 p-0.5 rounded-lg border border-zinc-800 flex items-center shrink-0">
               <button
                 type="button"
-                onClick={() => setViewMode("analysis")}
-                title="Dạng giao diện trực quan"
-                className={`p-1 sm:px-2 sm:py-1 rounded text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                  viewMode === "analysis"
-                    ? "bg-blue-600 text-white shadow-xs"
-                    : "text-slate-400 hover:text-white"
+                onClick={() => setViewMode("interactive")}
+                title="Giao diện trực quan"
+                aria-label="Giao diện trực quan"
+                className={`w-7 h-7 sm:w-8 sm:h-8 rounded flex items-center justify-center transition-all cursor-pointer ${
+                  viewMode === "interactive"
+                    ? "bg-white text-black font-bold shadow-xs"
+                    : "text-zinc-400 hover:text-white"
                 }`}
               >
-                <LayoutList size={12} className="sm:w-[13px] sm:h-[13px]" />
-                <span className="hidden md:inline">Trực quan</span>
+                <LayoutList size={14} />
               </button>
               <button
                 type="button"
                 onClick={() => setViewMode("raw")}
-                title="Dạng văn bản markdown gốc"
-                className={`p-1 sm:px-2 sm:py-1 rounded text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                title="Văn bản gốc (Markdown)"
+                aria-label="Văn bản gốc"
+                className={`w-7 h-7 sm:w-8 sm:h-8 rounded flex items-center justify-center transition-all cursor-pointer ${
                   viewMode === "raw"
-                    ? "bg-blue-600 text-white shadow-xs"
-                    : "text-slate-400 hover:text-white"
+                    ? "bg-white text-black font-bold shadow-xs"
+                    : "text-zinc-400 hover:text-white"
                 }`}
               >
-                <FileText size={12} className="sm:w-[13px] sm:h-[13px]" />
-                <span className="hidden md:inline">Gốc</span>
+                <FileText size={14} />
               </button>
             </div>
 
-            {/* Xuất Excel */}
+            {/* Xuất Excel: Icon Only */}
             <button
               type="button"
               onClick={handleExportExcel}
-              title="Xuất bảng điểm ra file Excel (.xlsx)"
-              className="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 text-[11px] sm:text-xs font-bold px-1.5 sm:px-2.5 py-1 sm:py-1.5 rounded-lg transition-all flex items-center gap-1 cursor-pointer active:scale-95 shadow-xs shrink-0"
+              title="Xuất file Excel (.xlsx)"
+              aria-label="Xuất file Excel"
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-center transition-colors cursor-pointer shrink-0"
             >
-              <FileSpreadsheet size={12} className="text-emerald-400 sm:w-[13px] sm:h-[13px]" />
-              <span className="hidden xs:inline">Excel</span>
+              <FileSpreadsheet size={14} />
             </button>
 
-            {/* Nút Tải báo cáo (.txt): chỉ hiện trên màn lớn */}
+            {/* Tải tệp .txt: Icon Only */}
             <button
               type="button"
               onClick={handleDownloadTxt}
-              title="Tải tệp báo cáo .txt"
-              className="hidden sm:flex p-1 sm:p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg border border-slate-700 transition-colors cursor-pointer shrink-0"
+              title="Tải tệp .txt"
+              aria-label="Tải tệp .txt"
+              className="hidden sm:flex w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 items-center justify-center transition-colors cursor-pointer shrink-0"
             >
-              <Download size={12} className="sm:w-3.5 sm:h-3.5" />
+              <Download size={14} />
             </button>
 
-            {/* Nút Sao chép tất cả */}
+            {/* Toàn màn hình: Icon Only */}
+            <button
+              type="button"
+              onClick={() => setIsFullScreen((prev) => !prev)}
+              title={isFullScreen ? "Thu nhỏ (Esc)" : "Toàn màn hình"}
+              aria-label={isFullScreen ? "Thu nhỏ" : "Toàn màn hình"}
+              className="hidden sm:flex w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 items-center justify-center transition-colors cursor-pointer shrink-0"
+            >
+              {isFullScreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+            </button>
+
+            {/* Sao chép toàn bộ: Icon Only Nổi Bật (Nền trắng, text đen) */}
             <button
               type="button"
               onClick={handleCopyAll}
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-[11px] sm:text-xs font-bold px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg transition-all shadow-md shadow-blue-950/40 flex items-center gap-1 cursor-pointer active:scale-95 shrink-0"
+              title={copiedKey === "all" ? "Đã sao chép tất cả" : "Sao chép tất cả"}
+              aria-label="Sao chép tất cả"
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white hover:bg-zinc-200 text-black flex items-center justify-center transition-all active:scale-95 cursor-pointer shrink-0 shadow-sm"
             >
-              {copiedAll ? (
-                <>
-                  <Check size={12} className="stroke-[3]" />
-                  <span>Đã chép</span>
-                </>
-              ) : (
-                <>
-                  <Copy size={12} />
-                  <span>Chép hết</span>
-                </>
-              )}
+              {copiedKey === "all" ? <Check size={14} className="stroke-[3]" /> : <Copy size={14} />}
             </button>
           </div>
         )}
       </div>
 
-      {/* Tabs Phân Loại Danh Mục Đầu Ra (Pinned Sub-Tabs) - Cố định bên dưới toolbar */}
-      {result && viewMode === "analysis" && !loading && (
-        <div className="px-2.5 sm:px-4 py-1.5 sm:py-2 border-b border-slate-800 bg-slate-950/70 flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar sm:custom-scrollbar shrink-0 relative z-10">
+      {/* Thông báo Chế độ Dự Phòng Offline Blueprint */}
+      {isOfflineMode && result && !loading && (
+        <div className="px-3 sm:px-4 py-1.5 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between gap-2 text-xs text-zinc-300 shrink-0">
+          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+            <AlertTriangle size={13} className="text-white shrink-0" />
+            <span className="leading-snug break-words">
+              ⚡ Báo cáo thẩm định dự phòng 2026 (Lượt dùng AI chưa bị trừ).
+            </span>
+          </div>
+          {onRetryWithAi && (
+            <button
+              type="button"
+              onClick={onRetryWithAi}
+              title="Thử lại bằng AI"
+              aria-label="Thử lại AI"
+              className="w-6 h-6 rounded bg-zinc-900 hover:bg-zinc-800 text-white border border-zinc-700 font-medium shrink-0 transition-colors cursor-pointer flex items-center justify-center"
+            >
+              <RotateCcw size={12} />
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* 2. Sub-Tabs Phân Loại (Tối ưu vuốt mượt trên Mobile, nhãn ngắn gọn không vỡ chữ) */}
+      {result && viewMode === "interactive" && !loading && (
+        <div className="sticky top-[45px] sm:top-[49px] z-10 px-2 sm:px-4 py-1.5 sm:py-2 border-b border-zinc-800 bg-zinc-950/95 backdrop-blur-md flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar shrink-0">
           <button
             type="button"
             onClick={() => setActiveTab("all")}
-            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95 ${
+            className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95 ${
               activeTab === "all"
-                ? "bg-slate-800 text-blue-300 border border-blue-500/40 shadow-xs"
-                : "text-slate-400 hover:text-slate-200"
+                ? "bg-white text-black font-bold shadow-xs"
+                : "bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 font-medium"
             }`}
           >
-            <Layers size={12} className="sm:w-[13px] sm:h-[13px]" />
-            <span>Tất Cả</span>
+            <Layers size={13} className="shrink-0" />
+            <span className="whitespace-nowrap">Tất cả</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("financials")}
+            className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95 ${
+              activeTab === "financials"
+                ? "bg-white text-black font-bold shadow-xs"
+                : "bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 font-medium"
+            }`}
+          >
+            <DollarSign size={13} className="shrink-0" />
+            <span className="whitespace-nowrap">Tài chính</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("scores")}
-            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95 ${
+            className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95 ${
               activeTab === "scores"
-                ? "bg-slate-800 text-blue-300 border border-blue-500/40 shadow-xs"
-                : "text-slate-400 hover:text-slate-200"
+                ? "bg-white text-black font-bold shadow-xs"
+                : "bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 font-medium"
             }`}
           >
-            <BarChart3 size={12} className="sm:w-[13px] sm:h-[13px]" />
-            <span>1. Bảng Điểm ({parsedData?.criteriaList.length || 0})</span>
+            <BarChart3 size={13} className="shrink-0" />
+            <span className="whitespace-nowrap">Bảng điểm</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("risks")}
-            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95 ${
+            className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95 ${
               activeTab === "risks"
-                ? "bg-slate-800 text-blue-300 border border-blue-500/40 shadow-xs"
-                : "text-slate-400 hover:text-slate-200"
+                ? "bg-white text-black font-bold shadow-xs"
+                : "bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 font-medium"
             }`}
           >
-            <AlertTriangle size={12} className="sm:w-[13px] sm:h-[13px]" />
-            <span>2. Tử Huyệt Rủi Ro</span>
+            <ShieldAlert size={13} className="shrink-0" />
+            <span className="whitespace-nowrap">Tử huyệt</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("strategies")}
-            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95 ${
+            className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95 ${
               activeTab === "strategies"
-                ? "bg-slate-800 text-blue-300 border border-blue-500/40 shadow-xs"
-                : "text-slate-400 hover:text-slate-200"
+                ? "bg-white text-black font-bold shadow-xs"
+                : "bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 font-medium"
             }`}
           >
-            <Lightbulb size={12} className="sm:w-[13px] sm:h-[13px]" />
-            <span>3. Chiến Lược Ngách</span>
+            <Lightbulb size={13} className="shrink-0" />
+            <span className="whitespace-nowrap">Khác biệt</span>
           </button>
           <button
             type="button"
             onClick={() => setActiveTab("roadmap")}
-            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95 ${
+            className={`px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs transition-all flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95 ${
               activeTab === "roadmap"
-                ? "bg-slate-800 text-blue-300 border border-blue-500/40 shadow-xs"
-                : "text-slate-400 hover:text-slate-200"
+                ? "bg-white text-black font-bold shadow-xs"
+                : "bg-zinc-900/60 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 font-medium"
             }`}
           >
-            <Target size={12} className="sm:w-[13px] sm:h-[13px]" />
-            <span>4. Lộ Trình Test</span>
+            <Target size={13} className="shrink-0" />
+            <span className="whitespace-nowrap">Lộ trình</span>
           </button>
         </div>
       )}
 
-      {/* Nội dung báo cáo */}
-      <div className="flex-1 min-h-0 p-3 sm:p-5 overflow-y-auto custom-scrollbar relative z-10 pb-24 lg:pb-4 space-y-4 sm:space-y-5">
+      {/* 3. Vùng Nội Dung Báo Cáo (Cuộn toàn trang trên mobile, cuộn độc lập trên desktop) */}
+      <div className="flex-1 min-h-0 p-3 sm:p-4 lg:overflow-y-auto custom-scrollbar space-y-4">
         {loading ? (
-          <div className="h-full min-h-[360px] flex flex-col items-center justify-center text-center p-6 space-y-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-blue-500/20 to-indigo-500/20 border border-blue-500/30 flex items-center justify-center text-blue-400 shadow-lg shadow-blue-500/10">
-              <Sparkles size={26} className="animate-spin text-blue-400 duration-1000" />
-            </div>
-            <div className="space-y-1.5">
-              <div className="font-bold text-base text-white">
-                <TextShimmerWave>AI Đang Thẩm Định Tiềm Năng & Rủi Ro...</TextShimmerWave>
-              </div>
-              <p className="text-xs text-slate-400 max-w-sm">
-                Đang đo lường dung lượng thị trường, bóc tách rủi ro cước vận chuyển, phí sàn và dự báo vòng đời trend...
-              </p>
-            </div>
-          </div>
+          <ToolLoadingState
+            elapsedSeconds={elapsedSeconds}
+            onCancel={onCancel}
+            title="AI Đang Thẩm Định Tiềm Năng &amp; Rủi Ro Đầu Tư..."
+            stages={VALIDATOR_STAGES}
+            accentColor="amber"
+            minHeightClass="min-h-[360px]"
+          />
         ) : result ? (
-          <div className="space-y-5">
+          <div className="space-y-4">
             {viewMode === "raw" ? (
               <textarea
                 readOnly
                 value={result}
-                className="w-full h-[520px] bg-slate-950/60 border border-slate-800 rounded-xl p-4 text-xs font-mono text-slate-300 leading-relaxed resize-none focus:outline-hidden custom-scrollbar"
+                className="w-full h-[520px] bg-zinc-950 border border-zinc-800 rounded-xl p-4 text-xs font-mono text-zinc-300 leading-relaxed resize-none focus:outline-hidden custom-scrollbar"
               />
             ) : parsedData ? (
-              <div className="space-y-5">
-                {/* 0. HERO SCORE CARD TỔNG QUAN */}
-                {(activeTab === "all" || activeTab === "scores") && scoreNum !== null && scoreNum !== undefined && (
-                  <div className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 border border-slate-700/80 rounded-2xl p-5 sm:p-6 shadow-xl">
-                    <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-5 relative z-10">
-                      <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left">
-                        {/* Score Circle */}
-                        <div
-                          className={`w-20 h-20 rounded-2xl flex flex-col items-center justify-center font-black shadow-lg shrink-0 border ${
-                            scoreNum >= 75
-                              ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/40 shadow-emerald-500/10"
-                              : scoreNum >= 50
-                              ? "bg-amber-500/15 text-amber-400 border-amber-500/40 shadow-amber-500/10"
-                              : "bg-rose-500/15 text-rose-400 border-rose-500/40 shadow-rose-500/10"
-                          }`}
-                        >
-                          <span className="text-2xl font-black leading-none">{scoreNum}</span>
-                          <span className="text-[10px] uppercase font-bold tracking-wider opacity-75 mt-0.5">/ 100 Điểm</span>
+              <div className="space-y-4">
+                {/* 0. HERO SCORE CARD TỔNG QUAN (CHỮ TRẮNG NỀN ĐEN + SCORE NỔI BẬT) */}
+                {(activeTab === "all" || activeTab === "scores") && scoreNum !== null && (
+                  <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 sm:p-5 relative overflow-hidden">
+                    <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-4">
+                      <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 text-center sm:text-left min-w-0">
+                        {/* Score Badge: Text đen nền trắng (White card, Black text) */}
+                        <div className="w-20 h-20 rounded-2xl flex flex-col items-center justify-center font-black shrink-0 bg-white text-black shadow-md border border-white">
+                          <span className="text-3xl font-black leading-none">{scoreNum}</span>
+                          <span className="text-[10px] uppercase font-bold tracking-wider opacity-70 mt-1">/ 100</span>
                         </div>
 
-                        {/* Verdict & Summary */}
-                        <div className="space-y-1.5">
+                        {/* Title & Verdict */}
+                        <div className="space-y-1.5 min-w-0">
                           <div className="flex items-center justify-center sm:justify-start gap-2 flex-wrap">
-                            <span className="text-[11px] text-slate-400 uppercase tracking-wider font-bold">
-                              Chỉ Số Tiềm Năng Thương Mại
+                            <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider">
+                              Thẩm Định 2026
                             </span>
-                            <span
-                              className={`text-[11px] font-black px-2.5 py-0.5 rounded-full uppercase tracking-wider border ${
-                                scoreNum >= 75
-                                  ? "bg-emerald-500/20 text-emerald-300 border-emerald-500/40"
-                                  : scoreNum >= 50
-                                  ? "bg-amber-500/20 text-amber-300 border-amber-500/40"
-                                  : "bg-rose-500/20 text-rose-300 border-rose-500/40"
-                              }`}
-                            >
-                              {parsedData.verdict || (scoreNum >= 75 ? "KHUYÊN NÊN LÀM" : "CÂN NHẮC KỸ")}
+                            <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-full uppercase tracking-wider bg-zinc-900 text-white border border-zinc-700">
+                              {parsedData.verdict}
                             </span>
                           </div>
 
                           <h3 className="text-base sm:text-lg font-bold text-white leading-snug">
-                            {productName || "Sản Phẩm Đang Thẩm Định"}
+                            {parsedData.productName || productName}
                           </h3>
 
-                          {parsedData.summary && (
-                            <p className="text-xs sm:text-sm text-slate-300 leading-relaxed font-normal pt-0.5">
-                              {parsedData.summary}
+                          {parsedData.verdictSubtitle && (
+                            <p className="text-xs text-zinc-300 font-medium leading-relaxed">
+                              {parsedData.verdictSubtitle}
+                            </p>
+                          )}
+
+                          {parsedData.executiveSummary && (
+                            <p className="text-xs text-zinc-400 leading-relaxed font-normal pt-1.5 border-t border-zinc-800/80">
+                              {parsedData.executiveSummary}
                             </p>
                           )}
                         </div>
                       </div>
 
+                      {/* Icon-Only Copy Button for Hero */}
                       <button
                         type="button"
-                        onClick={() => {
-                          const tableText = result.match(/## 📊 1\.[\s\S]*?(?=---|$)/)?.[0] || result;
-                          handleCopySnippet(tableText, "score");
-                        }}
-                        className="text-xs text-blue-400 hover:text-white px-3 py-1.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 rounded-lg transition-colors flex items-center gap-1.5 shrink-0 self-center sm:self-start"
+                        onClick={() =>
+                          handleCopySnippet(
+                            `BÁO CÁO THẨM ĐỊNH: ${parsedData.productName}\nĐiểm: ${scoreNum}/100 - ${parsedData.verdict}\n${parsedData.verdictSubtitle}\n${parsedData.executiveSummary}`,
+                            "hero"
+                          )
+                        }
+                        title="Sao chép tóm tắt đánh giá"
+                        aria-label="Sao chép tóm tắt"
+                        className="w-7 h-7 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 flex items-center justify-center transition-colors cursor-pointer shrink-0 self-end sm:self-start"
                       >
-                        {copiedSnippet === "score" ? <Check size={13} /> : <Copy size={13} />} Copy Bảng Điểm
+                        {copiedKey === "hero" ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
                       </button>
                     </div>
                   </div>
                 )}
 
-                {/* 1. BẢNG ĐIỂM TIỀM NĂNG SẢN PHẨM (THANG ĐIỂM 100) */}
-                {(activeTab === "all" || activeTab === "scores") && parsedData.criteriaList.length > 0 && (
-                  <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm">
-                    <div className="flex items-center justify-between gap-2 pb-3 border-b border-slate-800">
+                {/* 1. BÓC TÁCH CƠ CẤU TÀI CHÍNH (UNIT ECONOMICS 2026) */}
+                {(activeTab === "all" || activeTab === "financials") && parsedData.financials && (
+                  <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 sm:p-5 space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
                       <div className="flex items-center gap-2">
-                        <div className="p-1.5 rounded-lg bg-blue-500/15 text-blue-400">
-                          <BarChart3 size={16} />
+                        <div className="w-6 h-6 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-white shrink-0">
+                          <DollarSign size={13} className="text-white" />
                         </div>
-                        <h3 className="font-bold text-white text-sm sm:text-base">
-                          1. Bảng Điểm Tiềm Năng Sản Phẩm (Thang Điểm 100)
-                        </h3>
+                        <h4 className="font-bold text-white text-xs sm:text-sm">
+                          Unit Economics &amp; CPA Trần
+                        </h4>
                       </div>
+
                       <button
                         type="button"
-                        onClick={() => {
-                          const sec = result.match(/## 📊 1\.[\s\S]*?(?=---|$)/)?.[0] || "";
-                          handleCopySnippet(sec, "sec1");
-                        }}
-                        className="text-[11px] text-slate-400 hover:text-white flex items-center gap-1 py-1 px-2 rounded hover:bg-slate-800 transition-colors"
+                        onClick={() =>
+                          handleCopySnippet(
+                            `TÀI CHÍNH SẢN PHẨM:\n- Giá vốn: ${parsedData.financials.costPriceFormatted}\n- Giá bán: ${parsedData.financials.targetPriceFormatted}\n- Phí sàn (14%): ${parsedData.financials.estimatedPlatformFee}\n- Hoàn COD & Bao bì: ${parsedData.financials.packagingAndReturnRisk}\n- CPA trần hòa vốn: ${parsedData.financials.maxBreakevenCpa}\n- Lợi nhuận ròng: ${parsedData.financials.projectedNetProfit}`,
+                            "financials"
+                          )
+                        }
+                        title="Sao chép bảng tài chính"
+                        aria-label="Sao chép tài chính"
+                        className="w-7 h-7 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 flex items-center justify-center transition-colors cursor-pointer shrink-0"
                       >
-                        {copiedSnippet === "sec1" ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                        <span>Sao chép</span>
+                        {copiedKey === "financials" ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
                       </button>
                     </div>
 
-                    <div className="overflow-x-auto custom-scrollbar">
-                      <table className="w-full min-w-[500px] text-left text-xs">
-                        <thead className="bg-slate-900/90 text-slate-400 uppercase font-bold text-[11px] border-b border-slate-800">
-                          <tr>
-                            <th className="px-3.5 py-2.5 w-1/3">Tiêu Chí Thẩm Định</th>
-                            <th className="px-3.5 py-2.5 w-36 text-center">Thang Điểm (1-10)</th>
-                            <th className="px-3.5 py-2.5">Nhận Xét Chi Tiết Từ Chuyên Gia</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-800/60">
-                          {parsedData.criteriaList.map((item, idx) => {
-                            const pct = Math.min(100, Math.max(0, (item.score / item.maxScore) * 100));
-                            const scoreColor =
-                              item.score >= 8
-                                ? "text-emerald-400 bg-emerald-500/10 border-emerald-500/30"
-                                : item.score >= 6
-                                ? "text-blue-400 bg-blue-500/10 border-blue-500/30"
-                                : item.score >= 5
-                                ? "text-amber-400 bg-amber-500/10 border-amber-500/30"
-                                : "text-rose-400 bg-rose-500/10 border-rose-500/30";
+                    {/* Financial Metrics Grid */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                      <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-xl p-3 space-y-1">
+                        <span className="text-[10px] text-zinc-400 block font-medium">Giá Vốn Nhập (COGS)</span>
+                        <span className="text-sm sm:text-base font-bold text-white block font-mono">{parsedData.financials.costPriceFormatted}</span>
+                        <span className="text-[10px] text-zinc-500 block">Đã gồm ship kho</span>
+                      </div>
 
-                            const barColor =
-                              item.score >= 8
-                                ? "bg-emerald-500"
-                                : item.score >= 6
-                                ? "bg-blue-500"
-                                : item.score >= 5
-                                ? "bg-amber-500"
-                                : "bg-rose-500";
+                      <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-xl p-3 space-y-1">
+                        <span className="text-[10px] text-zinc-400 block font-medium">Giá Bán Mục Tiêu</span>
+                        <span className="text-sm sm:text-base font-bold text-white block font-mono">{parsedData.financials.targetPriceFormatted}</span>
+                        <span className="text-[10px] text-zinc-300 font-semibold block">Lãi gộp: {parsedData.financials.grossMarginPercent}</span>
+                      </div>
 
-                            return (
-                              <tr key={idx} className="hover:bg-slate-900/50 transition-colors">
-                                <td className="px-3.5 py-3 font-semibold text-slate-200">
-                                  <div className="flex items-center gap-2">
-                                    {getCriterionIcon(item.criteria)}
-                                    <span>{item.criteria}</span>
-                                  </div>
-                                </td>
-                                <td className="px-3.5 py-3">
-                                  <div className="flex flex-col items-center gap-1">
-                                    <span className={`px-2 py-0.5 rounded-md font-mono font-bold text-[11px] border ${scoreColor}`}>
-                                      {item.score} / {item.maxScore}
-                                    </span>
-                                    <div className="w-24 bg-slate-800 h-1.5 rounded-full overflow-hidden">
-                                      <div
-                                        className={`h-full rounded-full transition-all ${barColor}`}
-                                        style={{ width: `${pct}%` }}
-                                      />
-                                    </div>
-                                  </div>
-                                </td>
-                                <td className="px-3.5 py-3 text-slate-300 leading-relaxed font-normal">
-                                  {item.comment}
-                                </td>
-                              </tr>
-                            );
-                          })}
-                        </tbody>
-                      </table>
+                      <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-xl p-3 space-y-1">
+                        <span className="text-[10px] text-zinc-400 block font-medium">Phí Sàn Thực Tế</span>
+                        <span className="text-sm sm:text-base font-bold text-white block font-mono">{parsedData.financials.estimatedPlatformFee}</span>
+                        <span className="text-[10px] text-zinc-500 block">Cố định + Voucher Xtra</span>
+                      </div>
+
+                      <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-xl p-3 space-y-1">
+                        <span className="text-[10px] text-zinc-400 block font-medium">Dự Phòng Hoàn COD</span>
+                        <span className="text-sm sm:text-base font-bold text-white block font-mono">{parsedData.financials.packagingAndReturnRisk}</span>
+                        <span className="text-[10px] text-zinc-500 block">Cước hoàn 2 đầu + hộp</span>
+                      </div>
+                    </div>
+
+                    {/* Highlight Card: CPA Trần Hòa Vốn */}
+                    <div className="p-3.5 sm:p-4 rounded-xl bg-zinc-900/70 border border-zinc-700/80 flex flex-col sm:flex-row items-center justify-between gap-3">
+                      <div className="space-y-1 text-center sm:text-left">
+                        <div className="flex items-center justify-center sm:justify-start gap-1.5 text-white text-xs font-bold uppercase tracking-wider">
+                          <Coins size={14} className="text-white" />
+                          <span>Ngân Sách Ads Tối Đa Cho 1 Đơn (CPA Trần)</span>
+                        </div>
+                        <p className="text-xs text-zinc-400">
+                          Nếu chi phí ra 1 đơn hàng (CPA) vượt quá ngưỡng này, bạn sẽ bị lỗ vốn ngay lập tức.
+                        </p>
+                      </div>
+
+                      <div className="text-center sm:text-right shrink-0">
+                        <span className="text-2xl sm:text-3xl font-black text-white block leading-tight font-mono">
+                          {parsedData.financials.maxBreakevenCpa}
+                        </span>
+                        <span className="inline-block mt-1 px-2.5 py-0.5 rounded-md bg-white text-black text-[10px] font-bold shadow-xs">
+                          Lãi ròng kỳ vọng: {parsedData.financials.projectedNetProfit}
+                        </span>
+                      </div>
                     </div>
                   </div>
                 )}
 
-                {/* 2. CẢNH BÁO TỬ HUYỆT VẬN HÀNH & RỦI RO ẨN */}
-                {(activeTab === "all" || activeTab === "risks") && parsedData.risks.length > 0 && (
-                  <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm">
-                    <div className="flex items-center justify-between gap-2 pb-3 border-b border-slate-800">
+                {/* 2. BẢNG ĐIỂM TIÊU CHÍ THẨM ĐỊNH (5 TIÊU CHÍ) */}
+                {(activeTab === "all" || activeTab === "scores") && parsedData.criteriaList?.length > 0 && (
+                  <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 sm:p-5 space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
                       <div className="flex items-center gap-2">
-                        <div className="p-1.5 rounded-lg bg-amber-500/15 text-amber-400">
-                          <AlertTriangle size={16} />
+                        <div className="w-6 h-6 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-white shrink-0">
+                          <BarChart3 size={13} className="text-white" />
                         </div>
-                        <h3 className="font-bold text-white text-sm sm:text-base">
-                          2. Cảnh Báo Tử Huyệt Vận Hành & Rủi Ro Ẩn
-                        </h3>
+                        <h4 className="font-bold text-white text-xs sm:text-sm">
+                          Bảng Điểm 5 Tiêu Chí Thẩm Định
+                        </h4>
                       </div>
+
                       <button
                         type="button"
-                        onClick={() => {
-                          const sec = result.match(/## ⚠️ 2\.[\s\S]*?(?=---|$)/)?.[0] || "";
-                          handleCopySnippet(sec, "sec2");
-                        }}
-                        className="text-[11px] text-slate-400 hover:text-white flex items-center gap-1 py-1 px-2 rounded hover:bg-slate-800 transition-colors"
+                        onClick={() =>
+                          handleCopySnippet(
+                            parsedData.criteriaList
+                              .map((c) => `• ${c.name} (${c.score}/10): ${c.expertComment}\n-> Lời khuyên: ${c.actionAdvice}`)
+                              .join("\n\n"),
+                            "all_criteria"
+                          )
+                        }
+                        title="Sao chép toàn bộ bảng điểm"
+                        aria-label="Sao chép bảng điểm"
+                        className="w-7 h-7 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 flex items-center justify-center transition-colors cursor-pointer shrink-0"
                       >
-                        {copiedSnippet === "sec2" ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                        <span>Sao chép</span>
+                        {copiedKey === "all_criteria" ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
-                      {parsedData.risks.map((risk, idx) => {
-                        const isWeight = risk.title.toLowerCase().includes("cân nặng") || risk.title.toLowerCase().includes("thể tích");
-                        const isCod = risk.title.toLowerCase().includes("hoàn hàng") || risk.title.toLowerCase().includes("cod");
-                        const icon = isWeight ? (
-                          <Scale size={18} className="text-amber-400 shrink-0" />
-                        ) : isCod ? (
-                          <Package size={18} className="text-rose-400 shrink-0" />
-                        ) : (
-                          <ShieldAlert size={18} className="text-red-400 shrink-0" />
-                        );
-
-                        const badgeText = isWeight ? "Cước Cân Nặng" : isCod ? "Rủi Ro COD" : "Chính Sách Sàn";
-                        const badgeStyle = isWeight
-                          ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
-                          : isCod
-                          ? "bg-rose-500/15 text-rose-300 border-rose-500/30"
-                          : "bg-red-500/15 text-red-300 border-red-500/30";
+                    <div className="space-y-3">
+                      {parsedData.criteriaList.map((item, idx) => {
+                        const pct = Math.min(100, Math.max(0, (item.score / item.maxScore) * 100));
 
                         return (
                           <div
-                            key={idx}
-                            className="bg-slate-900/90 border border-slate-800/90 hover:border-slate-700/90 rounded-xl p-4 space-y-2.5 flex flex-col justify-between transition-all"
+                            key={item.id || idx}
+                            className="bg-zinc-900/60 border border-zinc-800/80 rounded-xl p-3.5 sm:p-4 space-y-2.5 transition-colors hover:border-zinc-700/80"
                           >
-                            <div className="space-y-2">
-                              <div className="flex items-center justify-between gap-2">
-                                <div className="flex items-center gap-2">
-                                  {icon}
-                                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${badgeStyle}`}>
-                                    {badgeText}
-                                  </span>
+                            <div className="flex items-start justify-between gap-2.5">
+                              <div className="flex items-start gap-2 min-w-0 flex-1">
+                                <div className="mt-0.5 shrink-0">{getCriterionIcon(item.category)}</div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <h5 className="font-bold text-white text-xs sm:text-sm leading-snug break-words">
+                                      {item.name}
+                                    </h5>
+                                    {item.statusBadge && (
+                                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-md bg-zinc-800 text-zinc-300 border border-zinc-700 leading-none shrink-0">
+                                        {item.statusBadge}
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
+                              </div>
+
+                              <div className="flex items-center gap-1.5 shrink-0 pt-0.5">
+                                <span className="px-2 py-0.5 rounded-md font-mono font-bold text-xs bg-white text-black shadow-xs shrink-0">
+                                  {item.score} / {item.maxScore}
+                                </span>
                                 <button
                                   type="button"
-                                  onClick={() => handleCopySnippet(`${risk.title}:\n${risk.content}`, `risk_${idx}`)}
-                                  className="text-slate-500 hover:text-slate-300 p-1"
+                                  onClick={() => handleCopySnippet(`${item.name} (${item.score}/10):\n${item.expertComment}\nLời khuyên: ${item.actionAdvice}`, `crit_${idx}`)}
+                                  title="Sao chép tiêu chí này"
+                                  aria-label="Sao chép tiêu chí"
+                                  className="w-6 h-6 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
                                 >
-                                  {copiedSnippet === `risk_${idx}` ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
+                                  {copiedKey === `crit_${idx}` ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
                                 </button>
                               </div>
-                              <h4 className="font-bold text-slate-100 text-xs leading-snug">
-                                {risk.title}
-                              </h4>
-                              <p className="text-xs text-slate-300 leading-relaxed font-normal">
-                                {risk.content}
-                              </p>
                             </div>
+
+                            {/* Progress bar: Monochrome sleek track */}
+                            <div className="w-full bg-zinc-800 h-1.5 rounded-full overflow-hidden">
+                              <div className="h-full rounded-full transition-all duration-300 bg-white" style={{ width: `${pct}%` }} />
+                            </div>
+
+                            {/* Comment & Action Advice */}
+                            <p className="text-xs text-zinc-300 leading-relaxed font-normal">
+                              {item.expertComment}
+                            </p>
+
+                            {item.actionAdvice && (
+                              <div className="pt-2 border-t border-zinc-800/70 text-[11px] text-zinc-300 font-medium flex items-start gap-1.5 bg-black/40 p-2.5 rounded-lg border border-zinc-800/60 leading-relaxed">
+                                <span className="shrink-0 font-bold text-white">👉 Lời khuyên:</span>
+                                <span className="text-zinc-300 break-words min-w-0 flex-1">{item.actionAdvice}</span>
+                              </div>
+                            )}
                           </div>
                         );
                       })}
@@ -747,133 +757,360 @@ export function ProductValidatorOutput({
                   </div>
                 )}
 
-                {/* 3. CHIẾN LƯỢC BIẾN THỂ NGÁCH & NÉ BẪY GIÁ RẺ */}
-                {(activeTab === "all" || activeTab === "strategies") && parsedData.strategies.length > 0 && (
-                  <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm">
-                    <div className="flex items-center justify-between gap-2 pb-3 border-b border-slate-800">
+                {/* 3. CẢNH BÁO TỬ HUYỆT VẬN HÀNH & RỦI RO ẨN */}
+                {(activeTab === "all" || activeTab === "risks") && parsedData.pitfalls?.length > 0 && (
+                  <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 sm:p-5 space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
                       <div className="flex items-center gap-2">
-                        <div className="p-1.5 rounded-lg bg-indigo-500/15 text-indigo-400">
-                          <Lightbulb size={16} />
+                        <div className="w-6 h-6 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-white shrink-0">
+                          <ShieldAlert size={13} className="text-white" />
                         </div>
-                        <h3 className="font-bold text-white text-sm sm:text-base">
-                          3. Chiến Lược Biến Thể Ngách & Né Bẫy Giá Rẻ
-                        </h3>
+                        <h4 className="font-bold text-white text-xs sm:text-sm">
+                          Tử Huyệt Vận Hành &amp; Rủi Ro Tài Chính Sàn
+                        </h4>
                       </div>
+
                       <button
                         type="button"
-                        onClick={() => {
-                          const sec = result.match(/## 💡 3\.[\s\S]*?(?=---|$)/)?.[0] || "";
-                          handleCopySnippet(sec, "sec3");
-                        }}
-                        className="text-[11px] text-slate-400 hover:text-white flex items-center gap-1 py-1 px-2 rounded hover:bg-slate-800 transition-colors"
+                        onClick={() =>
+                          handleCopySnippet(
+                            parsedData.pitfalls
+                              .map(
+                                (p) =>
+                                  `[${p.severityBadge}] ${p.title}\n- Thiệt hại ước tính: ${cleanLossText(p.estimatedLoss) || "Chưa định lượng"}\n- Cơ chế sàn quét: ${cleanTriggerText(p.platformTrigger) || "Chưa xác định"}\n- Nguyên nhân: ${p.rootCause}\n- Giải pháp: ${p.preventionTip}`
+                              )
+                              .join("\n\n"),
+                            "all_pitfalls"
+                          )
+                        }
+                        title="Sao chép các rủi ro"
+                        aria-label="Sao chép rủi ro"
+                        className="w-7 h-7 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 flex items-center justify-center transition-colors cursor-pointer shrink-0"
                       >
-                        {copiedSnippet === "sec3" ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                        <span>Sao chép</span>
+                        {copiedKey === "all_pitfalls" ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                      {parsedData.strategies.map((strat, idx) => {
-                        const isDiff = strat.title.toLowerCase().includes("biến thể") || strat.title.toLowerCase().includes("độc quyền");
-                        const icon = isDiff ? (
-                          <Zap size={18} className="text-indigo-400 shrink-0" />
-                        ) : (
-                          <Boxes size={18} className="text-purple-400 shrink-0" />
-                        );
-                        const badgeText = isDiff ? "Biến Thể Độc Quyền" : "Combo / Upsell Tăng AOV";
-
-                        return (
-                          <div
-                            key={idx}
-                            className="bg-slate-900/90 border border-indigo-900/30 hover:border-indigo-700/50 rounded-xl p-4 space-y-2.5 transition-all"
-                          >
+                    <div className="space-y-3">
+                      {parsedData.pitfalls.map((pitfall, idx) => (
+                        <div
+                          key={pitfall.id || idx}
+                          className="bg-zinc-900/60 border border-zinc-800/80 rounded-xl p-3.5 sm:p-4 space-y-3 hover:border-zinc-700/80 transition-all flex flex-col justify-between"
+                        >
+                          <div className="space-y-2.5">
+                            {/* Dòng 1: Badge mức độ (trái) & Nút sao chép (phải) */}
                             <div className="flex items-center justify-between gap-2">
-                              <div className="flex items-center gap-2">
-                                {icon}
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-500/15 text-indigo-300 border border-indigo-500/30">
-                                  {badgeText}
-                                </span>
-                              </div>
+                              <span className="text-[10px] font-bold px-2.5 py-0.5 rounded-md bg-zinc-800 text-zinc-200 border border-zinc-700 shrink-0">
+                                {pitfall.severityBadge}
+                              </span>
+
                               <button
                                 type="button"
-                                onClick={() => handleCopySnippet(`${strat.title}:\n${strat.content}`, `strat_${idx}`)}
-                                className="text-slate-500 hover:text-slate-300 p-1"
+                                onClick={() =>
+                                  handleCopySnippet(
+                                    `${pitfall.title}\n- Thiệt hại: ${cleanLossText(pitfall.estimatedLoss)}\n- Cơ chế quét: ${cleanTriggerText(pitfall.platformTrigger)}\n- Nguyên nhân: ${pitfall.rootCause}\n- Giải pháp: ${pitfall.preventionTip}`,
+                                    `pitfall_${idx}`
+                                  )
+                                }
+                                title="Sao chép tử huyệt này"
+                                aria-label="Sao chép tử huyệt"
+                                className="w-6 h-6 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
                               >
-                                {copiedSnippet === `strat_${idx}` ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
+                                {copiedKey === `pitfall_${idx}` ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
                               </button>
                             </div>
-                            <h4 className="font-bold text-slate-100 text-xs leading-snug">
-                              {strat.title}
-                            </h4>
-                            <p className="text-xs text-slate-300 leading-relaxed font-normal">
-                              {strat.content}
-                            </p>
+
+                            {/* Dòng 2: Tiêu đề rủi ro tự xuống dòng chuẩn */}
+                            <h5 className="font-bold text-white text-xs sm:text-sm leading-snug break-words">
+                              {pitfall.title}
+                            </h5>
+
+                            {/* Dòng 3: Box Thiệt hại định lượng toàn chiều rộng (Nền đen, nhãn text đen nền trắng) */}
+                            {pitfall.estimatedLoss && (
+                              <div className="w-full p-2.5 rounded-lg bg-black/80 border border-zinc-700 text-xs flex items-start gap-2 shadow-xs">
+                                <span className="shrink-0 font-bold px-1.5 py-0.5 rounded bg-white text-black text-[10px] uppercase tracking-wide">
+                                  💸 Thiệt hại
+                                </span>
+                                <span className="text-zinc-200 font-medium break-words leading-relaxed min-w-0 flex-1">
+                                  {cleanLossText(pitfall.estimatedLoss)}
+                                </span>
+                              </div>
+                            )}
+
+                            {/* Lưới 2 cột cân đối: Bản chất rủi ro & Cơ chế sàn quét */}
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                              <div className="bg-black/50 border border-zinc-800/80 rounded-lg p-2.5 space-y-1">
+                                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">
+                                  🔍 Bản Chất Rủi Ro
+                                </span>
+                                <p className="text-zinc-300 leading-relaxed font-normal break-words">
+                                  {pitfall.rootCause}
+                                </p>
+                              </div>
+
+                              <div className="bg-black/50 border border-zinc-800/80 rounded-lg p-2.5 space-y-1">
+                                <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block flex items-center gap-1">
+                                  🤖 Cơ Chế Quét Của Sàn
+                                </span>
+                                <p className="text-zinc-300 leading-relaxed font-normal break-words">
+                                  {cleanTriggerText(pitfall.platformTrigger) || "Shipper và máy quét tự động kiểm tra."}
+                                </p>
+                              </div>
+                            </div>
                           </div>
-                        );
-                      })}
+
+                          {/* Giải pháp xử lý dưới cùng */}
+                          <div className="pt-2.5 border-t border-zinc-800/80 text-[11px] sm:text-xs text-zinc-200 font-medium flex items-start gap-1.5 leading-relaxed">
+                            <span className="shrink-0 font-bold text-white">🛡️ Giải pháp xử lý:</span>
+                            <span className="text-zinc-300 break-words min-w-0 flex-1">{pitfall.preventionTip}</span>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
 
-                {/* 4. KẾT LUẬN & LỘ TRÌNH TEST ĐƠN AN TOÀN */}
-                {(activeTab === "all" || activeTab === "roadmap") && (parsedData.sampleQuantity || parsedData.maxAdsBudget || parsedData.expertAdvice) && (
-                  <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 shadow-sm">
-                    <div className="flex items-center justify-between gap-2 pb-3 border-b border-slate-800">
+                {/* 4. CHIẾN LƯỢC BIẾN THỂ NGÁCH & NÉ BẪY GIÁ RẺ */}
+                {(activeTab === "all" || activeTab === "strategies") && parsedData.differentiation?.length > 0 && (
+                  <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 sm:p-5 space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
                       <div className="flex items-center gap-2">
-                        <div className="p-1.5 rounded-lg bg-emerald-500/15 text-emerald-400">
-                          <Target size={16} />
+                        <div className="w-6 h-6 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-white shrink-0">
+                          <Lightbulb size={13} className="text-white" />
                         </div>
-                        <h3 className="font-bold text-white text-sm sm:text-base">
-                          4. Kết Luận & Lộ Trình Test Đơn An Toàn
-                        </h3>
+                        <h4 className="font-bold text-white text-xs sm:text-sm">
+                          Chiến Lược Khác Biệt &amp; Định Giá Phễu AOV
+                        </h4>
                       </div>
+
                       <button
                         type="button"
-                        onClick={() => {
-                          const sec = result.match(/## 🎯 4\.[\s\S]*?(?=---|$)/)?.[0] || "";
-                          handleCopySnippet(sec, "sec4");
-                        }}
-                        className="text-[11px] text-slate-400 hover:text-white flex items-center gap-1 py-1 px-2 rounded hover:bg-slate-800 transition-colors"
+                        onClick={() =>
+                          handleCopySnippet(
+                            parsedData.differentiation
+                              .map(
+                                (d) =>
+                                  `[${d.badge}] ${d.title}\n- Triển khai: ${d.executionSteps}\n- Quà/Phụ kiện sỉ: ${cleanAddonText(d.suggestedAddOn) || "N/A"}\n- Định giá phễu: ${cleanPricingText(d.pricingStrategy) || "N/A"}\n- Tác động AOV: ${cleanAovText(d.aovImpact)}`
+                              )
+                              .join("\n\n"),
+                            "all_diff"
+                          )
+                        }
+                        title="Sao chép chiến lược ngách"
+                        aria-label="Sao chép chiến lược"
+                        className="w-7 h-7 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 flex items-center justify-center transition-colors cursor-pointer shrink-0"
                       >
-                        {copiedSnippet === "sec4" ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
-                        <span>Sao chép</span>
+                        {copiedKey === "all_diff" ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
                       </button>
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                      {parsedData.sampleQuantity && (
-                        <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1.5">
-                          <div className="flex items-center gap-2 text-xs font-bold text-blue-400">
-                            <Target size={15} />
-                            <span>Khuyến Nghị Số Lượng Nhập Thử Nghiệm</span>
-                          </div>
-                          <p className="text-xs text-slate-200 leading-relaxed font-semibold">
-                            {parsedData.sampleQuantity}
-                          </p>
-                        </div>
-                      )}
+                      {parsedData.differentiation.map((diff, idx) => (
+                        <div
+                          key={diff.id || idx}
+                          className="bg-zinc-900/60 border border-zinc-800/80 rounded-xl p-3.5 sm:p-4 space-y-3 flex flex-col justify-between hover:border-zinc-700/80 transition-all"
+                        >
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between gap-1.5">
+                              <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white text-black font-bold shrink-0">
+                                {diff.badge}
+                              </span>
 
-                      {parsedData.maxAdsBudget && (
-                        <div className="p-4 rounded-xl bg-slate-900/90 border border-slate-800 space-y-1.5">
-                          <div className="flex items-center gap-2 text-xs font-bold text-emerald-400">
-                            <Coins size={15} />
-                            <span>Ngân Sách Ads Tối Đa Cho Phép</span>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleCopySnippet(
+                                    `${diff.title}\n- Triển khai: ${diff.executionSteps}\n- Quà/Phụ kiện: ${cleanAddonText(diff.suggestedAddOn)}\n- Định giá phễu: ${cleanPricingText(diff.pricingStrategy)}\n- Tác động: ${cleanAovText(diff.aovImpact)}`,
+                                    `diff_${idx}`
+                                  )
+                                }
+                                title="Sao chép chiến lược này"
+                                aria-label="Sao chép chiến lược"
+                                className="w-6 h-6 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                              >
+                                {copiedKey === `diff_${idx}` ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
+                              </button>
+                            </div>
+
+                            <h5 className="font-bold text-white text-xs sm:text-sm leading-snug break-words">
+                              {diff.title}
+                            </h5>
+
+                            <p className="text-xs text-zinc-300 leading-relaxed font-normal break-words">
+                              {diff.executionSteps}
+                            </p>
                           </div>
-                          <p className="text-xs text-slate-200 leading-relaxed font-semibold">
-                            {parsedData.maxAdsBudget}
-                          </p>
+
+                          {/* Bảng Đặc Tả Thực Thi & Định Giá Phễu */}
+                          <div className="rounded-xl border border-zinc-800/80 bg-black/60 overflow-hidden divide-y divide-zinc-800/70 text-xs mt-1">
+                            {diff.suggestedAddOn && (
+                              <div className="px-3 py-2 flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2">
+                                <span className="shrink-0 text-zinc-400 font-bold text-[11px] flex items-center gap-1 sm:w-28 pt-0.5">
+                                  🎁 Quà sỉ 1688:
+                                </span>
+                                <span className="text-zinc-200 leading-snug font-medium flex-1 break-words min-w-0">
+                                  {cleanAddonText(diff.suggestedAddOn)}
+                                </span>
+                              </div>
+                            )}
+
+                            {diff.pricingStrategy && (
+                              <div className="px-3 py-2 flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2">
+                                <span className="shrink-0 text-zinc-400 font-bold text-[11px] flex items-center gap-1 sm:w-28 pt-0.5">
+                                  🏷️ Định giá phễu:
+                                </span>
+                                <span className="text-zinc-200 leading-snug font-medium flex-1 break-words min-w-0">
+                                  {cleanPricingText(diff.pricingStrategy)}
+                                </span>
+                              </div>
+                            )}
+
+                            {diff.aovImpact && (
+                              <div className="px-3 py-2 flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-2">
+                                <span className="shrink-0 text-white font-bold text-[11px] flex items-center gap-1 sm:w-28 pt-0.5">
+                                  📈 Tác động AOV:
+                                </span>
+                                <span className="text-white leading-snug font-bold flex-1 break-words min-w-0">
+                                  {cleanAovText(diff.aovImpact)}
+                                </span>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      )}
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 5. LỘ TRÌNH TEST ĐƠN AN TOÀN & ĐIỂM CẮT LỖ */}
+                {(activeTab === "all" || activeTab === "roadmap") && parsedData.roadmap && (
+                  <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-4 sm:p-5 space-y-4">
+                    <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-white shrink-0">
+                          <Target size={13} className="text-white" />
+                        </div>
+                        <h4 className="font-bold text-white text-xs sm:text-sm">
+                          Lộ Trình Test 3 Giai Đoạn &amp; Kế Hoạch Cắt Lỗ
+                        </h4>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() =>
+                          handleCopySnippet(
+                            `LỘ TRÌNH TEST ĐƠN 3 GIAI ĐOẠN:\n- Số lượng test đợt 1: ${parsedData.roadmap.initialUnits}\n- Ngân sách Ads trần: ${parsedData.roadmap.maxAdSpendPerOrder}\n- Target ROAS: ${parsedData.roadmap.targetRoas}\n- Điều kiện cắt lỗ: ${parsedData.roadmap.stopLossCondition}\n\n${(parsedData.roadmap.phases || []).map((p) => `[${p.phase}] (${p.duration} - Ngân sách: ${p.budget})\n• Hành động: ${p.action}\n• KPI: ${p.kpiGoal}`).join("\n\n")}\n\nKế hoạch xả hàng: ${parsedData.roadmap.liquidationPlan || ""}\n\nLời khuyên vàng: ${parsedData.roadmap.expertVerdictAdvice}`,
+                            "roadmap"
+                          )
+                        }
+                        title="Sao chép lộ trình"
+                        aria-label="Sao chép lộ trình"
+                        className="w-7 h-7 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                      >
+                        {copiedKey === "roadmap" ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                      </button>
                     </div>
 
-                    {parsedData.expertAdvice && (
-                      <div className="p-4 sm:p-5 rounded-xl bg-gradient-to-r from-amber-950/40 via-amber-900/20 to-slate-900 border border-amber-500/30 space-y-2">
-                        <div className="flex items-center gap-2 text-amber-400 text-xs font-bold uppercase tracking-wider">
-                          <Crown size={16} />
+                    {/* 4 Chỉ Số Cốt Lõi */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-xl p-3.5 space-y-1">
+                        <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">
+                          Số Lượng Nhập Test Đợt 1
+                        </span>
+                        <p className="text-xs text-white font-bold leading-relaxed">
+                          {parsedData.roadmap.initialUnits}
+                        </p>
+                      </div>
+
+                      <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-xl p-3.5 space-y-1">
+                        <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider block">
+                          Target ROAS Chiến Dịch
+                        </span>
+                        <p className="text-xs text-white font-bold leading-relaxed">
+                          {parsedData.roadmap.targetRoas}
+                        </p>
+                      </div>
+
+                      <div className="sm:col-span-2 bg-black/60 border border-zinc-700/80 rounded-xl p-3.5 space-y-1">
+                        <span className="text-[10px] text-white font-bold uppercase tracking-wider block flex items-center gap-1">
+                          <AlertTriangle size={12} className="text-white" />
+                          Điều Kiện Dừng Lỗ (Stop-Loss KPI)
+                        </span>
+                        <p className="text-xs text-zinc-200 font-semibold leading-relaxed break-words">
+                          {parsedData.roadmap.stopLossCondition}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* 3 Giai Đoạn Test Cụ Thể (Phases) */}
+                    {parsedData.roadmap.phases && parsedData.roadmap.phases.length > 0 && (
+                      <div className="space-y-2.5 pt-1">
+                        <div className="flex items-center gap-2">
+                          <Clock size={13} className="text-white" />
+                          <h5 className="font-bold text-white text-xs tracking-wide uppercase">
+                            Tiến Trình 3 Giai Đoạn Thực Chiến
+                          </h5>
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                          {parsedData.roadmap.phases.map((ph, pIdx) => (
+                            <div
+                              key={pIdx}
+                              className="bg-zinc-900/70 border border-zinc-800 rounded-xl p-3.5 space-y-2.5 flex flex-col justify-between hover:border-zinc-700 transition-colors"
+                            >
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between gap-1 flex-wrap">
+                                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-white text-black font-bold shrink-0">
+                                    {ph.duration}
+                                  </span>
+                                  <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md bg-zinc-800 text-zinc-200 border border-zinc-700 shrink-0">
+                                    💰 {ph.budget}
+                                  </span>
+                                </div>
+
+                                <h6 className="font-bold text-white text-xs leading-snug break-words">
+                                  {ph.phase}
+                                </h6>
+
+                                <div className="text-xs text-zinc-300 leading-relaxed space-y-1">
+                                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">
+                                    🎯 Hành động:
+                                  </span>
+                                  <p className="break-words text-xs text-zinc-300">{ph.action}</p>
+                                </div>
+                              </div>
+
+                              <div className="pt-2 border-t border-zinc-800 text-[11px] text-zinc-200 font-medium leading-snug break-words">
+                                <span className="font-bold text-white">🏆 KPI:</span> {ph.kpiGoal}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Kế Hoạch Xả Hàng Thu Hồi Dòng Tiền (Liquidation Exit Plan) */}
+                    {parsedData.roadmap.liquidationPlan && (
+                      <div className="p-3.5 sm:p-4 rounded-xl bg-zinc-900/80 border border-zinc-700/80 space-y-1.5">
+                        <div className="flex items-center gap-1.5 text-white text-[10px] font-bold uppercase tracking-wider">
+                          <RotateCcw size={12} className="text-white" />
+                          <span>Kế Hoạch Xả Hàng &amp; Thu Hồi Vốn (Exit Strategy)</span>
+                        </div>
+                        <p className="text-xs text-zinc-300 leading-relaxed font-medium break-words">
+                          {parsedData.roadmap.liquidationPlan}
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Lời Khuyên Vàng */}
+                    {parsedData.roadmap.expertVerdictAdvice && (
+                      <div className="p-3.5 sm:p-4 rounded-xl bg-black/80 border border-zinc-700/80 space-y-1.5">
+                        <div className="flex items-center gap-1.5 text-white text-[10px] font-bold uppercase tracking-wider">
+                          <Crown size={13} className="text-white" />
                           <span>Lời Khuyên Vàng Từ Chuyên Gia</span>
                         </div>
-                        <p className="text-xs sm:text-sm text-amber-100/90 leading-relaxed italic font-normal">
-                          &ldquo;{parsedData.expertAdvice}&rdquo;
+                        <p className="text-xs sm:text-sm text-zinc-200 leading-relaxed italic font-normal break-words">
+                          &ldquo;{parsedData.roadmap.expertVerdictAdvice}&rdquo;
                         </p>
                       </div>
                     )}
@@ -882,22 +1119,32 @@ export function ProductValidatorOutput({
               </div>
             ) : (
               // Fallback nếu không parse được
-              <div className="bg-slate-950/90 border border-slate-800 rounded-xl p-5 text-xs text-slate-300 space-y-4 whitespace-pre-line leading-relaxed font-sans">
+              <div className="bg-zinc-950 border border-zinc-800 rounded-xl p-5 text-xs text-zinc-300 space-y-4 whitespace-pre-line leading-relaxed font-sans">
                 {result}
               </div>
             )}
           </div>
         ) : (
-          <div className="h-full min-h-[340px] flex flex-col items-center justify-center text-center p-6 text-slate-500 space-y-3">
-            <div className="w-14 h-14 rounded-2xl bg-slate-800/60 border border-slate-700/50 flex items-center justify-center text-slate-400">
+          <div className="h-full min-h-[340px] flex flex-col items-center justify-center text-center p-6 text-zinc-500 space-y-3">
+            <div className="w-14 h-14 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 shadow-sm">
               <TrendingUp size={24} />
             </div>
             <div>
-              <p className="font-semibold text-slate-300 text-sm">Chưa Có Dữ Liệu Thẩm Định</p>
-              <p className="text-xs text-slate-500 max-w-xs mt-1">
-                Điền thông tin ý tưởng sản phẩm bên trái và bấm &ldquo;Thẩm Định Sản Phẩm Ngay&rdquo;.
+              <p className="font-bold text-white text-sm">Chưa Có Dữ Liệu Thẩm Định</p>
+              <p className="text-xs text-zinc-400 max-w-xs mt-1">
+                Điền thông tin ý tưởng sản phẩm bên trái và bấm &ldquo;Bắt Đầu Thẩm Định Sản Phẩm Ngay&rdquo;.
               </p>
             </div>
+            {onUseSample && (
+              <button
+                type="button"
+                onClick={onUseSample}
+                className="mt-2 px-3 py-1.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white border border-zinc-700 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <Sparkles size={13} className="text-amber-400" />
+                <span>Thử Dữ Liệu Mẫu</span>
+              </button>
+            )}
           </div>
         )}
       </div>

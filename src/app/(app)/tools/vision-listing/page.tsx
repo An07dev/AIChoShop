@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   ArrowLeft,
   Sparkles,
@@ -11,6 +11,7 @@ import {
   Send,
   Crown,
   Clock,
+  XCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { useToolGate } from "@/hooks/useToolGate";
@@ -18,6 +19,7 @@ import { VisionListingOutput } from "@/components/tools/VisionListingOutput";
 import { useToast } from "@/context/ToastContext";
 import { AiUsageBadge } from "@/components/tools/AiUsageBadge";
 import { MobileToolTabs } from "@/components/tools/MobileToolTabs";
+import { compressImageForAi } from "@/lib/image-compress";
 
 const PLATFORMS = [
   "Shopee & TikTok Shop",
@@ -34,57 +36,125 @@ const SAMPLE_HINT = {
     "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='400' height='400' viewBox='0 0 400 400'><rect width='400' height='400' fill='%230f172a'/><rect x='40' y='60' width='320' height='260' rx='16' fill='%231e293b' stroke='%23334155' stroke-width='4'/><rect x='60' y='90' width='200' height='200' rx='8' fill='%230f172a' stroke='%23475569' stroke-width='2'/><circle cx='160' cy='190' r='50' fill='%231e293b' stroke='%2310b981' stroke-dasharray='6,6'/><rect x='280' y='100' width='60' height='30' rx='4' fill='%230284c7'/><circle cx='310' cy='180' r='18' fill='%23334155'/><circle cx='310' cy='240' r='18' fill='%23334155'/><text x='50%25' y='92%25' dominant-baseline='middle' text-anchor='middle' font-size='13' fill='%2338bdf8' font-weight='bold' font-family='sans-serif'>LÒ VI SÓNG INOX 20L TOSHIBA</text></svg>",
 };
 
-const SAMPLE_OUTPUT = `---
-
-## 🏷️ 1. TIÊU ĐỀ CHUẨN SEO (3 BIẾN THỂ TỐI ƯU CẠNH TRANH)
-
-- **Biến thể 1 (Chuẩn SEO Tìm kiếm tự nhiên - Shopee/Lazada):**
-  **Tên sản phẩm:** Lò vi sóng Inox 20L TOSHIBA - Chống tràn, chống dính, tiết kiệm điện
-- **Biến thể 2 (Kéo Click & Bắt Trend - TikTok Shop/Live):**
-  **Tên sản phẩm:** Lò vi sóng INOX 20L TOSHIBA - KHUYẾN MẠI 10% NGAY!!! 🚀
-- **Biến thể 3 (Tối ưu Chạy Ads đấu thầu từ khóa):**
-  **Tên sản phẩm:** Lò vi sóng 20L TOSHIBA - Chống tràn, chống dính, tiết kiệm điện
-
----
-
-## 📋 2. BẢNG THÔNG SỐ KỸ THUẬT (ATTRIBUTES CHO SELLER CENTER)
-
-| Thuộc tính | Giá trị chi tiết từ ảnh |
-| :--- | :--- |
-| **Loại sản phẩm** | Lò vi sóng |
-| **Chất liệu** | Inox chống tràn, chống dính |
-| **Màu sắc / Họa tiết** | Màu bạc inox |
-| **Phong cách** | Hiện đại, sang trọng |
-| **Xuất xứ** | Việt Nam |
-| **Tính năng nổi bật** | Chống tràn, chống dính, tiết kiệm điện |
-| **Đối tượng phù hợp** | Gia đình |
-
----
-
-## 📝 3. BÀI VIẾT MÔ TẢ CHUYỂN ĐỔI CAO (CÔNG THỨC AIDA)
-
-### ✨ [ĐIỂM NHẤN ĐẶC QUYỀN CỦA SẢN PHẨM - USP]
-Chào gia đình thân mến! Bạn có bao giờ cảm thấy lo lắng khi lò vi sóng nhà mình không chỉ tiết kiệm điện mà còn gây ra tình trạng tràn thức ăn, làm hỏng các món ăn yêu thích? Điều đó không còn nữa với lò vi sóng inox 20L TOSHIBA. Sản phẩm này được thiết kế với công nghệ chống tràn tiên tiến, bảo vệ lò vi sóng của bạn khỏi tình huống rắc rối này. Ngoài ra, chất liệu inox cao cấp giúp lò vi sóng bền bỉ và dễ dàng vệ sinh.
-
-### 💎 CHI TIẾT TÍNH NĂNG & THIẾT KẾ
-- **Chất liệu & Độ hoàn thiện:** Lò vi sóng được làm từ inox chống tràn, chống dính, bề mặt sáng bóng, bền bỉ. Từng đường nét của lò vi sóng đều được hoàn thiện kỹ lưỡng, mang đến trải nghiệm sử dụng mượt mà và an toàn.
-- **Kiểu dáng & Tiện ích:** Lò vi sóng có kiểu dáng hiện đại, sang trọng với kích thước phù hợp cho gia đình. Với ngăn chứa tiện ích, bạn có thể dễ dàng sắp xếp và sử dụng các loại thức ăn khác nhau.
-- **Độ ứng dụng:** Lò vi sóng phù hợp cho mọi tình huống trong gia đình, từ nấu ăn hàng ngày đến chế biến món ăn đặc biệt. Với khả năng tiết kiệm điện, lò vi sóng TOSHIBA đảm bảo sự tiện lợi và tiết kiệm chi phí cho gia đình bạn.
-
-### 📏 BẢNG QUY ĐỔI KÍCH CỠ / HƯỚNG DẪN CHỌN SIZE
-- Kích thước: 52.5 x 47 x 30 cm
-- Vận hành phù hợp cho gia đình từ 2-4 thành viên.
-
-### 🛡️ CAM KẾT VÀNG TỪ SHOP
-- Đổi trả trong 7 ngày nếu lỗi từ nhà sản xuất hoặc không đúng hình ảnh.
-- Hàng luôn có sẵn, đóng gói kỹ càng và giao nhanh trong 24h.
-- Tư vấn nhiệt tình 24/7 qua khung chat của sàn.
-
----
-
-## 🔍 4. BỘ HASHTAG & TỪ KHÓA TÌM KIẾM
-- **Từ khóa hạt nhân (Search Intent cao):** lò vi sóng, lò vi sóng inox, lò vi sóng TOSHIBA, lò vi sóng tiết kiệm điện, lò vi sóng chống tràn
-- **Hashtag chuẩn SEO Sàn:** #lòviSóngShopee #lòviSóngTikTokShop #lòviSóngTOSHIBA #lòviSóngGiảmGiá #tiktokshopkhuyenmai10 #shopeekhuyenmai10 #tiktokshop2024 #lòviSóngTiếtKiệmĐiện #lòviSóngChốngTràn #lòviSóngInox #tiktokshopgiatot #shopee2024 #lòviSóngToshibaChinhHang`;
+const SAMPLE_OUTPUT = JSON.stringify(
+  {
+    listingScore: {
+      score: 98,
+      grade: "XUẤT SẮC",
+      checklist: [
+        { item: "Tiêu đề chuẩn công thức SEO Shopee & TikTok", passed: true },
+        { item: "Đầy đủ 100% thuộc tính bắt buộc của Seller Center", passed: true },
+        { item: "Mô tả AIDA có Hook 3 giây chuyển đổi cao", passed: true },
+        { item: "Kiểm duyệt an toàn: 0% vi phạm từ cấm sàn", passed: true },
+        { item: "Gợi ý phân loại SKU phễu giá tăng AOV", passed: true }
+      ],
+      safetyPassed: true
+    },
+    titles: [
+      {
+        id: 1,
+        platform: "Shopee & Lazada",
+        style: "SEO Tìm Kiếm Tự Nhiên (Search-Driven)",
+        targetAudience: "Khách gõ tìm kiếm có nhu cầu mua thực tế",
+        title: "Lò Vi Sóng Cơ 20L TOSHIBA Thép Không Gỉ - Kháng Khuẩn, Chống Tràn, Rã Đông Siêu Tốc (Bảo Hành 12 Tháng)",
+        hookKeywords: "lò vi sóng toshiba 20l"
+      },
+      {
+        id: 2,
+        platform: "TikTok Shop",
+        style: "Kéo Click & Chốt Cảm Xúc (Impulse-Driven)",
+        targetAudience: "Khách lướt video/live chốt đơn theo cảm xúc & ưu đãi",
+        title: "🔥 Lò Vi Sóng Inox 20L Toshiba Nấu Nướng Siêu Nhanh - TẶNG KÈM Bộ Đĩa Thủy Tinh & Nắp Đậy Chống Văng!",
+        hookKeywords: "lò vi sóng giá rẻ quà tặng khủng"
+      },
+      {
+        id: 3,
+        platform: "Đấu Thầu Ads",
+        style: "Tối Ưu Quảng Cáo Tìm Kiếm (High CTR & Low CPC)",
+        targetAudience: "Khách tìm kiếm từ khóa ngách chạy ads",
+        title: "Lò Vi Sóng Toshiba 20L Chính Hãng - Rã Đông Nhanh, Tiết Kiệm Điện, Chống Tràn",
+        hookKeywords: "lò vi sóng toshiba chính hãng"
+      }
+    ],
+    sellerAttributes: [
+      { name: "Loại sản phẩm", value: "Lò vi sóng cơ", requiredByPlatform: true },
+      { name: "Dung tích", value: "20 Lít", requiredByPlatform: true },
+      { name: "Chất liệu khoang lò", value: "Thép không gỉ (Inox 304) tráng men chống dính", requiredByPlatform: true },
+      { name: "Công suất vi sóng", value: "800W - 5 mức điều chỉnh nhiệt", requiredByPlatform: true },
+      { name: "Màu sắc", value: "Bạc Ánh Kim / Đen Nhám", requiredByPlatform: true },
+      { name: "Xuất xứ thương hiệu", value: "Nhật Bản (Lắp ráp chính hãng)", requiredByPlatform: true },
+      { name: "Bảo hành", value: "12 Tháng Lỗi 1 Đổi 1", requiredByPlatform: true },
+      { name: "Tính năng an toàn", value: "Chống tràn, tự ngắt khi quá nhiệt, khóa cơ trẻ em", requiredByPlatform: false },
+      { name: "Đối tượng phù hợp", value: "Gia đình 2-5 người, sinh viên, người đi làm", requiredByPlatform: false }
+    ],
+    skuSuggestions: [
+      {
+        groupName: "Phân Loại Màu Sắc",
+        options: ["Bạc Titan Sang Trọng", "Đen Nhám Chống Bám Vân Tay"]
+      },
+      {
+        groupName: "Combo Ưu Đãi Tăng Giá Trị Đơn (AOV)",
+        options: [
+          "Bản Tiêu Chuẩn (Thân máy + Đĩa quay)",
+          "Bản Full Combo (+ Bộ Đĩa Thủy Tinh Chịu Nhiệt + Nắp Chống Văng)",
+          "Combo Quà Tặng (+ Khay Nướng Silicon Cao Cấp)"
+        ]
+      }
+    ],
+    aidaDescription: {
+      attentionHook: "Nấu nướng bận rộn mỗi tối làm bạn mệt mỏi? Thức ăn rã đông mất cả tiếng đồng hồ lại còn bị khô cứng? Đừng để căn bếp trở thành gánh nặng sau ngày dài làm việc!",
+      uspPoint: "Lò vi sóng Toshiba 20L thế hệ mới ứng dụng công nghệ sóng viba 3D xoay chiều, giúp thức ăn nóng đều từ trong ra ngoài chỉ sau 60 giây mà không làm mất đi vitamin dinh dưỡng.",
+      featureBullets: [
+        {
+          feature: "Khoang lò Inox tráng men Nano",
+          benefit: "Chống bám dầu mỡ tuyệt đối, chỉ cần dùng khăn ẩm lau nhẹ 5 giây là sạch bóng."
+        },
+        {
+          feature: "5 Mức công suất linh hoạt (lên tới 800W)",
+          benefit: "Tùy biến từ hâm nóng canh, rã đông thịt cá mềm mọng, đến nướng bánh mì giòn tan."
+        },
+        {
+          feature: "Nút vặn cơ bền bỉ song ngữ",
+          benefit: "Dễ dàng thao tác cho cả người lớn tuổi và trẻ nhỏ trong nhà."
+        }
+      ],
+      usageAndSize: [
+        "Kích thước sản phẩm: 44cm x 33cm x 26cm (Đặt vừa vặn mọi kệ bếp gia đình)",
+        "Trọng lượng: 10.5 kg - Chân đế cao su chống trơn trượt tuyệt đối",
+        "Hướng dẫn: Cắm nguồn điện 220V ổn định, vệ sinh định kỳ bằng nước ấm và chanh"
+      ],
+      guarantees: [
+        "Cam kết 100% hàng chính hãng mới nguyên seal đập hộp",
+        "Bảo hành điện tử 12 tháng trên toàn quốc, lỗi 1 đổi 1 trong 30 ngày đầu",
+        "Đóng gói 3 lớp xốp chống va đập, bảo hiểm vỡ hỏng hoàn tiền 100%"
+      ],
+      ctaCloser: "👉 BẤM [MUA NGAY] HOẶC [THÊM VÀO GIỎ HÀNG] ĐỂ NHẬN NGAY VOUCHER GIẢM 10% VÀ TRỌN BỘ QUÀ TẶNG ĐỘC QUYỀN HÔM NAY!"
+    },
+    seoTags: {
+      coreKeywords: [
+        "lò vi sóng toshiba",
+        "lò vi sóng 20l",
+        "lò vi sóng giá rẻ",
+        "lò vi sóng không nướng"
+      ],
+      longtailKeywords: [
+        "lò vi sóng toshiba 20l chống tràn",
+        "lò vi sóng rã đông nhanh tiết kiệm điện",
+        "lò vi sóng cho người già dễ dùng"
+      ],
+      hashtags: [
+        "#lovisonstokshiba",
+        "#lovisong20l",
+        "#giadungnhabep",
+        "#shopeesale",
+        "#tiktokshopvn",
+        "#dodungnhabep"
+      ]
+    }
+  },
+  null,
+  2
+);
 
 export default function VisionListingPage() {
   const { checkAccess, GateModals } = useToolGate();
@@ -95,6 +165,22 @@ export default function VisionListingPage() {
   const [result, setResult] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [mobileTab, setMobileTab] = useState<"form" | "result">("form");
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      if (abortControllerRef.current) abortControllerRef.current.abort();
+    };
+  }, []);
+
+  const handleCancel = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+  };
 
   // Form states
   const [platform, setPlatform] = useState(PLATFORMS[0]);
@@ -105,21 +191,33 @@ export default function VisionListingPage() {
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [imageFileName, setImageFileName] = useState<string>("");
 
-  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [compressing, setCompressing] = useState(false);
+
+  const handleImageFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.size > 5 * 1024 * 1024) {
-      showWarning("Dung lượng ảnh vượt quá 5MB. Vui lòng chọn ảnh nhẹ hơn!", "Ảnh Quá Lớn");
+    if (file.size > 15 * 1024 * 1024) {
+      showWarning("Dung lượng ảnh vượt quá 15MB. Vui lòng chọn ảnh nhẹ hơn!", "Ảnh Quá Lớn");
       return;
     }
 
     setImageFileName(file.name);
-    const reader = new FileReader();
-    reader.onload = () => {
-      setImageBase64(reader.result as string);
-    };
-    reader.readAsDataURL(file);
+    setCompressing(true);
+    try {
+      // Tự động nén và chuẩn hóa ảnh về max 1024px JPEG:
+      // Giúp giảm dung lượng từ vài MB xuống còn 150KB, tăng tốc Ollama Local gấp 5 lần
+      const optimizedBase64 = await compressImageForAi(file, 1024, 0.85);
+      setImageBase64(optimizedBase64 || null);
+    } catch {
+      const reader = new FileReader();
+      reader.onload = () => {
+        setImageBase64(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setCompressing(false);
+    }
   };
 
   const handleRemoveImage = () => {
@@ -156,14 +254,37 @@ export default function VisionListingPage() {
       return;
     }
 
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setLoading(true);
+    setElapsedSeconds(0);
     setResult("");
     setMobileTab("result");
+
+    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    timerIntervalRef.current = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+
+    const timeoutId = setTimeout(() => {
+      if (abortControllerRef.current === controller) {
+        controller.abort();
+        showAiError({
+          code: "TIMEOUT",
+          error: "Yêu cầu xử lý ảnh đã quá thời gian phản hồi (120s). Vui lòng thử lại với ảnh dung lượng nhẹ hơn hoặc kiểm tra kết nối mạng.",
+        });
+      }
+    }, 120000);
 
     try {
       const response = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           tool: "vision-listing",
           inputs: {
@@ -175,22 +296,34 @@ export default function VisionListingPage() {
           },
         }),
       });
-
+      console.log("DỮ liệu input => ", { imageBase64, platform, categoryHint, targetAudience, shopNote })
+      console.log("DỮ LIỆU TỪ AI =>", response);
       const data = await response.json();
 
       if (!response.ok || !data.success) {
         showAiError(data);
+        console.log("Dữ liệu lỗi => ", data);
         return;
       }
 
       setResult(data.data);
       setRefreshTrigger((prev) => prev + 1);
     } catch (error: any) {
+      if (error?.name === "AbortError" || controller.signal.aborted) {
+        showWarning("Đã dừng quá trình phân tích ảnh theo yêu cầu của bạn.", "Đã Hủy");
+        return;
+      }
       showAiError({
         code: "NETWORK_ERROR",
         error: "Không thể kết nối đến hệ thống AI. Vui lòng kiểm tra lại mạng hoặc thử lại sau.",
       });
     } finally {
+      clearTimeout(timeoutId);
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+      abortControllerRef.current = null;
       setLoading(false);
     }
   };
@@ -239,11 +372,20 @@ export default function VisionListingPage() {
                   <h1 className="text-lg sm:text-2xl font-black text-slate-900 dark:text-white leading-tight">
                     AI Phân Tích Ảnh Sản Phẩm
                   </h1>
-                  {/* Minimal icon-only reset button: ONLY ON MOBILE */}
+                  {/* Mobile Quick Action Buttons */}
+                  <button
+                    type="button"
+                    onClick={handleUseSample}
+                    className="md:hidden px-2 py-1 rounded-xl text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/60 transition-all cursor-pointer text-xs font-bold active:scale-90 flex items-center gap-1 shrink-0"
+                    title="Thử dữ liệu mẫu"
+                  >
+                    <Sparkles size={12} className="text-emerald-500" />
+                    <span>Mẫu</span>
+                  </button>
                   <button
                     type="button"
                     onClick={handleResetForm}
-                    className="md:hidden p-1.5 rounded-xl text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-transparent hover:border-rose-200 dark:hover:border-rose-900/60 transition-all cursor-pointer shadow-2xs active:scale-90"
+                    className="md:hidden p-1.5 rounded-xl text-slate-400 hover:text-rose-600 dark:hover:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/40 border border-transparent hover:border-rose-200 dark:hover:border-rose-900/60 transition-all cursor-pointer shadow-2xs active:scale-90 shrink-0"
                     title="Xóa Form / Đặt lại"
                     aria-label="Xóa Form"
                   >
@@ -414,60 +556,70 @@ export default function VisionListingPage() {
                 />
               </div>
 
-              {/* NÚT SUBMIT */}
-              <button
-                type="button"
-                onClick={handleGenerate}
-                disabled={loading || !imageBase64}
-                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 text-white font-bold text-sm shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99]"
-              >
-                {loading ? (
-                  <>
-                    <Sparkles size={16} className="animate-spin" /> Đang Phân Tích Ảnh & Viết Listing...
-                  </>
-                ) : (
-                  <>
-                    <Send size={16} /> Phân Tích & Tạo Listing AI
-                  </>
-                )}
-              </button>
-            </div>
+              {/* NÚT SUBMIT + HỦY */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleGenerate}
+                  disabled={loading || !imageBase64}
+                  className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 text-white font-bold text-sm shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99]"
+                >
+                  {loading ? (
+                    <>
+                      <Sparkles size={16} className="animate-spin text-white" />
+                      <span>Đang Phân Tích Ảnh ({elapsedSeconds}s)...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send size={16} /> Phân Tích &amp; Tạo Listing AI
+                    </>
+                  )}
+                </button>
 
-            {/* Tips Card */}
-            {/* <div className="bg-slate-100 dark:bg-slate-900/60 rounded-xl p-3.5 border border-slate-200/80 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400 space-y-1">
-              <p className="font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
-                <Clock size={13} className="text-emerald-500" /> Bí quyết để AI quan sát ảnh chính xác nhất:
-              </p>
-              <p>• <strong>Độ sáng rõ:</strong> Chụp nền trắng hoặc phông đơn sắc giúp AI nhận diện màu sắc chuẩn 100%.</p>
-              <p>• <strong>Thấy rõ chi tiết:</strong> Chụp cận cảnh đường may, phụ kiện, chất liệu vải hoặc bao bì sản phẩm.</p>
-            </div> */}
+                {loading && (
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    className="px-3.5 py-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 shrink-0"
+                    title="Hủy yêu cầu"
+                  >
+                    <XCircle size={16} />
+                    <span>Hủy</span>
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
 
         {/* CỘT PHẢI: KẾT QUẢ HIỂN THỊ */}
-        <div className={`${mobileTab === "result" ? "flex" : "hidden lg:flex"} lg:col-span-7 flex-col lg:min-h-0 lg:h-full lg:overflow-hidden`}>
+        <div className={`${mobileTab === "result" ? "flex" : "hidden lg:flex"} w-full lg:col-span-7 flex-col lg:min-h-0 lg:h-full lg:overflow-hidden pb-24 lg:pb-0`}>
 
           <VisionListingOutput
             output={result}
             isLoading={loading}
             productImage={imageBase64}
             onUseSample={handleUseSample}
+            elapsedSeconds={elapsedSeconds}
+            onCancel={handleCancel}
+            productName={categoryHint}
           />
         </div>
       </div>
 
       {/* Mobile Floating Sticky Action Bar (chỉ hiện khi ở tab form trên mobile) */}
       {mobileTab === "form" && (
-        <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 z-40 lg:hidden shadow-lg">
+        <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 z-40 lg:hidden shadow-lg flex items-center gap-2">
           <button
             type="button"
             onClick={handleGenerate}
             disabled={loading || !imageBase64}
-            className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 text-white font-bold text-sm shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99]"
+            className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 text-white font-bold text-sm shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99]"
           >
             {loading ? (
               <>
-                <Sparkles size={16} className="animate-spin" /> Đang Phân Tích Ảnh &amp; Viết Listing...
+                <Sparkles size={16} className="animate-spin text-white" />
+                <span>Đang Phân Tích ({elapsedSeconds}s)...</span>
               </>
             ) : (
               <>
@@ -475,6 +627,18 @@ export default function VisionListingPage() {
               </>
             )}
           </button>
+
+          {loading && (
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="px-3.5 py-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 shrink-0"
+              title="Hủy yêu cầu"
+            >
+              <XCircle size={16} />
+              <span>Hủy</span>
+            </button>
+          )}
         </div>
       )}
     </div>

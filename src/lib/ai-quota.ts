@@ -27,6 +27,9 @@ function configuredLimit(key: string, fallback: number) {
 }
 
 // SeoRun is the durable generation ledger for every AI tool. No database lock is
+export const AI_LEASE_TIMEOUT_MS = 360_000; // 6 phút: đảm bảo an toàn cho cả luồng Fallback đa nhà cung cấp
+
+// SeoRun is the durable generation ledger for every AI tool. No database lock is
 // held while waiting for a provider. An expired lease cannot commit a result.
 export async function reserveAi(userId: string | null, guestSubject?: string) {
   if (process.env.AI_ENABLED === "false") throw new SeoError("AI_DISABLED", "Dịch vụ AI đang tạm dừng.", 503);
@@ -34,26 +37,52 @@ export async function reserveAi(userId: string | null, guestSubject?: string) {
   const subject = userId ? `user:${userId}` : guestSubject;
   if (!subject) throw new SeoError("LOGIN_REQUIRED", "Vui lòng đăng nhập để sử dụng công cụ.", 401);
   await prisma.$transaction(async tx => {
-    // A single short lock makes the global spending guard safe across instances.
-    await tx.$executeRaw`SELECT pg_advisory_xact_lock(71420931)`;
+    // Khóa advisory cấp transaction phân tán theo người dùng (namespace 71420931, hashtext của subject)
+    // Chống click đúp và race condition cho cùng 1 user mà TUYỆT ĐỐI KHÔNG làm nghẽn người dùng khác.
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(71420931, hashtext(${subject}))`;
     const now = new Date();
     const day = vnDayStart(now);
-    const alive = new Date(now.getTime() - 150_000);
+    const alive = new Date(now.getTime() - AI_LEASE_TIMEOUT_MS);
+    const debounceWindow = new Date(now.getTime() - 4_000); // Khoảng đệm 4 giây chống click đúp liên tục
+    const activeTaskWindow = new Date(now.getTime() - 75_000); // Tác vụ đang chạy thực tế
+
     const attempts = await tx.seoRun.count({ where: { createdAt: { gte: day }, id: { startsWith: "ai_" } } });
     if (attempts >= configuredLimit("AI_GLOBAL_DAILY_ATTEMPTS", 5000)) throw new SeoError("AI_BUSY", "Hệ thống đã đạt giới hạn xử lý hôm nay. Vui lòng thử lại ngày mai.", 429);
-    if (await tx.seoRun.count({ where: { subject, id: { startsWith: "ai_" }, status: "pending", createdAt: { gt: alive } } })) {
-      throw new SeoError("REQUEST_IN_PROGRESS", "Một yêu cầu AI đang xử lý. Vui lòng chờ kết quả.", 429);
+
+    // 1. Kiểm tra chống spam click đúp liên tục trong vòng 4 giây
+    const recentClickSpam = await tx.seoRun.count({
+      where: { subject, id: { startsWith: "ai_" }, status: "pending", createdAt: { gt: debounceWindow } }
+    });
+    if (recentClickSpam > 0) {
+      throw new SeoError("REQUEST_IN_PROGRESS", "Một yêu cầu AI đang được khởi tạo. Vui lòng chờ vài giây...", 429);
     }
+
+    // 2. Tự động giải phóng các lease thực sự mồ côi (treo quá AI_LEASE_TIMEOUT_MS) - TUYỆT ĐỐI KHÔNG HỦY TÁC VỤ ĐANG CHẠY BÌNH THƯỜNG
+    await tx.seoRun.updateMany({
+      where: { subject, id: { startsWith: "ai_" }, status: "pending", createdAt: { lte: alive } },
+      data: { status: "failed" }
+    });
+
     if (userId) {
       await tx.$queryRaw`SELECT "id" FROM "User" WHERE "id" = ${userId} FOR UPDATE`;
       const user = await tx.user.findUnique({ where: { id: userId } });
       if (!user || user.isLocked) throw new SeoError("LOGIN_REQUIRED", "Phiên đăng nhập không hợp lệ.", 401);
-      const limit = isVipActive(user) ? configuredLimit("AI_VIP_DAILY_LIMIT", 200) : user.dailyFreeLimit;
+      const isVip = isVipActive(user);
+      const limit = isVip ? configuredLimit("AI_VIP_DAILY_LIMIT", 200) : user.dailyFreeLimit;
       const count = await tx.aiUsageLog.count({ where: { userId, tool: { in: AI_TOOLS }, createdAt: { gte: day } } });
       if (count >= limit) throw new SeoError("DAILY_LIMIT_EXCEEDED", `Bạn đã dùng hết ${limit} kết quả AI hôm nay. Vui lòng quay lại ngày mai.`, 429);
+
+      // 3. Kiểm soát luồng đồng thời an toàn: VIP tối đa 2 tác vụ, thường 1 tác vụ
+      const maxConcurrent = isVip ? 2 : 1;
+      const activeRunningCount = await tx.seoRun.count({
+        where: { subject, id: { startsWith: "ai_" }, status: "pending", createdAt: { gt: activeTaskWindow } }
+      });
+      if (activeRunningCount >= maxConcurrent) {
+        throw new SeoError("REQUEST_IN_PROGRESS", "Bạn đang có tác vụ AI đang xử lý. Vui lòng chờ hoàn tất trước khi tạo thêm.", 429);
+      }
     }
     await tx.seoRun.create({ data: { id: `ai_${id}`, subject, status: "pending" } });
-  });
+  }, { maxWait: 10000, timeout: 25000 });
   return `ai_${id}`;
 }
 
@@ -74,7 +103,7 @@ export async function completeAi(
 ) {
   return prisma.$transaction(async tx => {
     const result = await tx.seoRun.updateMany({
-      where: { id, status: "pending", createdAt: { gt: new Date(Date.now() - 150_000) } },
+      where: { id, status: "pending", createdAt: { gt: new Date(Date.now() - AI_LEASE_TIMEOUT_MS) } },
       data: { status: "success", model: data.model, inputTokens: data.inputTokens, outputTokens: data.outputTokens },
     });
     if (result.count !== 1) throw new SeoError("REQUEST_EXPIRED", "Yêu cầu đã hết thời gian xử lý. Vui lòng thử lại.", 409);
@@ -105,20 +134,24 @@ export async function completeAi(
         });
       } catch (logErr) {
         // Dự phòng ghi nhận trực tiếp bằng raw query nếu memory cache Prisma cũ
-        const logId = randomUUID();
-        await tx.$executeRaw`
-          INSERT INTO "AiUsageLog" (
-            id, "userId", tool, "toolName", action, input, output,
-            model, "promptTokens", "completionTokens", "totalTokens", "costUsd", "createdAt"
-          ) VALUES (
-            ${logId}, ${data.userId}, ${data.tool}, ${toolName}, ${action}, ${inputStr}, ${data.output},
-            ${data.model}, ${promptTokens}, ${completionTokens}, ${totalTokens}, ${costUsd}, NOW()
-          )
-        `;
+        try {
+          const logId = randomUUID();
+          await tx.$executeRaw`
+            INSERT INTO "AiUsageLog" (
+              id, "userId", tool, "toolName", action, input, output,
+              model, "promptTokens", "completionTokens", "totalTokens", "costUsd", "createdAt"
+            ) VALUES (
+              ${logId}, ${data.userId}, ${data.tool}, ${toolName}, ${action}, ${inputStr}, ${data.output},
+              ${data.model}, ${promptTokens}, ${completionTokens}, ${totalTokens}, ${costUsd}, NOW()
+            )
+          `;
+        } catch (rawErr) {
+          console.error("ai_usage_log_persist_warn", rawErr);
+        }
       }
     }
     if (finalize) await finalize(tx);
-  });
+  }, { maxWait: 10000, timeout: 25000 });
 }
 export async function releaseAi(id: string) {
   await prisma.seoRun.updateMany({ where: { id, status: "pending" }, data: { status: "failed" } });

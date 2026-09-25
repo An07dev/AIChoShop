@@ -5,50 +5,36 @@ import {
   Copy,
   Check,
   FileSpreadsheet,
-  Sparkles,
-  LayoutList,
-  FileText,
-  Video,
-  Flame,
-  Zap,
-  Lightbulb,
-  ShoppingBag,
   Download,
+  Video,
+  Radio,
   Film,
-  Layers,
-  Mic,
-  Camera,
-  Type,
-  Music,
-  CheckCircle2,
+  Sparkles,
+  ShieldCheck,
+  Tv,
 } from "lucide-react";
-import * as XLSX from "xlsx";
 import { TextShimmerWave } from "@/components/loading-ui/text-shimmer-wave";
-
-export interface ScriptSection {
-  id: number;
-  timeRange: string;
-  phase: string;
-  type: "hook" | "pain" | "solution" | "cta" | "other";
-  voice: string;
-  action?: string;
-  overlay?: string;
-  content: string;
-}
-
-export interface ScriptItem {
-  id: number;
-  title: string;
-  sections: ScriptSection[];
-  notes?: string;
-  rawText: string;
-}
+import {
+  parseScriptWriterResult,
+  scriptToText,
+  formatTeleprompterText,
+  formatLiveTeleprompterText,
+  formatAllTeleprompterText,
+  exportScriptExcel,
+  type ScriptFormat,
+  type ScriptWriterData,
+  type VideoScriptItem,
+  type VideoScriptScene,
+} from "@/lib/script-writer/contract";
 
 interface ScriptWriterOutputProps {
   result: string;
   loading: boolean;
   productName: string;
   usp?: string;
+  format?: ScriptFormat;
+  elapsedSeconds?: number;
+  onCancel?: () => void;
   onUseSample?: () => void;
 }
 
@@ -57,778 +43,1112 @@ export function ScriptWriterOutput({
   loading,
   productName,
   usp,
+  format = "both",
+  elapsedSeconds,
+  onCancel,
   onUseSample,
 }: ScriptWriterOutputProps) {
   const [copiedAll, setCopiedAll] = useState(false);
-  const [copiedScriptId, setCopiedScriptId] = useState<number | null>(null);
-  const [copiedSectionKey, setCopiedSectionKey] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<"cards" | "raw">("cards");
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<"visual" | "teleprompter" | "raw">("visual");
+  const [activeFilter, setActiveFilter] = useState<"all" | "video" | "live" | "policy">("all");
   const [selectedScriptId, setSelectedScriptId] = useState<number>(1);
-  const [viewAll, setViewAll] = useState<boolean>(false);
+  const [teleprompterTarget, setTeleprompterTarget] = useState<string>("video-1");
+  const [teleprompterSubMode, setTeleprompterSubMode] = useState<"cards" | "markdown">("cards");
 
-  // Bóc tách kết quả AI thành danh sách các kịch bản chuẩn bảng phân cảnh
-  const scripts: ScriptItem[] = useMemo(() => {
-    if (!result) return [];
+  // Parser 4 tầng bền bỉ
+  const data: ScriptWriterData = useMemo(() => {
+    return parseScriptWriterResult(result, format);
+  }, [result, format]);
 
-    // 1. Chuẩn hóa: ngắt dòng trước các thẻ markdown bị dính liền và lọc ký tự ngoại lai
-    const normalized = result
-      .replace(/```markdown/gi, "\n```markdown\n")
-      .replace(/```/g, "\n```\n")
-      .replace(/\s+(#+\s+Kịch bản)/gi, "\n\n$1")
-      .replace(/\s+(#+\s+\[\d{2}:\d{2})/gi, "\n\n$1")
-      .replace(/\s+(##+\s+Hook)/gi, "\n\n$1")
-      .replace(/\s+(##+\s+Nỗi đau)/gi, "\n\n$1")
-      .replace(/\s+(##+\s+Giải pháp)/gi, "\n\n$1")
-      .replace(/\s+(##+\s+Call to Action)/gi, "\n\n$1")
-      .replace(/\s+(#+\s+Lưu ý)/gi, "\n\n$1")
-      .replace(/\s+(#+\s+Gợi ý quay dựng)/gi, "\n\n$1")
-      .replace(/[\u4e00-\u9fa5]+[^\n]*\n?/g, ""); // Lọc câu bình luận tiếng Trung nếu có
+  // Văn bản text thô (Markdown chuẩn) cho toàn bộ kịch bản
+  const formattedRawText = useMemo(() => {
+    return data ? scriptToText(data) : (result || "");
+  }, [data, result]);
 
-    const lines = normalized.split("\n");
-    const parsedScripts: ScriptItem[] = [];
+  const videoScripts = useMemo(() => data.videoScripts || [], [data]);
+  const liveScript = useMemo(() => data.liveScript, [data]);
+  const policy = useMemo(() => data.policyCompliance, [data]);
 
-    let currentScript: Partial<ScriptItem> | null = null;
-    let currentSection: Partial<ScriptSection> | null = null;
-    let bufferSection: string[] = [];
-    let bufferNotes: string[] = [];
-    let isInsideNotes = false;
-
-    const finishCurrentSection = () => {
-      if (currentSection && currentScript && currentScript.sections) {
-        const fullContent = bufferSection.join("\n").trim();
-
-        // Bóc tách chi tiết từng dòng: Lời thoại (Voice), Hành động (Visual), Chữ trên màn hình (Overlay)
-        let voice = "";
-        let action = "";
-        let overlay = "";
-
-        bufferSection.forEach((l) => {
-          const tr = l.trim();
-          const vMatch = tr.match(
-            /^[-*•\s]*(?:\*\*|\*)?(?:Lời thoại|Voice|Thoại)[^:\n\r]*[:\-]\s*(.*)$/i
-          );
-          if (vMatch) {
-            voice = vMatch[1]
-              .replace(/^\*\*|\*\*$/g, "")
-              .replace(/^["'“”«»\s]+|["'“”«»\s]+$/g, "")
-              .trim();
-            return;
-          }
-
-          const aMatch = tr.match(
-            /^[-*•\s]*(?:\*\*|\*)?(?:Hình ảnh|Hành động|Visual|Góc quay|Camera)[^:\n\r]*[:\-]\s*(.*)$/i
-          );
-          if (aMatch) {
-            action = aMatch[1].replace(/^\*\*|\*\*$/g, "").trim();
-            return;
-          }
-
-          const oMatch = tr.match(
-            /^[-*•\s]*(?:\*\*|\*)?(?:Chữ trên video|Text trên video|Text hiển thị|Caption|Chữ màn hình|Text)[^:\n\r]*[:\-]\s*(.*)$/i
-          );
-          if (oMatch) {
-            overlay = oMatch[1]
-              .replace(/^\*\*|\*\*$/g, "")
-              .replace(/^["'“”«»\s]+|["'“”«»\s]+$/g, "")
-              .trim();
-            return;
-          }
-        });
-
-        // Nếu không có voice riêng biệt, trích xuất câu trích dẫn hoặc fallback lấy fullContent
-        if (!voice && !action) {
-          const quoteMatch = fullContent.match(/["“]([^"”\n\r]{10,})["”]/);
-          if (quoteMatch) {
-            voice = quoteMatch[1].trim();
-          } else {
-            voice = fullContent;
-          }
-        }
-
-        currentScript.sections.push({
-          id: currentScript.sections.length + 1,
-          timeRange: currentSection.timeRange || "",
-          phase: currentSection.phase || `Cảnh ${currentScript.sections.length + 1}`,
-          type: currentSection.type || "other",
-          voice: voice,
-          action: action,
-          overlay: overlay,
-          content: fullContent,
-        });
-
-        currentSection = null;
-        bufferSection = [];
-      }
-    };
-
-    const finishCurrentScript = () => {
-      finishCurrentSection();
-      if (currentScript && currentScript.sections && currentScript.sections.length > 0) {
-        const notes = bufferNotes.join("\n").trim();
-        const scriptId = parsedScripts.length + 1;
-
-        let title = currentScript.title?.trim() || "";
-        if (!title || /^Kịch bản video TikTok ngắn$/i.test(title)) {
-          title = `Kịch bản ${scriptId}`;
-        }
-
-        const sectionsRaw = currentScript.sections
-          .map((s) => {
-            const parts = [`[${s.timeRange}] ${s.phase}`];
-            if (s.action) parts.push(`- Hành động: ${s.action}`);
-            if (s.voice) parts.push(`- Lời thoại: "${s.voice}"`);
-            if (s.overlay) parts.push(`- Chữ trên video: ${s.overlay}`);
-            if (!s.action && !s.overlay && s.content) parts.push(s.content);
-            return parts.join("\n");
-          })
-          .join("\n\n");
-
-        parsedScripts.push({
-          id: scriptId,
-          title: title,
-          sections: currentScript.sections as ScriptSection[],
-          notes: notes || undefined,
-          rawText: `${title}\n\n${sectionsRaw}${notes ? `\n\nLưu ý & Quay dựng:\n${notes}` : ""}`,
-        });
-
-        currentScript = null;
-        bufferNotes = [];
-        isInsideNotes = false;
-      }
-    };
-
-    const startNewScript = (title?: string) => {
-      finishCurrentScript();
-      const nextId = parsedScripts.length + 1;
-      currentScript = {
-        id: nextId,
-        title: title || `Kịch bản ${nextId}`,
-        sections: [],
-      };
-      isInsideNotes = false;
-    };
-
-    lines.forEach((line) => {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith("```")) return;
-
-      // Kiểm tra dòng tiêu đề kịch bản: VD "# KỊCH BẢN 1:", "Kịch bản số 2", "Biến thể 2"
-      const isExplicitScriptHeader =
-        /^(?:#+\s*)?(?:KỊCH BẢN|Kịch bản|Phiên bản|Biến thể|Option)\s*(\d+|[A-Z]|số\s*\d+)?[\:\-\.]?\s*(.*)$/i.test(
-          trimmed
-        );
-      const isHookStart =
-        /\[\s*00:00\s*-\s*00:03\s*\]/i.test(trimmed) ||
-        (/HOOK/i.test(trimmed) && /\[\d{2}:\d{2}/i.test(trimmed));
-
-      const currentHasHook = currentScript?.sections?.some((s) => s.type === "hook");
-
-      // Bắt đầu kịch bản mới nếu gặp Header kịch bản hoặc gặp lại Hook khi script trước đã có Hook
-      if (isExplicitScriptHeader && !isHookStart) {
-        let scriptTitle = trimmed.replace(/^#+\s*/, "").replace(/\*+/g, "").trim();
-        if (/^Kịch bản video TikTok ngắn$/i.test(scriptTitle) || !scriptTitle) {
-          scriptTitle = `Kịch bản ${parsedScripts.length + 1}`;
-        }
-        startNewScript(scriptTitle);
-        return;
-      } else if (isHookStart && (!currentScript || currentHasHook)) {
-        startNewScript(`Kịch bản ${parsedScripts.length + 1}`);
-      }
-
-      if (!currentScript) {
-        startNewScript(`Kịch bản 1`);
-      }
-
-      // Kiểm tra phần Gợi ý quay dựng / Lưu ý
-      if (
-        /^#+\s*(?:Gợi ý quay dựng|Lưu ý|Tips)/i.test(trimmed) ||
-        /^Gợi ý quay dựng[\:\-]/i.test(trimmed) ||
-        /^Lưu ý[\:\-]/i.test(trimmed)
-      ) {
-        finishCurrentSection();
-        isInsideNotes = true;
-        return;
-      }
-
-      if (isInsideNotes) {
-        bufferNotes.push(line);
-        return;
-      }
-
-      // Kiểm tra các mốc phân cảnh Timeline (Hook, Nỗi đau, Giải pháp, CTA)
-      const timeMatch = trimmed.match(/\[(\d{2}:\d{2}\s*-\s*[^\]]+)\]\s*(.*)/i);
-      const isPhaseHeader =
-        trimmed.startsWith("###") || trimmed.startsWith("##") || trimmed.startsWith("- [");
-
-      const hasHook = /HOOK/i.test(trimmed);
-      const hasPain = /NỖI ĐAU|VẤN ĐỀ/i.test(trimmed);
-      const hasSolution = /GIẢI PHÁP|SẢN PHẨM/i.test(trimmed);
-      const hasCta = /CALL TO ACTION|CTA|KÊU GỌI/i.test(trimmed);
-
-      if (timeMatch || (isPhaseHeader && (hasHook || hasPain || hasSolution || hasCta))) {
-        finishCurrentSection();
-
-        let timeRange = timeMatch ? timeMatch[1].trim() : "";
-        let afterTime = timeMatch
-          ? timeMatch[2].trim()
-          : trimmed.replace(/^[#\*\_\-\s]+|[#\*\_\-\s]+$/g, "");
-
-        let type: ScriptSection["type"] = "other";
-        let phase = afterTime;
-        let inlineContent = "";
-
-        // Bóc tách phần text nội dung nếu nằm cùng trên 1 dòng
-        const colonMatch = afterTime.match(
-          /^(?:\*{0,2})(HOOK|NỖI ĐAU|GIẢI PHÁP|CALL TO ACTION|CTA|KÊU GỌI|MỞ ĐẦU|VẤN ĐỀ)(?:\*{0,2})[\:\-\–—]\s*(.*)$/i
-        );
-        if (colonMatch) {
-          inlineContent = colonMatch[2].trim();
-        } else {
-          const genericColon = afterTime.match(/^([^:\-–—]{2,30})[\:\-–—]\s*(.*)$/);
-          if (genericColon && (hasHook || hasPain || hasSolution || hasCta)) {
-            inlineContent = genericColon[2].trim();
-          }
-        }
-
-        if (hasHook) {
-          type = "hook";
-          phase = "HOOK - Giữ Chân 3s Đầu";
-          if (!timeRange) timeRange = "00:00 - 00:03";
-        } else if (hasPain) {
-          type = "pain";
-          phase = "NỖI ĐAU - Khơi Gợi Vấn Đề";
-          if (!timeRange) timeRange = "00:03 - 00:15";
-        } else if (hasSolution) {
-          type = "solution";
-          phase = "GIẢI PHÁP - Giới Thiệu USP";
-          if (!timeRange) timeRange = "00:15 - 00:30";
-        } else if (hasCta) {
-          type = "cta";
-          phase = "CTA - Kêu Gọi Giỏ Hàng";
-          if (!timeRange) timeRange = "00:30 - Hết Video";
-        }
-
-        currentSection = {
-          timeRange,
-          phase,
-          type,
-        };
-
-        if (inlineContent) {
-          bufferSection.push(inlineContent);
-        }
-      } else {
-        if (currentSection) {
-          bufferSection.push(line);
-        }
-      }
-    });
-
-    finishCurrentScript();
-
-    // Fallback nếu không chia được kịch bản
-    if (parsedScripts.length === 0 && result.trim()) {
-      return [
-        {
-          id: 1,
-          title: "Kịch bản Video Chi Tiết",
-          sections: [
-            {
-              id: 1,
-              timeRange: "00:00 - 00:45",
-              phase: "Toàn bộ kịch bản",
-              type: "other",
-              voice: result.trim(),
-              content: result.trim(),
-            },
-          ],
-          rawText: result.trim(),
-        },
-      ];
-    }
-
-    return parsedScripts;
-  }, [result]);
-
-  // Tự động chọn kịch bản đầu tiên khi có dữ liệu mới
+  // Đảm bảo selectedScriptId luôn hợp lệ
   useEffect(() => {
-    if (scripts.length > 0) {
-      if (!scripts.some((s) => s.id === selectedScriptId)) {
-        setSelectedScriptId(scripts[0].id);
+    if (videoScripts.length > 0) {
+      if (!videoScripts.some((s) => s.id === selectedScriptId)) {
+        setSelectedScriptId(videoScripts[0].id);
       }
     }
-  }, [scripts, selectedScriptId]);
+  }, [videoScripts, selectedScriptId]);
 
-  // Kịch bản đang được chọn hiển thị
-  const activeScript = useMemo(() => {
-    return scripts.find((s) => s.id === selectedScriptId) || scripts[0];
-  }, [scripts, selectedScriptId]);
+  // Đảm bảo teleprompterTarget luôn hợp lệ khi dữ liệu thay đổi
+  useEffect(() => {
+    if (videoScripts.length > 0) {
+      if (teleprompterTarget.startsWith("video-")) {
+        const id = parseInt(teleprompterTarget.replace("video-", ""), 10);
+        if (!videoScripts.some((s) => s.id === id)) {
+          setTeleprompterTarget(`video-${videoScripts[0].id}`);
+        }
+      }
+    } else if (liveScript) {
+      setTeleprompterTarget("live");
+    }
+  }, [videoScripts, liveScript, teleprompterTarget]);
 
-  // Sao chép 1 phân cảnh cụ thể
-  const handleCopySection = (text: string, key: string) => {
+  const activeVideoScript = useMemo(() => {
+    return videoScripts.find((s) => s.id === selectedScriptId) || videoScripts[0];
+  }, [videoScripts, selectedScriptId]);
+
+  const selectedTeleprompterVideo = useMemo(() => {
+    if (!teleprompterTarget.startsWith("video-")) return null;
+    const id = parseInt(teleprompterTarget.replace("video-", ""), 10);
+    return videoScripts.find((s) => s.id === id) || videoScripts[0] || null;
+  }, [videoScripts, teleprompterTarget]);
+
+  // Nội dung văn bản nhắc chữ của mục đang chọn
+  const currentTeleprompterText = useMemo(() => {
+    if (teleprompterTarget === "all") {
+      return formatAllTeleprompterText(data);
+    }
+    if (teleprompterTarget === "live" && liveScript) {
+      return formatLiveTeleprompterText(liveScript);
+    }
+    if (selectedTeleprompterVideo) {
+      return formatTeleprompterText(selectedTeleprompterVideo);
+    }
+    if (videoScripts.length > 0) {
+      return formatTeleprompterText(videoScripts[0]);
+    }
+    if (liveScript) {
+      return formatLiveTeleprompterText(liveScript);
+    }
+    return "";
+  }, [teleprompterTarget, data, liveScript, selectedTeleprompterVideo, videoScripts]);
+
+  // Sao chép dùng chung (Icon-only)
+  const handleCopy = (text: string, key: string) => {
+    if (!text) return;
     navigator.clipboard.writeText(text);
-    setCopiedSectionKey(key);
-    setTimeout(() => setCopiedSectionKey(null), 1800);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 2000);
   };
 
-  // Sao chép kịch bản đang chọn
-  const handleCopySingleScript = (script: ScriptItem) => {
-    navigator.clipboard.writeText(script.rawText);
-    setCopiedScriptId(script.id);
-    setTimeout(() => setCopiedScriptId(null), 1800);
-  };
-
-  // Sao chép TẤT CẢ các kịch bản
+  // Sao chép tất cả
   const handleCopyAll = () => {
-    if (scripts.length === 0) return;
-    const combined = scripts
-      .map(
-        (s) =>
-          `================== ${s.title.toUpperCase()} ==================\n\n${s.rawText}`
-      )
-      .join("\n\n\n");
-    navigator.clipboard.writeText(combined);
+    if (!formattedRawText) return;
+    handleCopy(formattedRawText, "all");
     setCopiedAll(true);
     setTimeout(() => setCopiedAll(false), 2000);
   };
 
-  // Tải file văn bản (.txt)
-  const handleDownloadTxt = () => {
-    if (scripts.length === 0) return;
-    const contentToDownload = viewAll
-      ? scripts
-          .map(
-            (s) =>
-              `================== ${s.title.toUpperCase()} ==================\n\n${s.rawText}`
-          )
-          .join("\n\n\n")
-      : activeScript?.rawText || result;
-
-    const blob = new Blob([contentToDownload], { type: "text/plain;charset=utf-8" });
+  // Tải file .txt
+  const handleDownload = () => {
+    if (!formattedRawText) return;
+    const blob = new Blob([formattedRawText], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.href = url;
+    const a = document.createElement("a");
+    a.href = url;
     const safeName = productName
-      ? productName.replace(/[^a-zA-Z0-9\s]/g, "").slice(0, 25).trim()
-      : "TikTok";
-    link.download = `KichBan_${safeName || "Video"}.txt`;
-    link.click();
+      ? productName.replace(/[^a-zA-Z0-9]/g, "-").slice(0, 30)
+      : "kich-ban";
+    a.download = `kich-ban-video-live-${safeName}.txt`;
+    a.click();
     URL.revokeObjectURL(url);
   };
 
-  // Xuất file Excel kịch bản phân cảnh (.xlsx)
+  // Xuất Excel
   const handleExportExcel = () => {
-    if (scripts.length === 0) return;
-
-    const excelRows: any[] = [];
-
-    scripts.forEach((script) => {
-      script.sections.forEach((sec) => {
-        excelRows.push({
-          "Kịch Bản": script.title,
-          "Phân Cảnh": `Cảnh ${sec.id}`,
-          "Thời Lượng": sec.timeRange || "N/A",
-          "Mục Tiêu": sec.phase,
-          "Lời Thoại (Voiceover)": sec.voice || sec.content,
-          "Hành Động / Góc Máy (Visual)": sec.action || "Theo kịch bản",
-          "Chữ Trên Video (Caption)": sec.overlay || "",
-          "Gợi Ý Âm Thanh / Quay Dựng": script.notes || "",
-          "Sản Phẩm": productName || "N/A",
-          "USP Nổi Bật": usp || "N/A",
-        });
-      });
-    });
-
-    const worksheet = XLSX.utils.json_to_sheet(excelRows);
-
-    worksheet["!cols"] = [
-      { wch: 22 }, // Kịch bản
-      { wch: 10 }, // Cảnh
-      { wch: 16 }, // Thời lượng
-      { wch: 24 }, // Mục tiêu
-      { wch: 55 }, // Lời thoại
-      { wch: 45 }, // Hành động
-      { wch: 32 }, // Chữ trên video
-      { wch: 35 }, // Gợi ý quay dựng
-      { wch: 28 }, // Sản phẩm
-      { wch: 30 }, // USP
-    ];
-
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "BangPhanCanhTikTok");
-
-    const now = new Date();
-    const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(now.getDate()).padStart(2, "0")}_${String(now.getHours()).padStart(2, "0")}${String(now.getMinutes()).padStart(2, "0")}`;
-    const fileName = `AIChoShop_KichBan_${dateStr}.xlsx`;
-
-    XLSX.writeFile(workbook, fileName);
+    exportScriptExcel(data, productName, usp);
   };
 
-  // Theme màu sắc phân cảnh
-  const getSectionTheme = (type: ScriptSection["type"]) => {
-    switch (type) {
-      case "hook":
-        return {
-          icon: <Flame size={14} className="text-amber-400" />,
-          badgeBg: "bg-amber-500/15 border-amber-500/30 text-amber-300",
-          border: "hover:border-amber-500/40",
-        };
-      case "pain":
-        return {
-          icon: <Zap size={14} className="text-orange-400" />,
-          badgeBg: "bg-orange-500/15 border-orange-500/30 text-orange-300",
-          border: "hover:border-orange-500/40",
-        };
-      case "solution":
-        return {
-          icon: <Lightbulb size={14} className="text-purple-400" />,
-          badgeBg: "bg-purple-500/15 border-purple-500/30 text-purple-300",
-          border: "hover:border-purple-500/40",
-        };
-      case "cta":
-        return {
-          icon: <ShoppingBag size={14} className="text-pink-400" />,
-          badgeBg: "bg-pink-500/15 border-pink-500/30 text-pink-300",
-          border: "hover:border-pink-500/40",
-        };
-      default:
-        return {
-          icon: <Sparkles size={14} className="text-indigo-400" />,
-          badgeBg: "bg-indigo-500/15 border-indigo-500/30 text-indigo-300",
-          border: "hover:border-indigo-500/40",
-        };
-    }
-  };
-
-  const wordCount = result ? result.trim().split(/\s+/).length : 0;
-  const totalSections = scripts.reduce((acc, s) => acc + s.sections.length, 0);
-
-  // Component render một kịch bản theo bảng phân cảnh chuyên nghiệp
-  const renderScriptCard = (script: ScriptItem, isSingleView: boolean = false) => {
-    return (
-      <div
-        key={script.id}
-        className={`bg-slate-900/90 border rounded-2xl overflow-hidden transition-all shadow-md ${
-          isSingleView
-            ? "border-transparent"
-            : "border-slate-800 hover:border-purple-500/40 mb-5"
-        }`}
-      >
-        {/* Header của từng kịch bản */}
-        <div className="px-3.5 sm:px-4 py-2.5 bg-slate-800/80 border-b border-slate-700/60 flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="w-6 h-6 rounded-lg bg-gradient-to-tr from-purple-600 to-indigo-600 text-white font-black text-[11px] flex items-center justify-center shrink-0 shadow-sm">
-              #{script.id}
-            </span>
-            <h3 className="font-bold text-white text-xs sm:text-sm truncate">
-              {script.title}
-            </h3>
-            <span className="text-[10px] text-slate-400 font-medium px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 shrink-0">
-              {script.sections.length} cảnh
-            </span>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => handleCopySingleScript(script)}
-            className={`shrink-0 px-2.5 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer ${
-              copiedScriptId === script.id
-                ? "bg-emerald-500 text-white"
-                : "bg-purple-600/20 hover:bg-purple-600 text-purple-300 hover:text-white border border-purple-500/30"
-            }`}
-            title="Sao chép kịch bản này"
-          >
-            {copiedScriptId === script.id ? <Check size={12} className="stroke-[3]" /> : <Copy size={12} />}
-            <span>{copiedScriptId === script.id ? "Đã chép" : "Chép kịch bản"}</span>
-          </button>
-        </div>
-
-        {/* Nội dung các phân cảnh */}
-        <div className="p-3 sm:p-4 space-y-3">
-          {script.sections.map((sec) => {
-            const theme = getSectionTheme(sec.type);
-            const sectionKey = `${script.id}-${sec.id}`;
-            const textToCopy = sec.voice || sec.content;
-
-            return (
-              <div
-                key={sec.id}
-                className={`group bg-slate-800/60 hover:bg-slate-800/90 border border-slate-700/60 ${theme.border} p-3 sm:p-3.5 rounded-xl transition-all shadow-xs space-y-2.5`}
-              >
-                {/* Thanh tiêu đề phân cảnh */}
-                <div className="flex items-center justify-between gap-2 border-b border-slate-700/50 pb-2">
-                  <div className="flex items-center gap-1.5 flex-wrap min-w-0">
-                    <span
-                      className={`inline-flex items-center gap-1 text-[11px] font-bold px-2 py-0.5 rounded-md border ${theme.badgeBg}`}
-                    >
-                      {theme.icon}
-                      <span className="truncate">{sec.phase}</span>
-                    </span>
-                    {sec.timeRange && (
-                      <span className="text-[10px] font-mono text-slate-400 bg-slate-700/40 px-1.5 py-0.5 rounded border border-slate-700/60 shrink-0">
-                        ⏱️ {sec.timeRange}
-                      </span>
-                    )}
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handleCopySection(textToCopy, sectionKey)}
-                    className={`shrink-0 px-2 py-0.5 rounded text-[10px] font-semibold flex items-center gap-1 transition-all cursor-pointer ${
-                      copiedSectionKey === sectionKey
-                        ? "bg-emerald-500 text-white"
-                        : "bg-slate-700/50 hover:bg-purple-600 text-slate-300 hover:text-white border border-slate-600/40"
-                    }`}
-                    title="Sao chép lời thoại phân cảnh này"
-                  >
-                    {copiedSectionKey === sectionKey ? (
-                      <Check size={11} className="stroke-[3]" />
-                    ) : (
-                      <Copy size={11} />
-                    )}
-                    <span>
-                      {copiedSectionKey === sectionKey ? "Đã chép" : "Copy thoại"}
-                    </span>
-                  </button>
-                </div>
-
-                {/* 1. Lời thoại (Voiceover) - Teleprompter Box */}
-                {sec.voice ? (
-                  <div className="p-2.5 sm:p-3 rounded-xl bg-slate-900/90 border border-purple-500/20 shadow-inner">
-                    <div className="flex items-center gap-1.5 text-purple-300 text-[10px] font-bold uppercase tracking-wider mb-1">
-                      <Mic size={12} className="text-purple-400 shrink-0" />
-                      <span>Lời thoại (Voiceover):</span>
-                    </div>
-                    <p className="text-slate-100 text-xs sm:text-[13px] font-medium leading-relaxed font-sans select-all">
-                      &ldquo;{sec.voice}&rdquo;
-                    </p>
-                  </div>
-                ) : (
-                  sec.content && (
-                    <div className="p-2.5 sm:p-3 rounded-xl bg-slate-900/80 border border-slate-700/60 text-slate-200 text-xs leading-relaxed whitespace-pre-wrap font-sans select-all">
-                      {sec.content}
-                    </div>
-                  )
-                )}
-
-                {/* 2. Hành động & Góc quay (Visual / Action) */}
-                {sec.action && (
-                  <div className="px-2.5 py-2 rounded-lg bg-slate-900/50 border border-slate-700/40 flex items-start gap-2 text-xs text-slate-300">
-                    <Camera size={13} className="text-indigo-400 shrink-0 mt-0.5" />
-                    <div className="min-w-0">
-                      <span className="text-slate-400 font-semibold text-[11px] mr-1.5">
-                        Hành động / Visual:
-                      </span>
-                      <span className="text-slate-200 text-[11px] leading-relaxed">
-                        {sec.action}
-                      </span>
-                    </div>
-                  </div>
-                )}
-
-                {/* 3. Chữ trên màn hình (Text Overlay / Caption) */}
-                {sec.overlay && (
-                  <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-300 text-[11px] font-bold">
-                    <Type size={12} className="text-amber-400 shrink-0" />
-                    <span>Chữ trên video:</span>
-                    <span className="text-amber-200 font-semibold">&ldquo;{sec.overlay}&rdquo;</span>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-
-          {/* Hộp gợi ý âm thanh & quay dựng nếu có */}
-          {script.notes && (
-            <div className="mt-3 p-3 rounded-xl bg-purple-950/25 border border-purple-800/40 text-purple-200 text-xs flex items-start gap-2.5">
-              <Music size={16} className="text-purple-400 shrink-0 mt-0.5" />
-              <div className="space-y-1 min-w-0">
-                <span className="font-bold text-purple-300 text-[11px] uppercase tracking-wide flex items-center gap-1">
-                  Gợi ý âm thanh & Quay dựng:
-                </span>
-                <p className="text-purple-200/90 whitespace-pre-wrap leading-relaxed text-[11px]">
-                  {script.notes}
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  };
+  const wordCount = formattedRawText ? formattedRawText.trim().split(/\s+/).length : 0;
+  const totalVideoScenes = videoScripts.reduce((acc, s) => acc + s.scenes.length, 0);
 
   return (
-    <div className="bg-slate-900 rounded-2xl shadow-xl flex flex-col lg:h-full lg:min-h-0 relative lg:overflow-hidden border border-slate-800">
-      {/* Hiệu ứng nền mờ màu tím sang trọng */}
-      <div className="absolute top-0 right-0 p-36 bg-purple-500/10 rounded-full blur-[100px] pointer-events-none"></div>
-      <div className="absolute bottom-0 left-0 p-36 bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none"></div>
-
-      {/* Header thanh công cụ (Sticky trên mobile) */}
-      <div className="sticky top-0 z-20 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-3.5 sm:px-4 py-2.5 flex flex-col gap-2 shrink-0">
-        {/* Row 1: Tiêu đề + Script count + View mode toggle */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <div className="p-1.5 rounded-lg bg-purple-500/20 text-purple-400 shrink-0">
-              <Video size={16} />
+    <div className="bg-black rounded-2xl shadow-2xl flex flex-col lg:h-full lg:min-h-0 relative lg:overflow-hidden border border-slate-800 text-white">
+      {/* Header thanh công cụ (Sticky) - Chuẩn phong cách AI Mẫu Quảng Cáo */}
+      <div className="sticky top-0 z-20 bg-black/95 backdrop-blur-md border-b border-slate-800 px-3 sm:px-4 py-2 flex flex-col gap-1.5 shrink-0">
+        {/* Hàng 1: Tiêu đề + Nút thao tác (Copy, Excel, TXT, Thẻ/Nhắc chữ/Gốc) */}
+        <div className="flex items-center justify-between gap-1.5 sm:gap-2">
+          {/* Trái: Icon + Tiêu đề + Badge nền tảng */}
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 shrink">
+            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-white shrink-0">
+              <Video size={13} className="text-purple-400 sm:w-3.5 sm:h-3.5" />
             </div>
-            <div className="flex items-center gap-2 min-w-0">
-              <h2 className="font-bold text-white text-xs sm:text-sm truncate">
-                Kho Kịch Bản Video TikTok / Reels
-              </h2>
-              {scripts.length > 0 && !loading && (
-                <span className="bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0">
-                  {scripts.length} kịch bản
-                </span>
-              )}
-            </div>
+            <h2 className="font-bold text-xs sm:text-sm text-white tracking-wide uppercase truncate whitespace-nowrap">
+              <span className="hidden sm:inline">Kịch Bản Video &amp; Live</span>
+              <span className="sm:hidden">Kịch Bản</span>
+            </h2>
           </div>
 
-          {/* Chuyển chế độ xem */}
+          {/* Phải: Các nút thao tác */}
           {result && !loading && (
-            <div className="bg-slate-800/90 p-0.5 rounded-lg border border-slate-700/60 flex items-center gap-0.5 shrink-0">
-              <button
-                type="button"
-                onClick={() => setViewMode("cards")}
-                title="Dạng phân cảnh Timeline"
-                className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer ${
-                  viewMode === "cards"
-                    ? "bg-purple-600 text-white font-bold shadow-xs"
-                    : "text-slate-400 hover:text-white"
-                }`}
-              >
-                <LayoutList size={11} /> Phân cảnh
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode("raw")}
-                title="Dạng văn bản đầy đủ"
-                className={`px-2 py-0.5 sm:px-2.5 sm:py-1 rounded text-[11px] font-semibold flex items-center gap-1 transition-all cursor-pointer ${
-                  viewMode === "raw"
-                    ? "bg-purple-600 text-white font-bold shadow-xs"
-                    : "text-slate-400 hover:text-white"
-                }`}
-              >
-                <FileText size={11} /> Gốc
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Row 2: Thao tác xuất Excel + Download TXT + Copy */}
-        {result && !loading && (
-          <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-800/60">
-            <div className="text-[11px] text-slate-400 truncate">
-              <span className="font-semibold text-purple-300">{scripts.length} kịch bản</span>
-              <span className="mx-1">·</span>
-              <span className="text-slate-300">{totalSections} phân cảnh</span>
-            </div>
-
-            <div className="flex items-center gap-1.5 shrink-0">
-              <button
-                type="button"
-                onClick={handleExportExcel}
-                className="bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-2.5 py-1 rounded-lg transition-all shadow-xs flex items-center gap-1 cursor-pointer"
-                title="Xuất bảng phân cảnh tất cả kịch bản ra Excel"
-              >
-                <FileSpreadsheet size={13} />
-                <span className="hidden sm:inline">Xuất Excel</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={handleDownloadTxt}
-                className="bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold px-2 py-1 rounded-lg transition-all border border-slate-700 flex items-center gap-1 cursor-pointer"
-                title="Tải kịch bản về máy (.txt)"
-              >
-                <Download size={13} />
-                <span className="hidden sm:inline">Tải TXT</span>
-              </button>
-
+            <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+              {/* Nút Sao Chép Tất Cả (ICON ONLY) */}
               <button
                 type="button"
                 onClick={handleCopyAll}
-                className={`px-3 py-1 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer ${
-                  copiedAll
-                    ? "bg-emerald-500 text-white"
-                    : "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white"
-                }`}
-              >
-                {copiedAll ? (
-                  <>
-                    <Check size={13} className="stroke-[3]" /> Đã Chép!
-                  </>
-                ) : (
-                  <>
-                    <Copy size={13} /> Chép Cả {scripts.length} Kịch Bản
-                  </>
-                )}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Row 3: Thanh Tabs chọn kịch bản (Desktop ONLY) */}
-        {scripts.length > 1 && !loading && viewMode === "cards" && (
-          <div className="hidden lg:flex items-center justify-between gap-2 overflow-x-auto no-scrollbar pt-1">
-            <div className="flex items-center gap-1.5 shrink-0">
-              {scripts.map((script) => (
-                <button
-                  key={script.id}
-                  type="button"
-                  onClick={() => {
-                    setSelectedScriptId(script.id);
-                    setViewAll(false);
-                  }}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 cursor-pointer ${
-                    !viewAll && selectedScriptId === script.id
-                      ? "bg-purple-600 text-white font-bold shadow-xs"
-                      : "bg-slate-800/80 text-slate-400 hover:text-white hover:bg-slate-700/80 border border-slate-700/50"
+                title={copiedAll ? "Đã sao chép toàn bộ nội dung" : "Sao chép toàn bộ kịch bản"}
+                className={`p-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center cursor-pointer active:scale-95 shadow-xs ${copiedAll ? "bg-emerald-500 text-white" : "bg-white text-black hover:bg-slate-200"
                   }`}
-                >
-                  <Film size={12} />
-                  <span>Kịch bản #{script.id}</span>
-                  <span className="text-[10px] px-1 py-0.2 rounded bg-black/30 font-mono text-slate-300">
-                    {script.sections.length} cảnh
-                  </span>
-                </button>
-              ))}
-            </div>
+              >
+                {copiedAll ? <Check size={13} className="stroke-[3]" /> : <Copy size={13} />}
+              </button>
 
+              {/* Nút Xuất Excel */}
+              <button
+                type="button"
+                onClick={handleExportExcel}
+                title="Xuất bảng phân cảnh & chặng live ra Excel (.xlsx)"
+                className="p-1.5 sm:px-2 sm:py-1 rounded-lg text-xs font-medium bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition-all flex items-center gap-1 cursor-pointer active:scale-95 whitespace-nowrap"
+              >
+                <FileSpreadsheet size={13} />
+                <span className="hidden sm:inline">Excel</span>
+              </button>
+
+              {/* Nút Tải TXT */}
+              <button
+                type="button"
+                onClick={handleDownload}
+                title="Tải về file TXT"
+                className="p-1.5 sm:px-2 sm:py-1 rounded-lg text-xs font-medium bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition-all flex items-center gap-1 cursor-pointer active:scale-95 whitespace-nowrap"
+              >
+                <Download size={13} />
+                <span className="hidden sm:inline">TXT</span>
+              </button>
+
+              {/* Chuyển đổi Xem: Thẻ / Nhắc chữ / Markdown */}
+              <div className="bg-slate-900 p-0.5 rounded-lg border border-slate-800 flex items-center gap-0.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("visual")}
+                  className={`px-2 py-0.5 sm:px-2.5 sm:py-0.5 rounded text-[11px] font-semibold transition-all cursor-pointer ${viewMode === "visual"
+                    ? "bg-white text-black font-bold shadow-xs"
+                    : "text-slate-400 hover:text-white"
+                    }`}
+                >
+                  Thẻ
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setViewMode("raw")}
+                  className={`px-2 py-0.5 sm:px-2.5 sm:py-0.5 rounded text-[11px] font-semibold transition-all cursor-pointer ${viewMode === "raw"
+                    ? "bg-white text-black font-bold shadow-xs"
+                    : "text-slate-400 hover:text-white"
+                    }`}
+                  title="Chế độ văn bản Markdown chuẩn"
+                >
+                  Markdown
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Hàng 2: Thanh Tab Lọc Danh Mục - Giống hệt AI Mẫu Quảng Cáo */}
+        {result && !loading && viewMode === "visual" && (
+          <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar pt-0.5 border-t border-slate-900">
             <button
               type="button"
-              onClick={() => setViewAll(!viewAll)}
-              className={`text-[11px] px-2.5 py-1 rounded-lg font-semibold transition-all shrink-0 cursor-pointer border flex items-center gap-1 ${
-                viewAll
-                  ? "bg-purple-600 text-white border-purple-500 shadow-xs"
-                  : "bg-slate-800/70 text-slate-400 hover:text-white border-slate-700/60"
-              }`}
-              title="Xem tất cả kịch bản trải dài trên 1 trang"
+              onClick={() => setActiveFilter("all")}
+              className={`px-2 sm:px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap transition-all cursor-pointer ${activeFilter === "all"
+                ? "bg-white text-black font-bold"
+                : "bg-slate-900 text-slate-400 hover:text-white border border-slate-800"
+                }`}
             >
-              <Layers size={12} />
-              <span>{viewAll ? "Thu gọn" : "Xem tất cả"}</span>
+              Tất Cả
             </button>
+
+            {videoScripts.length > 0 && (
+              <button
+                type="button"
+                onClick={() => setActiveFilter("video")}
+                className={`px-2 sm:px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1 ${activeFilter === "video"
+                  ? "bg-white text-black font-bold"
+                  : "bg-slate-900 text-slate-400 hover:text-white border border-slate-800"
+                  }`}
+              >
+                <span>Video Ngắn</span>
+                <span
+                  className={`text-[10px] px-1 rounded font-mono ${activeFilter === "video"
+                    ? "bg-black/20 text-black font-bold"
+                    : "bg-black/50 text-slate-300"
+                    }`}
+                >
+                  {videoScripts.length}
+                </span>
+              </button>
+            )}
+
+            {liveScript && (
+              <button
+                type="button"
+                onClick={() => setActiveFilter("live")}
+                className={`px-2 sm:px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1 ${activeFilter === "live"
+                  ? "bg-white text-black font-bold"
+                  : "bg-slate-900 text-slate-400 hover:text-white border border-slate-800"
+                  }`}
+              >
+                <span>Livestream 4 Chặng</span>
+                <span
+                  className={`text-[10px] px-1 rounded font-mono ${activeFilter === "live"
+                    ? "bg-black/20 text-black font-bold"
+                    : "bg-black/50 text-slate-300"
+                    }`}
+                >
+                  4
+                </span>
+              </button>
+            )}
+
+            {policy && (
+              <button
+                type="button"
+                onClick={() => setActiveFilter("policy")}
+                className={`px-2 sm:px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1 ${activeFilter === "policy"
+                  ? "bg-white text-black font-bold"
+                  : "bg-slate-900 text-slate-400 hover:text-white border border-slate-800"
+                  }`}
+              >
+                <span>Tuân Thủ Sàn</span>
+                <span
+                  className={`text-[10px] px-1 rounded font-mono ${activeFilter === "policy"
+                    ? "bg-black/20 text-black font-bold"
+                    : "bg-black/50 text-slate-300"
+                    }`}
+                >
+                  {policy.safeScore}%
+                </span>
+              </button>
+            )}
           </div>
         )}
       </div>
 
-      {/* Nội dung kết quả kịch bản: Tự mở rộng trên mobile, scroll độc lập trên desktop */}
-      <div className="p-3.5 sm:p-5 flex-1 min-h-0 relative z-10 lg:overflow-y-auto custom-scrollbar">
-        {/* Trạng thái chưa có dữ liệu */}
-        {!result && !loading && (
-          <div className="h-full min-h-[360px] flex flex-col items-center justify-center text-center p-6 text-slate-500 space-y-3">
-            <div className="w-14 h-14 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shadow-lg shadow-purple-500/10">
-              <Video size={28} />
+      {/* Vùng nội dung chính: Chữ trắng nền đen chuẩn AI Mẫu Quảng Cáo */}
+      <div
+        className={`flex-1 min-h-0 p-3 sm:p-4 flex flex-col ${
+          viewMode === "raw" ? "h-full overflow-hidden" : "lg:overflow-y-auto custom-scrollbar"
+        }`}
+      >
+        {loading ? (
+          <div className="h-full min-h-[320px] flex flex-col items-center justify-center text-center p-6 space-y-4">
+            <div className="relative">
+              <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-purple-400 shadow-lg shadow-purple-950/40">
+                <Sparkles size={22} className="animate-spin duration-1000" />
+              </div>
+              {typeof elapsedSeconds === "number" && (
+                <div className="absolute -bottom-2 -right-2 px-1.5 py-0.5 rounded-full bg-slate-950 border border-slate-700 text-[10px] font-mono text-purple-300">
+                  {elapsedSeconds}s
+                </div>
+              )}
             </div>
-            <div className="space-y-1">
-              <h3 className="text-base font-bold text-slate-200">
-                Chưa Có Kịch Bản Video
-              </h3>
-              <p className="text-xs text-slate-400 max-w-sm leading-relaxed">
-                Nhập tên sản phẩm & điểm nổi bật bên trái rồi bấm{" "}
-                <strong className="text-purple-400 font-semibold">
-                  &quot;Lên Kịch Bản Bằng AI&quot;
-                </strong>{" "}
-                để tự động tạo các kịch bản TikTok/Reels phân cảnh chi tiết.
+
+            <div className="space-y-1.5 max-w-sm">
+              <div className="font-bold text-sm text-white">
+                <TextShimmerWave>AI Đang Lên Kịch Bản Chuyển Đổi Cao...</TextShimmerWave>
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed min-h-[32px]">
+                {typeof elapsedSeconds === "number" && elapsedSeconds < 8
+                  ? "⚡ Đang phân tích sản phẩm & sáng tạo Hook 3s giật mắt..."
+                  : typeof elapsedSeconds === "number" && elapsedSeconds < 20
+                    ? "🎬 Đang dựng 3 kịch bản video ngắn (visual action, audio voiceover, SFX)..."
+                    : typeof elapsedSeconds === "number" && elapsedSeconds < 35
+                      ? "🔥 Đang xây dựng khung livestream 4 chặng & chiến thuật tung deal..."
+                      : "🛡️ Đang kiểm tra từ ngữ an toàn chính sách sàn Shopee & TikTok Shop..."}
+              </p>
+            </div>
+
+            {/* Thanh tiến trình thời gian tạo kịch bản */}
+            <div className="w-full max-w-xs bg-slate-900 rounded-full h-1.5 overflow-hidden border border-slate-800">
+              <div
+                className="bg-gradient-to-r from-purple-500 via-indigo-500 to-cyan-400 h-full rounded-full transition-all duration-300"
+                style={{
+                  width: `${Math.min(95, Math.max(5, ((elapsedSeconds || 1) / 45) * 100))}%`,
+                }}
+              />
+            </div>
+
+            {onCancel && (
+              <button
+                type="button"
+                onClick={onCancel}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 hover:bg-rose-950/50 text-slate-400 hover:text-rose-300 border border-slate-800 hover:border-rose-900/60 text-xs font-semibold transition-all cursor-pointer active:scale-95"
+              >
+                <span>Hủy yêu cầu</span>
+              </button>
+            )}
+          </div>
+        ) : result && data ? (
+          <div
+            className={
+              viewMode === "raw"
+                ? "flex-1 flex flex-col min-h-0 h-full"
+                : "space-y-4"
+            }
+          >
+            {/* ═══════════════════════════════════════════════════════ */}
+            {/* CHẾ ĐỘ XEM MARKDOWN THUẦN (TEXT THÔ)                     */}
+            {/* ═══════════════════════════════════════════════════════ */}
+            {viewMode === "raw" ? (
+              <div className="flex-1 flex flex-col min-h-0 h-full space-y-2">
+                <div className="flex items-center justify-between text-xs text-slate-400 px-1 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-slate-300">Văn bản text thô (Markdown chuẩn):</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-800 hidden sm:inline-block">
+                      {wordCount} từ
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCopyAll}
+                    title={copiedAll ? "Đã sao chép toàn bộ" : "Sao chép toàn bộ"}
+                    className={`p-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center cursor-pointer active:scale-95 ${
+                      copiedAll
+                        ? "bg-emerald-500 text-white shadow-xs"
+                        : "bg-white text-black hover:bg-slate-200"
+                    }`}
+                  >
+                    {copiedAll ? <Check size={12} className="stroke-[2.5]" /> : <Copy size={12} />}
+                  </button>
+                </div>
+                <textarea
+                  readOnly
+                  value={formattedRawText}
+                  className="w-full flex-1 min-h-[350px] lg:min-h-0 h-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 sm:p-4 text-xs sm:text-sm font-mono text-slate-200 leading-relaxed resize-none focus:outline-hidden custom-scrollbar"
+                />
+              </div>
+            ) : viewMode === "teleprompter" ? (
+              /* ═══════════════════════════════════════════════════════ */
+              /* CHẾ ĐỘ MÁY NHẮC CHỮ (TELEPROMPTER ĐA KỊCH BẢN)         */
+              /* ═══════════════════════════════════════════════════════ */
+              <div className="space-y-3 bg-slate-950 rounded-xl border border-slate-800 p-3.5">
+                {/* Header Nhắc Chữ: Tiêu đề + Chuyển Thẻ Cảnh / Markdown + Copy */}
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-2 border-b border-slate-800/80 gap-2">
+                  <div>
+                    <h3 className="font-bold text-xs sm:text-sm text-white uppercase tracking-wider flex items-center gap-1.5">
+                      <Tv size={14} className="text-purple-400" />
+                      <span>Máy Nhắc Chữ KOC &amp; MC Livestream</span>
+                    </h3>
+                    <p className="text-[11px] text-slate-400">
+                      Chữ to rõ, ngắt nhịp phân cảnh chuẩn tốc độ đọc quay video hoặc livestream
+                    </p>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 self-end sm:self-auto shrink-0">
+                    {/* Switcher: Thẻ phân cảnh vs Markdown text thô */}
+                    <div className="bg-slate-900 p-0.5 rounded-lg border border-slate-800 flex items-center gap-0.5">
+                      <button
+                        type="button"
+                        onClick={() => setTeleprompterSubMode("cards")}
+                        className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-all cursor-pointer ${teleprompterSubMode === "cards"
+                          ? "bg-white text-black font-bold shadow-xs"
+                          : "text-slate-400 hover:text-white"
+                          }`}
+                        title="Chế độ thẻ cảnh chữ to"
+                      >
+                        Thẻ Cảnh
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTeleprompterSubMode("markdown")}
+                        className={`px-2 py-0.5 rounded text-[11px] font-semibold transition-all cursor-pointer ${teleprompterSubMode === "markdown"
+                          ? "bg-white text-black font-bold shadow-xs"
+                          : "text-slate-400 hover:text-white"
+                          }`}
+                        title="Chế độ Markdown text thô để copy vào CapCut"
+                      >
+                        Markdown
+                      </button>
+                    </div>
+
+                    {/* Nút sao chép teleprompter hiện tại */}
+                    <button
+                      type="button"
+                      onClick={() => handleCopy(currentTeleprompterText, "teleprompter-active")}
+                      className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition-all cursor-pointer active:scale-95"
+                      title="Sao chép toàn bộ lời thoại nhắc chữ đang chọn"
+                    >
+                      {copiedKey === "teleprompter-active" ? (
+                        <Check size={13} className="text-emerald-400" />
+                      ) : (
+                        <Copy size={13} />
+                      )}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Thanh Tab chọn kịch bản nhắc chữ (Kịch Bản 1, 2, 3, Livestream, Tất cả) */}
+                <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar pb-1 border-b border-slate-900">
+                  {videoScripts.map((sc) => (
+                    <button
+                      key={sc.id}
+                      type="button"
+                      onClick={() => setTeleprompterTarget(`video-${sc.id}`)}
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${teleprompterTarget === `video-${sc.id}`
+                        ? "bg-white text-black font-bold shadow-xs"
+                        : "bg-slate-900 text-slate-400 hover:text-white border border-slate-800"
+                        }`}
+                    >
+                      <span>Mẫu {sc.id}</span>
+                      {sc.estimatedDuration && (
+                        <span
+                          className={`text-[10px] px-1 rounded font-mono ${teleprompterTarget === `video-${sc.id}`
+                            ? "bg-black/20 text-black font-bold"
+                            : "bg-black/50 text-slate-400"
+                            }`}
+                        >
+                          {sc.estimatedDuration}
+                        </span>
+                      )}
+                    </button>
+                  ))}
+
+                  {liveScript && (
+                    <button
+                      type="button"
+                      onClick={() => setTeleprompterTarget("live")}
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 shrink-0 ${teleprompterTarget === "live"
+                        ? "bg-white text-black font-bold shadow-xs"
+                        : "bg-slate-900 text-slate-400 hover:text-white border border-slate-800"
+                        }`}
+                    >
+                      <Radio size={11} className={teleprompterTarget === "live" ? "text-rose-600" : "text-rose-400"} />
+                      <span>Livestream (4 Chặng)</span>
+                    </button>
+                  )}
+
+                  {(videoScripts.length > 1 || (videoScripts.length > 0 && liveScript)) && (
+                    <button
+                      type="button"
+                      onClick={() => setTeleprompterTarget("all")}
+                      className={`px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1 shrink-0 ${teleprompterTarget === "all"
+                        ? "bg-white text-black font-bold shadow-xs"
+                        : "bg-slate-900 text-slate-400 hover:text-white border border-slate-800"
+                        }`}
+                    >
+                      <span>Tất Cả Lời Thoại</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* Nội dung hiển thị */}
+                {teleprompterSubMode === "markdown" ? (
+                  /* ─── XEM TELEPROMPTER DẠNG VĂN BẢN TEXT THÔ / MARKDOWN ─── */
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs text-slate-400 px-1">
+                      <span>Văn bản text thô (sẵn sàng dán vào CapCut / Teleprompter app):</span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopy(currentTeleprompterText, "teleprompter-markdown-inner")}
+                        title="Sao chép văn bản này"
+                        className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+                      >
+                        {copiedKey === "teleprompter-markdown-inner" ? (
+                          <Check size={12} className="text-emerald-400" />
+                        ) : (
+                          <Copy size={12} />
+                        )}
+                      </button>
+                    </div>
+                    <pre className="w-full bg-black border border-slate-800 rounded-xl p-4 text-xs font-mono text-slate-200 leading-relaxed whitespace-pre-wrap select-all overflow-x-auto min-h-[360px]">
+                      {currentTeleprompterText}
+                    </pre>
+                  </div>
+                ) : (
+                  /* ─── XEM TELEPROMPTER DẠNG THẺ PHÂN CẢNH CHỮ TO ─── */
+                  <div className="space-y-4">
+                    {/* Trường hợp 1: Chọn một kịch bản Video lẻ */}
+                    {teleprompterTarget.startsWith("video-") && selectedTeleprompterVideo && (
+                      <div className="bg-black rounded-xl p-4 sm:p-6 border border-slate-800 space-y-5">
+                        <div className="pb-2 border-b border-slate-900 flex items-center justify-between gap-2">
+                          <div>
+                            <h4 className="font-bold text-sm text-white">{selectedTeleprompterVideo.title}</h4>
+                            <span className="text-xs text-slate-400">{selectedTeleprompterVideo.angleLabel}</span>
+                          </div>
+                          <span className="text-xs text-purple-400 font-mono bg-slate-900 px-2 py-0.5 rounded border border-slate-800 shrink-0">
+                            {selectedTeleprompterVideo.estimatedDuration}
+                          </span>
+                        </div>
+                        {selectedTeleprompterVideo.scenes.map((sc, i) => (
+                          <div
+                            key={sc.id}
+                            className="space-y-1.5 pb-4 border-b border-slate-900 last:border-0 last:pb-0"
+                          >
+                            <div className="flex items-center justify-between text-xs text-slate-400 font-mono">
+                              <span className="font-bold text-slate-300">
+                                CẢNH {i + 1} ({sc.timeRange}) · {sc.phaseTitle || sc.phase.toUpperCase()}
+                              </span>
+                              <span className="text-[10px]">{sc.audioVoiceover.length} ký tự</span>
+                            </div>
+                            <p className="text-white text-base sm:text-lg font-semibold leading-relaxed select-all pl-3 border-l-2 border-white">
+                              &ldquo;{sc.audioVoiceover}&rdquo;
+                            </p>
+                            {sc.visualAction && (
+                              <p className="text-xs text-slate-400 italic pl-3 border-l-2 border-slate-800">
+                                👉 Visual: {sc.visualAction}
+                              </p>
+                            )}
+                            {sc.textOverlay && (
+                              <p className="text-xs text-slate-400 pl-3 border-l-2 border-slate-800">
+                                🔤 Chữ video: <span className="text-slate-300 font-medium">&ldquo;{sc.textOverlay}&rdquo;</span>
+                              </p>
+                            )}
+                            {sc.soundEffectSuggestion && (
+                              <p className="text-[11px] text-purple-300/80 pl-3 border-l-2 border-slate-800">
+                                🎵 Âm thanh: {sc.soundEffectSuggestion}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Trường hợp 2: Chọn Livestream */}
+                    {teleprompterTarget === "live" && liveScript && (
+                      <div className="bg-black rounded-xl p-4 sm:p-6 border border-slate-800 space-y-5">
+                        <div className="pb-2 border-b border-slate-900">
+                          <h4 className="font-bold text-sm text-white">Livestream: {liveScript.targetProducts}</h4>
+                          <p className="text-xs text-slate-400">{liveScript.overview}</p>
+                        </div>
+                        {liveScript.stages.map((st) => (
+                          <div
+                            key={st.stageNumber}
+                            className="space-y-2 pb-5 border-b border-slate-900 last:border-0 last:pb-0"
+                          >
+                            <div className="flex items-center justify-between text-xs text-slate-400 font-mono">
+                              <span className="font-bold text-rose-400 uppercase">
+                                CHẶNG {st.stageNumber}: {st.stageName}
+                              </span>
+                              <span className="text-[10px] text-slate-500">{st.timeAllocation}</span>
+                            </div>
+                            <p className="text-white text-base sm:text-lg font-semibold leading-relaxed select-all pl-3 border-l-2 border-rose-500">
+                              &ldquo;{st.hostSpeech}&rdquo;
+                            </p>
+                            {st.hostAction && (
+                              <p className="text-xs text-slate-400 italic pl-3 border-l-2 border-slate-800">
+                                👉 Hành động Host: {st.hostAction}
+                              </p>
+                            )}
+                            {st.assistantModAction && (
+                              <p className="text-xs text-slate-400 pl-3 border-l-2 border-slate-800">
+                                👥 Trợ lý/Mod: {st.assistantModAction}
+                              </p>
+                            )}
+                            {st.pinnedStrategy && (
+                              <p className="text-[11px] text-amber-400 pl-3 border-l-2 border-slate-800">
+                                🏷️ Ghim deal: {st.pinnedStrategy}
+                              </p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Trường hợp 3: Chọn Tất Cả Lời Thoại */}
+                    {teleprompterTarget === "all" && (
+                      <div className="space-y-5">
+                        {videoScripts.map((vScript) => (
+                          <div key={vScript.id} className="bg-black rounded-xl p-4 sm:p-6 border border-slate-800 space-y-4">
+                            <div className="pb-2 border-b border-slate-900 flex items-center justify-between gap-2">
+                              <div>
+                                <h4 className="font-bold text-sm text-white">🎬 {vScript.title}</h4>
+                                <span className="text-xs text-slate-400">{vScript.angleLabel}</span>
+                              </div>
+                              <span className="text-xs text-purple-400 font-mono bg-slate-900 px-2 py-0.5 rounded border border-slate-800 shrink-0">
+                                {vScript.estimatedDuration}
+                              </span>
+                            </div>
+                            {vScript.scenes.map((sc, idx) => (
+                              <div key={sc.id} className="space-y-1.5 pb-3 border-b border-slate-900 last:border-0 last:pb-0">
+                                <div className="text-xs text-slate-400 font-mono font-bold">
+                                  CẢNH {idx + 1} ({sc.timeRange}) · {sc.phaseTitle || sc.phase.toUpperCase()}
+                                </div>
+                                <p className="text-white text-base font-semibold leading-relaxed select-all pl-3 border-l-2 border-white">
+                                  &ldquo;{sc.audioVoiceover}&rdquo;
+                                </p>
+                                {sc.visualAction && (
+                                  <p className="text-xs text-slate-400 italic pl-3 border-l-2 border-slate-800">
+                                    👉 Visual: {sc.visualAction}
+                                  </p>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+
+                        {liveScript && (
+                          <div className="bg-black rounded-xl p-4 sm:p-6 border border-slate-800 space-y-4">
+                            <div className="pb-2 border-b border-slate-900">
+                              <h4 className="font-bold text-sm text-white">🔴 Livestream: {liveScript.targetProducts}</h4>
+                              <p className="text-xs text-slate-400">{liveScript.overview}</p>
+                            </div>
+                            {liveScript.stages.map((st) => (
+                              <div key={st.stageNumber} className="space-y-1.5 pb-3 border-b border-slate-900 last:border-0 last:pb-0">
+                                <div className="text-xs text-rose-400 font-mono font-bold uppercase">
+                                  CHẶNG {st.stageNumber}: {st.stageName} ({st.timeAllocation})
+                                </div>
+                                <p className="text-white text-base font-semibold leading-relaxed select-all pl-3 border-l-2 border-rose-500">
+                                  &ldquo;{st.hostSpeech}&rdquo;
+                                </p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* ═══════════════════════════════════════════════════════ */
+              /* CHẾ ĐỘ XEM THẺ (VISUAL)                                  */
+              /* ═══════════════════════════════════════════════════════ */
+              <div className="space-y-4">
+                {/* 1. BỘ KỊCH BẢN VIDEO NGẮN (3 GÓC TIẾP CẬN) */}
+                {videoScripts.length > 0 &&
+                  (activeFilter === "all" || activeFilter === "video") && (
+                    <div className="space-y-3 bg-slate-950 rounded-xl border border-slate-800 p-3.5">
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-800/80 gap-2">
+                        <div className="flex items-center gap-2">
+                          <Film size={14} className="text-purple-400" />
+                          <h3 className="font-bold text-xs sm:text-sm text-white uppercase tracking-wider leading-snug">
+                            1. Bộ Kịch Bản Video Ngắn TikTok/Reels ({videoScripts.length} Góc Quay)
+                          </h3>
+                        </div>
+
+                        {/* Nút chép toàn bộ kịch bản video */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const allVideoText = videoScripts
+                              .map(
+                                (s) =>
+                                  `=== ${s.title.toUpperCase()} (${s.estimatedDuration}) ===\n` +
+                                  s.scenes
+                                    .map(
+                                      (sc) =>
+                                        `[${sc.timeRange}] ${sc.phaseTitle || sc.phase}\n- Hành động: ${sc.visualAction}\n- Thoại: "${sc.audioVoiceover}"\n- Chữ: ${sc.textOverlay}`
+                                    )
+                                    .join("\n\n")
+                              )
+                              .join("\n\n\n");
+                            handleCopy(allVideoText, "all-videos");
+                          }}
+                          className="shrink-0 p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition-all cursor-pointer active:scale-95"
+                          title="Sao chép toàn bộ các kịch bản video"
+                        >
+                          {copiedKey === "all-videos" ? (
+                            <Check size={13} className="text-emerald-400" />
+                          ) : (
+                            <Copy size={13} />
+                          )}
+                        </button>
+                      </div>
+
+                      {/* Danh sách từng kịch bản */}
+                      <div className="space-y-4">
+                        {videoScripts.map((script) => (
+                          <div
+                            key={script.id}
+                            className="bg-slate-900/60 rounded-xl border border-slate-800 p-3 sm:p-3.5 space-y-3"
+                          >
+                            {/* Header Kịch Bản */}
+                            <div className="space-y-1.5 pb-2 border-b border-slate-800/80">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="w-5 h-5 rounded bg-slate-800 border border-slate-700 text-white text-[11px] font-bold flex items-center justify-center shrink-0">
+                                  {script.id}
+                                </span>
+                                <h4 className="font-bold text-xs sm:text-sm text-white leading-snug">
+                                  {script.title}
+                                </h4>
+                              </div>
+
+                              <div className="flex items-center justify-between gap-2 pl-7">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  {script.estimatedDuration && (
+                                    <span className="text-[10px] font-mono text-slate-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800 shrink-0 whitespace-nowrap">
+                                      {script.estimatedDuration}
+                                    </span>
+                                  )}
+                                  {script.angleLabel && (
+                                    <span className="text-[10px] text-slate-400 bg-slate-950/60 px-1.5 py-0.5 rounded border border-slate-800/80 shrink-0">
+                                      {script.angleLabel}
+                                    </span>
+                                  )}
+                                </div>
+
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const singleScriptText = `${script.title} (${script.estimatedDuration})\n` +
+                                      script.scenes
+                                        .map(
+                                          (sc) =>
+                                            `[${sc.timeRange}] ${sc.phaseTitle || sc.phase}\n- Hành động: ${sc.visualAction}\n- Thoại: "${sc.audioVoiceover}"\n- Chữ: ${sc.textOverlay}`
+                                        )
+                                        .join("\n\n");
+                                    handleCopy(singleScriptText, `script-${script.id}`);
+                                  }}
+                                  className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-all cursor-pointer active:scale-90 shrink-0"
+                                  title="Sao chép kịch bản này"
+                                >
+                                  {copiedKey === `script-${script.id}` ? (
+                                    <Check size={12} className="text-emerald-400" />
+                                  ) : (
+                                    <Copy size={12} />
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Danh sách phân cảnh trong kịch bản */}
+                            <div className="space-y-2.5">
+                              {script.scenes.map((sec) => {
+                                const secKey = `sec-${script.id}-${sec.id}`;
+                                const isCopiedSec = copiedKey === secKey;
+
+                                return (
+                                  <div
+                                    key={sec.id}
+                                    className="bg-slate-900 rounded-xl p-3 sm:p-3.5 border border-slate-800 space-y-2.5 hover:border-slate-700 transition-colors"
+                                  >
+                                    {/* Header Phân Cảnh: Thời lượng và Icon sao chép ở dòng riêng bên dưới tiêu đề */}
+                                    <div className="space-y-1.5 pb-2 border-b border-slate-800/80">
+                                      {/* Dòng 1: STT + Tiêu đề phân cảnh */}
+                                      <div className="flex items-center gap-2 min-w-0">
+                                        <span className="w-5 h-5 rounded bg-slate-800 border border-slate-700 text-white text-[11px] font-bold flex items-center justify-center shrink-0">
+                                          {sec.id}
+                                        </span>
+                                        <span className="font-bold text-xs sm:text-sm text-white leading-snug">
+                                          {sec.phaseTitle || sec.phase.toUpperCase()}
+                                        </span>
+                                      </div>
+
+                                      {/* Dòng 2: Thời lượng bên trái, Icon sao chép bên phải */}
+                                      <div className="flex items-center justify-between gap-2 pl-7">
+                                        {sec.timeRange && (
+                                          <span className="text-[10px] font-mono text-slate-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800 shrink-0 whitespace-nowrap">
+                                            {sec.timeRange}
+                                          </span>
+                                        )}
+
+                                        <button
+                                          type="button"
+                                          onClick={() => handleCopy(sec.audioVoiceover, secKey)}
+                                          className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-all cursor-pointer active:scale-90 shrink-0"
+                                          title="Sao chép lời thoại"
+                                        >
+                                          {isCopiedSec ? (
+                                            <Check size={12} className="text-emerald-400" />
+                                          ) : (
+                                            <Copy size={12} />
+                                          )}
+                                        </button>
+                                      </div>
+                                    </div>
+
+                                    {/* 1. Lời thoại lồng tiếng (Voiceover) */}
+                                    <div className="space-y-1">
+                                      <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
+                                        <span>🎙️</span>
+                                        <span>Lời thoại đọc (Voiceover):</span>
+                                      </div>
+                                      <p className="text-xs sm:text-sm font-semibold text-white leading-relaxed pl-2.5 border-l-2 border-white select-text">
+                                        &ldquo;{sec.audioVoiceover}&rdquo;
+                                      </p>
+                                    </div>
+
+                                    {/* 2. Kịch bản hình ảnh & góc quay */}
+                                    {sec.visualAction && (
+                                      <div className="space-y-1 pt-1 border-t border-slate-800/60">
+                                        <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
+                                          <span>🎬</span>
+                                          <span>Kịch bản hình ảnh &amp; góc quay:</span>
+                                        </div>
+                                        <p className="text-xs text-slate-200 leading-relaxed pl-2.5 border-l-2 border-slate-700 select-text">
+                                          {sec.visualAction}
+                                        </p>
+                                      </div>
+                                    )}
+
+                                    {/* 3. Chữ đè video (Text Overlay) & SFX */}
+                                    {(sec.textOverlay || sec.soundEffectSuggestion) && (
+                                      <div className="space-y-1.5 pt-1 border-t border-slate-800/60">
+                                        {sec.textOverlay && (
+                                          <div className="space-y-1">
+                                            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
+                                              <span>💬</span>
+                                              <span>Chữ đè video (Text Overlay):</span>
+                                            </div>
+                                            <p className="text-xs font-bold text-white leading-relaxed pl-2.5 border-l-2 border-slate-700 select-text">
+                                              &ldquo;{sec.textOverlay}&rdquo;
+                                            </p>
+                                          </div>
+                                        )}
+                                        {sec.soundEffectSuggestion && (
+                                          <div className="text-[11px] text-slate-400 pl-2.5 flex items-center gap-1.5">
+                                            <span>🎵</span>
+                                            <span>Âm thanh SFX:</span>
+                                            <span className="text-slate-300 font-medium">
+                                              {sec.soundEffectSuggestion}
+                                            </span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+
+                            {/* Lưu ý quay dựng & BGM */}
+                            {script.directorNotes && (
+                              <div className="bg-slate-900/90 rounded-xl p-3 border border-slate-800 space-y-1">
+                                <div className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
+                                  <span>💡</span>
+                                  <span>Lưu ý quay dựng &amp; BGM:</span>
+                                </div>
+                                <p className="text-xs text-slate-300 leading-relaxed pl-2.5 border-l-2 border-slate-700 select-text">
+                                  {script.directorNotes}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                {/* 2. KHUNG KỊCH BẢN LIVESTREAM (4 CHẶNG VÀNG) */}
+                {liveScript && (activeFilter === "all" || activeFilter === "live") && (
+                  <div className="space-y-3 bg-slate-950 rounded-xl border border-slate-800 p-3.5">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-800/80 gap-2">
+                      <div className="flex items-center gap-2">
+                        <Radio size={14} className="text-emerald-400" />
+                        <h3 className="font-bold text-xs sm:text-sm text-white uppercase tracking-wider leading-snug">
+                          2. Khung Livestream Bùng Nổ Doanh Số (4 Chặng Vàng)
+                        </h3>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const liveText = `=== KHUNG LIVESTREAM BÙNG NỔ DOANH SỐ ===\nTổng quan: ${liveScript.overview}\nSản phẩm: ${liveScript.targetProducts}\n\n` +
+                            liveScript.stages
+                              .map(
+                                (st) =>
+                                  `[Chặng ${st.stageNumber}: ${st.stageName} - ${st.timeAllocation}]\n- Thoại Host: "${st.hostSpeech}"\n- Hành động: ${st.hostAction}\n- Trợ lý: ${st.assistantModAction}\n- Ghim Deal: ${st.pinnedStrategy}`
+                              )
+                              .join("\n\n");
+                          handleCopy(liveText, "all-live");
+                        }}
+                        className="shrink-0 p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition-all cursor-pointer active:scale-95"
+                        title="Sao chép toàn bộ kịch bản livestream"
+                      >
+                        {copiedKey === "all-live" ? (
+                          <Check size={13} className="text-emerald-400" />
+                        ) : (
+                          <Copy size={13} />
+                        )}
+                      </button>
+                    </div>
+
+                    {/* Hộp Tổng Quan Phiên Live */}
+                    {liveScript.overview && (
+                      <div className="bg-slate-900/90 rounded-xl p-3 border border-slate-800 space-y-2">
+                        <div className="text-[11px] font-semibold text-slate-400 flex items-center gap-1">
+                          <span>💡</span>
+                          <span>Chiến lược phiên live 30 phút:</span>
+                        </div>
+                        <p className="text-xs text-slate-200 leading-relaxed pl-2.5 border-l-2 border-slate-700 select-text">
+                          {liveScript.overview}
+                        </p>
+                        {liveScript.targetProducts && (
+                          <div className="pt-1.5 border-t border-slate-800/60 text-xs text-slate-300 flex items-center gap-1.5">
+                            <span className="text-slate-400 font-semibold">Sản phẩm trọng tâm:</span>
+                            <span className="font-bold text-white">
+                              {liveScript.targetProducts}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Danh sách 4 Chặng Vàng */}
+                    <div className="space-y-2.5">
+                      {liveScript.stages.map((st) => {
+                        const stageKey = `stage-${st.stageNumber}`;
+                        const isCopiedStage = copiedKey === stageKey;
+
+                        return (
+                          <div
+                            key={st.stageNumber}
+                            className="bg-slate-900 rounded-xl p-3 sm:p-3.5 border border-slate-800 space-y-2.5 hover:border-slate-700 transition-colors"
+                          >
+                            {/* Header Chặng: Thời lượng và Icon sao chép ở dòng riêng bên dưới tiêu đề */}
+                            <div className="space-y-1.5 pb-2 border-b border-slate-800/80">
+                              {/* Dòng 1: STT + Tiêu đề chặng */}
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="w-5 h-5 rounded bg-slate-800 border border-slate-700 text-white text-[11px] font-bold flex items-center justify-center shrink-0">
+                                  {st.stageNumber}
+                                </span>
+                                <span className="font-bold text-xs sm:text-sm text-white leading-snug">
+                                  {st.stageName}
+                                </span>
+                              </div>
+
+                              {/* Dòng 2: Thời lượng bên trái, Icon sao chép bên phải */}
+                              <div className="flex items-center justify-between gap-2 pl-7">
+                                {st.timeAllocation && (
+                                  <span className="text-[10px] font-mono text-slate-400 bg-slate-950 px-2 py-0.5 rounded border border-slate-800 shrink-0 whitespace-nowrap">
+                                    {st.timeAllocation}
+                                  </span>
+                                )}
+
+                                <button
+                                  type="button"
+                                  onClick={() => handleCopy(st.hostSpeech, stageKey)}
+                                  className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-all cursor-pointer active:scale-90 shrink-0"
+                                  title="Sao chép lời thoại Host chặng này"
+                                >
+                                  {isCopiedStage ? (
+                                    <Check size={12} className="text-emerald-400" />
+                                  ) : (
+                                    <Copy size={12} />
+                                  )}
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Lời thoại Host */}
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
+                                <span>🎙️</span>
+                                <span>Lời thoại Host / MC bán hàng:</span>
+                              </div>
+                              <p className="text-xs sm:text-sm font-semibold text-white leading-relaxed pl-2.5 border-l-2 border-white select-text">
+                                &ldquo;{st.hostSpeech}&rdquo;
+                              </p>
+                            </div>
+
+                            {/* 3 Cột thao tác: Host, Trợ lý & Ghim deal */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 border-t border-slate-800/60 text-xs">
+                              <div className="bg-slate-950/80 rounded-lg p-2.5 border border-slate-800 space-y-1">
+                                <div className="text-[10px] font-semibold text-slate-400 flex items-center gap-1">
+                                  <span>🎬</span>
+                                  <span>Hành động Host:</span>
+                                </div>
+                                <p className="text-[11px] text-slate-200 leading-relaxed">
+                                  {st.hostAction}
+                                </p>
+                              </div>
+
+                              <div className="bg-slate-950/80 rounded-lg p-2.5 border border-slate-800 space-y-1">
+                                <div className="text-[10px] font-semibold text-slate-400 flex items-center gap-1">
+                                  <span>👥</span>
+                                  <span>Trợ lý / Mod hỗ trợ:</span>
+                                </div>
+                                <p className="text-[11px] text-slate-200 leading-relaxed">
+                                  {st.assistantModAction}
+                                </p>
+                              </div>
+
+                              <div className="bg-slate-950/80 rounded-lg p-2.5 border border-slate-800 space-y-1">
+                                <div className="text-[10px] font-semibold text-slate-400 flex items-center gap-1">
+                                  <span>📌</span>
+                                  <span>Chiến lược ghim Deal:</span>
+                                </div>
+                                <p className="text-[11px] text-slate-200 leading-relaxed">
+                                  {st.pinnedStrategy}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Chiến thuật đẩy FOMO chốt đơn */}
+                    {liveScript.fomoTactics && liveScript.fomoTactics.length > 0 && (
+                      <div className="bg-slate-900/90 rounded-xl p-3 border border-slate-800 space-y-2">
+                        <div className="text-[11px] font-semibold text-slate-300 flex items-center gap-1">
+                          <span>⚡</span>
+                          <span>Chiến thuật đẩy FOMO chốt đơn:</span>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-0.5">
+                          {liveScript.fomoTactics.map((tactic, idx) => (
+                            <div
+                              key={idx}
+                              className="bg-slate-950 rounded-lg p-2 border border-slate-800 text-xs text-slate-200 flex items-start gap-2"
+                            >
+                              <span className="w-4 h-4 rounded bg-slate-800 text-slate-300 font-bold text-[10px] flex items-center justify-center shrink-0 mt-0.5 border border-slate-700">
+                                {idx + 1}
+                              </span>
+                              <span className="leading-relaxed">{tactic}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 3. KIỂM ĐỊNH AN TOÀN CHÍNH SÁCH SÀN */}
+                {policy && (activeFilter === "all" || activeFilter === "policy") && (
+                  <div className="bg-slate-950 rounded-xl border border-slate-800 p-3.5 text-xs space-y-2">
+                    <div className="flex items-center justify-between text-slate-300 pb-1.5 border-b border-slate-800/80">
+                      <span className="font-bold flex items-center gap-1.5 text-white uppercase tracking-wider text-xs">
+                        <ShieldCheck size={14} className="text-emerald-400" /> An Toàn Chính Sách Sàn
+                      </span>
+                      <span className="font-mono text-emerald-400 font-bold">
+                        {policy.safeScore}/100
+                      </span>
+                    </div>
+
+                    {policy.bannedWordsAvoided && policy.bannedWordsAvoided.length > 0 && (
+                      <div className="space-y-1">
+                        <span className="text-[11px] text-slate-400 font-semibold">
+                          Đã loại trừ từ cấm sàn:
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {policy.bannedWordsAvoided.map((w, i) => (
+                            <span
+                              key={i}
+                              className="text-xs px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-800"
+                            >
+                              &ldquo;{w}&rdquo;
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {policy.warningNotes && policy.warningNotes.length > 0 && (
+                      <div className="space-y-1 pt-1 border-t border-slate-800/60 text-slate-400 text-xs">
+                        {policy.warningNotes.map((n, i) => (
+                          <p key={i} className="leading-relaxed select-text">
+                            • {n}
+                          </p>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        ) : (
+          /* TRẠNG THÁI CHƯA CÓ KẾT QUẢ - CHUẨN PHONG CÁCH AI MẪU QUẢNG CÁO */
+          <div className="h-full min-h-[300px] flex flex-col items-center justify-center text-center p-6 text-slate-500 space-y-2.5">
+            <div className="w-10 h-10 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400">
+              <Video size={20} />
+            </div>
+            <div className="space-y-0.5">
+              <p className="font-bold text-xs sm:text-sm text-slate-300">
+                Chưa có kịch bản video &amp; live
+              </p>
+              <p className="text-xs text-slate-500 max-w-xs">
+                Điền thông tin bên trái và bấm &quot;Lên Kịch Bản Bằng AI&quot; để tạo kịch bản.
               </p>
             </div>
 
@@ -836,170 +1156,18 @@ export function ScriptWriterOutput({
               <button
                 type="button"
                 onClick={onUseSample}
-                className="mt-2 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 text-xs font-semibold transition-all cursor-pointer shadow-xs"
+                className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-white border border-slate-700 text-xs font-semibold transition-all cursor-pointer shadow-xs active:scale-95"
               >
-                <Sparkles size={13} className="text-purple-400" />
+                <Sparkles size={12} />
                 Thử Dữ Liệu Mẫu (Demo)
               </button>
             )}
-
-            <div className="flex flex-wrap justify-center gap-2 pt-2 text-[10px] text-slate-400">
-              <span className="flex gap-1 items-center border border-slate-700/80 bg-slate-800/50 rounded-full px-2.5 py-1 text-slate-300">
-                <Sparkles size={11} className="text-purple-400" /> Hook 3s giật tít
-              </span>
-              <span className="flex gap-1 items-center border border-slate-700/80 bg-slate-800/50 rounded-full px-2.5 py-1 text-slate-300">
-                <Film size={11} className="text-indigo-400" /> Bảng phân cảnh chi tiết
-              </span>
-              <span className="flex gap-1 items-center border border-slate-700/80 bg-slate-800/50 rounded-full px-2.5 py-1 text-slate-300">
-                <FileSpreadsheet size={11} className="text-emerald-400" /> Xuất Excel quay dựng
-              </span>
-            </div>
           </div>
-        )}
-
-        {/* Trạng thái đang tải (Loading) */}
-        {loading && (
-          <div className="h-full min-h-[360px] flex flex-col items-center justify-center text-center p-6 space-y-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-purple-500/20 to-indigo-500/20 border border-purple-500/30 flex items-center justify-center text-purple-400 shadow-lg shadow-purple-500/10">
-              <Sparkles size={26} className="animate-spin text-purple-400 duration-1000" />
-            </div>
-            <div className="space-y-1.5">
-              <div className="font-bold text-base text-white">
-                <TextShimmerWave>AI Đang Lên Kịch Bản Phân Cảnh Triệu View...</TextShimmerWave>
-              </div>
-              <p className="text-xs text-slate-400 max-w-sm">
-                Đang thiết kế Hook 3s bắt trend, phân tách lời thoại, góc quay máy và chữ hiển thị trên màn hình...
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Kết quả khi đã sinh xong */}
-        {result && !loading && (
-          <>
-            {viewMode === "cards" ? (
-              <div>
-                {/* 📱 GIAO DIỆN MOBILE: THUẦN TEXT GỌN GÀNG CHUẨN AI (< lg) */}
-                <div className="lg:hidden p-4 bg-slate-950/80 rounded-xl border border-slate-800/90 text-[13px] text-slate-200 leading-relaxed select-text space-y-6">
-                  {scripts.map((script) => {
-                    const isCopiedThisScript = copiedScriptId === script.id;
-                    return (
-                      <div key={script.id} className="space-y-4 pb-5 border-b border-slate-800/80 last:border-0 last:pb-0">
-                        {/* Script Header */}
-                        <div className="flex items-center justify-between gap-2">
-                          <h3 className="font-bold text-sm text-purple-300 flex items-center gap-1.5">
-                            🎬 #{script.id}: {script.title}
-                          </h3>
-                          <button
-                            type="button"
-                            onClick={() => handleCopySingleScript(script)}
-                            className="text-[11px] text-slate-400 hover:text-white flex items-center gap-1 cursor-pointer active:scale-95 px-2 py-0.5 rounded bg-slate-900 border border-slate-800 shrink-0"
-                          >
-                            {isCopiedThisScript ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
-                            <span>{isCopiedThisScript ? "Đã chép" : "Chép kịch bản"}</span>
-                          </button>
-                        </div>
-
-                        {/* Scenes List */}
-                        <div className="space-y-3 pl-1">
-                          {script.sections.map((sec) => {
-                            const secKey = `m-${script.id}-${sec.id}`;
-                            const isCopiedSec = copiedSectionKey === secKey;
-                            return (
-                              <div key={sec.id} className="space-y-1.5 bg-slate-900/60 p-3 rounded-lg border border-slate-800/60">
-                                <div className="flex items-center justify-between gap-2">
-                                  <span className="font-semibold text-white text-xs">
-                                    ⏱️ [{sec.timeRange || "00:00"}] {sec.phase}
-                                  </span>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleCopySection(sec.voice || sec.content, secKey)}
-                                    className="text-[10px] text-slate-400 hover:text-white flex items-center gap-1 cursor-pointer active:scale-95 px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800 shrink-0"
-                                  >
-                                    {isCopiedSec ? <Check size={10} className="text-emerald-400" /> : <Copy size={10} />}
-                                    <span>{isCopiedSec ? "Đã chép" : "Chép"}</span>
-                                  </button>
-                                </div>
-
-                                {sec.voice && (
-                                  <p className="text-slate-100 text-xs leading-relaxed select-text">
-                                    <strong className="text-purple-400 font-semibold">🎤 Thoại: </strong>
-                                    &ldquo;{sec.voice}&rdquo;
-                                  </p>
-                                )}
-                                {sec.action && (
-                                  <p className="text-slate-300 text-xs leading-relaxed select-text">
-                                    <strong className="text-indigo-400 font-semibold">🎬 Hình ảnh: </strong>
-                                    {sec.action}
-                                  </p>
-                                )}
-                                {sec.overlay && (
-                                  <p className="text-slate-400 text-[11px] leading-relaxed select-text font-mono">
-                                    <strong className="text-pink-400 font-semibold font-sans">🔤 Chữ video: </strong>
-                                    {sec.overlay}
-                                  </p>
-                                )}
-                              </div>
-                            );
-                          })}
-                        </div>
-
-                        {/* Notes if present */}
-                        {script.notes && (
-                          <div className="p-2.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs leading-relaxed">
-                            <strong>💡 Lưu ý quay dựng: </strong>
-                            {script.notes}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* 🖥️ GIAO DIỆN DESKTOP: BẢNG PHÂN CẢNH TRỰC QUAN ĐẦY ĐỦ (lg+) */}
-                <div className="hidden lg:block">
-                  {viewAll ? (
-                    /* Hiển thị tất cả các kịch bản thành từng khối riêng biệt */
-                    <div>
-                      {scripts.map((script) => renderScriptCard(script, false))}
-                    </div>
-                  ) : (
-                    /* Hiển thị từng kịch bản theo Tab được chọn */
-                    activeScript && renderScriptCard(activeScript, true)
-                  )}
-                </div>
-              </div>
-            ) : (
-              /* Chế độ xem văn bản gốc */
-              <div className="bg-slate-950/60 border border-slate-800 p-4 rounded-xl min-h-[420px] custom-scrollbar">
-                <pre className="text-slate-300 font-sans text-xs leading-relaxed whitespace-pre-wrap select-all">
-                  {viewAll
-                    ? scripts
-                        .map(
-                          (s) =>
-                            `================== ${s.title.toUpperCase()} ==================\n\n${s.rawText}`
-                        )
-                        .join("\n\n\n")
-                    : activeScript?.rawText || result}
-                </pre>
-              </div>
-            )}
-          </>
         )}
       </div>
 
-      {/* Footer metadata ghim cố định đáy khung output */}
-      {result && !loading && (
-        <div className="px-3.5 sm:px-4 py-2 border-t border-slate-800 bg-slate-950/90 backdrop-blur-md flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400 shrink-0 relative z-10">
-          <div className="flex items-center gap-3">
-            <span>Số từ: <strong className="text-slate-200 font-mono">{wordCount}</strong></span>
-            <span>Tổng phân cảnh: <strong className="text-purple-300 font-mono">{totalSections}</strong></span>
-          </div>
-          <div className="flex items-center gap-1.5 text-emerald-400 font-medium">
-            <CheckCircle2 size={12} /> Sẵn sàng quay dựng TikTok Shop & Reels
-          </div>
-        </div>
-      )}
+      {/* Footer metadata - Gọn gàng chuẩn AI Mẫu Quảng Cáo */}
+
     </div>
   );
 }

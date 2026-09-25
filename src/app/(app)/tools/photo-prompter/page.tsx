@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   ArrowLeft,
   Sparkles,
@@ -13,6 +13,11 @@ import {
   HelpCircle,
   Cpu,
   Crown,
+  XCircle,
+  Upload,
+  Image as ImageIcon,
+  CheckCircle2,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import { useToolGate } from "@/hooks/useToolGate";
@@ -20,6 +25,8 @@ import { PhotoPrompterOutput } from "@/components/tools/PhotoPrompterOutput";
 import { useToast } from "@/context/ToastContext";
 import { AiUsageBadge } from "@/components/tools/AiUsageBadge";
 import { MobileToolTabs } from "@/components/tools/MobileToolTabs";
+import { compressImageForAi } from "@/lib/image-compress";
+import { generatePhotoPrompterBlueprint } from "@/lib/photo-prompter/contract";
 
 const STYLES = [
   {
@@ -161,67 +168,18 @@ const SAMPLE_DATA = {
   modelDemographic: "Nữ châu Á 23 tuổi thanh lịch, trang điểm nhẹ tự nhiên, mặc áo blazer trắng kem",
 };
 
-const SAMPLE_OUTPUT = `## 📸 1. TOP 5 BỘ PROMPT TIẾNG ANH CHUẨN STUDIO THƯƠNG MẠI
-*(Copy nguyên văn đoạn mã code tiếng Anh vào Midjourney hoặc Flux để tạo ảnh chất lượng 8K)*
-
-### 🌟 Prompt 1: Góc Chụp Toàn Cảnh (Master Hero Shot)
-- **English Prompt (Ready to Copy):**
-\`\`\`
-A beautifully crafted leather bag with alligator embossed design in caramel brown color, lying on a natural wood surface with a soft, warm light from the ceiling. The bag is presented in a low-angle hero shot, emphasizing its luxurious texture and craftsmanship. The subtle color palette of beige and white around the bag adds to the warm and cozy Nordic atmosphere. Use an 85mm prime lens with f/1.8 aperture for a shallow depth of field, creating a bokeh effect. Octane render, photorealistic, 8k --ar 1:1 --v 6.1
-\`\`\`
-- **Ý đồ nhiếp ảnh:** [Góc chụp từ dưới lên tạo cảm giác bề thế và cao cấp, nhấn mạnh vào chất liệu và họa tiết da bò dập vân cá sấu, tạo cảm xúc ấm cúng của phong cách Bắc Âu.]
-
-### 🔍 Prompt 2: Góc Chụp Cận Cảnh Chi Tiết (Macro Detail Shot)
-- **English Prompt (Ready to Copy):**
-\`\`\`
-Zoom in on the intricate texture of the alligator embossed leather in a bag with caramel brown color. The surface of the leather is captured with an 85mm prime lens at f/1.8, showing the fine details and the soft yet distinct embossed patterns. The depth of field is shallow, creating a smooth, blurred background. Octane render, photorealistic, 8k --ar 1:1 --v 6.1
-\`\`\`
-- **Ý đồ nhiếp ảnh:** [Chú trọng vào chi tiết chất liệu và họa tiết da bò, tạo cảm giác tinh xảo và cao cấp.]
-
-### 💃 Prompt 3: Góc Lookbook Người Mẫu (Model Lookbook Shot)
-- **English Prompt (Ready to Copy):**
-\`\`\`
-A young Asian woman in her early 20s, wearing a light white blazer, interacts naturally with a caramel brown alligator embossed leather bag. She is standing in a cozy, Nordic-style living space with beige and white tones, where the wooden elements and linen fabrics complement the overall aesthetic. The model’s subtle makeup and elegant demeanor enhance the look of sophistication and grace. Octane render, photorealistic, 8k --ar 3:4 --v 6.1
-\`\`\`
-- **Ý đồ nhiếp ảnh:** [Tạo hình ảnh lookbook với người mẫu tự nhiên tương tác với sản phẩm, phản ánh tinh thần phong cách Bắc Âu ấm cúng.]
-
-### ☕ Prompt 4: Bối Cảnh Đời Sống Thực Tế (Lifestyle In-Context)
-- **English Prompt (Ready to Copy):**
-\`\`\`
-A caramel brown alligator embossed leather bag gracefully placed in a cozy, Nordic-style living space. The room is decorated with natural wood furniture and soft, linen-covered cushions. The lighting is warm and natural, creating a cozy and inviting atmosphere. The bag is positioned on a wooden table, surrounded by elements that reflect the simplicity and warmth of the Nordic style, such as woolen blankets and wooden decor. Octane render, photorealistic, 8k --ar 1:1 --v 6.1
-\`\`\`
-- **Ý đồ nhiếp ảnh:** [Tạo hình ảnh sản phẩm trong không gian sống thực tế, phản ánh phong cách Bắc Âu ấm cúng và tông màu be/trắng.]
-
-### ✨ Prompt 5: Phong Cách Tối Giản Nghệ Thuật (High-end Editorial)
-- **English Prompt (Ready to Copy):**
-\`\`\`
-A high-end editorial style shot of a caramel brown alligator embossed leather bag, placed on a minimalist wooden pedestal with soft, diffused lighting. The bag is presented with a soft, elegant tone, reminiscent of Vogue or Elle magazine covers. The composition is clean and modern, highlighting the luxurious texture and the intricate embossed patterns. Octane render, photorealistic, 8k --ar 1:1 --v 6.1
-\`\`\`
-- **Ý đồ nhiếp ảnh:** [Tạo hình ảnh theo phong cách tạp chí thời trang, nhấn mạnh vào vẻ đẹp tinh tế và cao cấp của sản phẩm.]
-
----
-
-## 🚫 2. BỘ CÂU LỆNH LOẠI TRỪ (NEGATIVE PROMPT)
-*(Dán vào ô Negative Prompt / --no để ảnh không bị lỗi)*
-\`\`\`
-deformed hands, missing fingers, extra limbs, bad anatomy, distorted product, low quality, blurry, text, watermark, logo, oversaturated, plastic skin, cartoon, 3d render look
-\`\`\`
-
----
-
-## 💡 3. MẸO THỰC CHIẾN TỪ NHIẾP ẢNH GIA AI
-- **Mẹo 1:** Đảm bảo rằng logo của bạn có thể được dễ dàng thêm vào hoặc thay thế bằng công cụ inpaint sau khi tạo ảnh AI.
-- **Mẹo 2:** Sử dụng công cụ inpaint để xóa bỏ bất kỳ phần nào không mong muốn từ ảnh AI, ví dụ: người mẫu hoặc bối cảnh không cần thiết.
-- **Mẹo 3:** Cân nhắc việc thêm một lớp mờ nhẹ cho logo hoặc sản phẩm để tránh nhìn thấy chúng quá rõ ràng trong ảnh cuối cùng, giúp hình ảnh trở nên tự nhiên hơn.`;
-
 export default function PhotoPrompterPage() {
   const { checkAccess, GateModals } = useToolGate();
-  const { showAiError, showWarning } = useToast();
+  const { showAiError, showWarning, showSuccess } = useToast();
 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [mobileTab, setMobileTab] = useState<"form" | "result">("form");
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Form states
   const [productName, setProductName] = useState("");
@@ -230,22 +188,125 @@ export default function PhotoPrompterPage() {
   const [aiTool, setAiTool] = useState(AI_TOOLS[0]);
   const [modelDemographic, setModelDemographic] = useState("");
 
+  // Image Upload & Vision AI states
+  const [imageBase64, setImageBase64] = useState<string | null>(null);
+  const [imageMeta, setImageMeta] = useState<{ name: string; sizeKb: number } | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Dọn dẹp timer và abort request khi component unmount
+  useEffect(() => {
+    return () => {
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      if (abortControllerRef.current) abortControllerRef.current.abort();
+    };
+  }, []);
+
+  // Lắng nghe phím dán ảnh Ctrl + V từ clipboard
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.startsWith("image/")) {
+          const file = items[i].getAsFile();
+          if (file) {
+            processImageFile(file);
+            break;
+          }
+        }
+      }
+    };
+    window.addEventListener("paste", handlePaste);
+    return () => window.removeEventListener("paste", handlePaste);
+  }, []);
+
+  const handleCancel = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+  };
+
+  // Hàm xử lý nén và tải ảnh lên an toàn
+  const processImageFile = async (file: File) => {
+    if (!file) return;
+
+    if (!file.type.startsWith("image/") && !/\.(png|jpe?g|webp|gif|bmp)$/i.test(file.name)) {
+      showWarning("Vui lòng chỉ tải lên tệp hình ảnh (PNG, JPG, WEBP)!", "Sai Định Dạng");
+      return;
+    }
+
+    if (file.size > 15 * 1024 * 1024) {
+      showWarning("Dung lượng ảnh vượt quá 15MB. Vui lòng chọn ảnh chụp nhẹ hơn!", "Ảnh Quá Lớn");
+      return;
+    }
+
+    try {
+      let optimized = await compressImageForAi(file, 1024, 0.82);
+      if (optimized && optimized.length > 1.2 * 1024 * 1024) {
+        optimized = await compressImageForAi(file, 800, 0.70);
+      }
+
+      if (optimized) {
+        const cleanBase64 = optimized.trim();
+        setImageBase64(cleanBase64);
+        const sizeKb = Math.round((cleanBase64.length * 3) / 4 / 1024);
+        setImageMeta({ name: file.name, sizeKb });
+        showSuccess(`Đã nén tối ưu ảnh sản phẩm (${sizeKb} KB) thành công!`, "Vision AI Ready");
+      }
+    } catch (err) {
+      console.error("Image processing error:", err);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const rawBase64 = reader.result as string;
+        if (rawBase64 && rawBase64.length < 2 * 1024 * 1024) {
+          setImageBase64(rawBase64.trim());
+          setImageMeta({ name: file.name, sizeKb: Math.round(file.size / 1024) });
+        } else {
+          showWarning("Không thể nén ảnh này. Vui lòng dùng ảnh có kích thước nhẹ hơn.", "Ảnh Quá Lớn");
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      processImageFile(file);
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setImageBase64(null);
+    setImageMeta(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
   const handleUseSample = () => {
+    setIsOfflineMode(false);
     setProductName(SAMPLE_DATA.productName);
     setStyle(SAMPLE_DATA.style);
     setImageType(SAMPLE_DATA.imageType);
     setAiTool(SAMPLE_DATA.aiTool);
     setModelDemographic(SAMPLE_DATA.modelDemographic);
-    setResult(SAMPLE_OUTPUT);
+
+    // Sinh blueprint mẫu tức thì
+    const sampleBlueprint = generatePhotoPrompterBlueprint(SAMPLE_DATA);
+    setResult(JSON.stringify(sampleBlueprint));
     setMobileTab("result");
   };
 
   const handleResetForm = () => {
+    setIsOfflineMode(false);
     setProductName("");
     setStyle(STYLES[0].id);
     setImageType(IMAGE_TYPES[0]);
     setAiTool(AI_TOOLS[0]);
     setModelDemographic("");
+    handleRemoveImage();
     setResult("");
   };
 
@@ -253,52 +314,119 @@ export default function PhotoPrompterPage() {
     const hasAccess = await checkAccess("photo-prompter", false);
     if (!hasAccess) return;
 
-    if (!productName.trim()) {
-      showWarning("Vui lòng nhập tên sản phẩm và đặc điểm chi tiết!", "Thiếu Thông Tin");
+    if (!productName.trim() && !imageBase64) {
+      showWarning("Vui lòng tải ảnh sản phẩm hoặc nhập tên & đặc điểm sản phẩm!", "Thiếu Thông Tin");
       return;
     }
 
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setLoading(true);
+    setIsOfflineMode(false);
+    setElapsedSeconds(0);
     setResult("");
     setMobileTab("result");
+
+    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    timerIntervalRef.current = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+
+    const timeoutId = setTimeout(() => {
+      if (abortControllerRef.current === controller) {
+        controller.abort();
+        showAiError({
+          code: "TIMEOUT",
+          error: "Yêu cầu đã quá thời gian phản hồi (120s). Vui lòng thử lại sau.",
+        });
+      }
+    }, 120000);
 
     try {
       const response = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           tool: "photo-prompter",
           inputs: {
-            productName: productName.trim(),
+            productName: productName.trim() || (imageMeta?.name ? `Sản phẩm ${imageMeta.name}` : "Sản phẩm thương mại"),
             style,
             imageType,
             aiTool,
             modelDemographic: modelDemographic.trim(),
+            imageBase64: imageBase64 ? imageBase64.trim() : null,
           },
         }),
       });
 
       const data = await response.json();
 
-      if (!response.ok || !data.success) {
+      // Kiểm tra lỗi tài khoản hoặc giới hạn quota
+      if (
+        response.status === 401 ||
+        data?.code === "LOGIN_REQUIRED" ||
+        data?.code === "DAILY_LIMIT_EXCEEDED" ||
+        data?.code === "QUOTA_EXCEEDED"
+      ) {
         showAiError(data);
         return;
       }
 
+      if (!response.ok || !data.success) {
+        // Fallback Blueprint tức thì nếu API quá tải (502/503/timeout)
+        setIsOfflineMode(true);
+        const offlineBlueprint = generatePhotoPrompterBlueprint({
+          productName: productName.trim() || "Sản phẩm thương mại",
+          style,
+          imageType,
+          aiTool,
+          modelDemographic: modelDemographic.trim(),
+          imageBase64,
+        });
+        setResult(JSON.stringify(offlineBlueprint));
+        setRefreshTrigger((prev) => prev + 1);
+        return;
+      }
+
+      setIsOfflineMode(Boolean(data.isOfflineFallback));
       setResult(data.data);
       setRefreshTrigger((prev) => prev + 1);
-    } catch {
-      showAiError({
-        code: "NETWORK_ERROR",
-        error: "Không thể kết nối đến hệ thống AI. Vui lòng kiểm tra lại mạng hoặc thử lại sau.",
+    } catch (error: any) {
+      if (error?.name === "AbortError" || controller.signal.aborted) {
+        showWarning("Đã dừng quá trình xử lý theo yêu cầu của bạn.", "Đã Hủy");
+        return;
+      }
+
+      // Kích hoạt Offline Blueprint an toàn tuyệt đối khi lỗi mạng
+      setIsOfflineMode(true);
+      const offlineBlueprint = generatePhotoPrompterBlueprint({
+        productName: productName.trim() || "Sản phẩm thương mại",
+        style,
+        imageType,
+        aiTool,
+        modelDemographic: modelDemographic.trim(),
+        imageBase64,
       });
+      setResult(JSON.stringify(offlineBlueprint));
+      showSuccess("Đã kích hoạt bộ prompt Studio dự phòng chuẩn sàn TMĐT!", "Offline Mode");
     } finally {
+      clearTimeout(timeoutId);
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+      abortControllerRef.current = null;
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-7xl w-full mx-auto flex-1 flex flex-col min-h-0 h-full lg:overflow-hidden">
+    <div className="max-w-7xl w-full mx-auto flex-1 flex flex-col min-h-0 h-full">
       {/* Modals kiểm tra quyền truy cập */}
       <GateModals />
 
@@ -332,7 +460,7 @@ export default function PhotoPrompterPage() {
               <span className="text-slate-600 dark:text-slate-300">Hình Ảnh &amp; Media</span>
             </div>
 
-            {/* Title Row: Centered icon, text & minimal mobile reset button */}
+            {/* Title Row */}
             <div className="flex items-center gap-2.5 sm:gap-3">
               <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full sm:rounded-2xl bg-violet-50 dark:bg-violet-950/50 border border-violet-200/80 dark:border-violet-800/80 flex items-center justify-center text-violet-600 dark:text-violet-400 shadow-xs shrink-0">
                 <Camera size={20} className="sm:w-[22px] sm:h-[22px]" />
@@ -342,7 +470,6 @@ export default function PhotoPrompterPage() {
                   <h1 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white leading-tight tracking-tight">
                     AI Prompt Chụp Ảnh Studio &amp; Người Mẫu Ảo
                   </h1>
-                  {/* Minimal icon-only reset button: ONLY ON MOBILE */}
                   <button
                     type="button"
                     onClick={handleResetForm}
@@ -358,13 +485,13 @@ export default function PhotoPrompterPage() {
                   </span>
                 </div>
                 <p className="hidden sm:block text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
-                  Biến sản phẩm thực tế thành những bộ Prompt tiếng Anh chuẩn studio thương mại
+                  Soi ảnh thật bằng Vision AI &amp; tạo bộ prompt chuẩn xưởng 8K tăng tỷ lệ click (CTR) và chuyển đổi
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Quick Action Buttons (Desktop ONLY) */}
+          {/* Quick Action Buttons (Desktop) */}
           <div className="hidden md:flex items-center gap-2 shrink-0">
             <AiUsageBadge tool="photo-prompter" refreshTrigger={refreshTrigger} />
             <button
@@ -394,19 +521,19 @@ export default function PhotoPrompterPage() {
         resultLabel="Bộ Prompt Studio"
       />
 
-      {/* Bố cục Form & Kết quả (Cuộn độc lập) */}
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:overflow-hidden items-stretch">
+      {/* Bố cục Form & Kết quả */}
+      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
         {/* Cột trái: Form nhập liệu */}
-        <div className={`${mobileTab === "form" ? "flex" : "hidden lg:flex"} lg:col-span-5 flex-col min-h-0 lg:h-full lg:overflow-hidden`}>
+        <div className={`${mobileTab === "form" ? "flex" : "hidden lg:flex"} lg:col-span-5 flex-col min-h-0 lg:h-full`}>
           <div className="h-full overflow-y-auto custom-scrollbar space-y-4 lg:pr-1.5 pb-24 lg:pb-2">
-            <div className="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-5">
+            <div className="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                 <div className="flex items-center gap-2">
                   <div className="p-1 rounded-lg bg-violet-500/10 text-violet-600 dark:text-violet-400">
                     <Camera size={15} />
                   </div>
                   <h2 className="text-xs font-bold uppercase tracking-wider text-slate-600 dark:text-slate-300">
-                    Cấu Hình Studio Ảo AI
+                    Cấu Hình Studio Ảo &amp; Thị Giác AI
                   </h2>
                 </div>
                 <div className="flex items-center gap-2">
@@ -428,10 +555,94 @@ export default function PhotoPrompterPage() {
                 </div>
               </div>
 
-              {/* 1. Tên Sản Phẩm */}
+              {/* 1. TẢI ẢNH SẢN PHẨM THẬT (Vision AI Analysis) */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                    <ImageIcon size={14} className="text-violet-500" />
+                    Ảnh Sản Phẩm Thực Tế (Khuyên dùng)
+                  </label>
+                  <span className="text-[10px] text-violet-600 dark:text-violet-400 font-medium">
+                    Ctrl + V để dán nhanh
+                  </span>
+                </div>
+
+                {!imageBase64 ? (
+                  <div
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      setIsDragging(true);
+                    }}
+                    onDragLeave={(e) => {
+                      e.preventDefault();
+                      setIsDragging(false);
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setIsDragging(false);
+                      if (e.dataTransfer.files?.[0]) processImageFile(e.dataTransfer.files[0]);
+                    }}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all group ${
+                      isDragging
+                        ? "border-violet-500 bg-violet-50/50 dark:bg-violet-950/40"
+                        : "border-slate-200 dark:border-slate-800 hover:border-violet-400 dark:hover:border-violet-600 bg-slate-50/60 dark:bg-slate-950/40 hover:bg-violet-50/30"
+                    }`}
+                  >
+                    <Upload size={20} className="text-slate-400 group-hover:text-violet-500 mb-1.5 transition-colors" />
+                    <span className="text-xs font-semibold text-slate-700 dark:text-slate-300 group-hover:text-violet-600 dark:group-hover:text-violet-400">
+                      Kéo thả, bấm tải ảnh hoặc dán (Ctrl + V)
+                    </span>
+                    <span className="text-[10px] text-slate-400 mt-0.5 text-center">
+                      AI sẽ soi chất liệu, màu sắc và phom dáng thật để tạo prompt chuẩn mẫu 100%
+                    </span>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      onChange={handleFileInputChange}
+                      className="hidden"
+                    />
+                  </div>
+                ) : (
+                  <div className="relative rounded-xl border border-violet-200 dark:border-violet-800/80 p-2.5 bg-violet-50/30 dark:bg-violet-950/20 flex items-center justify-between">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <img
+                        src={imageBase64}
+                        alt="Ảnh sản phẩm thật"
+                        className="w-12 h-12 object-cover rounded-lg border border-violet-300 dark:border-violet-700 shadow-xs shrink-0"
+                      />
+                      <div className="min-w-0">
+                        <span className="text-xs font-bold text-violet-700 dark:text-violet-300 flex items-center gap-1">
+                          <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
+                          <span>Đã nhận diện ảnh thật</span>
+                          {imageMeta?.sizeKb ? (
+                            <span className="text-[10px] font-mono text-violet-700 dark:text-violet-300 font-semibold ml-1 px-1.5 py-0.2 rounded bg-violet-100 dark:bg-violet-900/60 border border-violet-300/60 dark:border-violet-700/60">
+                              {imageMeta.sizeKb} KB
+                            </span>
+                          ) : null}
+                        </span>
+                        <span className="text-[10px] text-slate-500 dark:text-slate-400 block truncate max-w-[200px]">
+                          {imageMeta?.name || "Vision AI sẽ phân tích đặc tả vật lý sản phẩm"}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors cursor-pointer shrink-0"
+                      title="Gỡ bỏ ảnh này"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* 2. Tên Sản Phẩm */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                  Tên Sản Phẩm & Đặc Điểm Ngoại Quan <span className="text-rose-500">*</span>
+                  Tên Sản Phẩm &amp; Đặc Điểm Ngoại Quan {!imageBase64 && <span className="text-rose-500">*</span>}
                 </label>
                 <textarea
                   rows={2}
@@ -442,7 +653,7 @@ export default function PhotoPrompterPage() {
                 />
               </div>
 
-              {/* 2. Phong Cách Bối Cảnh Studio */}
+              {/* 3. Phong Cách Bối Cảnh Studio */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                   <Palette size={14} className="text-violet-500" />
@@ -456,10 +667,11 @@ export default function PhotoPrompterPage() {
                         key={st.id}
                         type="button"
                         onClick={() => setStyle(st.id)}
-                        className={`text-left p-2.5 rounded-xl border text-xs transition-all cursor-pointer ${isSelected
-                          ? "bg-violet-50 dark:bg-violet-950/40 border-violet-500 text-violet-900 dark:text-violet-200 font-bold ring-2 ring-violet-500/20"
-                          : "border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300 font-medium"
-                          }`}
+                        className={`text-left p-2.5 rounded-xl border text-xs transition-all cursor-pointer ${
+                          isSelected
+                            ? "bg-violet-50 dark:bg-violet-950/40 border-violet-500 text-violet-900 dark:text-violet-200 font-bold ring-2 ring-violet-500/20"
+                            : "border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800/40 text-slate-700 dark:text-slate-300 font-medium"
+                        }`}
                       >
                         <div className="font-semibold text-[13px]">{st.name}</div>
                         <div className="text-[11px] text-slate-400 mt-0.5 line-clamp-1">
@@ -471,15 +683,15 @@ export default function PhotoPrompterPage() {
                 </div>
               </div>
 
-              {/* 3. Loại Hình Ảnh & Nền Tảng AI */}
+              {/* 4. Loại Hình Ảnh & Nền Tảng AI */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                      Góc Chụp & Loại Hình Ảnh
+                      Góc Chụp Ưu Tiên
                     </label>
                     <span className="text-[10px] text-violet-600 dark:text-violet-400 font-semibold">
-                      {IMAGE_TYPES.length} góc chụp
+                      {IMAGE_TYPES.length} tùy chọn
                     </span>
                   </div>
                   <select
@@ -510,7 +722,7 @@ export default function PhotoPrompterPage() {
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between">
                     <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
-                      Công Cụ AI Tạo Ảnh
+                      Nền Tảng AI Tạo Ảnh
                     </label>
                     <span className="text-[10px] text-violet-600 dark:text-violet-400 font-semibold">
                       {AI_TOOLS.length} nền tảng
@@ -542,7 +754,7 @@ export default function PhotoPrompterPage() {
                 </div>
               </div>
 
-              {/* 4. Đặc Điểm Người Mẫu */}
+              {/* 5. Đặc Điểm Người Mẫu */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
                   <User size={14} className="text-violet-500" />
@@ -552,42 +764,63 @@ export default function PhotoPrompterPage() {
                   type="text"
                   value={modelDemographic}
                   onChange={(e) => setModelDemographic(e.target.value)}
-                  placeholder="VD: Nữ Việt Nam 22 tuổi, mặt V-line, tóc buộc cao, trang phục công sở nhẹ nhàng..."
+                  placeholder="VD: Nữ Việt Nam 22 tuổi, da tự nhiên, tóc buộc cao, trang phục công sở thanh lịch..."
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 transition-all font-medium"
                 />
               </div>
 
               {/* Nút hành động */}
-              <button
-                type="button"
-                disabled={loading}
-                onClick={handleGenerate}
-                className={`w-full py-3 px-4 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer ${loading
-                  ? "bg-slate-400 cursor-not-allowed"
-                  : "bg-gradient-to-r from-violet-600 via-purple-600 to-violet-600 hover:from-violet-500 hover:to-purple-500 hover:shadow-violet-500/25 active:scale-[0.99]"
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={handleGenerate}
+                  className={`flex-1 py-3 px-4 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer ${
+                    loading
+                      ? "bg-slate-700 text-slate-300 cursor-not-allowed"
+                      : "bg-gradient-to-r from-violet-600 via-purple-600 to-violet-600 hover:from-violet-500 hover:to-purple-500 hover:shadow-violet-500/25 active:scale-[0.99]"
                   }`}
-              >
-                {loading ? (
-                  <>
-                    <Sparkles size={16} className="animate-spin" /> Đang Tạo Bộ Prompt Chuyên Nghiệp...
-                  </>
-                ) : (
-                  <>
-                    <Camera size={16} /> Tạo Bộ Prompt Studio Chuẩn Xưởng Ngay
-                  </>
+                >
+                  {loading ? (
+                    <>
+                      <Sparkles size={16} className="animate-spin text-white" />
+                      <span>Đang Tạo Prompt ({elapsedSeconds}s)...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Camera size={16} /> Tạo Bộ Prompt Studio Chuẩn Xưởng Ngay
+                    </>
+                  )}
+                </button>
+
+                {loading && (
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    className="px-3.5 py-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 shrink-0"
+                    title="Hủy yêu cầu"
+                  >
+                    <XCircle size={16} />
+                    <span>Hủy</span>
+                  </button>
                 )}
-              </button>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Cột phải: Kết quả trực quan */}
-        <div className={`${mobileTab === "result" ? "flex" : "hidden lg:flex"} lg:col-span-7 flex-col min-h-0 lg:h-full lg:overflow-hidden`}>
+        {/* Cột phải: Kết quả trực quan (Chữ trắng nền đen, cuộn cả trang trên Mobile) */}
+        <div className={`${mobileTab === "result" ? "flex" : "hidden lg:flex"} lg:col-span-7 flex-col w-full lg:min-h-0 lg:h-full lg:overflow-hidden pb-20 lg:pb-0`}>
           <PhotoPrompterOutput
             result={result}
             loading={loading}
             productName={productName}
             onUseSample={handleUseSample}
+            elapsedSeconds={elapsedSeconds}
+            onCancel={handleCancel}
+            productImage={imageBase64}
+            isOfflineMode={isOfflineMode}
+            onRetryWithAi={handleGenerate}
           />
         </div>
       </div>

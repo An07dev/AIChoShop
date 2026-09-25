@@ -6,283 +6,114 @@ import {
   Check,
   Sparkles,
   Download,
-  MessageSquare,
-  Zap,
-  ShieldCheck,
-  Gem,
-  Send,
   FileSpreadsheet,
   Brain,
   AlertCircle,
-  XCircle,
-  MessageCircleQuestion,
-  Clock,
-  Sparkle,
   MessageSquareCheck,
-  User,
   Lightbulb,
   LayoutList,
   FileText,
   Layers,
+  HelpCircle,
+  Clock,
+  Flame,
+  ShieldCheck,
 } from "lucide-react";
 import * as XLSX from "xlsx";
-import { TextShimmerWave } from "@/components/loading-ui/text-shimmer-wave";
+import { ToolLoadingState } from "@/components/tools/ToolLoadingState";
+import {
+  parseObjectionKillerOutput,
+  type ObjectionKillerData,
+  type ObjectionKillerInputs,
+} from "@/lib/objection-killer/contract";
 
-export interface ObjectionPsychology {
-  realFear: string;
-  staffMistake: string;
-}
-
-export interface ObjectionResponseOption {
-  index: number;
-  rawHeader: string;
-  title: string;
-  badge: string;
-  message: string;
-  timing: string;
-  charCount: number;
-}
-
-export interface OpenQuestionItem {
-  label: string;
-  question: string;
-}
-
-export interface GoldenRuleItem {
-  title: string;
-  content: string;
-}
-
-export interface ParsedObjectionKillerData {
-  psychology: ObjectionPsychology;
-  responseOptions: ObjectionResponseOption[];
-  openQuestions: OpenQuestionItem[];
-  goldenRules: GoldenRuleItem[];
-  raw: string;
-}
+export type ParsedObjectionKillerData = ObjectionKillerData;
 
 interface ObjectionKillerOutputProps {
   result: string;
   loading: boolean;
   productName: string;
+  customerObjection?: string;
+  price?: string;
+  flexibleOffer?: string;
   onUseSample?: () => void;
+  elapsedSeconds?: number;
+  onCancel?: () => void;
+  isOfflineMode?: boolean;
+  onRetryWithAi?: () => void;
 }
 
-function cleanQuotesAndCode(str: string): string {
-  if (!str) return "";
-  let s = str.trim();
-  const codeMatch = s.match(/```(?:[a-zA-Z]*\n)?([\s\S]*?)```/);
-  if (codeMatch) {
-    s = codeMatch[1].trim();
-  }
-  s = s.replace(/^\*\*|\*\*$/g, "").trim();
-  s = s.replace(/^\[|\]$/g, "").trim();
-  s = s.replace(/^["“'«]|["”'»]$/g, "").trim();
-  return s.trim();
-}
-
-export function parseObjectionKillerOutput(text: string): ParsedObjectionKillerData | null {
-  if (!text) return null;
-
-  const findSection = (keywords: string[], nextKeywords: string[] = []) => {
-    let bestStart = -1;
-    let headerLen = 0;
-    for (const kw of keywords) {
-      const match = text.match(new RegExp(`^[ \\t]*(?:##|#)\\s*[^\\n]*?${kw}[^\\n]*$`, "im"));
-      if (match && match.index !== undefined) {
-        bestStart = match.index;
-        headerLen = match[0].length;
-        break;
-      }
-    }
-    if (bestStart === -1) return "";
-
-    const contentStart = text.slice(bestStart + headerLen);
-    let endIdx = contentStart.length;
-
-    for (const nextKw of nextKeywords) {
-      const nextMatch = contentStart.match(new RegExp(`^[ \\t]*(?:---|##|#)\\s*[^\\n]*?${nextKw}`, "im"));
-      if (nextMatch && nextMatch.index !== undefined && nextMatch.index < endIdx) {
-        endIdx = nextMatch.index;
-      }
-    }
-    return contentStart.slice(0, endIdx).trim();
-  };
-
-  const s1 = findSection(["GIẢI MÃ TÂM LÝ", "TÂM LÝ ẨN"], ["BA PHƯƠNG ÁN", "PHƯƠNG ÁN PHẢN HỒI", "KỸ THUẬT"]);
-  const s2 = findSection(["BA PHƯƠNG ÁN", "PHƯƠNG ÁN PHẢN HỒI"], ["KỸ THUẬT", "CÂU HỎI MỞ", "NGUYÊN TẮC"]);
-  const s3 = findSection(["KỸ THUẬT", "CÂU HỎI MỞ"], ["NGUYÊN TẮC VÀNG", "NGUYÊN TẮC"]);
-  const s4 = findSection(["NGUYÊN TẮC VÀNG", "NGUYÊN TẮC"], []);
-
-  // 1. Tâm lý khách
-  const psychology: ObjectionPsychology = {
-    realFear: "",
-    staffMistake: "",
-  };
-
-  if (s1) {
-    const lines = s1.split("\n");
-    for (const line of lines) {
-      const stripped = line.replace(/^[-*•]\s+/, "").trim();
-      let m = stripped.match(/^\*\*([^*:]+?)(?::\*\*|\*\*:)\s*([\s\S]+)$/);
-      if (!m) m = stripped.match(/^\*\*([^*]+?)\*\*\s*[:\-]\s*([\s\S]+)$/);
-      if (!m) m = stripped.match(/^([^:]+?)\s*:\s*([\s\S]+)$/);
-
-      if (m) {
-        if (/nỗi sợ|sợ thực sự|lo ngại/i.test(m[1])) {
-          psychology.realFear = cleanQuotesAndCode(m[2]);
-        } else if (/sai lầm|thường mắc|tránh/i.test(m[1])) {
-          psychology.staffMistake = cleanQuotesAndCode(m[2]);
-        }
-      }
-    }
-  }
-
-  // 2. 3 Phương án phản hồi
-  const responseOptions: ObjectionResponseOption[] = [];
-  if (s2) {
-    const optionBlocks = s2.split(/(?=###\s*)/g).filter((chunk) => chunk.trim().startsWith("###"));
-
-    optionBlocks.forEach((chunk, idx) => {
-      const headerMatch = chunk.match(/^###\s*([^\n]+)/);
-      const rawHeader = headerMatch ? headerMatch[1].trim() : `Phương Án ${idx + 1}`;
-      const title = rawHeader.replace(/^[💎⚡🛡️🚀💡\s]+/, "");
-
-      let message = "";
-      let timing = "";
-
-      const msgMatch = chunk.match(/(?:Mẫu tin nhắn|Tin nhắn|Kịch bản)[^\n:]*[:\-]\s*([\s\S]*?)(?=(?:-\s*\*\*Thời điểm|---|$))/i);
-      if (msgMatch) {
-        message = cleanQuotesAndCode(msgMatch[1]);
-      } else {
-        const codeMatch = chunk.match(/```(?:[a-zA-Z]*\n)?([\s\S]*?)```/);
-        if (codeMatch) message = codeMatch[1].trim();
-      }
-
-      const timingMatch = chunk.match(/(?:Thời điểm áp dụng|Thời điểm|Áp dụng khi|Đối tượng)[^\n:]*[:\-]\s*([^\n]+(?:\n[^\n#\-]+)?)/i);
-      if (timingMatch) {
-        timing = cleanQuotesAndCode(timingMatch[1]);
-      }
-
-      let badge = "Khuyên Dùng";
-      if (/khan hiếm|15 phút|deal/i.test(title)) {
-        badge = "Deal 15 Phút";
-      } else if (/đảo ngược|rủi ro|bảo hành|đổi trả/i.test(title)) {
-        badge = "Xóa Sạch Rủi Ro";
-      } else if (/giá trị/i.test(title)) {
-        badge = "Giá Trị Vượt Trội";
-      }
-
-      responseOptions.push({
-        index: idx + 1,
-        rawHeader,
-        title,
-        badge,
-        message,
-        timing,
-        charCount: message.length,
-      });
-    });
-  }
-
-  // 3. Kỹ thuật câu hỏi mở
-  const openQuestions: OpenQuestionItem[] = [];
-  if (s3) {
-    const qMatches = s3.split(/(?=(?:[-*•]\s*\*\*|###\s*))/g);
-    for (const qChunk of qMatches) {
-      const trimmed = qChunk.trim();
-      if (!trimmed || trimmed.startsWith("#") || trimmed === "---") continue;
-
-      const labelMatch = trimmed.match(/^[-*•]?\s*(?:\*\*)?([^:\n]+?)(?:\*\*)?\s*:\s*([\s\S]+)$/);
-      if (labelMatch) {
-        const label = labelMatch[1].trim();
-        const content = cleanQuotesAndCode(labelMatch[2]);
-        if (content) {
-          openQuestions.push({
-            label,
-            question: content,
-          });
-        }
-      }
-    }
-  }
-
-  // 4. Nguyên tắc vàng
-  const goldenRules: GoldenRuleItem[] = [];
-  if (s4) {
-    const lines = s4.split("\n");
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith("#") || trimmed === "---") continue;
-      if (/3 mẹo|nguyên tắc vàng/i.test(trimmed) && !trimmed.includes("**")) continue;
-
-      const stripped = trimmed.replace(/^(?:\d+[\.\)]|\-|\*|•)\s+/, "").trim();
-      let m = stripped.match(/^\*\*([^*:]+?)(?::\*\*|\*\*:)\s*([\s\S]+)$/);
-      if (!m) m = stripped.match(/^\*\*([^*]+?)\*\*\s*[:\-]\s*([\s\S]+)$/);
-      if (!m) m = stripped.match(/^([^:]+?)\s*:\s*([\s\S]+)$/);
-
-      if (m) {
-        const content = cleanQuotesAndCode(m[2]);
-        if (content) {
-          goldenRules.push({
-            title: m[1].replace(/^\*\*|\*\*$/g, "").trim(),
-            content,
-          });
-        }
-      } else if (stripped.length > 5 && !/tỷ lệ chốt đơn/i.test(stripped)) {
-        goldenRules.push({
-          title: `Nguyên tắc ${goldenRules.length + 1}`,
-          content: cleanQuotesAndCode(stripped),
-        });
-      }
-    }
-  }
-
-  return {
-    psychology,
-    responseOptions,
-    openQuestions,
-    goldenRules,
-    raw: text,
-  };
-}
+const OBJECTION_STAGES = [
+  { upToSeconds: 4, text: "Đang giải mã tâm lý ngầm của khách mua online..." },
+  { upToSeconds: 15, text: "Soạn thảo 3 kịch bản phản hồi bẻ gãy từ chối tức thì..." },
+  { upToSeconds: 30, text: "Thiết kế các câu hỏi mở chống Ghosting dẫn dắt đặt hàng..." },
+  { upToSeconds: 60, text: "Hoàn thiện bộ kịch bản chốt đơn tối ưu cho sàn..." },
+];
 
 export function ObjectionKillerOutput({
   result,
   loading,
   productName,
+  customerObjection,
+  price,
+  flexibleOffer,
   onUseSample,
+  elapsedSeconds = 0,
+  onCancel,
+  isOfflineMode = false,
+  onRetryWithAi,
 }: ObjectionKillerOutputProps) {
-  const [activeTab, setActiveTab] = useState<"all" | "psychology" | "options" | "questions" | "rules">("all");
-  const [viewMode, setViewMode] = useState<"interactive" | "raw">("interactive");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
-
-  const parsed = useMemo(() => {
-    return parseObjectionKillerOutput(result);
-  }, [result]);
+  const [viewMode, setViewMode] = useState<"interactive" | "raw">("interactive");
+  const [activeTab, setActiveTab] = useState<"all" | "pa1" | "pa2" | "pa3" | "questions" | "psychology">("all");
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 2000);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 1800);
   };
 
-  const handleCopy = (text: string, key: string, label: string = "Đã sao chép!") => {
+  const handleCopy = (text: string, key: string, label = "Đã sao chép!") => {
     if (!text) return;
     navigator.clipboard.writeText(text);
     setCopiedKey(key);
     showToast(label);
     setTimeout(() => {
       setCopiedKey((prev) => (prev === key ? null : prev));
-    }, 1800);
+    }, 1600);
   };
 
-  const handleCopyAllOptions = () => {
-    if (!parsed || parsed.responseOptions.length === 0) return;
-    const text = parsed.responseOptions
-      .map((opt) => `### ${opt.title} (${opt.badge})\n${opt.message}\n(Thời điểm: ${opt.timing})`)
-      .join("\n\n---\n\n");
-    handleCopy(text, "options_all", "Đã sao chép 3 phương án phản hồi!");
+  const inputs: ObjectionKillerInputs = useMemo(
+    () => ({
+      productName: productName || "Sản phẩm",
+      price: price || "",
+      customerObjection: customerObjection || "",
+      flexibleOffer: flexibleOffer || "",
+    }),
+    [productName, price, customerObjection, flexibleOffer]
+  );
+
+  const parsed = useMemo(() => {
+    if (!result) return null;
+    return parseObjectionKillerOutput(result, inputs);
+  }, [result, inputs]);
+
+  const handleCopyAll = () => {
+    if (!parsed) return;
+    const lines = [
+      `=== KỊCH BẢN BẺ GÃY TỪ CHỐI 1-1: ${parsed.productName} ===`,
+      `Khách từ chối: "${parsed.customerObjection}"`,
+      `\n--- 3 PHƯƠNG ÁN PHẢN HỒI ---`,
+      ...parsed.responseOptions.map(
+        (opt) =>
+          `[${opt.title}]\nThời điểm: ${opt.timing}\nTin nhắn chat:\n"${opt.message}"`
+      ),
+      `\n--- CÂU HỎI MỞ CHỐNG GHOSTING ---`,
+      ...parsed.openQuestions.map((q) => `• ${q.title}: "${q.question}"`),
+    ];
+    handleCopy(lines.join("\n\n"), "all_script", "Đã chép toàn bộ kịch bản!");
   };
 
   const handleExportExcel = () => {
@@ -290,46 +121,29 @@ export function ObjectionKillerOutput({
     try {
       const wb = XLSX.utils.book_new();
 
-      // Sheet 1: 3 Phương án
-      const optRows = parsed.responseOptions.map((opt) => ({
+      const optionsRows = parsed.responseOptions.map((opt) => ({
         STT: opt.index,
         "Phương Án": opt.title,
-        "Đặc Trưng": opt.badge,
-        "Mẫu Tin Nhắn Phản Hồi": opt.message,
-        "Thời Điểm Áp Dụng": opt.timing,
+        "Nhãn": opt.badge,
+        "Thời Điểm Dùng": opt.timing,
+        "Mẫu Tin Nhắn Chat": opt.message,
+        "Chiến Thuật": opt.closingTactic,
         "Số Ký Tự": opt.charCount,
       }));
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(optRows), "3_PhuongAn_PhanHoi");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(optionsRows), "KichBanChat");
 
-      // Sheet 2: Tâm lý khách
-      const psychRows = [
-        { "Góc Nhìn": "Nỗi sợ thực sự của khách", "Phân Tích": parsed.psychology.realFear },
-        { "Góc Nhìn": "Sai lầm nhân viên thường mắc", "Phân Tích": parsed.psychology.staffMistake },
-      ];
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(psychRows), "GiaiMa_TamLy");
-
-      // Sheet 3: Câu hỏi mở
-      const qRows = parsed.openQuestions.map((q, idx) => ({
-        STT: idx + 1,
-        "Loại Câu Hỏi": q.label,
-        "Nội Dung Câu Hỏi Chốt": q.question,
+      const questionRows = parsed.openQuestions.map((q) => ({
+        STT: q.index,
+        "Kỹ Thuật": q.title,
+        "Câu Hỏi Mở": q.question,
+        "Tác Dụng": q.purpose,
       }));
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(qRows), "CauHoiMo_ChotDon");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(questionRows), "CauHoiMo");
 
-      // Sheet 4: Nguyên tắc vàng
-      const ruleRows = parsed.goldenRules.map((r, idx) => ({
-        STT: idx + 1,
-        "Nguyên Tắc": r.title,
-        "Nội Dung Chi Tiết": r.content,
-      }));
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(ruleRows), "NguyenTac_TrucChat");
-
-      const safeName = (productName || "san-pham").toLowerCase().replace(/[^a-z0-9]/g, "-").slice(0, 30);
-      const fileName = `kich-ban-be-gay-tu-choi-${safeName}-${Date.now()}.xlsx`;
-      XLSX.writeFile(wb, fileName);
-      showToast("Đã xuất file Excel kịch bản chốt đơn!");
-    } catch (err) {
-      console.error("Lỗi xuất Excel:", err);
+      const safeName = (productName || "kich-ban-chat").toLowerCase().replace(/[^a-z0-9]/g, "-").slice(0, 30);
+      XLSX.writeFile(wb, `kich-ban-chat-${safeName}-${Date.now()}.xlsx`);
+      showToast("Đã xuất file Excel!");
+    } catch {
       showToast("Không thể xuất file Excel.");
     }
   };
@@ -340,239 +154,240 @@ export function ObjectionKillerOutput({
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    const safeName = (productName || "san-pham").toLowerCase().replace(/[^a-z0-9]/g, "-").slice(0, 30);
-    a.download = `kich-ban-chot-don-${safeName}-${Date.now()}.txt`;
+    const safeName = (productName || "kich-ban-chat").toLowerCase().replace(/[^a-z0-9]/g, "-").slice(0, 30);
+    a.download = `kich-ban-chat-${safeName}-${Date.now()}.txt`;
     a.click();
     URL.revokeObjectURL(url);
     showToast("Đã tải tệp .txt!");
   };
 
-  const getOptionTheme = (index: number) => {
-    switch (index) {
-      case 1:
-        return {
-          icon: Gem,
-          color: "text-emerald-400",
-          badgeBg: "bg-emerald-500/15 text-emerald-300 border-emerald-500/30",
-          border: "border-emerald-500/30 hover:border-emerald-500/50",
-          bubbleBg: "bg-emerald-950/20 border-emerald-500/20",
-        };
-      case 2:
-        return {
-          icon: Zap,
-          color: "text-amber-400",
-          badgeBg: "bg-amber-500/15 text-amber-300 border-amber-500/30",
-          border: "border-amber-500/30 hover:border-amber-500/50",
-          bubbleBg: "bg-amber-950/20 border-amber-500/20",
-        };
-      case 3:
-        return {
-          icon: ShieldCheck,
-          color: "text-blue-400",
-          badgeBg: "bg-blue-500/15 text-blue-300 border-blue-500/30",
-          border: "border-blue-500/30 hover:border-blue-500/50",
-          bubbleBg: "bg-blue-950/20 border-blue-500/20",
-        };
-      default:
-        return {
-          icon: MessageSquare,
-          color: "text-slate-400",
-          badgeBg: "bg-slate-500/15 text-slate-300 border-slate-500/30",
-          border: "border-slate-800 hover:border-slate-700",
-          bubbleBg: "bg-slate-950/40 border-slate-800",
-        };
-    }
-  };
-
   return (
-    <div className="bg-slate-900 rounded-2xl shadow-xl h-full flex flex-col min-h-0 relative overflow-hidden border border-slate-800">
-      {/* Toast mini phản hồi */}
+    <div className="bg-black text-white rounded-2xl shadow-2xl flex flex-col w-full min-w-0 min-h-0 relative border border-zinc-800 lg:h-full lg:overflow-hidden">
+      {/* Toast mini thông báo sao chép */}
       {toastMessage && (
-        <div className="absolute top-12 left-1/2 -translate-x-1/2 z-50 px-3.5 py-1.5 rounded-full bg-slate-950/95 text-emerald-400 text-xs font-semibold shadow-xl border border-emerald-500/30 flex items-center gap-1.5 animate-in fade-in slide-in-from-top-2 duration-150 backdrop-blur-md">
-          <Check size={13} className="stroke-[2.5]" />
+        <div className="fixed sm:absolute top-14 left-1/2 -translate-x-1/2 z-50 px-3.5 py-1.5 rounded-full bg-zinc-900 text-white text-xs font-semibold shadow-2xl border border-zinc-700 flex items-center gap-1.5 animate-in fade-in slide-in-from-top-2 duration-150">
+          <Check size={13} className="text-emerald-400 stroke-[3]" />
           <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* Header thanh công cụ tối giản - Cố định 1 hàng ngang */}
-      <div className="px-3 sm:px-4 py-2 sm:py-2.5 border-b border-slate-800 flex items-center justify-between gap-1.5 sm:gap-2 relative z-10 bg-slate-900/95 backdrop-blur-md shrink-0 flex-nowrap">
-        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 shrink">
-          <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center bg-emerald-500/15 text-emerald-400 border border-emerald-500/25 shrink-0 shadow-2xs">
-            <MessageSquareCheck size={13} className="sm:w-[15px] sm:h-[15px]" />
+      {/* HEADER DÍNH (STICKY) TÍCH HỢP TOOLBAR & TABS TRÊN MOBILE */}
+      <div className="sticky top-0 z-20 bg-black/95 backdrop-blur-md border-b border-zinc-800 shrink-0 rounded-t-2xl">
+        {/* Hàng 1: Tiêu đề & Nút Thao Tác Nhanh */}
+        <div className="px-3 sm:px-4 py-2 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center bg-zinc-900 text-white border border-zinc-800 shrink-0">
+              <MessageSquareCheck size={13} className="sm:w-[15px] sm:h-[15px] text-emerald-400" />
+            </div>
+            <h2 className="font-bold text-white text-xs sm:text-sm truncate">
+              Kịch Bản Chốt Đơn 1-1
+            </h2>
           </div>
-          <h2 className="font-bold text-white text-xs sm:text-sm truncate">
-            Kịch Bản Bẻ Gãy Từ Chối
-          </h2>
-        </div>
 
-        {/* Nút hành động - Cố định 1 hàng ngang */}
-        {result && !loading && (
-          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 flex-nowrap">
-            {/* Chế độ xem: Trực quan vs Gốc */}
-            <div className="bg-slate-800/80 p-0.5 rounded-lg border border-slate-700/60 flex items-center shrink-0">
+          {/* Nhóm Nút Thao Tác */}
+          {result && !loading && (
+            <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+              {/* Toggle Thẻ / Gốc */}
+              <div className="bg-zinc-900 p-0.5 rounded-lg border border-zinc-800 flex items-center shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("interactive")}
+                  title="Giao diện trực quan"
+                  className={`p-1 sm:px-2 sm:py-1 rounded text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                    viewMode === "interactive"
+                      ? "bg-white text-black shadow-xs"
+                      : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  <LayoutList size={12} />
+                  <span className="hidden md:inline">Thẻ</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("raw")}
+                  title="Dữ liệu JSON gốc"
+                  className={`p-1 sm:px-2 sm:py-1 rounded text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
+                    viewMode === "raw"
+                      ? "bg-white text-black shadow-xs"
+                      : "text-zinc-400 hover:text-white"
+                  }`}
+                >
+                  <FileText size={12} />
+                  <span className="hidden md:inline">Gốc</span>
+                </button>
+              </div>
+
+              {/* Xuất Excel */}
               <button
                 type="button"
-                onClick={() => setViewMode("interactive")}
-                title="Dạng giao diện trực quan"
-                className={`p-1 sm:px-2 sm:py-1 rounded text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                  viewMode === "interactive"
-                    ? "bg-emerald-600 text-white shadow-xs"
-                    : "text-slate-400 hover:text-white"
-                }`}
+                onClick={handleExportExcel}
+                title="Xuất file Excel (.xlsx)"
+                className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+                aria-label="Xuất file Excel"
               >
-                <LayoutList size={12} className="sm:w-[13px] sm:h-[13px]" />
-                <span className="hidden md:inline">Trực quan</span>
+                <FileSpreadsheet size={13} className="text-emerald-400" />
               </button>
+
+              {/* Tải tệp .txt (ẩn trên mobile để gọn) */}
               <button
                 type="button"
-                onClick={() => setViewMode("raw")}
-                title="Dạng văn bản gốc"
-                className={`p-1 sm:px-2 sm:py-1 rounded text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                  viewMode === "raw"
-                    ? "bg-emerald-600 text-white shadow-xs"
-                    : "text-slate-400 hover:text-white"
-                }`}
+                onClick={handleDownloadTxt}
+                title="Tải tệp .txt"
+                className="hidden sm:flex w-8 h-8 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 items-center justify-center transition-colors cursor-pointer shrink-0"
+                aria-label="Tải file text"
               >
-                <FileText size={12} className="sm:w-[13px] sm:h-[13px]" />
-                <span className="hidden md:inline">Gốc</span>
+                <Download size={13} />
+              </button>
+
+              {/* Sao chép toàn bộ: Trắng nổi bật */}
+              <button
+                type="button"
+                onClick={handleCopyAll}
+                title={copiedKey === "all_script" ? "Đã chép tất cả" : "Sao chép toàn bộ"}
+                className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-white hover:bg-zinc-200 text-black flex items-center justify-center transition-all active:scale-95 cursor-pointer shrink-0 shadow-sm"
+                aria-label="Sao chép toàn bộ"
+              >
+                {copiedKey === "all_script" ? (
+                  <Check size={13} className="stroke-[3]" />
+                ) : (
+                  <Copy size={13} />
+                )}
               </button>
             </div>
+          )}
+        </div>
 
-            {/* Xuất Excel */}
+        {/* Hàng 2: Thanh Tab Lọc Tối Giản, Gọn Gàng Trên Mobile */}
+        {result && viewMode === "interactive" && !loading && (
+          <div className="px-3 sm:px-4 py-1.5 border-t border-zinc-900 flex items-center gap-1 overflow-x-auto no-scrollbar shrink-0">
             <button
               type="button"
-              onClick={handleExportExcel}
-              title="Xuất kịch bản ra file Excel (.xlsx)"
-              className="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 text-[11px] sm:text-xs font-bold px-1.5 sm:px-2.5 py-1 sm:py-1.5 rounded-lg transition-all flex items-center gap-1 cursor-pointer active:scale-95 shadow-xs shrink-0"
+              onClick={() => setActiveTab("all")}
+              className={`px-2.5 py-1 rounded-lg text-xs transition-all flex items-center gap-1 cursor-pointer shrink-0 active:scale-95 ${
+                activeTab === "all"
+                  ? "bg-white text-black font-bold shadow-xs"
+                  : "bg-zinc-900/90 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800/80 font-medium"
+              }`}
             >
-              <FileSpreadsheet size={12} className="text-emerald-400 sm:w-[13px] sm:h-[13px]" />
-              <span className="hidden xs:inline">Excel</span>
+              <Layers size={11} />
+              <span>Tất Cả ({parsed?.responseOptions.length || 3})</span>
             </button>
-
-            {/* Nút Tải file .txt: chỉ hiện trên màn hình lớn */}
             <button
               type="button"
-              onClick={handleDownloadTxt}
-              title="Tải tệp kịch bản .txt"
-              className="hidden sm:flex p-1 sm:p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg border border-slate-700 transition-colors cursor-pointer shrink-0"
+              onClick={() => setActiveTab("pa1")}
+              className={`px-2.5 py-1 rounded-lg text-xs transition-all flex items-center gap-1 cursor-pointer shrink-0 active:scale-95 ${
+                activeTab === "pa1"
+                  ? "bg-white text-black font-bold shadow-xs"
+                  : "bg-zinc-900/90 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800/80 font-medium"
+              }`}
             >
-              <Download size={12} className="sm:w-3.5 sm:h-3.5" />
+              <Sparkles size={11} className="text-emerald-400" />
+              <span>PA1</span>
             </button>
-
-            {/* Nút Sao chép tất cả */}
             <button
               type="button"
-              onClick={() => handleCopy(result, "all", "Đã sao chép toàn bộ kịch bản chốt đơn!")}
-              className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-[11px] sm:text-xs font-bold px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg transition-all shadow-md shadow-emerald-950/40 flex items-center gap-1 cursor-pointer active:scale-95 shrink-0"
+              onClick={() => setActiveTab("pa2")}
+              className={`px-2.5 py-1 rounded-lg text-xs transition-all flex items-center gap-1 cursor-pointer shrink-0 active:scale-95 ${
+                activeTab === "pa2"
+                  ? "bg-white text-black font-bold shadow-xs"
+                  : "bg-zinc-900/90 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800/80 font-medium"
+              }`}
             >
-              {copiedKey === "all" ? (
-                <>
-                  <Check size={12} className="stroke-[3]" />
-                  <span>Đã chép</span>
-                </>
-              ) : (
-                <>
-                  <Copy size={12} />
-                  <span>Chép hết</span>
-                </>
-              )}
+              <Flame size={11} className="text-amber-400" />
+              <span>PA2</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("pa3")}
+              className={`px-2.5 py-1 rounded-lg text-xs transition-all flex items-center gap-1 cursor-pointer shrink-0 active:scale-95 ${
+                activeTab === "pa3"
+                  ? "bg-white text-black font-bold shadow-xs"
+                  : "bg-zinc-900/90 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800/80 font-medium"
+              }`}
+            >
+              <ShieldCheck size={11} className="text-sky-400" />
+              <span>PA3</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("questions")}
+              className={`px-2.5 py-1 rounded-lg text-xs transition-all flex items-center gap-1 cursor-pointer shrink-0 active:scale-95 ${
+                activeTab === "questions"
+                  ? "bg-white text-black font-bold shadow-xs"
+                  : "bg-zinc-900/90 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800/80 font-medium"
+              }`}
+            >
+              <HelpCircle size={11} />
+              <span>Hỏi Mở</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("psychology")}
+              className={`px-2.5 py-1 rounded-lg text-xs transition-all flex items-center gap-1 cursor-pointer shrink-0 active:scale-95 ${
+                activeTab === "psychology"
+                  ? "bg-white text-black font-bold shadow-xs"
+                  : "bg-zinc-900/90 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800/80 font-medium"
+              }`}
+            >
+              <Brain size={11} />
+              <span>Tâm Lý</span>
             </button>
           </div>
         )}
       </div>
 
-      {/* Tabs Phân Loại Danh Mục Đầu Ra (Pinned Sub-Tabs) - Cố định bên dưới toolbar */}
-      {result && viewMode === "interactive" && !loading && (
-        <div className="px-2.5 sm:px-4 py-1.5 sm:py-2 border-b border-slate-800 bg-slate-950/70 flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar sm:custom-scrollbar shrink-0 relative z-10">
-          <button
-            type="button"
-            onClick={() => setActiveTab("all")}
-            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95 ${
-              activeTab === "all"
-                ? "bg-slate-800 text-emerald-300 border border-emerald-500/40 shadow-xs"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            <Layers size={12} className="sm:w-[13px] sm:h-[13px]" />
-            <span>Tất Cả</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("psychology")}
-            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95 ${
-              activeTab === "psychology"
-                ? "bg-slate-800 text-emerald-300 border border-emerald-500/40 shadow-xs"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            <Brain size={12} className="sm:w-[13px] sm:h-[13px]" />
-            <span>1. Tâm Lý</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("options")}
-            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95 ${
-              activeTab === "options"
-                ? "bg-slate-800 text-emerald-300 border border-emerald-500/40 shadow-xs"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            <MessageSquare size={12} className="sm:w-[13px] sm:h-[13px]" />
-            <span>2. Ba Kịch Bản ({parsed?.responseOptions.length || 3})</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("questions")}
-            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95 ${
-              activeTab === "questions"
-                ? "bg-slate-800 text-emerald-300 border border-emerald-500/40 shadow-xs"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            <Send size={12} className="sm:w-[13px] sm:h-[13px]" />
-            <span>3. Câu Hỏi Mở ({parsed?.openQuestions.length || 2})</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("rules")}
-            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95 ${
-              activeTab === "rules"
-                ? "bg-slate-800 text-emerald-300 border border-emerald-500/40 shadow-xs"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            <Clock size={12} className="sm:w-[13px] sm:h-[13px]" />
-            <span>4. Nguyên Tắc</span>
-          </button>
+      {/* Thông báo Chế độ Dự Phòng Offline Blueprint */}
+      {isOfflineMode && result && !loading && (
+        <div className="px-3 sm:px-4 py-2 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between gap-2 text-xs text-zinc-300 shrink-0">
+          <div className="flex items-center gap-1.5 truncate">
+            <span className="text-amber-400 font-bold">⚡</span>
+            <span className="truncate">
+              Kịch bản dự phòng thực chiến sàn TMĐT (Lượt dùng AI chưa bị trừ).
+            </span>
+          </div>
+          {onRetryWithAi && (
+            <button
+              type="button"
+              onClick={onRetryWithAi}
+              className="px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 text-white border border-zinc-700 font-medium text-[11px] shrink-0 transition-colors cursor-pointer flex items-center gap-1"
+            >
+              Thử lại AI
+            </button>
+          )}
         </div>
       )}
 
-      {/* Vùng hiển thị kết quả (cuộn nội bộ) */}
-      <div className="flex-1 min-h-0 p-3 sm:p-4 pb-24 lg:pb-4 overflow-y-auto custom-scrollbar relative z-10">
+      {/* VÙNG CUỘN NỘI DUNG CHÍNH (FULL WIDTH, CUỘN MƯỢT MÀ) */}
+      <div className="flex-1 min-h-0 w-full p-3 sm:p-4 lg:overflow-y-auto custom-scrollbar relative z-10 space-y-3 pb-20 lg:pb-4 bg-black">
         {loading ? (
-          <div className="h-full min-h-[360px] flex flex-col items-center justify-center text-center p-6 space-y-3">
-            <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-emerald-400">
-              <Sparkles size={22} className="animate-spin text-emerald-400 duration-1000" />
-            </div>
-            <div className="space-y-1">
-              <div className="font-bold text-sm text-white">
-                <TextShimmerWave>AI Đang Soạn Kịch Bản Bẻ Gãy Lời Từ Chối...</TextShimmerWave>
-              </div>
-              <p className="text-xs text-slate-400 max-w-sm">
-                Đang giải mã tâm lý ngầm, tính toán ưu đãi nhượng bộ và tạo 3 kịch bản chốt sale trong 3 phút...
-              </p>
-            </div>
-          </div>
+          <ToolLoadingState
+            elapsedSeconds={elapsedSeconds}
+            onCancel={onCancel}
+            title="Đang soạn 3 kịch bản bẻ gãy từ chối..."
+            stages={OBJECTION_STAGES}
+            accentColor="emerald"
+            minHeightClass="min-h-[340px]"
+          />
         ) : result && parsed ? (
-          <div className="space-y-4">
+          <div className="space-y-3 w-full">
+            {/* Tóm tắt lời từ chối của khách hàng (siêu gọn) */}
+            {parsed.customerObjection && (
+              <div className="px-2.5 py-1 bg-zinc-950 rounded-lg border border-zinc-800/80 text-[11px] text-zinc-400 flex items-center gap-1.5 truncate">
+                <span className="text-zinc-500 font-bold shrink-0">Khách nói:</span>
+                <span className="text-zinc-300 truncate italic">
+                  &ldquo;{parsed.customerObjection}&rdquo;
+                </span>
+              </div>
+            )}
+
             {viewMode === "raw" ? (
               <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs text-slate-400">
-                  <span>Dữ liệu Markdown gốc:</span>
+                <div className="flex items-center justify-between text-xs text-zinc-400">
+                  <span>Dữ liệu gốc (JSON):</span>
                   <button
                     type="button"
-                    onClick={() => handleCopy(result, "rawText", "Đã sao chép Markdown!")}
-                    className="hover:text-emerald-400 flex items-center gap-1 cursor-pointer font-medium"
+                    onClick={() => handleCopy(result, "rawText", "Đã sao chép nội dung gốc!")}
+                    className="hover:text-white flex items-center gap-1 cursor-pointer font-medium"
                   >
                     <Copy size={12} /> Sao chép
                   </button>
@@ -580,274 +395,190 @@ export function ObjectionKillerOutput({
                 <textarea
                   readOnly
                   value={result}
-                  className="w-full h-[500px] bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-xs font-mono text-slate-300 leading-relaxed resize-none focus:outline-hidden custom-scrollbar"
+                  className="w-full h-[520px] bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-xs font-mono text-zinc-200 leading-relaxed resize-none focus:outline-hidden custom-scrollbar"
                 />
               </div>
             ) : (
-              <div className="space-y-4">
-                {/* ========================================================================= */}
-                {/* 1. GIẢI MÃ TÂM LÝ KHÁCH HÀNG                                              */}
-                {/* ========================================================================= */}
-                {(activeTab === "all" || activeTab === "psychology") && (parsed.psychology.realFear || parsed.psychology.staffMistake) && (
-                  <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3.5 space-y-3">
-                    <div className="flex items-center justify-between pb-1.5 border-b border-slate-800/80">
-                      <div className="flex items-center gap-2">
-                        <Brain size={14} className="text-purple-400" />
-                        <h3 className="font-bold text-white text-xs sm:text-sm uppercase tracking-wider">
-                          1. Giải Mã Tâm Lý Khách Hàng
-                        </h3>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {parsed.psychology.realFear && (
-                        <div className="bg-slate-900/80 rounded-xl border border-amber-500/20 p-3 space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
-                              <AlertCircle size={13} className="text-amber-400 shrink-0" />
-                              Nỗi sợ của khách:
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleCopy(parsed.psychology.realFear, "fear", "Đã chép nỗi sợ thực sự!")}
-                              className="text-slate-400 hover:text-white p-1 transition cursor-pointer"
-                              title="Sao chép"
-                            >
-                              {copiedKey === "fear" ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
-                            </button>
-                          </div>
-                          <p className="text-xs text-slate-300 leading-relaxed break-words select-text">
-                            {parsed.psychology.realFear}
-                          </p>
-                        </div>
-                      )}
-
-                      {parsed.psychology.staffMistake && (
-                        <div className="bg-slate-900/80 rounded-xl border border-rose-500/20 p-3 space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs font-bold text-rose-300 flex items-center gap-1.5">
-                              <XCircle size={13} className="text-rose-400 shrink-0" />
-                              Sai lầm cần tránh:
-                            </span>
-                            <button
-                              type="button"
-                              onClick={() => handleCopy(parsed.psychology.staffMistake, "mistake", "Đã chép sai lầm cần tránh!")}
-                              className="text-slate-400 hover:text-white p-1 transition cursor-pointer"
-                              title="Sao chép"
-                            >
-                              {copiedKey === "mistake" ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
-                            </button>
-                          </div>
-                          <p className="text-xs text-slate-300 leading-relaxed break-words select-text">
-                            {parsed.psychology.staffMistake}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-
-                {/* ========================================================================= */}
-                {/* 2. BA PHƯƠNG ÁN PHẢN HỒI                                                   */}
-                {/* ========================================================================= */}
-                {(activeTab === "all" || activeTab === "options") && parsed.responseOptions.length > 0 && (
-                  <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3.5 space-y-3">
-                    <div className="flex items-center justify-between pb-1.5 border-b border-slate-800/80">
-                      <div className="flex items-center gap-2">
-                        <MessageSquare size={14} className="text-emerald-400" />
-                        <h3 className="font-bold text-white text-xs sm:text-sm uppercase tracking-wider">
-                          2. Ba Phương Án Phản Hồi
-                        </h3>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleCopyAllOptions}
-                        className="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 transition flex items-center gap-1 cursor-pointer shrink-0"
+              <div className="space-y-3 w-full">
+                {/* 1. DANH SÁCH 3 PHƯƠNG ÁN PHẢN HỒI (PA1, PA2, PA3) */}
+                {activeTab !== "questions" &&
+                  activeTab !== "psychology" &&
+                  parsed.responseOptions
+                    .filter((opt) => {
+                      if (activeTab === "all") return true;
+                      if (activeTab === "pa1") return opt.index === 1;
+                      if (activeTab === "pa2") return opt.index === 2;
+                      if (activeTab === "pa3") return opt.index === 3;
+                      return false;
+                    })
+                    .map((opt) => (
+                      <div
+                        key={opt.index}
+                        className="bg-zinc-950 rounded-xl border border-zinc-800/90 p-3 sm:p-3.5 space-y-2 transition-colors hover:border-zinc-700 w-full"
                       >
-                        {copiedKey === "options_all" ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
-                        <span>Sao chép</span>
-                      </button>
-                    </div>
-
-                    <div className="space-y-3">
-                      {parsed.responseOptions.map((opt) => {
-                        const theme = getOptionTheme(opt.index);
-                        const IconComp = theme.icon;
-
-                        return (
-                          <div
-                            key={opt.index}
-                            className={`bg-slate-900/80 rounded-xl border ${theme.border} p-3.5 space-y-2.5 transition-all`}
-                          >
-                            {/* Tiêu đề & Nhãn phương án */}
-                            <div className="flex items-center justify-between gap-2 flex-wrap">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <div className={`p-1.5 rounded-lg bg-slate-800/80 ${theme.color}`}>
-                                  <IconComp size={14} />
-                                </div>
-                                <h4 className="text-xs sm:text-sm font-bold text-white">
-                                  {opt.title}
-                                </h4>
-                                <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border ${theme.badgeBg}`}>
-                                  {opt.badge}
-                                </span>
-                              </div>
-
-                              <button
-                                type="button"
-                                onClick={() => handleCopy(opt.message, `opt_${opt.index}`, `Đã chép ${opt.title}!`)}
-                                className="px-2 sm:px-2.5 py-1 rounded-lg text-[11px] sm:text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 transition flex items-center gap-1 cursor-pointer shadow-xs shrink-0"
-                              >
-                                {copiedKey === `opt_${opt.index}` ? (
-                                  <>
-                                    <Check size={12} className="stroke-[3] text-emerald-400" /> <span>Đã chép</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Copy size={12} /> <span>Sao chép</span>
-                                  </>
-                                )}
-                              </button>
-                            </div>
-
-                            {/* Bong bóng tin nhắn */}
-                            <div
-                              onClick={() => handleCopy(opt.message, `opt_${opt.index}`, `Đã chép ${opt.title}!`)}
-                              className={`p-3 rounded-xl border text-xs sm:text-sm text-slate-100 leading-relaxed break-words select-text cursor-pointer hover:bg-slate-950/80 transition ${theme.bubbleBg}`}
-                              title="Bấm để sao chép nhanh"
-                            >
-                              {opt.message}
-                            </div>
-
-                            {/* Thông tin phụ trợ: Thời điểm áp dụng & Ký tự */}
-                            {(opt.timing || opt.charCount > 0) && (
-                              <div className="flex items-center justify-between gap-2 flex-wrap text-[11px]">
-                                {opt.timing ? (
-                                  <div className="text-slate-400 bg-slate-950/40 px-2.5 py-1 rounded-lg border border-slate-800/60 flex items-center gap-1.5">
-                                    <Clock size={11} className="text-amber-400 shrink-0" />
-                                    <span className="text-slate-300"><b>Áp dụng:</b> {opt.timing}</span>
-                                  </div>
-                                ) : <div />}
-                                {opt.charCount > 0 && (
-                                  <span className="font-mono text-[10px] text-slate-500 ml-auto">
-                                    {opt.charCount} ký tự
-                                  </span>
-                                )}
-                              </div>
+                        {/* Hàng Tiêu Đề: Gọn gàng, tiêu đề + badge trên 1 dòng, nút copy icon-only cùng hàng */}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-1.5 min-w-0 flex-1 flex-wrap">
+                            <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-zinc-900 text-white border border-zinc-800 shrink-0 font-mono">
+                              PA{opt.index}
+                            </span>
+                            <h3 className="text-xs sm:text-sm font-bold text-white leading-tight">
+                              {opt.title}
+                            </h3>
+                            {opt.badge && (
+                              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 inline-block font-normal">
+                                {opt.badge}
+                              </span>
                             )}
                           </div>
-                        );
-                      })}
+
+                          {/* Nút Sao Chép Icon-Only */}
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleCopy(
+                                opt.message,
+                                `opt_${opt.index}`,
+                                `Đã chép Phương án ${opt.index}!`
+                              )
+                            }
+                            className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-center transition-colors cursor-pointer shrink-0 active:scale-95"
+                            title={`Sao chép Phương án ${opt.index}`}
+                            aria-label={`Sao chép Phương án ${opt.index}`}
+                          >
+                            {copiedKey === `opt_${opt.index}` ? (
+                              <Check size={13} className="text-emerald-400 stroke-[3]" />
+                            ) : (
+                              <Copy size={13} />
+                            )}
+                          </button>
+                        </div>
+
+                        {/* Thời điểm dùng ngắn gọn */}
+                        {opt.timing && (
+                          <div className="text-[11px] text-zinc-400 flex items-center gap-1.5 break-words leading-tight">
+                            <Clock size={11} className="text-zinc-500 shrink-0" />
+                            <span>{opt.timing}</span>
+                          </div>
+                        )}
+
+                        {/* Mẫu Tin Nhắn Chat: Nền đen thuần, Chạm là sao chép ngay */}
+                        <div
+                          onClick={() =>
+                            handleCopy(
+                              opt.message,
+                              `opt_${opt.index}`,
+                              `Đã chép Phương án ${opt.index}!`
+                            )
+                          }
+                          title="Chạm để sao chép tin nhắn"
+                          className="bg-black border border-zinc-800 hover:border-zinc-700 active:border-emerald-500/80 rounded-xl p-3 sm:p-3.5 text-zinc-100 text-xs sm:text-sm leading-relaxed whitespace-pre-wrap break-words select-all font-sans cursor-pointer transition-colors"
+                        >
+                          {opt.message}
+                          <div className="flex items-center justify-between pt-1.5 mt-2 border-t border-zinc-900 text-[10px] text-zinc-500">
+                            <span className="text-zinc-400">⚡ Chạm để sao chép tin nhắn</span>
+                            <span className="font-mono">{opt.charCount || opt.message.length} ký tự</span>
+                          </div>
+                        </div>
+
+                        {/* Chiến thuật tâm lý ngắn gọn */}
+                        {opt.closingTactic && (
+                          <div className="text-[11px] text-zinc-400 flex items-start gap-1.5 break-words pt-0.5 leading-snug">
+                            <Lightbulb size={11} className="text-amber-400/80 shrink-0 mt-0.5" />
+                            <span className="text-zinc-300">{opt.closingTactic}</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+
+                {/* 2. CÂU HỎI MỞ CHỐNG GHOSTING */}
+                {(activeTab === "all" || activeTab === "questions") && (
+                  <div className="space-y-2.5 pt-1 w-full">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-white px-0.5">
+                      <HelpCircle size={13} className="text-sky-400" />
+                      <span>CÂU HỎI MỞ CHỐNG GHOSTING</span>
                     </div>
+
+                    {parsed.openQuestions.map((q) => (
+                      <div
+                        key={q.index}
+                        className="bg-zinc-950 rounded-xl border border-zinc-800/90 p-3 sm:p-3.5 space-y-2 hover:border-zinc-700 transition-colors w-full"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <h4 className="text-xs font-bold text-white leading-snug break-words flex-1">
+                            {q.title}
+                          </h4>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleCopy(
+                                q.question,
+                                `oq_${q.index}`,
+                                `Đã chép câu hỏi mở ${q.index}!`
+                              )
+                            }
+                            className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-center transition-colors cursor-pointer shrink-0 active:scale-95"
+                            title="Sao chép câu hỏi mở"
+                            aria-label="Sao chép câu hỏi mở"
+                          >
+                            {copiedKey === `oq_${q.index}` ? (
+                              <Check size={13} className="text-emerald-400 stroke-[3]" />
+                            ) : (
+                              <Copy size={13} />
+                            )}
+                          </button>
+                        </div>
+
+                        <div
+                          onClick={() =>
+                            handleCopy(
+                              q.question,
+                              `oq_${q.index}`,
+                              `Đã chép câu hỏi mở ${q.index}!`
+                            )
+                          }
+                          title="Chạm để sao chép"
+                          className="bg-black border border-zinc-800 border-l-2 border-l-sky-400 p-2.5 sm:p-3 rounded-lg text-xs sm:text-sm text-zinc-100 italic break-words cursor-pointer hover:border-zinc-700 select-all transition-colors"
+                        >
+                          &ldquo;{q.question}&rdquo;
+                        </div>
+
+                        {q.purpose && (
+                          <p className="text-[11px] text-zinc-400 leading-snug">
+                            🎯 {q.purpose}
+                          </p>
+                        )}
+                      </div>
+                    ))}
                   </div>
                 )}
 
-                {/* ========================================================================= */}
-                {/* 3. CÂU HỎI MỞ CHỐT ĐƠN                                                    */}
-                {/* ========================================================================= */}
-                {(activeTab === "all" || activeTab === "questions") && parsed.openQuestions.length > 0 && (
-                  <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3.5 space-y-3">
-                    <div className="flex items-center justify-between pb-1.5 border-b border-slate-800/80">
-                      <div className="flex items-center gap-2">
-                        <Send size={14} className="text-blue-400" />
-                        <h3 className="font-bold text-white text-xs sm:text-sm uppercase tracking-wider">
-                          3. Câu Hỏi Mở Chốt Đơn
-                        </h3>
-                      </div>
+                {/* 3. TÂM LÝ NGẦM TỐI GIẢN */}
+                {(activeTab === "all" || activeTab === "psychology") && (
+                  <div className="space-y-2.5 pt-1 w-full">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-white px-0.5">
+                      <Brain size={13} className="text-amber-400" />
+                      <span>GIẢI MÃ TÂM LÝ NGẦM CỦA KHÁCH</span>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {parsed.openQuestions.map((q, idx) => (
-                        <div
-                          key={idx}
-                          className="bg-slate-900/80 rounded-xl border border-blue-500/20 p-3.5 space-y-2.5 hover:border-blue-500/40 transition-all flex flex-col justify-between"
-                        >
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs font-bold text-blue-300 flex items-center gap-1.5">
-                                <MessageCircleQuestion size={13} className="text-blue-400 shrink-0" />
-                                {q.label}
-                              </span>
-
-                              <button
-                                type="button"
-                                onClick={() => handleCopy(q.question, `q_${idx}`, `Đã chép ${q.label}!`)}
-                                className="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 transition flex items-center gap-1 cursor-pointer"
-                              >
-                                {copiedKey === `q_${idx}` ? (
-                                  <>
-                                    <Check size={11} className="stroke-[3] text-emerald-400" /> Đã chép
-                                  </>
-                                ) : (
-                                  <>
-                                    <Copy size={11} /> Sao chép
-                                  </>
-                                )}
-                              </button>
-                            </div>
-
-                            <div
-                              onClick={() => handleCopy(q.question, `q_${idx}`, `Đã chép ${q.label}!`)}
-                              className="bg-slate-950/80 p-3 rounded-lg border border-slate-800 text-xs text-slate-200 leading-relaxed break-words select-text cursor-pointer hover:border-blue-500/30 transition"
-                              title="Bấm để sao chép"
-                            >
-                              &ldquo;{q.question}&rdquo;
-                            </div>
-                          </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full">
+                      <div className="bg-zinc-950 rounded-xl border border-zinc-800/90 p-3 space-y-1.5">
+                        <div className="text-[11px] font-bold text-amber-400 flex items-center gap-1">
+                          <Brain size={12} /> Nỗi Sợ Thực Sự Của Khách:
                         </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* ========================================================================= */}
-                {/* 4. NGUYÊN TẮC TRỰC CHAT SÀN                                              */}
-                {/* ========================================================================= */}
-                {(activeTab === "all" || activeTab === "rules") && parsed.goldenRules.length > 0 && (
-                  <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3.5 space-y-3">
-                    <div className="flex items-center justify-between pb-1.5 border-b border-slate-800/80">
-                      <div className="flex items-center gap-2">
-                        <Clock size={14} className="text-amber-400" />
-                        <h3 className="font-bold text-white text-xs sm:text-sm uppercase tracking-wider">
-                          4. Nguyên Tắc Trực Chat Sàn
-                        </h3>
+                        <p className="text-xs text-zinc-300 leading-relaxed break-words">
+                          {parsed.psychology.realFear}
+                        </p>
                       </div>
-                    </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                      {parsed.goldenRules.map((rule, idx) => (
-                        <div
-                          key={idx}
-                          className="bg-slate-900/70 rounded-xl border border-slate-800/80 p-3 space-y-2 hover:border-amber-500/30 transition-all flex flex-col justify-between"
-                        >
-                          <div className="space-y-1.5">
-                            <div className="flex items-center justify-between gap-1.5">
-                              <span className="text-xs font-bold text-amber-300 flex items-center gap-1 min-w-0 truncate">
-                                <Lightbulb size={13} className="text-amber-400 shrink-0" />
-                                <span className="truncate">{rule.title}</span>
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => handleCopy(`${rule.title}: ${rule.content}`, `rule-${idx}`, `Đã chép ${rule.title}!`)}
-                                className="text-[11px] text-slate-400 hover:text-amber-300 flex items-center gap-1 transition cursor-pointer font-medium shrink-0"
-                              >
-                                {copiedKey === `rule-${idx}` ? (
-                                  <>
-                                    <Check size={11} className="text-emerald-400" /> Đã chép
-                                  </>
-                                ) : (
-                                  <>
-                                    <Copy size={11} /> Sao chép
-                                  </>
-                                )}
-                              </button>
-                            </div>
-                            <p className="text-xs text-slate-300 leading-relaxed break-words select-text">
-                              {rule.content}
-                            </p>
-                          </div>
+                      <div className="bg-zinc-950 rounded-xl border border-zinc-800/90 p-3 space-y-1.5">
+                        <div className="text-[11px] font-bold text-rose-400 flex items-center gap-1">
+                          <AlertCircle size={12} /> Sai Lầm Nhân Viên Cần Tránh:
                         </div>
-                      ))}
+                        <p className="text-xs text-zinc-300 leading-relaxed break-words">
+                          {parsed.psychology.staffMistake}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 )}
@@ -855,24 +586,24 @@ export function ObjectionKillerOutput({
             )}
           </div>
         ) : (
-          <div className="h-full min-h-[340px] flex flex-col items-center justify-center text-center p-6 text-slate-500 space-y-3">
-            <div className="w-14 h-14 rounded-2xl bg-slate-800/60 border border-slate-700/50 flex items-center justify-center text-emerald-400 shadow-inner">
-              <MessageSquare size={24} />
+          /* Trạng Thái Trống / Chưa Tạo */
+          <div className="h-full min-h-[300px] flex flex-col items-center justify-center text-center p-6 space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400">
+              <MessageSquareCheck size={22} />
             </div>
-            <div className="space-y-1 max-w-sm">
-              <p className="font-semibold text-slate-200 text-sm">Chưa Có Kịch Bản Bẻ Gãy Từ Chối</p>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Nhập câu từ chối của khách &amp; ưu đãi có thể nhượng bộ bên trái, sau đó bấm &ldquo;Bẻ Gãy Lời Từ Chối Ngay&rdquo;.
+            <div className="max-w-xs space-y-1">
+              <h3 className="text-sm font-bold text-white">Chưa Có Kịch Bản Trực Chat</h3>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                Nhập tên sản phẩm và lời từ chối của khách bên trái để AI lên 3 kịch bản bẻ gãy từ chối ngay.
               </p>
             </div>
             {onUseSample && (
               <button
                 type="button"
                 onClick={onUseSample}
-                className="mt-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-emerald-400 hover:text-emerald-300 border border-emerald-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+                className="mt-1 px-3 py-1.5 rounded-xl border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold transition-colors cursor-pointer"
               >
-                <Sparkle size={13} />
-                <span>Thử dữ liệu mẫu để xem giao diện</span>
+                Dùng Dữ Liệu Mẫu
               </button>
             )}
           </div>

@@ -12,43 +12,60 @@ export default async function AppLayout({
 }>) {
   // Get user from cookie
 
-  const token = await getSessionUserId();
+  let token: string | undefined = undefined;
+  try {
+    token = await getSessionUserId();
+  } catch {
+    token = undefined;
+  }
   let currentUser = null;
   if (token) {
-    currentUser = await prisma.user.findUnique({
-      where: { id: token },
-      select: { id: true, name: true, email: true, isVIP: true }
-    });
+    try {
+      currentUser = await prisma.user.findUnique({
+        where: { id: token },
+        select: { id: true, name: true, email: true, isVIP: true }
+      });
+    } catch (e) {
+      console.warn("Unable to fetch user in AppLayout:", e);
+    }
   }
 
   // Lấy danh sách các học phần thực tế và số lượng bài học từ Database
-  const [rawLessons, rawCourses] = await Promise.all([
-    prisma.lesson.findMany({
-      where: {
-        status: "PUBLISHED",
-        course: { status: "PUBLISHED" },
-      },
-      select: { moduleName: true, order: true },
-      orderBy: { order: "asc" },
-    }),
-    prisma.course.findMany({
-      where: { status: "PUBLISHED" },
-      select: {
-        id: true,
-        title: true,
-        _count: {
-          select: { lessons: { where: { status: "PUBLISHED" } } },
+  let rawLessons: any[] = [];
+  let rawCourses: any[] = [];
+  try {
+    const [fetchedLessons, fetchedCourses] = await Promise.all([
+      prisma.lesson.findMany({
+        where: {
+          status: "PUBLISHED",
+          course: { status: "PUBLISHED" },
         },
-        lessons: {
-          where: { status: "PUBLISHED" },
-          select: { id: true },
-          orderBy: { order: "asc" },
-          take: 1,
+        select: { moduleName: true, order: true },
+        orderBy: { order: "asc" },
+      }),
+      prisma.course.findMany({
+        where: { status: "PUBLISHED" },
+        select: {
+          id: true,
+          title: true,
+          _count: {
+            select: { lessons: { where: { status: "PUBLISHED" } } },
+          },
+          lessons: {
+            where: { status: "PUBLISHED" },
+            select: { id: true },
+            orderBy: { order: "asc" },
+            take: 1,
+          },
         },
-      },
-      orderBy: { createdAt: "asc" },
-    }),
-  ]);
+        orderBy: { createdAt: "asc" },
+      }),
+    ]);
+    rawLessons = fetchedLessons;
+    rawCourses = fetchedCourses;
+  } catch (e) {
+    console.warn("Unable to fetch lessons/courses in AppLayout:", e);
+  }
 
   const moduleCountsMap = new Map<string, number>();
   rawLessons.forEach((l) => {
@@ -69,19 +86,21 @@ export default async function AppLayout({
   }));
 
   return (
-    <SidebarProvider>
-      <div className="flex h-screen bg-slate-50 dark:bg-slate-950 overflow-hidden text-slate-900 dark:text-slate-100 transition-colors duration-200">
-        <Sidebar user={currentUser} dynamicModules={dynamicModules} courses={coursesList} />
-        <div className="flex-1 flex flex-col min-w-0 max-w-full h-full overflow-hidden relative">
-          <Header user={currentUser} />
-          <main className="flex-1 overflow-y-auto overflow-x-hidden p-3.5 sm:p-5 md:p-6 pb-6 flex flex-col min-h-0 min-w-0 max-w-full">
-            <div className="flex-1 flex flex-col min-h-0 min-w-0 w-full max-w-full">
-              {children}
-            </div>
-            {/* <Footer /> */}
-          </main>
+    <AccountHistoryProvider key={currentUser?.id ?? "guest"} owner={currentUser?.id ?? null}>
+      <SidebarProvider>
+        <div className="flex h-screen bg-slate-50 dark:bg-slate-950 overflow-hidden text-slate-900 dark:text-slate-100 transition-colors duration-200">
+          <Sidebar user={currentUser} dynamicModules={dynamicModules} courses={coursesList} />
+          <div className="flex-1 flex flex-col min-w-0 max-w-full h-full overflow-hidden relative">
+            <Header user={currentUser} />
+            <main className="flex-1 overflow-y-auto overflow-x-hidden p-3.5 sm:p-5 md:p-6 pb-6 flex flex-col min-h-0 min-w-0 max-w-full">
+              <div className="flex-1 flex flex-col min-h-0 min-w-0 w-full max-w-full">
+                {children}
+              </div>
+              {/* <Footer /> */}
+            </main>
+          </div>
         </div>
-      </div>
-    </SidebarProvider>
+      </SidebarProvider>
+    </AccountHistoryProvider>
   );
 }

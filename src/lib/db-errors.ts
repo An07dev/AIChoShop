@@ -17,6 +17,8 @@ export function classifyDatabaseError(error: unknown): DataFailure | null {
   if (error instanceof Error && error.name === "PrismaClientValidationError") return known.DATABASE_SCHEMA_MISMATCH;
   if (["P1000", "P1001", "P1002", "P1008", "P1010", "P1011", "P1017", "P2024", "ECONNREFUSED", "ECONNRESET", "ETIMEDOUT", "ENOTFOUND", "08006", "08001", "53300", "57P01", "42501"].includes(code ?? ""))
     return { code: "DATABASE_UNAVAILABLE", message: "Không kết nối được database. Vui lòng thử lại sau.", status: 503 };
+  if (error instanceof Error && /tenant\/user|Can't reach database|ENOTFOUND|getaddrinfo|connection.*refused|connect ETIMEDOUT/i.test(error.message))
+    return { code: "DATABASE_UNAVAILABLE", message: "Không kết nối được database. Vui lòng thử lại sau.", status: 503 };
   if (["P2021", "P2022", "42P01", "42703"].includes(code ?? ""))
     return { code: "DATABASE_SCHEMA_MISMATCH", message: "Cấu trúc database chưa khớp phiên bản ứng dụng. Vui lòng liên hệ quản trị viên.", status: 503 };
   if (["P2002", "P2003", "P2004", "P2025", "23505", "23503", "23514", "23P01"].includes(code ?? ""))

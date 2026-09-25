@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   ArrowLeft,
   Sparkles,
@@ -12,9 +12,12 @@ import {
   Heart,
   Palette,
   Layers,
-  Send,
-  Printer,
   Crown,
+  XCircle,
+  ShieldCheck,
+  Star,
+  QrCode,
+  Repeat,
 } from "lucide-react";
 import Link from "next/link";
 import { useToolGate } from "@/hooks/useToolGate";
@@ -22,6 +25,13 @@ import { UnboxingCardOutput } from "@/components/tools/UnboxingCardOutput";
 import { useToast } from "@/context/ToastContext";
 import { AiUsageBadge } from "@/components/tools/AiUsageBadge";
 import { MobileToolTabs } from "@/components/tools/MobileToolTabs";
+import {
+  SAMPLE_CARD_INPUT,
+  SAMPLE_CARD_DATA,
+  buildOfflineUnboxingCardData,
+} from "@/lib/unboxing-card/contract";
+
+const DRAFT_STORAGE_KEY = "aicho_unboxing_card_draft";
 
 const CARD_TONES = [
   {
@@ -54,7 +64,7 @@ const CARD_FORMATS = [
   {
     id: "postcard_a6",
     name: "Bưu Thiếp A6 (10 x 15 cm)",
-    desc: "Tiêu chuẩn sang trọng, phổ biến nhất trên sàn",
+    desc: "Tiêu chuẩn sang trọng, phổ biến nhất trên sàn TMĐT",
   },
   {
     id: "mini_card",
@@ -68,43 +78,32 @@ const CARD_FORMATS = [
   },
 ];
 
-const SAMPLE_DATA = {
-  shopName: "Aicho Official Store",
-  productCategory: "Thời trang thiết kế nữ & Phụ kiện cao cấp",
-  cardTone: "emotional",
-  specialOffer: "Voucher giảm 30.000đ cho đơn hàng sau + Quà tặng kẹp tóc ngọc trai đính kèm trong kiện hàng",
-  cardFormat: "postcard_a6",
-};
-
-const SAMPLE_OUTPUT = `## 🎴 1. MẶT TRƯỚC (BÌA THIỆP - FIRST IMPRESSION)
-- **Tiêu đề đập vào mắt:** MÓN QUÀ NÀY ĐƯỢC CHUẨN BỊ DÀNH RIÊNG CHO BẠN!
-- **Lời tựa (Sub-headline):** Cảm ơn bạn vì đã tin tưởng lựa chọn AICHO giữa muôn vàn thương hiệu ngoài kia. Hãy mở ra để khám phá điều đặc biệt bên trong nhé!
-- **Điểm nhấn thiết kế (Visual Note):** Họa tiết hoa thanh nhã dập nổi nhẹ góc dưới bên phải, nền hồng pastel trang nhã chuẩn thời trang cao cấp.
-
----
-
-## 💌 2. MẶT SAU (NỘI DUNG THƯ TRI ÂN ĐẮC NHÂN TÂM)
-
-### 🌹 Lời Tri Ân Từ Trái Tim Đội Ngũ
-Chào bạn yêu dấu, khi bạn cầm trên tay kiện hàng này, từng đường kim mũi chỉ và nếp gấp đều được đội ngũ AICHO nâng niu đóng gói bằng tất cả sự tận tụy. Chúng mình hiểu rằng bạn không chỉ mua một bộ trang phục, mà là gửi gắm cả niềm vui và sự tự tin. Cảm ơn bạn đã tiếp thêm động lực cho chúng mình trên hành trình tôn vinh vẻ đẹp người phụ nữ Việt!
-
-### 🛡️ KHIÊN CHẮN 1 SAO (Anti-1-Star Shield)
-Nếu trong quá trình vận chuyển đường xa có bất kỳ điều gì sơ suất khiến bạn chưa thực sự hài lòng (nhầm size, lỗi vải hay hộp hàng móp méo), xin bạn ĐỪNG VỘI ĐÁNH GIÁ 1 SAO làm tổn thương công sức của các bạn thợ may và đóng gói. Xin hãy cho AICHO cơ hội được sửa sai bằng cách nhắn tin ngay cho shop qua khung chat sàn để được ĐỔI MỚI 100% HOÀN TOÀN MIỄN PHÍ hoặc HOÀN TIỀN trong 24 giờ!
-
-### ⭐ NAM CHÂM KÉO REVIEW 5 SAO (Review Magnet)
-Bạn ưng ý với sản phẩm chứ? Hãy chia sẻ niềm vui ấy cùng chúng mình bằng cách chụp ảnh hoặc quay clip diện đồ thật xinh kèm đánh giá 5 sao nhé! AICHO xin gửi tặng bạn ngay VOUCHER GIẢM 30.000Đ áp dụng trực tiếp cho đơn hàng tiếp theo và món quà kẹp tóc ngọc trai cao cấp đính kèm trong kiện hàng này nha!
-
-### 📲 CỔNG QUÉT QR CHĂM SÓC KHÁCH HÀNG AN TOÀN (Safe QR / Zalo OA)
-- **Khung quét mã QR:** [ĐẶT MÃ QR BẢO HÀNH ĐIỆN TỬ TẠI ĐÂY]
-- **Lời dẫn an toàn sàn:** "Quét mã QR để KÍCH HOẠT BẢO HÀNH ĐỔI TRẢ 1 ĐỔI 1 TRONG 7 NGÀY & NHẬN QUÀ BÍ MẬT DÀNH RIÊNG CHO KHÁCH HÀNG THÂN THIẾT CỦA AICHO STORE."
-
----
-
-## 🖨️ 3. QUY CHUẨN IN ẤN & TỐI ƯU CHI PHÍ THỰC CHIẾN
-- **Quy cách kích thước in:** Khổ A6 (105 x 148 mm) - Khổ bưu thiếp chuẩn quốc tế, sang trọng và cầm vừa vặn tay khách.
-- **Chất liệu giấy đề xuất:** Giấy Couche 300gsm (C300) cán màng mờ 2 mặt - Chống thấm nước, chống quăn mép khi dính hơi ẩm thùng hàng.
-- **Ước tính chi phí in tại xưởng Việt Nam:** In Offset ghép bài số lượng 1.000 tấm giá dao động từ 350đ - 480đ/tấm; in 2.000 tấm giá chỉ khoảng 280đ - 320đ/tấm.
-- **Mẹo nhỏ từ chuyên gia:** Dùng kẹp gỗ nhỏ kẹp thiệp cảm ơn vào nơ gói hàng hoặc túi zip sản phẩm, xịt thêm 1 làn hương nước hoa dịu nhẹ lên thiệp trước khi đóng nắp thùng để tạo trải nghiệm Unboxing đa giác quan bùng nổ!`;
+const PRIMARY_GOALS = [
+  {
+    id: "anti_1_star",
+    name: "Chống 1 Sao & Xử Lý Sự Cố",
+    desc: "Hóa giải bức xúc vận chuyển, cam kết đổi mới 100% trong 24h",
+    icon: ShieldCheck,
+  },
+  {
+    id: "review_booster",
+    name: "Kéo Review 5 Sao & Clip Đập Hộp",
+    desc: "Tặng voucher & quà tri ân kích thích khách chụp ảnh, quay video",
+    icon: Star,
+  },
+  {
+    id: "repurchase",
+    name: "Kích Thích Mua Lại Lần 2",
+    desc: "Cài đặt Secret Voucher độc quyền có hạn sử dụng 30 ngày",
+    icon: Repeat,
+  },
+  {
+    id: "warranty_crm",
+    name: "Kích Hoạt Bảo Hành & CRM",
+    desc: "Hướng dẫn quét QR bảo hành chính hãng đúng 100% luật sàn",
+    icon: QrCode,
+  },
+];
 
 export default function UnboxingCardPage() {
   const { checkAccess, GateModals } = useToolGate();
@@ -112,90 +111,256 @@ export default function UnboxingCardPage() {
 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState("");
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [mobileTab, setMobileTab] = useState<"form" | "result">("form");
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isSubmittingRef = useRef(false);
 
   // Form states
   const [shopName, setShopName] = useState("");
   const [productCategory, setProductCategory] = useState("");
   const [cardTone, setCardTone] = useState(CARD_TONES[0].id);
-  const [specialOffer, setSpecialOffer] = useState("");
   const [cardFormat, setCardFormat] = useState(CARD_FORMATS[0].id);
+  const [primaryGoal, setPrimaryGoal] = useState(PRIMARY_GOALS[0].id);
+  const [specialOffer, setSpecialOffer] = useState("");
+
+  // 1. Phục hồi bản nháp từ localStorage khi mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(DRAFT_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.shopName) setShopName(parsed.shopName);
+        if (parsed.productCategory) setProductCategory(parsed.productCategory);
+        if (parsed.cardTone) setCardTone(parsed.cardTone);
+        if (parsed.cardFormat) setCardFormat(parsed.cardFormat);
+        if (parsed.primaryGoal) setPrimaryGoal(parsed.primaryGoal);
+        if (parsed.specialOffer) setSpecialOffer(parsed.specialOffer);
+        if (parsed.result) setResult(parsed.result);
+      }
+    } catch {
+      // Bỏ qua lỗi parsing draft
+    }
+  }, []);
+
+  // 2. Tự động lưu bản nháp vào localStorage (Debounce 500ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      try {
+        localStorage.setItem(
+          DRAFT_STORAGE_KEY,
+          JSON.stringify({
+            shopName,
+            productCategory,
+            cardTone,
+            cardFormat,
+            primaryGoal,
+            specialOffer,
+            result,
+          })
+        );
+      } catch {
+        // Bỏ qua nếu vượt quota
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [shopName, productCategory, cardTone, cardFormat, primaryGoal, specialOffer, result]);
+
+  // 3. Lifecycle cleanup khi unmount (Tránh memory leak)
+  useEffect(() => {
+    return () => {
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+      isSubmittingRef.current = false;
+    };
+  }, []);
+
+  const handleCancel = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+    }
+    if (timerIntervalRef.current) {
+      clearInterval(timerIntervalRef.current);
+      timerIntervalRef.current = null;
+    }
+    isSubmittingRef.current = false;
+    setLoading(false);
+  };
 
   const handleUseSample = () => {
-    setShopName(SAMPLE_DATA.shopName);
-    setProductCategory(SAMPLE_DATA.productCategory);
-    setCardTone(SAMPLE_DATA.cardTone);
-    setSpecialOffer(SAMPLE_DATA.specialOffer);
-    setCardFormat(SAMPLE_DATA.cardFormat);
-    setResult(SAMPLE_OUTPUT);
+    handleCancel();
+    setShopName(SAMPLE_CARD_INPUT.shopName);
+    setProductCategory(SAMPLE_CARD_INPUT.productCategory);
+    setCardTone(SAMPLE_CARD_INPUT.cardTone);
+    setCardFormat(SAMPLE_CARD_INPUT.cardFormat);
+    setPrimaryGoal(SAMPLE_CARD_INPUT.primaryGoal || "anti_1_star");
+    setSpecialOffer(SAMPLE_CARD_INPUT.specialOffer || "");
+    setResult(JSON.stringify(SAMPLE_CARD_DATA));
+    setIsOfflineMode(false);
     setMobileTab("result");
   };
 
   const handleResetForm = () => {
+    handleCancel();
     setShopName("");
     setProductCategory("");
     setCardTone(CARD_TONES[0].id);
-    setSpecialOffer("");
     setCardFormat(CARD_FORMATS[0].id);
+    setPrimaryGoal(PRIMARY_GOALS[0].id);
+    setSpecialOffer("");
     setResult("");
+    setIsOfflineMode(false);
+    try {
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+    } catch {}
   };
 
   const handleGenerate = async () => {
-    const hasAccess = await checkAccess("unboxing-card", false);
-    if (!hasAccess) return;
+    if (isSubmittingRef.current || loading) return;
 
-    if (!shopName.trim()) {
+    const trimmedShop = shopName.trim();
+    const trimmedCategory = productCategory.trim();
+
+    if (!trimmedShop) {
       showWarning("Vui lòng nhập tên gian hàng hoặc thương hiệu của bạn!", "Thiếu Thông Tin");
       return;
     }
 
-    if (!productCategory.trim()) {
+    if (!trimmedCategory) {
       showWarning("Vui lòng nhập tên sản phẩm hoặc ngành hàng kinh doanh!", "Thiếu Thông Tin");
       return;
     }
 
+    isSubmittingRef.current = true;
+
+    try {
+      const hasAccess = await checkAccess("unboxing-card", false);
+      if (!hasAccess) {
+        isSubmittingRef.current = false;
+        return;
+      }
+    } catch {
+      isSubmittingRef.current = false;
+      return;
+    }
+
+    if (abortControllerRef.current) abortControllerRef.current.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setLoading(true);
+    setElapsedSeconds(0);
     setResult("");
+    setIsOfflineMode(false);
     setMobileTab("result");
+
+    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    timerIntervalRef.current = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+
+    const timeoutId = setTimeout(() => {
+      if (abortControllerRef.current === controller) {
+        controller.abort();
+        const offlineData = buildOfflineUnboxingCardData({
+          shopName: trimmedShop.slice(0, 100),
+          productCategory: trimmedCategory.slice(0, 200),
+          cardTone,
+          cardFormat,
+          primaryGoal,
+          specialOffer: specialOffer.trim().slice(0, 1000),
+        });
+        setResult(JSON.stringify(offlineData));
+        setIsOfflineMode(true);
+        showWarning(
+          "Yêu cầu AI quá thời gian chờ (120s). Đã kích hoạt bản thiết kế Offline Blueprint chuẩn in xưởng cho bạn!",
+          "Chế Độ Dự Phòng"
+        );
+      }
+    }, 120000);
 
     try {
       const response = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           tool: "unboxing-card",
           inputs: {
-            shopName: shopName.trim(),
-            productCategory: productCategory.trim(),
+            shopName: trimmedShop.slice(0, 100),
+            productCategory: trimmedCategory.slice(0, 200),
             cardTone,
-            specialOffer: specialOffer.trim(),
             cardFormat,
+            primaryGoal,
+            specialOffer: specialOffer.trim().slice(0, 1000),
           },
         }),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => null);
 
-      if (!response.ok || !data.success) {
-        showAiError(data);
+      if (!response.ok || !data || !data.success) {
+        const offlineData = buildOfflineUnboxingCardData({
+          shopName: trimmedShop.slice(0, 100),
+          productCategory: trimmedCategory.slice(0, 200),
+          cardTone,
+          cardFormat,
+          primaryGoal,
+          specialOffer: specialOffer.trim().slice(0, 1000),
+        });
+        setResult(JSON.stringify(offlineData));
+        setIsOfflineMode(true);
+        showWarning(
+          data?.error || "Hệ thống AI tạm thời gián đoạn. Đã kích hoạt bản thiết kế Offline Blueprint chuẩn in xưởng!",
+          "Chế Độ Dự Phòng"
+        );
         return;
       }
 
       setResult(data.data);
+      setIsOfflineMode(false);
       setRefreshTrigger((prev) => prev + 1);
-    } catch {
-      showAiError({
-        code: "NETWORK_ERROR",
-        error: "Không thể kết nối đến hệ thống AI. Vui lòng kiểm tra lại mạng hoặc thử lại sau.",
+    } catch (error: any) {
+      if (error?.name === "AbortError" || controller.signal.aborted) {
+        showWarning("Đã dừng quá trình thiết kế theo yêu cầu của bạn.", "Đã Hủy");
+        return;
+      }
+      const offlineData = buildOfflineUnboxingCardData({
+        shopName: trimmedShop.slice(0, 100),
+        productCategory: trimmedCategory.slice(0, 200),
+        cardTone,
+        cardFormat,
+        primaryGoal,
+        specialOffer: specialOffer.trim().slice(0, 1000),
       });
+      setResult(JSON.stringify(offlineData));
+      setIsOfflineMode(true);
+      showWarning("Không thể kết nối máy chủ AI. Đã kích hoạt bản thiết kế Offline Blueprint để bạn tiếp tục công việc!", "Chế Độ Dự Phòng");
     } finally {
+      clearTimeout(timeoutId);
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+      abortControllerRef.current = null;
+      isSubmittingRef.current = false;
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-7xl w-full mx-auto flex-1 flex flex-col min-h-0 h-full lg:overflow-hidden">
+    <div className="max-w-7xl w-full mx-auto lg:flex-1 flex flex-col lg:min-h-0 lg:h-full lg:overflow-hidden pb-3">
       {/* Modals kiểm tra quyền truy cập */}
       <GateModals />
 
@@ -229,7 +394,7 @@ export default function UnboxingCardPage() {
               <span className="text-slate-600 dark:text-slate-300">Trải Nghiệm Khách Hàng</span>
             </div>
 
-            {/* Title Row: Centered icon, text & minimal mobile reset button */}
+            {/* Title Row */}
             <div className="flex items-center gap-2.5 sm:gap-3">
               <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full sm:rounded-2xl bg-rose-50 dark:bg-rose-950/50 border border-rose-200/80 dark:border-rose-800/80 flex items-center justify-center text-rose-500 dark:text-rose-400 shadow-xs shrink-0">
                 <HeartHandshake size={20} className="sm:w-[22px] sm:h-[22px]" />
@@ -255,7 +420,7 @@ export default function UnboxingCardPage() {
                   </span>
                 </div>
                 <p className="hidden sm:block text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">
-                  Tạo thiệp cảm ơn 2 mặt chuẩn in xưởng: Cài &ldquo;khiên chắn chống 1 sao&rdquo;, kéo review 5 sao và kéo khách về Zalo đúng luật sàn.
+                  Thiết kế thiệp 2 mặt chuẩn in xưởng: Cài khiên chắn chống 1 sao, kéo review 5 sao và kích hoạt bảo hành điện tử an toàn quy chế sàn.
                 </p>
               </div>
             </div>
@@ -291,11 +456,11 @@ export default function UnboxingCardPage() {
         resultLabel="Thiệp Cảm Ơn"
       />
 
-      {/* Bố cục Form & Kết quả */}
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:overflow-hidden items-stretch">
-        {/* Cột trái: Form nhập liệu */}
-        <div className={`${mobileTab === "form" ? "flex" : "hidden lg:flex"} lg:col-span-5 flex-col min-h-0 lg:h-full lg:overflow-hidden`}>
-          <div className="h-full overflow-y-auto custom-scrollbar space-y-4 lg:pr-1.5 pb-24 lg:pb-2">
+      {/* Bố cục Form & Kết quả: Cuộn độc lập trên Desktop, Chuyển tab & Cuộn cả trang trên Mobile */}
+      <div className="lg:flex-1 lg:min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:overflow-hidden items-start lg:items-stretch">
+        {/* Cột trái: Form nhập liệu (Giữ nguyên giao diện ban đầu) */}
+        <div className={`${mobileTab === "form" ? "flex" : "hidden lg:flex"} lg:col-span-5 flex-col w-full lg:min-h-0 lg:h-full lg:overflow-hidden`}>
+          <div className="lg:h-full lg:overflow-y-auto custom-scrollbar space-y-4 lg:pr-1.5 pb-24 lg:pb-2">
             <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs space-y-4">
               {/* Header Khối Form */}
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -345,7 +510,50 @@ export default function UnboxingCardPage() {
                 </div>
               </div>
 
-              {/* 3. Phong cách văn phong (Tone) */}
+              {/* 3. Mục tiêu chiến lược ưu tiên */}
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center justify-between">
+                  <span>Mục Tiêu Ưu Tiên Của Thư</span>
+                  <span className="text-[10px] text-rose-500 font-semibold">Tối ưu hiệu quả</span>
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {PRIMARY_GOALS.map((goal) => {
+                    const Icon = goal.icon;
+                    const isSelected = primaryGoal === goal.id;
+                    return (
+                      <button
+                        key={goal.id}
+                        type="button"
+                        onClick={() => setPrimaryGoal(goal.id)}
+                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                          isSelected
+                            ? "bg-rose-50/80 dark:bg-rose-950/40 border-rose-400 dark:border-rose-600 shadow-xs"
+                            : "bg-slate-50/50 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800 hover:border-slate-300"
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Icon
+                            size={14}
+                            className={isSelected ? "text-rose-600 dark:text-rose-400" : "text-slate-400"}
+                          />
+                          <span
+                            className={`text-xs font-bold leading-tight ${
+                              isSelected ? "text-rose-900 dark:text-rose-200" : "text-slate-700 dark:text-slate-300"
+                            }`}
+                          >
+                            {goal.name}
+                          </span>
+                        </div>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500 line-clamp-2 leading-snug">
+                          {goal.desc}
+                        </p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* 4. Phong cách văn phong (Tone) */}
               <div className="space-y-2">
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
                   Phong Cách Ngôn Từ (Tone Giọng)
@@ -359,10 +567,11 @@ export default function UnboxingCardPage() {
                         key={tone.id}
                         type="button"
                         onClick={() => setCardTone(tone.id)}
-                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${isSelected
-                          ? "bg-rose-50/80 dark:bg-rose-950/40 border-rose-400 dark:border-rose-600 shadow-xs"
-                          : "bg-slate-50/50 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800 hover:border-slate-300"
-                          }`}
+                        className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                          isSelected
+                            ? "bg-rose-50/80 dark:bg-rose-950/40 border-rose-400 dark:border-rose-600 shadow-xs"
+                            : "bg-slate-50/50 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800 hover:border-slate-300"
+                        }`}
                       >
                         <div className="flex items-center gap-1.5 mb-1">
                           <Icon
@@ -370,8 +579,9 @@ export default function UnboxingCardPage() {
                             className={isSelected ? "text-rose-600 dark:text-rose-400" : "text-slate-400"}
                           />
                           <span
-                            className={`text-xs font-bold ${isSelected ? "text-rose-900 dark:text-rose-200" : "text-slate-700 dark:text-slate-300"
-                              }`}
+                            className={`text-xs font-bold ${
+                              isSelected ? "text-rose-900 dark:text-rose-200" : "text-slate-700 dark:text-slate-300"
+                            }`}
                           >
                             {tone.name}
                           </span>
@@ -385,7 +595,7 @@ export default function UnboxingCardPage() {
                 </div>
               </div>
 
-              {/* 4. Định dạng thẻ in */}
+              {/* 5. Định dạng thẻ in */}
               <div className="space-y-2">
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
                   Kích Thước Thẻ In Dự Kiến
@@ -398,23 +608,26 @@ export default function UnboxingCardPage() {
                         key={fmt.id}
                         type="button"
                         onClick={() => setCardFormat(fmt.id)}
-                        className={`w-full p-2.5 rounded-xl border flex items-center justify-between text-left transition-all cursor-pointer ${isSelected
-                          ? "bg-rose-50/80 dark:bg-rose-950/40 border-rose-400 dark:border-rose-600"
-                          : "bg-slate-50/50 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800 hover:border-slate-300"
-                          }`}
+                        className={`w-full p-2.5 rounded-xl border flex items-center justify-between text-left transition-all cursor-pointer ${
+                          isSelected
+                            ? "bg-rose-50/80 dark:bg-rose-950/40 border-rose-400 dark:border-rose-600"
+                            : "bg-slate-50/50 dark:bg-slate-950/40 border-slate-200 dark:border-slate-800 hover:border-slate-300"
+                        }`}
                       >
                         <div>
                           <div
-                            className={`text-xs font-bold ${isSelected ? "text-rose-900 dark:text-rose-200" : "text-slate-700 dark:text-slate-300"
-                              }`}
+                            className={`text-xs font-bold ${
+                              isSelected ? "text-rose-900 dark:text-rose-200" : "text-slate-700 dark:text-slate-300"
+                            }`}
                           >
                             {fmt.name}
                           </div>
                           <div className="text-[10px] text-slate-400">{fmt.desc}</div>
                         </div>
                         <div
-                          className={`w-4 h-4 rounded-full border flex items-center justify-center ${isSelected ? "border-rose-500 bg-rose-500" : "border-slate-300 dark:border-slate-700"
-                            }`}
+                          className={`w-4 h-4 rounded-full border flex items-center justify-center ${
+                            isSelected ? "border-rose-500 bg-rose-500" : "border-slate-300 dark:border-slate-700"
+                          }`}
                         >
                           {isSelected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
                         </div>
@@ -424,7 +637,7 @@ export default function UnboxingCardPage() {
                 </div>
               </div>
 
-              {/* 5. Quà tặng / Ưu đãi tri ân */}
+              {/* 6. Quà tặng / Ưu đãi tri ân */}
               <div className="space-y-1.5">
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
                   Quà Tặng / Ưu Đãi Kích Hoạt Bảo Hành & Đơn Kế Tiếp
@@ -433,43 +646,65 @@ export default function UnboxingCardPage() {
                   rows={2}
                   value={specialOffer}
                   onChange={(e) => setSpecialOffer(e.target.value)}
-                  placeholder="VD: Voucher 20k cho đơn sau, tặng móc khóa xinh xắn, bảo hành 1 đổi 1 trong 30 ngày..."
+                  placeholder="VD: Voucher 30k đơn tiếp theo, tặng kẹp tóc xinh xắn, bảo hành 1 đổi 1 trong 30 ngày..."
                   className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl text-xs sm:text-sm text-slate-800 dark:text-slate-200 focus:outline-hidden focus:ring-2 focus:ring-rose-500/20 focus:border-rose-500 transition-all resize-none"
                 />
               </div>
 
-              {/* Nút bấm Tạo Thư */}
-              <button
-                type="button"
-                disabled={loading}
-                onClick={handleGenerate}
-                className={`w-full py-3 px-4 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer ${loading
-                  ? "bg-slate-400 cursor-not-allowed"
-                  : "bg-gradient-to-r from-rose-600 via-pink-600 to-rose-600 hover:from-rose-500 hover:to-pink-500 hover:shadow-rose-500/25 active:scale-[0.99]"
+              {/* Nút bấm Tạo Thư + Hủy */}
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={handleGenerate}
+                  className={`flex-1 py-3 px-4 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer ${
+                    loading
+                      ? "bg-slate-400 cursor-not-allowed"
+                      : "bg-gradient-to-r from-rose-600 via-pink-600 to-rose-600 hover:from-rose-500 hover:to-pink-500 hover:shadow-rose-500/25 active:scale-[0.99]"
                   }`}
-              >
-                {loading ? (
-                  <>
-                    <Sparkles size={16} className="animate-spin" /> Đang Thiết Kế Thư Cảm Ơn...
-                  </>
-                ) : (
-                  <>
-                    <HeartHandshake size={16} /> Tạo Thư Cảm Ơn Nhét Hộp Ngay
-                  </>
+                >
+                  {loading ? (
+                    <>
+                      <Sparkles size={16} className="animate-spin text-white" />
+                      <span>Đang Thiết Kế ({elapsedSeconds}s)...</span>
+                    </>
+                  ) : (
+                    <>
+                      <HeartHandshake size={16} /> Tạo Thư Cảm Ơn Nhét Hộp Ngay
+                    </>
+                  )}
+                </button>
+
+                {loading && (
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    className="px-3.5 py-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 shrink-0"
+                    title="Hủy yêu cầu"
+                  >
+                    <XCircle size={16} />
+                    <span>Hủy</span>
+                  </button>
                 )}
-              </button>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Cột phải: Kết quả trực quan */}
-        <div className={`${mobileTab === "result" ? "flex" : "hidden lg:flex"} lg:col-span-7 flex-col min-h-0 lg:h-full lg:overflow-hidden`}>
+        {/* Cột phải: Kết quả trực quan (Chữ trắng nền đen) */}
+        <div className={`${mobileTab === "result" ? "flex" : "hidden lg:flex"} lg:col-span-7 flex-col w-full lg:min-h-0 lg:h-full lg:overflow-hidden pb-20 lg:pb-0`}>
           <UnboxingCardOutput
             result={result}
             loading={loading}
             shopName={shopName}
             cardFormat={cardFormat}
             cardTone={cardTone}
+            primaryGoal={primaryGoal}
+            isOfflineMode={isOfflineMode}
+            onUseSample={handleUseSample}
+            onRetryWithAi={handleGenerate}
+            elapsedSeconds={elapsedSeconds}
+            onCancel={handleCancel}
           />
         </div>
       </div>

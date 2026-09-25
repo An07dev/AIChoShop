@@ -7,6 +7,7 @@ import { createSeoSession, deleteSeoSession } from "@/lib/seo/session";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { AuthRateLimitError, limitAuthAttempts } from "@/lib/auth/rate-limit";
 import { securityEvent } from "@/lib/auth/audit-operations";
+import { classifyDatabaseError } from "@/lib/db-errors";
 import { createHash } from "node:crypto";
 
 export async function registerUser(formData: FormData): Promise<{ success: boolean; error?: string }> {
@@ -30,6 +31,8 @@ export async function registerUser(formData: FormData): Promise<{ success: boole
     return { success: true };
   } catch (error) {
     if (error instanceof AuthRateLimitError) return { success: false, error: error.message };
+    const dbFailure = classifyDatabaseError(error);
+    if (dbFailure) return { success: false, error: dbFailure.message };
     return { success: false, error: "Không thể đăng ký. Vui lòng thử lại hoặc đăng nhập nếu tài khoản đã được tạo." };
   }
 }
@@ -63,6 +66,8 @@ export async function loginUser(formData: FormData): Promise<{ success: boolean;
   } catch (error) {
     await securityEvent("anonymous", error instanceof AuthRateLimitError ? "LOGIN_RATE_LIMITED" : "LOGIN_FAILED", subject);
     if (error instanceof AuthRateLimitError) return { success: false, error: error.message };
+    const dbFailure = classifyDatabaseError(error);
+    if (dbFailure) return { success: false, error: dbFailure.message };
     return { success: false, error: "Không thể đăng nhập. Vui lòng thử lại." };
   }
 }

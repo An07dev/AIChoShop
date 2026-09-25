@@ -8,19 +8,28 @@ import { readDatabase, dataErrorResponse } from "@/lib/db-errors";
 export async function getSessionUser() {
   const token = (await cookies()).get(SEO_SESSION_COOKIE)?.value;
   if (!token || !/^[a-f0-9]{64}$/.test(token)) return null;
-  const session = await readDatabase("read-session", () => prisma.seoSession.findUnique({
-    where: { tokenHash: hashToken(token) },
-    select: {
-      expiresAt: true,
-      user: { select: { id: true, role: true, isLocked: true } },
-    },
-  }));
-  if (!session || session.expiresAt <= new Date() || session.user.isLocked) return null;
-  return session.user;
+  try {
+    const session = await prisma.seoSession.findUnique({
+      where: { tokenHash: hashToken(token) },
+      select: {
+        expiresAt: true,
+        user: { select: { id: true, role: true, isLocked: true } },
+      },
+    });
+    if (!session || session.expiresAt <= new Date() || session.user.isLocked) return null;
+    return session.user;
+  } catch {
+    // Khi database tạm ngưng kết nối, xem như người dùng chưa đăng nhập (khách)
+    return null;
+  }
 }
 
 export async function getSessionUserId() {
-  return (await getSessionUser())?.id;
+  try {
+    return (await getSessionUser())?.id;
+  } catch {
+    return undefined;
+  }
 }
 
 export async function requireAdmin(operation = "admin") {

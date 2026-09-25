@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   ArrowLeft,
   Sparkles,
@@ -8,14 +8,21 @@ import {
   ShieldAlert,
   Send,
   Clock,
+  XCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { useToolGate } from "@/hooks/useToolGate";
 import { PolicyCheckerOutput } from "@/components/tools/PolicyCheckerOutput";
-import { scanTextForViolations, ScanReport } from "@/lib/policy-blacklist/dictionary";
+import { scanTextForViolations, sanitizePolicyInput, ScanReport } from "@/lib/policy-blacklist/dictionary";
 import { useToast } from "@/context/ToastContext";
 import { AiUsageBadge } from "@/components/tools/AiUsageBadge";
 import { MobileToolTabs } from "@/components/tools/MobileToolTabs";
+
+import {
+  SAMPLE_POLICY_INPUT,
+  SAMPLE_POLICY_DATA,
+  buildOfflinePolicyData,
+} from "@/lib/policy-checker/contract";
 
 const PLATFORMS = [
   { id: "TikTok Shop", label: "TikTok Shop (Kiểm duyệt gắt gao nhất)" },
@@ -31,65 +38,6 @@ const CONTENT_TYPES = [
   "Tin nhắn Chat chăm sóc khách",
 ];
 
-const SAMPLE_TEXT = `🔥 SIÊU PHẨM KEM DƯỠNG TRẮNG DA TRỊ MỤN SỐ 1 VIỆT NAM 🔥
-Cam kết 100% trị dứt điểm mọi loại mụn bọc, mụn ẩn chỉ sau 3 ngày dùng! Thần dược tái sinh làn da, vĩnh viễn không tái phát.
-Hàng nhập khẩu chuẩn style Gucci cao cấp, bảo hành hoàn tiền gấp 10 nếu không hiệu quả.
-🎁 DUY NHẤT HÔM NAY: Tặng tiền mặt 50k cho 10 đơn đầu tiên!
-Khách yêu liên hệ ngay Zalo / Hotline: 0912.345.678 hoặc inbox Fanpage Facebook để nhận ưu đãi chuyển khoản free ship nha!`;
-
-const SAMPLE_OUTPUT = `---
-
-## 🛡️ 1. TỔNG QUAN ĐÁNH GIÁ RỦI RO
-- **Mức độ rủi ro:** NGUY HIỂM - NGUY CƠ BỊ KHÓA LINK / ĂN GẬY VI PHẠM CAO (Điểm an toàn: 15/100)
-- **Tóm tắt tình trạng:** Đoạn văn bản chứa hàng loạt vi phạm nghiêm trọng về: Lôi kéo giao dịch ngoài sàn (Zalo, Hotline, FB, Chuyển khoản), Cam kết y tế quá mức (Trị dứt điểm 100%, Thần dược), Từ ngữ so sánh nhất (Số 1 VN, Duy nhất) và Nghi vấn vi phạm nhãn hiệu quốc tế (Gucci). Nếu đăng tải, sản phẩm chắc chắn sẽ bị AI của sàn từ chối duyệt, gắn cờ vi phạm hoặc khóa vĩnh viễn.
-- **Các chính sách bị vi phạm:** Chính sách lôi kéo giao dịch ngoài sàn TikTok Shop/Shopee; Luật Quảng cáo (Từ ngữ so sánh tuyệt đối); Chính sách hàng giả/nhái thương hiệu; Quy chuẩn quản lý mỹ phẩm và bảo vệ quyền lợi người tiêu dùng.
-
----
-
-## ⚠️ 2. DANH SÁCH CÁC ĐIỂM VI PHẠM CẦN GỠ BỎ
-| Từ ngữ / Đoạn văn vi phạm | Nhóm chính sách | Lý do thuật toán sàn gắn cờ | Giải pháp khắc phục |
-| :--- | :--- | :--- | :--- |
-| "SỐ 1 VIỆT NAM" | Khẳng định so sánh nhất | Vi phạm Luật Quảng cáo khi không có chứng nhận nhà nước | Thay bằng: "Dòng kem dưỡng cao cấp được yêu thích" |
-| "Cam kết 100% trị dứt điểm" | Cam kết y tế quá mức | Mỹ phẩm không được cam kết hiệu quả y tế tuyệt đối | Thay bằng: "Hỗ trợ cải thiện và làm mờ mụn rõ rệt" |
-| "Thần dược tái sinh làn da" | Từ ngữ thần thánh hóa | Bị quét là quảng cáo sai công dụng và lừa dối người tiêu dùng | Thay bằng: "Tinh chất chăm sóc và nuôi dưỡng làn da" |
-| "vĩnh viễn không tái phát" | Tuyên bố phóng đại | Vi phạm chính sách tuyên bố y tế không có cơ sở khoa học | Thay bằng: "Giúp duy trì làn da khỏe mạnh, sạch mịn lâu dài" |
-| "style Gucci" | Thương hiệu nhạy cảm | Nghi vấn gắn mác thương hiệu quốc tế chưa có giấy ủy quyền | Thay bằng: "Thiết kế sang trọng, tinh tế" |
-| "hoàn tiền gấp 10" | Chiêu trò giật gân (Gimmick) | Thuật toán AI coi là nội dung câu view, lừa đảo | Thay bằng: "Chính sách đổi trả linh hoạt theo quy định sàn" |
-| "Tặng tiền mặt 50k" | Tặng tiền mặt / Quà cấm | Chính sách sàn cấm giao dịch tiền mặt hoặc thưởng tiền riêng | Thay bằng: "Tặng voucher giảm giá 50k áp dụng trực tiếp" |
-| "Zalo / Hotline: 0912.345.678" | Lôi kéo ngoài sàn (CRITICAL) | Hành vi dẫn dắt khách hàng ra ngoài sàn để trốn phí giao dịch | Xóa toàn bộ số điện thoại và từ Zalo, dùng: "Nhắn tin qua khung chat sàn" |
-| "Fanpage Facebook" | Dẫn sang mạng xã hội khác | Cấm nhắc đến đối thủ cạnh tranh ngoài sàn | Thay bằng: "Nhắn tin trực tiếp cho shop tại đây" |
-| "chuyển khoản free ship" | Thanh toán ngoài sàn | Bị coi là hướng dẫn thanh toán lách cổng thanh toán sàn | Thay bằng: "Ưu đãi voucher Freeship theo mã sàn" |
-
----
-
-## ✅ 3. BẢN VIẾT LẠI AN TOÀN 100% (READY TO USE)
-*(Nội dung đã được biên tập lại an toàn, xóa bỏ 100% từ cấm nhưng vẫn giữ trọn sức hút bán hàng. Bấm Sao Chép để dùng ngay!)*
-
-✨ KEM DƯỠNG DA GIẢM MỤN CHUYÊN SÂU - BÍ QUYẾT LÀN DA SẠCH MỊN ✨
-
-Bạn đang tìm kiếm giải pháp dịu nhẹ cho làn da mụn và thâm sạm? Khám phá ngay dòng kem dưỡng ẩm phục hồi cao cấp - bí quyết giúp làn da tươi sáng, mịn màng mỗi ngày.
-
-💎 ĐIỂM NỔI BẬT CỦA SẢN PHẨM:
-- Hỗ trợ làm dịu các nốt mụn sưng, cải thiện bề mặt da trông thấy chỉ sau thời gian ngắn sử dụng đều đặn.
-- Chiết xuất tự nhiên giàu dưỡng chất, thẩm thấu nhanh, không gây nhờn rít, giúp cân bằng độ ẩm và củng cố hàng rào bảo vệ da.
-- Thiết kế bao bì sang trọng, thanh lịch, tiện lợi mang theo hàng ngày.
-
-🎁 ƯU ĐÃI ĐẶC QUYỀN HÔM NAY:
-- Giảm ngay voucher 50.000đ trực tiếp vào đơn hàng cho khách hàng nhanh tay nhất.
-- Hỗ trợ mã miễn phí vận chuyển Extra toàn quốc khi đặt hàng qua sàn.
-
-🛡️ CHÍNH SÁCH TỪ SHOP:
-- Cam kết sản phẩm chính hãng, đầy đủ hóa đơn chứng từ.
-- Đổi trả linh hoạt trong vòng 7 ngày nếu lỗi từ nhà sản xuất.
-- Đội ngũ tư vấn tận tâm 24/7: Quý khách vui lòng nhấn nút "Chat ngay" trên khung trò chuyện của sàn để được hỗ trợ chuyên sâu!
-
----
-
-## 💡 4. LỜI KHUYÊN TỪ CHUYÊN GIA
-- Đối với ngành Mỹ phẩm & Skincare trên TikTok Shop: Tuyệt đối tránh các từ ngữ mang tính chỉ định y khoa (trị mụn, chữa khỏi, thần dược). Thay vào đó, hãy tập trung vào các từ ngữ "chăm sóc da", "làm dịu", "cải thiện", "phục hồi".
-- Khi chạy Livestream hoặc Video ngắn: Không bao giờ nói to số điện thoại hoặc giơ bảng ghi Zalo/STK lên màn hình, AI nhận diện giọng nói và hình ảnh của TikTok sẽ tự động bóp reach hoặc đánh sập phiên live trong vòng 3 phút.
-- Khuyến mại an toàn: Không tặng tiền mặt hay hứa hẹn chuyển khoản lại tiền, chỉ sử dụng công cụ Marketing chính thức do Seller Center cung cấp (Voucher giảm giá, Flash sale, Mua kèm deal sốc).`;
-
 export default function PolicyCheckerPage() {
   const { checkAccess, GateModals } = useToolGate();
   const { showAiError, showWarning } = useToast();
@@ -97,6 +45,10 @@ export default function PolicyCheckerPage() {
   const [loading, setLoading] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [mobileTab, setMobileTab] = useState<"form" | "result">("form");
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Form states
   const [platform, setPlatform] = useState("TikTok Shop");
@@ -106,49 +58,155 @@ export default function PolicyCheckerPage() {
   const [scanReport, setScanReport] = useState<ScanReport | null>(null);
   const [aiOutput, setAiOutput] = useState<string | null>(null);
 
+  // Khôi phục bản nháp từ localStorage khi vào trang
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("aicho_policy_checker_draft");
+      if (saved) {
+        const draft = JSON.parse(saved);
+        if (draft && typeof draft.text === "string" && draft.text.trim()) {
+          setText(draft.text);
+          if (draft.platform) setPlatform(draft.platform);
+          if (draft.contentType) setContentType(draft.contentType);
+          const instant = scanTextForViolations(draft.text);
+          setScanReport(instant);
+        }
+      }
+    } catch {
+      // Bỏ qua lỗi truy cập storage
+    }
+  }, []);
+
+  // Tự động lưu bản nháp với debounce 500ms
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      try {
+        if (text && text.trim()) {
+          localStorage.setItem(
+            "aicho_policy_checker_draft",
+            JSON.stringify({
+              platform,
+              contentType,
+              text,
+              updatedAt: Date.now(),
+            })
+          );
+        }
+      } catch {
+        // Quota exceeded
+      }
+    }, 500);
+
+    return () => clearTimeout(handler);
+  }, [text, platform, contentType]);
+
+  // Quét nhanh từ điển Regex tự động khi người dùng gõ (debounce 300ms)
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      if (!text.trim()) {
+        setScanReport(null);
+        return;
+      }
+      const report = scanTextForViolations(text);
+      setScanReport(report);
+    }, 300);
+
+    return () => clearTimeout(handler);
+  }, [text]);
+
+  useEffect(() => {
+    return () => {
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      if (abortControllerRef.current) abortControllerRef.current.abort();
+    };
+  }, []);
+
+  const handleCancel = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+  };
+
   const handleUseSample = () => {
-    setText(SAMPLE_TEXT);
-    setPlatform("TikTok Shop");
+    setText(SAMPLE_POLICY_INPUT.text);
+    setPlatform(SAMPLE_POLICY_INPUT.platform);
     setContentType(CONTENT_TYPES[0]);
-    const instantReport = scanTextForViolations(SAMPLE_TEXT);
+    setIsOfflineMode(false);
+    const instantReport = scanTextForViolations(SAMPLE_POLICY_INPUT.text);
     setScanReport(instantReport);
-    setAiOutput(SAMPLE_OUTPUT);
+    setAiOutput(JSON.stringify(SAMPLE_POLICY_DATA));
   };
 
   const handleResetForm = () => {
     setText("");
     setScanReport(null);
     setAiOutput(null);
+    setIsOfflineMode(false);
+    try {
+      localStorage.removeItem("aicho_policy_checker_draft");
+    } catch {
+      // ignore
+    }
   };
 
   const handleScan = async () => {
     const hasAccess = await checkAccess("policy-checker", false);
     if (!hasAccess) return;
 
-    if (!text.trim()) {
+    const sanitizedText = sanitizePolicyInput(text, 10000);
+    if (!sanitizedText.trim()) {
       showWarning("Vui lòng nhập hoặc dán nội dung cần kiểm tra vi phạm!", "Thiếu Nội Dung");
       return;
     }
+    if (sanitizedText !== text) {
+      setText(sanitizedText);
+    }
 
     // 1. Quét tức thì qua từ điển Regex
-    const instantReport = scanTextForViolations(text);
+    const instantReport = scanTextForViolations(sanitizedText);
     setScanReport(instantReport);
+
+    if (abortControllerRef.current) abortControllerRef.current.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     // 2. Gọi AI để phân tích ngữ cảnh sâu và viết lại bản an toàn
     setLoading(true);
+    setElapsedSeconds(0);
     setAiOutput(null);
+    setIsOfflineMode(false);
     setMobileTab("result");
+
+    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    timerIntervalRef.current = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+
+    const timeoutId = setTimeout(() => {
+      if (abortControllerRef.current === controller) {
+        controller.abort();
+        // Quá thời gian -> kích hoạt Offline Engine liền mạch
+        const offlineData = buildOfflinePolicyData(sanitizedText, platform, contentType);
+        setAiOutput(JSON.stringify(offlineData));
+        setIsOfflineMode(true);
+        showWarning(
+          "Yêu cầu AI quá thời gian phản hồi. Đã kích hoạt báo cáo quét Ngoại Tuyến an toàn.",
+          "Chế Độ Ngoại Tuyến"
+        );
+      }
+    }, 120000);
 
     try {
       const response = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           tool: "policy-checker",
           inputs: {
             platform,
             contentType,
-            text: text.trim(),
+            text: sanitizedText,
           },
         }),
       });
@@ -156,24 +214,46 @@ export default function PolicyCheckerPage() {
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        showAiError(data);
+        // Fallback sang Offline Engine thay vì màn hình trống
+        const offlineData = buildOfflinePolicyData(sanitizedText, platform, contentType);
+        setAiOutput(JSON.stringify(offlineData));
+        setIsOfflineMode(true);
+        showWarning(
+          data?.error || "Máy chủ AI đang bảo trì. Đã kích hoạt chế độ Quét Ngoại Tuyến với từ điển chính sách sàn 2026.",
+          "Chế Độ Ngoại Tuyến"
+        );
         return;
       }
 
       setAiOutput(data.data);
+      setIsOfflineMode(false);
       setRefreshTrigger((prev) => prev + 1);
     } catch (error: any) {
-      showAiError({
-        code: "NETWORK_ERROR",
-        error: "Không thể kết nối đến hệ thống AI. Vui lòng kiểm tra lại mạng hoặc thử lại sau.",
-      });
+      if (error?.name === "AbortError" || controller.signal.aborted) {
+        showWarning("Đã dừng quá trình quét chính sách theo yêu cầu của bạn.", "Đã Hủy");
+        return;
+      }
+      // Offline fallback khi mất mạng hoặc lỗi kết nối
+      const offlineData = buildOfflinePolicyData(sanitizedText, platform, contentType);
+      setAiOutput(JSON.stringify(offlineData));
+      setIsOfflineMode(true);
+      showWarning(
+        "Không thể kết nối đến máy chủ AI (mất mạng). Đã kích hoạt chế độ Quét Ngoại Tuyến với từ điển 2026.",
+        "Chế Độ Ngoại Tuyến"
+      );
     } finally {
+      clearTimeout(timeoutId);
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+      abortControllerRef.current = null;
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-7xl w-full mx-auto flex-1 flex flex-col min-h-0 h-full lg:overflow-hidden">
+    <div className="max-w-7xl w-full mx-auto lg:flex-1 flex flex-col lg:min-h-0 lg:h-full lg:overflow-hidden pb-3">
       {/* Modals chặn quyền nếu có */}
       <GateModals />
 
@@ -264,16 +344,16 @@ export default function PolicyCheckerPage() {
       <MobileToolTabs
         activeTab={mobileTab}
         onChangeTab={setMobileTab}
-        hasResult={Boolean(aiOutput || scanReport)}
+        hasResult={Boolean(aiOutput)}
         loading={loading}
         resultLabel="Báo Cáo Vi Phạm"
       />
 
       {/* Grid 2 cột: Trái nhập liệu - Phải hiển thị Output (Cuộn độc lập trên Desktop, Chuyển tab trên Mobile) */}
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:overflow-hidden items-stretch">
+      <div className="lg:flex-1 lg:min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:overflow-hidden items-start lg:items-stretch">
         {/* CỘT TRÁI: FORM NHẬP NỘI DUNG */}
-        <div className={`${mobileTab === "form" ? "flex" : "hidden lg:flex"} lg:col-span-5 flex-col min-h-0 lg:h-full lg:overflow-hidden`}>
-          <div className="h-full overflow-y-auto custom-scrollbar space-y-4 lg:pr-1.5 pb-24 lg:pb-2">
+        <div className={`${mobileTab === "form" ? "flex" : "hidden lg:flex"} lg:col-span-5 flex-col lg:min-h-0 lg:h-full lg:overflow-hidden`}>
+          <div className="lg:h-full lg:overflow-y-auto custom-scrollbar space-y-4 lg:pr-1.5 pb-24 lg:pb-2">
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200/90 dark:border-slate-800 p-4 sm:p-5 shadow-xs space-y-4">
               {/* Header Khối Form */}
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -342,34 +422,83 @@ export default function PolicyCheckerPage() {
               <div>
                 <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5 flex items-center justify-between">
                   <span>Nội Dung Cần Soi <span className="text-rose-500">*</span></span>
-                  <span className="text-[10px] text-slate-400 font-mono">{text.length} ký tự</span>
+                  <span
+                    className={`text-[10px] font-mono transition-colors ${
+                      text.length >= 9000
+                        ? "text-rose-500 font-bold"
+                        : text.length >= 6000
+                        ? "text-amber-500 font-semibold"
+                        : "text-slate-400"
+                    }`}
+                  >
+                    {text.length.toLocaleString()} / 10,000 ký tự
+                    {text.length >= 9000 && " (Gần đạt giới hạn)"}
+                    {text.length >= 6000 && text.length < 9000 && " (Khuyên dùng < 6k)"}
+                  </span>
                 </label>
                 <textarea
                   rows={9}
                   value={text}
                   onChange={(e) => setText(e.target.value)}
+                  maxLength={10000}
                   placeholder="Dán tiêu đề, mô tả sản phẩm, kịch bản video hoặc nội dung quảng cáo bạn chuẩn bị đăng lên sàn vào đây..."
                   className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/50 text-slate-900 dark:text-white text-xs font-medium focus:ring-2 focus:ring-emerald-500 focus:outline-hidden transition-all resize-none leading-relaxed"
                 />
+
+                {/* Mini Instant Scanner Alert below textarea */}
+                {scanReport && scanReport.matches.length > 0 && !aiOutput && (
+                  <div className="mt-2.5 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-between gap-2 text-xs text-amber-700 dark:text-amber-300">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <span className="shrink-0 text-amber-500 font-bold">⚡</span>
+                      <span className="truncate">
+                        Phát hiện nhanh: <strong>{scanReport.matches.length} từ vi phạm</strong> (
+                        {Array.from(new Set(scanReport.matches.map((m) => m.matchedText))).slice(0, 3).join(", ")}
+                        {scanReport.matches.length > 3 ? "..." : ""})
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleScan}
+                      className="shrink-0 text-[10px] font-bold text-amber-600 dark:text-amber-400 hover:underline cursor-pointer"
+                    >
+                      Bấm quét ngay &rarr;
+                    </button>
+                  </div>
+                )}
               </div>
 
-              {/* NÚT SUBMIT */}
-              <button
-                type="button"
-                onClick={handleScan}
-                disabled={loading}
-                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 text-white font-bold text-sm shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading ? (
-                  <>
-                    <Sparkles size={16} className="animate-spin" /> Đang Soi Từ Khóa & Viết Lại...
-                  </>
-                ) : (
-                  <>
-                    <ShieldAlert size={16} /> Quét Vi Phạm & Đề Xuất Bản Sạch
-                  </>
+              {/* NÚT SUBMIT + HỦY */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleScan}
+                  disabled={loading}
+                  className="flex-1 py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 text-white font-bold text-sm shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {loading ? (
+                    <>
+                      <Sparkles size={16} className="animate-spin text-white" />
+                      <span>Đang Soi Từ Khóa ({elapsedSeconds}s)...</span>
+                    </>
+                  ) : (
+                    <>
+                      <ShieldAlert size={16} /> Quét Vi Phạm &amp; Đề Xuất Bản Sạch
+                    </>
+                  )}
+                </button>
+
+                {loading && (
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    className="px-3.5 py-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 shrink-0"
+                    title="Hủy yêu cầu"
+                  >
+                    <XCircle size={16} />
+                    <span>Hủy</span>
+                  </button>
                 )}
-              </button>
+              </div>
             </div>
 
             {/* Tips Policy */}
@@ -377,14 +506,18 @@ export default function PolicyCheckerPage() {
         </div>
 
         {/* CỘT PHẢI: KẾT QUẢ HIỂN THỊ */}
-        <div className={`${mobileTab === "result" ? "flex" : "hidden lg:flex"} lg:col-span-7 flex-col min-h-0 lg:h-full lg:overflow-hidden`}>
+        <div className={`${mobileTab === "result" ? "flex" : "hidden lg:flex"} lg:col-span-7 flex-col w-full lg:min-h-0 lg:h-full lg:overflow-hidden pb-20 lg:pb-0`}>
           <PolicyCheckerOutput
             scanReport={scanReport}
             aiOutput={aiOutput}
             isLoading={loading}
             platform={platform}
+            isOfflineMode={isOfflineMode}
             onUseSample={handleUseSample}
             onApplySafeText={(cleanText) => setText(cleanText)}
+            elapsedSeconds={elapsedSeconds}
+            onCancel={handleCancel}
+            onRetryWithAi={handleScan}
           />
         </div>
       </div>

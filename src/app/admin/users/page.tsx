@@ -60,5 +60,14 @@ export default async function AdminUsers({ searchParams }: {
             { name: "status", label: "Tài khoản", options: [{ value: "all", label: "Tất cả" }, { value: "active", label: "Hoạt động" }, { value: "locked", label: "Đã khóa" }] },
             { name: "sort", label: "Sắp xếp", options: [{ value: "newest", label: "Mới nhất" }, { value: "oldest", label: "Cũ nhất" }, { value: "email", label: "Email A–Z" }] }
         ]}/>;
-    return <div className="space-y-4"><UsersManager listControls={listControls} initialUsers={serializedUsers} initialPlans={vipPlans} initialGlobalFreeLimit={setting?.defaultDailyFreeLimit ?? 12}/></div>;
+    return (
+        <div className="space-y-4 w-full lg:w-[70%] mx-auto pb-12">
+            <UsersManager
+                listControls={listControls}
+                initialUsers={serializedUsers}
+                initialPlans={vipPlans}
+                initialGlobalFreeLimit={setting?.defaultDailyFreeLimit ?? 12}
+            />
+        </div>
+    );
 }

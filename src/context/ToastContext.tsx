@@ -8,7 +8,6 @@ import {
   XCircle,
   Info,
   X,
-  ExternalLink,
   Copy,
   Check,
   Key,
@@ -33,7 +32,7 @@ interface ToastContextValue {
   showError: (message: string, title?: string, options?: Partial<ToastItem>) => string;
   showSuccess: (message: string, title?: string, options?: Partial<ToastItem>) => string;
   showWarning: (message: string, title?: string, options?: Partial<ToastItem>) => string;
-  showAiError: (errorData: any, fallbackMessage?: string) => string;
+  showAiError: (errorData: unknown, fallbackMessage?: string) => string;
   removeToast: (id: string) => void;
 }
 
@@ -110,7 +109,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
    * Helper chuyên biệt để hiển thị lỗi từ API OpenAI
    */
   const showAiError = useCallback(
-    (errorData: any, fallbackMessage?: string) => {
+    (errorData: unknown, fallbackMessage?: string) => {
       let message = fallbackMessage || "Không thể hoàn thành yêu cầu gọi AI.";
       let title = "Lỗi Gọi OpenAI API";
       let code: string | undefined = undefined;
@@ -120,9 +119,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       if (typeof errorData === "string") {
         message = errorData;
       } else if (errorData && typeof errorData === "object") {
-        message = errorData.error || errorData.message || message;
-        code = errorData.code;
-        actionUrl = errorData.details?.actionUrl;
+        const errObj = errorData as Record<string, unknown>;
+        message = (errObj.error as string) || (errObj.message as string) || message;
+        code = errObj.code as string | undefined;
+        actionUrl = (errObj.details as { actionUrl?: string } | undefined)?.actionUrl;
       }
 
       // Nhận diện mã lỗi để đặt tiêu đề và nút hỗ trợ thông minh
@@ -142,10 +142,14 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         title = "Không Tìm Thấy Model AI (404)";
         actionUrl = "/admin/settings";
         actionLabel = "Chọn Lại Model";
+      } else if (code === "AI_BOTH_PROVIDERS_UNAVAILABLE" || code === "AI_ALL_PROVIDERS_FAILED" || message.includes("Cả 2 phương án")) {
+        title = "Tất Cả Dịch Vụ AI Đều Gián Đoạn";
+        actionUrl = "/admin/settings";
+        actionLabel = "Kiểm Tra Cài Đặt AI";
       } else if (code === "SERVER_OVERLOAD" || message.includes("500") || message.includes("503")) {
-        title = "Máy Chủ OpenAI Đang Quá Tải";
+        title = "Máy Chủ AI Đang Quá Tải";
       } else if (code === "NETWORK_ERROR") {
-        title = "Lỗi Kết Nối Mạng Đến OpenAI";
+        title = "Lỗi Kết Nối Mạng Đến AI";
       }
 
       return showToast({

@@ -1,30 +1,39 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import {
   Copy,
   Check,
   Sparkles,
-  Layers,
   Users,
   Megaphone,
   Images,
   FileText,
   MessageCircle,
   Share2,
-  CheckCircle2,
   FileSpreadsheet,
-  LayoutList,
-  Send,
-  Smartphone,
-  BadgeCheck,
+  Download,
+  ShieldCheck,
+  CheckCircle2,
+  AlertCircle,
+  Camera,
+  Gift,
+  MousePointerClick,
   Tag,
-  ChevronRight,
+  MessageSquareQuote,
   Flame,
-  FileCode2,
+  LayoutGrid,
+  Code2,
+  Maximize2,
+  X,
 } from "lucide-react";
 import * as XLSX from "xlsx";
-import { TextShimmerWave } from "@/components/loading-ui/text-shimmer-wave";
+import { ToolLoadingState } from "@/components/tools/ToolLoadingState";
+import {
+  parseVideoRepurposerResult,
+  formatRepurposerMarkdownText,
+  type VideoRepurposerData,
+} from "@/lib/video-repurposer/contract";
 
 interface VideoRepurposerOutputProps {
   result: string;
@@ -33,91 +42,95 @@ interface VideoRepurposerOutputProps {
   brandTone: string;
   callToAction: string;
   onUseSample?: () => void;
+  elapsedSeconds?: number;
+  onCancel?: () => void;
 }
 
-const CHANNELS = [
-  { id: "all", name: "Tất Cả 5 Kênh", count: 5, icon: Layers, color: "text-amber-400 bg-amber-500/10 border-amber-500/30", activeBg: "bg-amber-500/20 text-amber-300 border-amber-500/50" },
-  { id: "group", name: "1. FB Group", count: 1, icon: Users, color: "text-blue-400 bg-blue-500/10 border-blue-500/30", activeBg: "bg-blue-500/20 text-blue-300 border-blue-500/50" },
-  { id: "fanpage", name: "2. Fanpage", count: 1, icon: Megaphone, color: "text-indigo-400 bg-indigo-500/10 border-indigo-500/30", activeBg: "bg-indigo-500/20 text-indigo-300 border-indigo-500/50" },
-  { id: "carousel", name: "3. Carousel", count: 1, icon: Images, color: "text-pink-400 bg-pink-500/10 border-pink-500/30", activeBg: "bg-pink-500/20 text-pink-300 border-pink-500/50" },
-  { id: "blog", name: "4. Review SEO", count: 1, icon: FileText, color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/30", activeBg: "bg-emerald-500/20 text-emerald-300 border-emerald-500/50" },
-  { id: "zalo", name: "5. Zalo OA", count: 1, icon: MessageCircle, color: "text-cyan-400 bg-cyan-500/10 border-cyan-500/30", activeBg: "bg-cyan-500/20 text-cyan-300 border-cyan-500/50" },
+const REPURPOSER_STAGES = [
+  { upToSeconds: 5, text: "🎬 Đang phân tích kịch bản video gốc & thông điệp chính..." },
+  { upToSeconds: 15, text: "👥 Soạn thảo bài chia sẻ tự nhiên cho Facebook Group..." },
+  { upToSeconds: 30, text: "📢 Chuyển thể bài đăng Fanpage & 5 Slide Carousel đa chiều..." },
+  { upToSeconds: 55, text: "📝 Tối ưu bài Blog Review chuẩn SEO & kịch bản tin nhắn Zalo OA..." },
+  { upToSeconds: 85, text: "🛡️ Kiểm tra chuẩn chính sách sàn & hoàn thiện cấu trúc JSON..." },
+  { upToSeconds: 120, text: "✨ Hoàn thiện trọn bộ 5 kênh phân phối nội dung..." },
 ];
 
 export default function VideoRepurposerOutput({
   result,
   loading,
   productName,
-  brandTone,
-  callToAction,
   onUseSample,
+  elapsedSeconds = 0,
+  onCancel,
 }: VideoRepurposerOutputProps) {
-  const [activeTab, setActiveTab] = useState<string>("all");
+  const [activeTab, setActiveTab] = useState<
+    "all" | "group" | "fanpage" | "carousel" | "blog" | "zalo" | "policy"
+  >("all");
   const [viewMode, setViewMode] = useState<"visual" | "raw">("visual");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [copiedAll, setCopiedAll] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Tách 5 định dạng bằng regex linh hoạt
-  const sections = useMemo(() => {
-    if (!result) return { group: "", fanpage: "", carousel: "", blog: "", zalo: "" };
-
-    const patterns = [
-      { key: "group", regex: /(?:^|\n)##?\s*.*(?:định\s*dạng\s*1|facebook\s*group|fb\s*group)/i },
-      { key: "fanpage", regex: /(?:^|\n)##?\s*.*(?:định\s*dạng\s*2|fanpage)/i },
-      { key: "carousel", regex: /(?:^|\n)##?\s*.*(?:định\s*dạng\s*3|carousel|chuỗi\s*ảnh)/i },
-      { key: "blog", regex: /(?:^|\n)##?\s*.*(?:định\s*dạng\s*4|review\s*chuẩn\s*seo|bài\s*viết\s*review|website)/i },
-      { key: "zalo", regex: /(?:^|\n)##?\s*.*(?:định\s*dạng\s*5|zalo\s*oa|tin\s*nhắn\s*zalo)/i },
-    ];
-
-    const matches = patterns.map((p) => {
-      const match = result.match(p.regex);
-      return {
-        key: p.key,
-        index: match ? match.index! : -1,
-      };
-    });
-
-    const cleanSectionContent = (raw: string) => {
-      return raw
-        .replace(/^[\s\n]*##?[^\n]+\n?/i, "")
-        .replace(/^[\s\n]*---+[\s\n]*/gm, "")
-        .trim();
-    };
-
-    const foundIndices = matches.filter((m) => m.index !== -1).sort((a, b) => a.index - b.index);
-
-    if (foundIndices.length < 2) {
-      return {
-        group: cleanSectionContent(result),
-        fanpage: "",
-        carousel: "",
-        blog: "",
-        zalo: "",
-      };
-    }
-
-    const res: Record<string, string> = { group: "", fanpage: "", carousel: "", blog: "", zalo: "" };
-
-    for (let i = 0; i < foundIndices.length; i++) {
-      const current = foundIndices[i];
-      const nextIndex = i + 1 < foundIndices.length ? foundIndices[i + 1].index : result.length;
-      const rawChunk = result.substring(current.index, nextIndex);
-      res[current.key] = cleanSectionContent(rawChunk);
-    }
-
-    return res as {
-      group: string;
-      fanpage: string;
-      carousel: string;
-      blog: string;
-      zalo: string;
-    };
+  // Parse dữ liệu đầu ra với bộ Resilient Parser 4 tầng bền bỉ
+  const data: VideoRepurposerData = useMemo(() => {
+    return parseVideoRepurposerResult(result);
   }, [result]);
+
+  // Chuyển đổi dữ liệu chuẩn hóa sang văn bản Markdown sạch đẹp (100% không bao giờ hiển thị JSON thô)
+  const cleanMarkdown = useMemo(() => {
+    if (!result) return "";
+    return formatRepurposerMarkdownText(data);
+  }, [result, data]);
+
+  const wordCount = useMemo(() => {
+    return cleanMarkdown ? cleanMarkdown.trim().split(/\s+/).length : 0;
+  }, [cleanMarkdown]);
+
+  // Tự động cuộn lên đầu dòng 1 khi chuyển sang chế độ Markdown
+  useEffect(() => {
+    if (viewMode === "raw" && textareaRef.current) {
+      textareaRef.current.scrollTop = 0;
+    }
+  }, [viewMode, cleanMarkdown]);
+
+  // Phím Esc để đóng toàn màn hình
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isFullscreen]);
 
   const handleCopy = (text: string, key: string) => {
     if (!text) return;
     navigator.clipboard.writeText(text);
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 2000);
+  };
+
+  const handleCopyAll = () => {
+    if (!cleanMarkdown) return;
+    navigator.clipboard.writeText(cleanMarkdown);
+    setCopiedAll(true);
+    setTimeout(() => setCopiedAll(false), 2000);
+  };
+
+  const handleDownloadTxt = () => {
+    if (!cleanMarkdown) return;
+    const blob = new Blob([cleanMarkdown], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    const safeName = (productName || data.productName || "5-kenh")
+      .replace(/[^a-zA-Z0-9]/g, "-")
+      .slice(0, 30);
+    a.download = `AIChoShop-5Kenh-${safeName}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleExportExcel = () => {
@@ -127,42 +140,50 @@ export default function VideoRepurposerOutput({
       {
         STT: 1,
         "Kênh Phân Phối": "Facebook Group",
-        "Định Dạng": "Bài Viết Seeding / Chia Sẻ Thực Tế",
+        "Định Dạng": "Bài Viết Seeding / Tâm Sự Thực Tế",
         "Mục Tiêu": "Tạo thảo luận tự nhiên, tránh bóp reach, tăng tương tác",
-        "Sản Phẩm": productName || "Chưa đặt tên",
-        "Nội Dung": sections.group || result,
+        "Sản Phẩm": productName || data.productName || "Sản phẩm",
+        "Nội Dung Chính": `${data.fbGroupPost.headline ? `[${data.fbGroupPost.headline}]\n\n` : ""}${data.fbGroupPost.bodyText}\n\n${data.fbGroupPost.discussionHook}`,
+        "Ghi Chú Triển Khai":
+          data.fbGroupPost.seedingComments
+            ?.map((c) => `[${c.role}]: "${c.comment}"`)
+            .join(" | ") || "Kèm 3 kịch bản cmt mồi",
       },
       {
         STT: 2,
         "Kênh Phân Phối": "Fanpage Facebook",
-        "Định Dạng": "Bài Viết Bán Hàng / Chạy Ads",
+        "Định Dạng": "Bài Viết Bán Hàng / Tối Ưu Click & Inbox",
         "Mục Tiêu": "Tối ưu Click link & Inbox tư vấn",
-        "Sản Phẩm": productName || "Chưa đặt tên",
-        "Nội Dung": sections.fanpage || result,
+        "Sản Phẩm": productName || data.productName || "Sản phẩm",
+        "Nội Dung Chính": `${data.fanpagePost.hookLine}\n\n${data.fanpagePost.bodyHighlights.join("\n")}\n\n${data.fanpagePost.offerDetails}\n\n${data.fanpagePost.callToAction}\n\n${data.fanpagePost.hashtags.join(" ")}`,
+        "Ghi Chú Triển Khai": "Ghim link ở cmt đầu tiên",
       },
-      {
-        STT: 3,
-        "Kênh Phân Phối": "Chuỗi Ảnh Carousel",
-        "Định Dạng": "Kịch Bản 5 Slide Ảnh (Lemon8 / FB / Instagram)",
-        "Mục Tiêu": "Giữ chân người xem lướt slide, lưu bài",
-        "Sản Phẩm": productName || "Chưa đặt tên",
-        "Nội Dung": sections.carousel || result,
-      },
+      ...data.carouselPost.slides.map((s, idx) => ({
+        STT: 3 + idx * 0.1,
+        "Kênh Phân Phối": `Carousel (Slide ${s.slideNumber})`,
+        "Định Dạng": s.typeLabel || `Slide ${s.slideNumber}`,
+        "Mục Tiêu": "Giữ chân người xem lướt slide & lưu bài",
+        "Sản Phẩm": productName || data.productName || "Sản phẩm",
+        "Nội Dung Chính": `Headline: ${s.headline}\nNội dung: ${s.bodyContent}`,
+        "Ghi Chú Triển Khai": `Visual: ${s.visualDescription}`,
+      })),
       {
         STT: 4,
         "Kênh Phân Phối": "Blog / Website SEO",
         "Định Dạng": "Bài Viết Review Chuẩn SEO",
         "Mục Tiêu": "Lên Top Google tìm kiếm, kéo traffic tự nhiên",
-        "Sản Phẩm": productName || "Chưa đặt tên",
-        "Nội Dung": sections.blog || result,
+        "Sản Phẩm": productName || data.productName || "Sản phẩm",
+        "Nội Dung Chính": `Tiêu đề: ${data.seoBlogPost.seoTitle}\nMeta: ${data.seoBlogPost.metaDescription}\n\n${data.seoBlogPost.introduction}\n\n${data.seoBlogPost.mainContent}\n\nPros: ${data.seoBlogPost.pros.join(" | ")}\nCons: ${data.seoBlogPost.cons.join(" | ")}\n\nVerdict: ${data.seoBlogPost.verdict}`,
+        "Ghi Chú Triển Khai": `Điểm đánh giá: ${data.seoBlogPost.ratingScore || "9.4/10"}`,
       },
       {
         STT: 5,
         "Kênh Phân Phối": "Zalo OA / CSKH",
         "Định Dạng": "Tin Nhắn Tương Tác / Gửi Deal Riêng",
         "Mục Tiêu": "Chốt đơn khách cũ, remarketing 0 đồng",
-        "Sản Phẩm": productName || "Chưa đặt tên",
-        "Nội Dung": sections.zalo || result,
+        "Sản Phẩm": productName || data.productName || "Sản phẩm",
+        "Nội Dung Chính": `${data.zaloOaMessage.customerGreeting}\n\n${data.zaloOaMessage.videoValueRecap}\n\n${data.zaloOaMessage.exclusiveDeal}\n\n${data.zaloOaMessage.ctaText}`,
+        "Ghi Chú Triển Khai": "Gửi vào khung giờ 11h45 hoặc 19h30",
       },
     ];
 
@@ -172,8 +193,9 @@ export default function VideoRepurposerOutput({
       { wch: 22 },
       { wch: 35 },
       { wch: 40 },
-      { wch: 30 },
+      { wch: 25 },
       { wch: 80 },
+      { wch: 45 },
     ];
 
     const workbook = XLSX.utils.book_new();
@@ -184,207 +206,226 @@ export default function VideoRepurposerOutput({
     XLSX.writeFile(workbook, `AIChoShop_5Kenh_${dateStr}.xlsx`);
   };
 
-  const wordCount = result ? result.trim().split(/\s+/).filter(Boolean).length : 0;
-  const charCount = result ? result.length : 0;
-
   return (
-    <div className="bg-slate-900 rounded-2xl shadow-xl h-full flex flex-col relative overflow-hidden border border-slate-800">
-      {/* Hiệu ứng gradient nền */}
-      <div className="absolute top-0 right-0 p-36 bg-pink-500/10 rounded-full blur-[100px] pointer-events-none"></div>
-      <div className="absolute bottom-0 left-0 p-36 bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none"></div>
-
-      {/* Header thanh công cụ - Luôn giữ đúng 1 dòng trên mobile */}
-      <div className="px-3 sm:px-4 py-2 sm:py-2.5 border-b border-slate-800 flex items-center justify-between gap-1.5 sm:gap-2 relative z-10 bg-slate-900/90 backdrop-blur-md shrink-0">
-        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-          <div className="p-1 sm:p-1.5 rounded-lg bg-pink-500/20 text-pink-400 shrink-0">
-            <Share2 size={15} />
+    <div className="bg-black rounded-2xl shadow-2xl flex flex-col lg:h-full lg:min-h-0 relative lg:overflow-hidden border border-slate-800 text-white">
+      {/* 1. HEADER THANH CÔNG CỤ TỐI GIẢN (CHỮ TRẮNG NỀN ĐEN + ICON) */}
+      <div className="sticky top-0 z-20 bg-black/95 backdrop-blur-md border-b border-slate-800 px-3 sm:px-4 py-2 flex flex-col gap-1.5 shrink-0">
+        {/* Hàng 1: Tiêu đề + Các nút thao tác */}
+        <div className="flex items-center justify-between gap-1.5 sm:gap-2">
+          {/* Trái: Icon + Tiêu đề */}
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 shrink">
+            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-white shrink-0">
+              <Share2 size={13} className="text-white sm:w-3.5 sm:h-3.5" />
+            </div>
+            <h2 className="font-bold text-xs sm:text-sm text-white tracking-wide uppercase truncate whitespace-nowrap">
+              <span className="hidden sm:inline">Biến Video Thành 5 Kênh</span>
+              <span className="sm:hidden">5 Kênh</span>
+            </h2>
           </div>
-          <h2 className="font-bold text-white text-xs sm:text-sm leading-none truncate whitespace-nowrap">
-            Nội Dung 5 Kênh
-          </h2>
-          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-pink-500/20 text-pink-300 border border-pink-500/30 hidden md:inline-block shrink-0">
-            Omnichannel 5-in-1
-          </span>
-          {productName && (
-            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 truncate max-w-[120px] hidden lg:inline-block shrink-0">
-              {productName}
-            </span>
+
+          {/* Phải: Nhóm nút thao tác gọn gàng */}
+          {result && !loading && (
+            <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+              {/* Nút Sao Chép Tất Cả (Icon-only) */}
+              <button
+                type="button"
+                onClick={handleCopyAll}
+                title={copiedAll ? "Đã sao chép toàn bộ nội dung" : "Sao chép toàn bộ nội dung"}
+                className={`p-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center cursor-pointer active:scale-95 shadow-xs ${
+                  copiedAll
+                    ? "bg-emerald-500 text-white"
+                    : "bg-white text-black hover:bg-slate-200"
+                }`}
+              >
+                {copiedAll ? <Check size={13} className="stroke-[3]" /> : <Copy size={13} />}
+              </button>
+
+              {/* Nút Xuất Excel */}
+              <button
+                type="button"
+                onClick={handleExportExcel}
+                title="Xuất bảng tính Excel (.xlsx)"
+                className="p-1.5 sm:px-2 sm:py-1 rounded-lg text-xs font-medium bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition-all flex items-center gap-1 cursor-pointer active:scale-95 whitespace-nowrap"
+              >
+                <FileSpreadsheet size={13} />
+                <span className="hidden sm:inline">Excel</span>
+              </button>
+
+              {/* Nút Tải TXT */}
+              <button
+                type="button"
+                onClick={handleDownloadTxt}
+                title="Tải về file TXT"
+                className="p-1.5 sm:px-2 sm:py-1 rounded-lg text-xs font-medium bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition-all flex items-center gap-1 cursor-pointer active:scale-95 whitespace-nowrap"
+              >
+                <Download size={13} />
+                <span className="hidden sm:inline">TXT</span>
+              </button>
+
+              {/* Toggle Chế độ xem: Thẻ / Markdown */}
+              <div className="bg-slate-900 p-0.5 rounded-lg border border-slate-800 flex items-center gap-0.5 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("visual")}
+                  className={`px-2 py-0.5 sm:px-2.5 sm:py-0.5 rounded text-[11px] font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                    viewMode === "visual"
+                      ? "bg-white text-black font-bold shadow-xs"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                  title="Chế độ thẻ trực quan"
+                >
+                  <LayoutGrid size={11} />
+                  <span>Thẻ</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("raw")}
+                  className={`px-2 py-0.5 sm:px-2.5 sm:py-0.5 rounded text-[11px] font-semibold transition-all cursor-pointer flex items-center gap-1 ${
+                    viewMode === "raw"
+                      ? "bg-white text-black font-bold shadow-xs"
+                      : "text-slate-400 hover:text-white"
+                  }`}
+                  title="Chế độ văn bản Markdown thuần"
+                >
+                  <Code2 size={11} />
+                  <span>Markdown</span>
+                </button>
+              </div>
+            </div>
           )}
         </div>
 
-        {/* Nút Chuyển chế độ xem, Xuất Excel & Sao chép toàn bộ - 1 hàng duy nhất */}
-        {result && !loading && (
-          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-            {/* View Mode Toggle: Trực quan vs Văn bản (icon-only trên mobile) */}
-            <div className="bg-slate-800/80 p-0.5 rounded-lg border border-slate-700/60 flex items-center">
-              <button
-                type="button"
-                onClick={() => setViewMode("visual")}
-                title="Xem dạng thẻ trực quan"
-                className={`p-1 sm:px-2 sm:py-1 rounded text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                  viewMode === "visual"
-                    ? "bg-pink-600 text-white shadow-xs"
-                    : "text-slate-400 hover:text-white"
-                }`}
-              >
-                <LayoutList size={12} />
-                <span className="hidden md:inline">Trực quan</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode("raw")}
-                title="Xem dạng văn bản thô"
-                className={`p-1 sm:px-2 sm:py-1 rounded text-[11px] font-bold flex items-center gap-1 transition-all cursor-pointer ${
-                  viewMode === "raw"
-                    ? "bg-pink-600 text-white shadow-xs"
-                    : "text-slate-400 hover:text-white"
-                }`}
-              >
-                <FileCode2 size={12} />
-                <span className="hidden md:inline">Văn bản</span>
-              </button>
-            </div>
-
-            {/* Xuất Excel */}
-            <button
-              type="button"
-              onClick={handleExportExcel}
-              className="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 text-[11px] sm:text-xs font-bold px-2 sm:px-2.5 py-1 rounded-lg transition-all shadow-xs flex items-center gap-1 cursor-pointer active:scale-95"
-              title="Xuất bảng nội dung 5 kênh ra file Excel (.xlsx)"
-            >
-              <FileSpreadsheet size={12} className="text-emerald-400" />
-              <span>Excel</span>
-            </button>
-
-            {/* Sao chép toàn bộ */}
-            <button
-              type="button"
-              onClick={() => handleCopy(result, "all_full")}
-              className="bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-400 hover:to-rose-400 text-white text-[11px] sm:text-xs font-bold px-2 sm:px-2.5 py-1 rounded-lg transition-all shadow-md shadow-pink-500/20 flex items-center gap-1 cursor-pointer active:scale-95"
-            >
-              {copiedKey === "all_full" ? <Check size={12} className="stroke-[3]" /> : <Copy size={12} />}
-              <span>{copiedKey === "all_full" ? "Đã chép" : "Chép hết"}</span>
-            </button>
+        {/* Hàng 2: Thanh Tab Lọc 5 Kênh - Gọn gàng, lướt ngang mượt mà trên mobile */}
+        {result && !loading && viewMode === "visual" && (
+          <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar pt-0.5 border-t border-slate-900">
+            <TabButton
+              active={activeTab === "all"}
+              onClick={() => setActiveTab("all")}
+              label="Tất Cả"
+              count={5}
+            />
+            <TabButton
+              active={activeTab === "group"}
+              onClick={() => setActiveTab("group")}
+              icon={<Users size={12} />}
+              label="1. FB Group"
+            />
+            <TabButton
+              active={activeTab === "fanpage"}
+              onClick={() => setActiveTab("fanpage")}
+              icon={<Megaphone size={12} />}
+              label="2. Fanpage"
+            />
+            <TabButton
+              active={activeTab === "carousel"}
+              onClick={() => setActiveTab("carousel")}
+              icon={<Images size={12} />}
+              label="3. Carousel"
+              count={5}
+            />
+            <TabButton
+              active={activeTab === "blog"}
+              onClick={() => setActiveTab("blog")}
+              icon={<FileText size={12} />}
+              label="4. Review SEO"
+            />
+            <TabButton
+              active={activeTab === "zalo"}
+              onClick={() => setActiveTab("zalo")}
+              icon={<MessageCircle size={12} />}
+              label="5. Zalo OA"
+            />
+            <TabButton
+              active={activeTab === "policy"}
+              onClick={() => setActiveTab("policy")}
+              icon={<ShieldCheck size={12} />}
+              label="Tuân Thủ"
+              count={`${data.policyCompliance?.safeScore || 96}%`}
+            />
           </div>
         )}
       </div>
 
-      {/* Thanh chuyển Tab 5 kênh */}
-      {result && !loading && (
-        <div className="px-3 sm:px-4 py-2 border-b border-slate-800/80 bg-slate-950/60 flex items-center gap-1.5 overflow-x-auto no-scrollbar sm:custom-scrollbar shrink-0 relative z-10">
-          {CHANNELS.map((c) => {
-            const Icon = c.icon;
-            const isSelected = activeTab === c.id;
-            return (
-              <button
-                key={c.id}
-                type="button"
-                onClick={() => setActiveTab(c.id)}
-                className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 whitespace-nowrap cursor-pointer active:scale-95 ${
-                  isSelected
-                    ? "bg-slate-800 text-pink-400 border border-pink-500/40 shadow-xs ring-1 ring-pink-500/20"
-                    : "text-slate-400 hover:text-white hover:bg-slate-800/40 border border-transparent"
-                }`}
-              >
-                <Icon size={13} className={isSelected ? "text-pink-400" : "text-slate-400"} />
-                <span>{c.name}</span>
-              </button>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Vùng nội dung cuộn nội bộ */}
-      <div className="p-3.5 sm:p-4 flex-1 min-h-0 relative z-10 overflow-y-auto custom-scrollbar overscroll-contain pb-24 lg:pb-4">
+      {/* 2. BODY NỘI DUNG HIỂN THỊ (TỐI ƯU CẢ MOBILE & DESKTOP - FULL CHIỀU CAO CHO MARKDOWN) */}
+      <div
+        className={`flex-1 min-h-0 p-3 sm:p-4 flex flex-col ${
+          viewMode === "raw" ? "h-full overflow-hidden" : "lg:overflow-y-auto custom-scrollbar"
+        }`}
+      >
         {/* Chưa có kết quả */}
         {!result && !loading && (
           <div className="h-full min-h-[300px] flex flex-col items-center justify-center text-center p-6 space-y-3">
-            <div className="w-14 h-14 rounded-2xl bg-pink-500/10 border border-pink-500/20 flex items-center justify-center text-pink-400 mb-1 shadow-lg shadow-pink-500/10">
-              <Share2 size={28} />
+            <div className="w-12 h-12 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-white mb-1">
+              <Share2 size={22} className="text-white" />
             </div>
-            <h3 className="text-base font-bold text-slate-200">
+            <h3 className="text-sm font-bold text-white uppercase tracking-wider">
               Chưa Có Nội Dung Đa Kênh
             </h3>
-            <p className="text-xs text-slate-400 max-w-md leading-relaxed">
-              Dán kịch bản hoặc lời thoại video TikTok ở cột bên trái rồi nhấn{" "}
-              <strong className="text-pink-400">&quot;Chuyển Đổi Sang 5 Định Dạng Kênh&quot;</strong>. Hệ thống AI sẽ tự động phân tích và viết lại chuẩn văn hóa từng nền tảng.
+            <p className="text-xs text-slate-400 max-w-sm leading-relaxed">
+              Dán kịch bản video ở cột bên trái rồi nhấn nút chuyển đổi. Hệ thống AI sẽ viết lại 5 định dạng chuẩn từng sàn.
             </p>
             {onUseSample && (
               <button
                 type="button"
                 onClick={onUseSample}
-                className="mt-2 inline-flex items-center gap-1.5 rounded-xl bg-pink-600 hover:bg-pink-500 text-white px-4 py-2 text-xs font-bold shadow-md shadow-pink-500/20 cursor-pointer transition-all active:scale-95"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-white hover:bg-slate-200 text-black px-3.5 py-1.5 text-xs font-bold transition-all cursor-pointer active:scale-95"
               >
-                <Sparkles size={14} /> Chạy thử với dữ liệu mẫu (Demo)
+                <Sparkles size={13} /> Chạy thử mẫu (Demo)
               </button>
             )}
           </div>
         )}
 
-        {/* Trạng thái đang tải (Loading) */}
+        {/* Trạng thái đang tải */}
         {loading && (
-          <div className="h-full min-h-[360px] flex flex-col items-center justify-center text-center p-6 space-y-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-pink-500/20 to-rose-500/20 border border-pink-500/30 flex items-center justify-center text-pink-400 shadow-lg shadow-pink-500/10">
-              <Share2 size={28} className="animate-spin text-pink-400" />
-            </div>
-            <div className="space-y-1.5">
-              <div className="font-bold text-base text-white">
-                <TextShimmerWave>AI Đang Chuyển Đổi Sang 5 Định Dạng Đa Kênh...</TextShimmerWave>
-              </div>
-              <p className="text-xs text-slate-400 max-w-sm">
-                Đang viết lại cho Facebook Group Seeding, Fanpage Ads, 5 Slide Carousel, Review SEO & Zalo OA...
-              </p>
-            </div>
-          </div>
+          <ToolLoadingState
+            elapsedSeconds={elapsedSeconds}
+            onCancel={onCancel}
+            title="AI Đang Chuyển Đổi Sang 5 Định Dạng Đa Kênh..."
+            stages={REPURPOSER_STAGES}
+            accentColor="rose"
+            minHeightClass="min-h-[360px]"
+          />
         )}
 
         {/* Hiển thị kết quả */}
         {result && !loading && (
-          <div className="space-y-4">
-            {/* Thanh thống kê nhanh */}
-            <div className="flex flex-wrap items-center justify-between gap-2 text-[11px] text-slate-400 pb-2.5 border-b border-slate-800">
-              <div className="flex items-center gap-3">
-                <span>
-                  Độ dài: <strong className="text-white font-mono">{charCount}</strong> ký tự
-                </span>
-                <span>
-                  Số từ: <strong className="text-white font-mono">{wordCount}</strong> từ
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-emerald-400 font-semibold flex items-center gap-1">
-                  <CheckCircle2 size={12} /> Đã tối ưu thuật toán từng sàn
-                </span>
-              </div>
-            </div>
-
-            {/* CHẾ ĐỘ 1: XEM TRỰC QUAN TỪNG KÊNH (VISUAL) */}
+          <div
+            className={
+              viewMode === "raw"
+                ? "flex-1 flex flex-col min-h-0 h-full"
+                : "space-y-3 sm:space-y-4"
+            }
+          >
+            {/* CHẾ ĐỘ XEM TRỰC QUAN (VISUAL) */}
             {viewMode === "visual" ? (
-              <div className="space-y-4">
+              <div className="space-y-3 sm:space-y-4">
                 {/* 1. FB Group */}
-                {(activeTab === "all" || activeTab === "group") && sections.group && (
-                  <ChannelGroupCard
-                    content={sections.group}
+                {(activeTab === "all" || activeTab === "group") && (
+                  <SimpleGroupCard
+                    data={data.fbGroupPost}
                     onCopy={(text) => handleCopy(text, "group")}
                     isCopied={copiedKey === "group"}
-                    onCopyComment={(text) => handleCopy(text, "group_comment")}
-                    isCommentCopied={copiedKey === "group_comment"}
+                    onCopyComment={(text, id) => handleCopy(text, `group_cmt_${id}`)}
+                    copiedCommentKey={copiedKey}
                   />
                 )}
 
                 {/* 2. Fanpage Facebook */}
-                {(activeTab === "all" || activeTab === "fanpage") && (sections.fanpage || activeTab === "fanpage") && (
-                  <ChannelFanpageCard
-                    content={sections.fanpage || result}
+                {(activeTab === "all" || activeTab === "fanpage") && (
+                  <SimpleFanpageCard
+                    data={data.fanpagePost}
                     onCopy={(text) => handleCopy(text, "fanpage")}
                     isCopied={copiedKey === "fanpage"}
+                    onCopyHashtags={(text) => handleCopy(text, "fanpage_tags")}
+                    isHashtagsCopied={copiedKey === "fanpage_tags"}
                   />
                 )}
 
                 {/* 3. Carousel 5 Slides */}
-                {(activeTab === "all" || activeTab === "carousel") && (sections.carousel || activeTab === "carousel") && (
-                  <ChannelCarouselCard
-                    content={sections.carousel || result}
+                {(activeTab === "all" || activeTab === "carousel") && (
+                  <SimpleCarouselCard
+                    data={data.carouselPost}
                     onCopyAll={(text) => handleCopy(text, "carousel_all")}
                     isAllCopied={copiedKey === "carousel_all"}
                     onCopySlide={(text, num) => handleCopy(text, `carousel_slide_${num}`)}
@@ -393,29 +434,619 @@ export default function VideoRepurposerOutput({
                 )}
 
                 {/* 4. Blog Review SEO */}
-                {(activeTab === "all" || activeTab === "blog") && (sections.blog || activeTab === "blog") && (
-                  <ChannelBlogCard
-                    content={sections.blog || result}
+                {(activeTab === "all" || activeTab === "blog") && (
+                  <SimpleBlogCard
+                    data={data.seoBlogPost}
                     onCopy={(text) => handleCopy(text, "blog")}
                     isCopied={copiedKey === "blog"}
                   />
                 )}
 
                 {/* 5. Zalo OA */}
-                {(activeTab === "all" || activeTab === "zalo") && (sections.zalo || activeTab === "zalo") && (
-                  <ChannelZaloCard
-                    content={sections.zalo || result}
-                    productName={productName}
+                {(activeTab === "all" || activeTab === "zalo") && (
+                  <SimpleZaloCard
+                    data={data.zaloOaMessage}
                     onCopy={(text) => handleCopy(text, "zalo")}
                     isCopied={copiedKey === "zalo"}
                   />
                 )}
+
+                {/* 6. Tuân Thủ Sàn */}
+                {(activeTab === "all" || activeTab === "policy") && (
+                  <SimplePolicyCard
+                    data={data.policyCompliance}
+                    onCopy={(text) => handleCopy(text, "policy")}
+                    isCopied={copiedKey === "policy"}
+                  />
+                )}
               </div>
             ) : (
-              /* CHẾ ĐỘ 2: XEM VĂN BẢN ĐẦY ĐỦ (RAW MARKDOWN) */
-              <div className="bg-slate-950/80 border border-slate-800 rounded-2xl p-4 sm:p-5 text-xs text-slate-200 leading-relaxed font-mono whitespace-pre-wrap select-text">
-                {result}
+              /* CHẾ ĐỘ XEM VĂN BẢN MARKDOWN THUẦN (TEXT THÔ) - FULL CHIỀU CAO HOÀN TOÀN */
+              <div className="flex-1 flex flex-col min-h-0 h-full space-y-2">
+                <div className="flex items-center justify-between text-xs text-slate-400 px-1 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-slate-300">Văn bản text thô (Markdown chuẩn):</span>
+                    <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-800 hidden sm:inline-block">
+                      {wordCount} từ · 5 kênh đầy đủ
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    {/* Nút Phóng To Toàn Màn Hình */}
+                    <button
+                      type="button"
+                      onClick={() => setIsFullscreen(true)}
+                      title="Phóng to toàn màn hình"
+                      className="p-1.5 sm:px-2 sm:py-1 rounded-lg text-xs transition-all flex items-center gap-1 cursor-pointer active:scale-95 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800"
+                    >
+                      <Maximize2 size={12} />
+                      <span className="hidden sm:inline">Toàn màn hình</span>
+                    </button>
+
+                    {/* Nút Sao Chép Toàn Bộ (Icon Only) */}
+                    <button
+                      type="button"
+                      onClick={handleCopyAll}
+                      title={copiedAll ? "Đã sao chép toàn bộ" : "Sao chép toàn bộ"}
+                      className={`p-1.5 rounded-lg text-xs font-bold transition-all flex items-center justify-center cursor-pointer active:scale-95 ${
+                        copiedAll
+                          ? "bg-emerald-500 text-white shadow-xs"
+                          : "bg-white text-black hover:bg-slate-200"
+                      }`}
+                    >
+                      {copiedAll ? <Check size={12} className="stroke-[2.5]" /> : <Copy size={12} />}
+                    </button>
+                  </div>
+                </div>
+
+                <textarea
+                  ref={textareaRef}
+                  readOnly
+                  value={cleanMarkdown}
+                  className="w-full flex-1 min-h-[350px] lg:min-h-0 h-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 sm:p-4 text-xs sm:text-sm font-mono text-slate-200 leading-relaxed resize-none focus:outline-hidden custom-scrollbar"
+                />
               </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* MODAL TOÀN MÀN HÌNH (FULLSCREEN MARKDOWN) */}
+      {isFullscreen && (
+        <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-md p-3 sm:p-6 flex flex-col">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-800 mb-3 shrink-0 gap-2">
+            <div className="flex items-center gap-2 min-w-0 flex-1">
+              <div className="w-7 h-7 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-white shrink-0">
+                <Share2 size={14} className="text-white" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3 className="font-bold text-xs sm:text-sm text-white uppercase tracking-wider leading-snug break-words">
+                  Toàn Màn Hình: Nội Dung 5 Kênh (Markdown)
+                </h3>
+                <span className="text-[11px] text-slate-400">
+                  {wordCount} từ · {cleanMarkdown.length} ký tự
+                </span>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                type="button"
+                onClick={handleCopyAll}
+                title={copiedAll ? "Đã sao chép toàn bộ" : "Sao chép toàn bộ"}
+                className={`p-1.5 rounded-lg text-xs font-bold flex items-center justify-center transition-all cursor-pointer active:scale-95 ${
+                  copiedAll
+                    ? "bg-emerald-500 text-white"
+                    : "bg-white text-black hover:bg-slate-200"
+                }`}
+              >
+                {copiedAll ? <Check size={13} className="stroke-[3]" /> : <Copy size={13} />}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsFullscreen(false)}
+                className="p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 cursor-pointer"
+                title="Đóng toàn màn hình (Esc)"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          </div>
+
+          <textarea
+            readOnly
+            value={cleanMarkdown}
+            className="w-full flex-1 bg-slate-950 border border-slate-800 rounded-xl p-4 sm:p-6 text-xs sm:text-sm font-mono text-slate-200 leading-relaxed resize-none focus:outline-hidden custom-scrollbar"
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ==========================================
+// NÚT TAB LỌC GỌN GÀNG (MINIMAL TAB BUTTON)
+// ==========================================
+function TabButton({
+  active,
+  onClick,
+  icon,
+  label,
+  count,
+}: {
+  active: boolean;
+  onClick: () => void;
+  icon?: React.ReactNode;
+  label: string;
+  count?: number | string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`px-2 sm:px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1 shrink-0 ${
+        active
+          ? "bg-white text-black font-bold shadow-xs"
+          : "bg-slate-900 text-slate-400 hover:text-white border border-slate-800"
+      }`}
+    >
+      {icon && <span className={active ? "text-black" : "text-white"}>{icon}</span>}
+      <span>{label}</span>
+      {count !== undefined && (
+        <span
+          className={`text-[10px] px-1 rounded font-mono ${
+            active ? "bg-black/20 text-black font-bold" : "bg-black/50 text-slate-300"
+          }`}
+        >
+          {count}
+        </span>
+      )}
+    </button>
+  );
+}
+
+// ==========================================
+// 1. THẺ FB GROUP TỐI GIẢN (TIÊU ĐỀ FULL TRÊN MOBILE)
+// ==========================================
+function SimpleGroupCard({
+  data,
+  onCopy,
+  isCopied,
+  onCopyComment,
+  copiedCommentKey,
+}: {
+  data: VideoRepurposerData["fbGroupPost"];
+  onCopy: (text: string) => void;
+  isCopied: boolean;
+  onCopyComment: (text: string, id: number) => void;
+  copiedCommentKey: string | null;
+}) {
+  const fullPostText = `${data.headline ? `${data.headline}\n\n` : ""}${data.bodyText}${data.discussionHook ? `\n\n${data.discussionHook}` : ""}`;
+
+  return (
+    <div className="space-y-3 bg-slate-950 rounded-xl border border-slate-800 p-3 sm:p-3.5">
+      {/* Header thẻ: Cho phép xuống dòng tự nhiên, hiển thị FULL 100% không bị cắt cụt */}
+      <div className="flex items-start justify-between pb-2 border-b border-slate-800/80 gap-2">
+        <div className="flex items-start gap-2 min-w-0 flex-1">
+          <Users size={14} className="text-white shrink-0 mt-0.5" />
+          <h3 className="font-bold text-xs sm:text-sm text-white uppercase tracking-wider leading-snug break-words">
+            1. Facebook Group (Seeding &amp; Tâm Sự)
+          </h3>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onCopy(fullPostText)}
+          title="Sao chép bài viết Group"
+          className="shrink-0 p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition-all cursor-pointer active:scale-95"
+        >
+          {isCopied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+        </button>
+      </div>
+
+      {/* Nội dung bài viết */}
+      <div className="space-y-2.5">
+        {data.headline && (
+          <div className="text-xs sm:text-sm font-bold text-white leading-snug break-words">
+            {data.headline}
+          </div>
+        )}
+
+        <p className="text-xs sm:text-sm text-slate-200 leading-relaxed whitespace-pre-wrap pl-2.5 sm:pl-3 border-l-2 border-white select-text">
+          {data.bodyText}
+        </p>
+
+        {data.discussionHook && (
+          <div className="space-y-1 pt-1 border-t border-slate-900">
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
+              <MessageSquareQuote size={12} className="text-white" />
+              <span>Câu hỏi mồi thảo luận:</span>
+            </div>
+            <p className="text-xs text-white font-medium italic pl-2.5 border-l-2 border-slate-700 select-text">
+              &ldquo;{data.discussionHook}&rdquo;
+            </p>
+          </div>
+        )}
+
+        {/* 3 Bình luận mồi */}
+        {data.seedingComments && data.seedingComments.length > 0 && (
+          <div className="space-y-2 pt-2 border-t border-slate-900">
+            <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+              <MessageCircle size={12} className="text-white" />
+              <span>Bình luận mồi (Comment Seeding):</span>
+            </div>
+            <div className="space-y-2">
+              {data.seedingComments.map((cmt) => {
+                const isCmtCopied = copiedCommentKey === `group_cmt_${cmt.id}`;
+                return (
+                  <div
+                    key={cmt.id}
+                    className="bg-slate-900 rounded-lg p-2.5 sm:p-3 border border-slate-800 space-y-1.5"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-950 text-slate-300 border border-slate-800">
+                        {cmt.role}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => onCopyComment(cmt.comment, cmt.id)}
+                        className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-all cursor-pointer active:scale-90 shrink-0"
+                        title="Sao chép bình luận này"
+                      >
+                        {isCmtCopied ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                      </button>
+                    </div>
+                    <p className="text-xs text-white select-text font-medium leading-relaxed pl-2 border-l-2 border-slate-700">
+                      &ldquo;{cmt.comment}&rdquo;
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// 2. THẺ FANPAGE TỐI GIẢN (TIÊU ĐỀ & CTA FULL TRÊN MOBILE)
+// ==========================================
+function SimpleFanpageCard({
+  data,
+  onCopy,
+  isCopied,
+  onCopyHashtags,
+  isHashtagsCopied,
+}: {
+  data: VideoRepurposerData["fanpagePost"];
+  onCopy: (text: string) => void;
+  isCopied: boolean;
+  onCopyHashtags: (text: string) => void;
+  isHashtagsCopied: boolean;
+}) {
+  const fullFanpageText = `${data.hookLine}\n\n${data.bodyHighlights.join("\n")}\n\n${data.offerDetails}\n\n${data.callToAction}\n\n${data.hashtags.join(" ")}`;
+
+  return (
+    <div className="space-y-3 bg-slate-950 rounded-xl border border-slate-800 p-3 sm:p-3.5">
+      {/* Header thẻ: Hiển thị full 100% không bị cắt ngắn */}
+      <div className="flex items-start justify-between pb-2 border-b border-slate-800/80 gap-2">
+        <div className="flex items-start gap-2 min-w-0 flex-1">
+          <Megaphone size={14} className="text-white shrink-0 mt-0.5" />
+          <h3 className="font-bold text-xs sm:text-sm text-white uppercase tracking-wider leading-snug break-words">
+            2. Fanpage Facebook (Click &amp; Inbox)
+          </h3>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onCopy(fullFanpageText)}
+          title="Sao chép bài Fanpage"
+          className="shrink-0 p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition-all cursor-pointer active:scale-95"
+        >
+          {isCopied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+        </button>
+      </div>
+
+      <div className="space-y-2.5">
+        {data.hookLine && (
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
+              <Flame size={12} className="text-white" />
+              <span>Tiêu đề giật tít (Hook 3s):</span>
+            </div>
+            <p className="text-xs sm:text-sm font-bold text-white leading-relaxed pl-2.5 border-l-2 border-white select-text break-words">
+              {data.hookLine}
+            </p>
+          </div>
+        )}
+
+        {data.bodyHighlights && data.bodyHighlights.length > 0 && (
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5 text-[11px] font-semibold text-slate-400">
+              <CheckCircle2 size={12} className="text-white" />
+              <span>Nội dung nổi bật:</span>
+            </div>
+            <div className="bg-slate-900 rounded-lg p-2.5 sm:p-3 border border-slate-800 space-y-1.5">
+              {data.bodyHighlights.map((hl, idx) => (
+                <div key={idx} className="text-xs text-slate-200 leading-relaxed flex items-start gap-2">
+                  <span className="text-white font-bold shrink-0">•</span>
+                  <span>{hl}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {data.offerDetails && (
+          <div className="bg-slate-900 rounded-lg p-2.5 border border-slate-800 text-xs text-slate-200 flex items-start gap-2">
+            <Gift size={13} className="text-white shrink-0 mt-0.5" />
+            <div>
+              <span className="text-white font-bold">Ưu đãi: </span>
+              <span>{data.offerDetails}</span>
+            </div>
+          </div>
+        )}
+
+        {/* Nút CTA hiển thị đầy đủ trên Mobile, không bị cắt ngắn */}
+        {data.callToAction && (
+          <div className="bg-white text-black p-2.5 rounded-lg flex items-start justify-between gap-2 shadow-xs">
+            <div className="flex items-start gap-2 min-w-0 flex-1">
+              <MousePointerClick size={14} className="text-black shrink-0 mt-0.5" />
+              <span className="text-xs font-bold leading-snug break-words">{data.callToAction}</span>
+            </div>
+            <span className="text-[10px] font-mono font-bold uppercase px-1.5 py-0.5 rounded bg-black text-white shrink-0 mt-0.5">
+              CTA
+            </span>
+          </div>
+        )}
+
+        {data.hashtags && data.hashtags.length > 0 && (
+          <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-900">
+            <div className="flex flex-wrap gap-1 min-w-0">
+              {data.hashtags.map((tag, idx) => (
+                <span
+                  key={idx}
+                  className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-800"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => onCopyHashtags(data.hashtags.join(" "))}
+              className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-all cursor-pointer active:scale-90 flex items-center justify-center shrink-0"
+              title={isHashtagsCopied ? "Đã sao chép hashtag" : "Sao chép toàn bộ hashtag"}
+            >
+              {isHashtagsCopied ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// 3. THẺ CAROUSEL 5 SLIDE TỐI GIẢN (TIÊU ĐỀ FULL TRÊN MOBILE)
+// ==========================================
+function SimpleCarouselCard({
+  data,
+  onCopyAll,
+  isAllCopied,
+  onCopySlide,
+  copiedSlideKey,
+}: {
+  data: VideoRepurposerData["carouselPost"];
+  onCopyAll: (text: string) => void;
+  isAllCopied: boolean;
+  onCopySlide: (text: string, num: number) => void;
+  copiedSlideKey: string | null;
+}) {
+  const fullCarouselText = `Chủ đề: ${data.conceptTitle}\n\n${data.slides
+    .map(
+      (s) =>
+        `[${s.typeLabel || `Slide ${s.slideNumber}`}]\nHeadline: ${s.headline}\nNội dung: ${s.bodyContent}\nGợi ý hình ảnh: ${s.visualDescription}`
+    )
+    .join("\n\n")}\n\nCaption: ${data.caption}`;
+
+  return (
+    <div className="space-y-3 bg-slate-950 rounded-xl border border-slate-800 p-3 sm:p-3.5">
+      {/* Header thẻ: Hiển thị full 100% không bị cắt ngắn */}
+      <div className="flex items-start justify-between pb-2 border-b border-slate-800/80 gap-2">
+        <div className="flex items-start gap-2 min-w-0 flex-1">
+          <Images size={14} className="text-white shrink-0 mt-0.5" />
+          <h3 className="font-bold text-xs sm:text-sm text-white uppercase tracking-wider leading-snug break-words">
+            3. Kịch Bản 5 Slide Carousel (Lemon8 / TikTok / IG)
+          </h3>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onCopyAll(fullCarouselText)}
+          title="Sao chép 5 Slide"
+          className="shrink-0 p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition-all cursor-pointer active:scale-95"
+        >
+          {isAllCopied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+        </button>
+      </div>
+
+      <div className="space-y-2.5">
+        {data.conceptTitle && (
+          <div className="text-xs font-bold text-white pb-1.5 border-b border-slate-900 flex items-start gap-1.5">
+            <Sparkles size={12} className="text-white shrink-0 mt-0.5" />
+            <span className="leading-snug break-words">Chủ đề: {data.conceptTitle}</span>
+          </div>
+        )}
+
+        {/* 5 Slide hiển thị theo danh sách dọc rõ ràng, đọc mượt trên mobile */}
+        <div className="space-y-2">
+          {data.slides.map((s) => {
+            const isSlideCopied = copiedSlideKey === `carousel_slide_${s.slideNumber}`;
+            const slideCopyText = `${s.typeLabel || `Slide ${s.slideNumber}`}\nHeadline: ${s.headline}\nNội dung: ${s.bodyContent}\nGợi ý hình ảnh: ${s.visualDescription}`;
+
+            return (
+              <div
+                key={s.slideNumber}
+                className="bg-slate-900 rounded-lg p-2.5 sm:p-3 border border-slate-800 space-y-2"
+              >
+                {/* Dòng 1: STT / Type label + Nút sao chép */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-1.5 min-w-0 flex-1">
+                    <span className="w-5 h-5 rounded bg-slate-800 border border-slate-700 text-white text-[11px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                      {s.slideNumber}
+                    </span>
+                    <span className="text-[11px] font-bold text-white leading-snug break-words">
+                      {s.typeLabel || `Slide ${s.slideNumber}`}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => onCopySlide(slideCopyText, s.slideNumber)}
+                    className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition-all cursor-pointer active:scale-90 shrink-0"
+                    title={`Sao chép Slide ${s.slideNumber}`}
+                  >
+                    {isSlideCopied ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+                  </button>
+                </div>
+
+                {/* Headline chữ to đè ảnh & nội dung */}
+                <div className="pl-2.5 border-l-2 border-white space-y-1">
+                  <div className="text-xs sm:text-sm font-bold text-white uppercase leading-snug break-words">
+                    &ldquo;{s.headline}&rdquo;
+                  </div>
+                  <div className="text-xs text-slate-200 leading-relaxed select-text break-words">
+                    {s.bodyContent}
+                  </div>
+                </div>
+
+                {/* Gợi ý ảnh đồ họa */}
+                {s.visualDescription && (
+                  <div className="text-[11px] text-slate-400 flex items-start gap-1.5 pt-1 border-t border-slate-800/60">
+                    <Camera size={12} className="text-white shrink-0 mt-0.5" />
+                    <span className="leading-snug break-words">Gợi ý ảnh: {s.visualDescription}</span>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Caption */}
+        {data.caption && (
+          <div className="bg-slate-900 rounded-lg p-2.5 border border-slate-800 text-xs text-slate-200">
+            <span className="text-white font-bold">Caption đăng kèm: </span>
+            <span className="break-words">{data.caption}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// 4. THẺ REVIEW SEO TỐI GIẢN (TIÊU ĐỀ FULL TRÊN MOBILE)
+// ==========================================
+function SimpleBlogCard({
+  data,
+  onCopy,
+  isCopied,
+}: {
+  data: VideoRepurposerData["seoBlogPost"];
+  onCopy: (text: string) => void;
+  isCopied: boolean;
+}) {
+  const fullBlogText = `Tiêu đề SEO: ${data.seoTitle}\nMeta: ${data.metaDescription}\n\n${data.introduction}\n\n${data.mainContent}\n\nƯu điểm:\n${data.pros.map((p) => `- ${p}`).join("\n")}\n\nNhược điểm:\n${data.cons.map((c) => `- ${c}`).join("\n")}\n\nLời khuyên:\n${data.verdict}\n\nĐiểm số: ${data.ratingScore || "9.4/10"}`;
+
+  return (
+    <div className="space-y-3 bg-slate-950 rounded-xl border border-slate-800 p-3 sm:p-3.5">
+      {/* Header thẻ: Hiển thị full 100% không bị cắt ngắn */}
+      <div className="flex items-start justify-between pb-2 border-b border-slate-800/80 gap-2">
+        <div className="flex items-start gap-2 min-w-0 flex-1">
+          <FileText size={14} className="text-white shrink-0 mt-0.5" />
+          <h3 className="font-bold text-xs sm:text-sm text-white uppercase tracking-wider leading-snug break-words">
+            4. Bài Viết Review Chuẩn SEO (Website / Blog)
+          </h3>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onCopy(fullBlogText)}
+          title="Sao chép bài SEO"
+          className="shrink-0 p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition-all cursor-pointer active:scale-95"
+        >
+          {isCopied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+        </button>
+      </div>
+
+      <div className="space-y-2.5">
+        <div className="bg-slate-900 rounded-lg p-2.5 sm:p-3 border border-slate-800 space-y-1">
+          <div className="text-xs sm:text-sm font-bold text-white leading-snug break-words">
+            {data.seoTitle}
+          </div>
+          <p className="text-xs text-slate-400 leading-relaxed break-words">
+            {data.metaDescription}
+          </p>
+        </div>
+
+        {data.introduction && (
+          <p className="text-xs text-slate-200 leading-relaxed whitespace-pre-wrap pl-2.5 border-l-2 border-slate-700 select-text break-words">
+            {data.introduction}
+          </p>
+        )}
+
+        {data.mainContent && (
+          <div className="bg-slate-900/50 rounded-lg p-2.5 sm:p-3 border border-slate-800/80 text-xs text-slate-200 leading-relaxed whitespace-pre-wrap select-text break-words">
+            {data.mainContent}
+          </div>
+        )}
+
+        {/* Bảng Ưu & Nhược điểm */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+          {data.pros && data.pros.length > 0 && (
+            <div className="bg-slate-900 rounded-lg p-2.5 border border-slate-800 space-y-1.5">
+              <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                <CheckCircle2 size={13} className="text-emerald-400" />
+                <span>Ưu Điểm (Pros):</span>
+              </div>
+              {data.pros.map((p, idx) => (
+                <div key={idx} className="text-xs text-slate-300 flex items-start gap-1.5">
+                  <span className="text-emerald-400 font-bold">✓</span>
+                  <span>{p}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {data.cons && data.cons.length > 0 && (
+            <div className="bg-slate-900 rounded-lg p-2.5 border border-slate-800 space-y-1.5">
+              <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                <AlertCircle size={13} className="text-rose-400" />
+                <span>Nhược Điểm (Cons):</span>
+              </div>
+              {data.cons.map((c, idx) => (
+                <div key={idx} className="text-xs text-slate-300 flex items-start gap-1.5">
+                  <span className="text-rose-400 font-bold">✕</span>
+                  <span>{c}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {data.verdict && (
+          <div className="bg-slate-900 rounded-lg p-2.5 border border-slate-800 text-xs text-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <span className="text-white font-bold">Lời khuyên / Kết luận: </span>
+              <span className="break-words">{data.verdict}</span>
+            </div>
+            {data.ratingScore && (
+              <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-black text-white border border-slate-800 self-start sm:self-auto shrink-0">
+                ⭐ {data.ratingScore}
+              </span>
             )}
           </div>
         )}
@@ -425,480 +1056,136 @@ export default function VideoRepurposerOutput({
 }
 
 // ==========================================
-// 1. COMPONENT: FACEBOOK GROUP SEEDING CARD
+// 5. THẺ ZALO OA TỐI GIẢN (TIÊU ĐỀ FULL TRÊN MOBILE)
 // ==========================================
-function ChannelGroupCard({
-  content,
+function SimpleZaloCard({
+  data,
   onCopy,
   isCopied,
-  onCopyComment,
-  isCommentCopied,
 }: {
-  content: string;
+  data: VideoRepurposerData["zaloOaMessage"];
   onCopy: (text: string) => void;
   isCopied: boolean;
-  onCopyComment: (text: string) => void;
-  isCommentCopied: boolean;
 }) {
-  // Tách riêng bình luận mồi nếu có
-  const commentMatch = content.match(
-    /(?:\n|^)(?:\*\(|\()?(?:bình\s*luận\s*mồi|gợi\s*ý\s*cmt|comment\s*mồi|bác\s*nào\s*lười\s*tìm\s*mã)[^:\n]*[:\-–]?\s*([\s\S]+?)(?:\)\*|\)$|$)/i
-  );
-
-  const seedingComment = commentMatch ? commentMatch[1].replace(/^\*\(/, "").replace(/\)\*$/, "").trim() : null;
-  const postBody = commentMatch ? content.replace(commentMatch[0], "").trim() : content;
+  const fullZaloText = `${data.customerGreeting}\n\n${data.videoValueRecap}\n\n${data.exclusiveDeal}\n\n${data.ctaText}`;
 
   return (
-    <div className="bg-slate-950/80 border border-blue-900/40 rounded-2xl overflow-hidden shadow-sm hover:border-blue-700/60 transition-all">
-      {/* Header thẻ */}
-      <div className="px-3.5 sm:px-4 py-2.5 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="p-1.5 rounded-xl border border-blue-500/40 bg-blue-950/40 text-blue-400 shrink-0">
-            <Users size={15} />
-          </div>
-          <div className="min-w-0">
-            <h3 className="font-bold text-xs sm:text-sm text-white truncate">
-              Kênh 1: Bài Đăng Facebook Group
-            </h3>
-            <p className="text-[10px] text-slate-400 truncate">
-              Phong cách Seeding thật · Tránh kiểm duyệt Admin · Kéo thảo luận
-            </p>
-          </div>
+    <div className="space-y-3 bg-slate-950 rounded-xl border border-slate-800 p-3 sm:p-3.5">
+      {/* Header thẻ: Hiển thị full 100% không bị cắt ngắn */}
+      <div className="flex items-start justify-between pb-2 border-b border-slate-800/80 gap-2">
+        <div className="flex items-start gap-2 min-w-0 flex-1">
+          <MessageCircle size={14} className="text-white shrink-0 mt-0.5" />
+          <h3 className="font-bold text-xs sm:text-sm text-white uppercase tracking-wider leading-snug break-words">
+            5. Tin Nhắn Zalo OA (Chăm Sóc Khách Cũ)
+          </h3>
         </div>
 
         <button
           type="button"
-          onClick={() => onCopy(content)}
-          className="text-xs font-bold px-2.5 py-1 rounded-lg bg-blue-950/60 hover:bg-blue-900/80 text-blue-300 hover:text-white border border-blue-700/60 transition-all flex items-center gap-1 cursor-pointer shrink-0 active:scale-95"
+          onClick={() => onCopy(fullZaloText)}
+          title="Sao chép tin nhắn Zalo"
+          className="shrink-0 p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition-all cursor-pointer active:scale-95"
         >
-          {isCopied ? <Check size={12} className="text-emerald-400 stroke-[3]" /> : <Copy size={12} />}
-          <span>{isCopied ? "Đã Chép!" : "Sao chép"}</span>
+          {isCopied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
         </button>
       </div>
 
-      {/* Nội dung bài viết */}
-      <div className="p-3.5 sm:p-4 space-y-3">
-        <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-800/80">
-          <FormattedText text={postBody} />
-        </div>
-
-        {/* Hộp gợi ý bình luận mồi */}
-        {seedingComment && (
-          <div className="p-3 rounded-xl bg-blue-950/30 border border-blue-800/40 space-y-1.5">
-            <div className="flex items-center justify-between">
-              <span className="text-[11px] font-bold text-blue-400 flex items-center gap-1.5">
-                💬 Gợi ý bình luận mồi (Comment Seeding)
-              </span>
-              <button
-                type="button"
-                onClick={() => onCopyComment(seedingComment)}
-                className="text-[10px] font-bold px-2 py-0.5 rounded bg-blue-900/60 hover:bg-blue-800 text-blue-200 border border-blue-700/50 flex items-center gap-1 cursor-pointer"
-              >
-                {isCommentCopied ? <Check size={10} className="text-emerald-400" /> : <Copy size={10} />}
-                <span>{isCommentCopied ? "Đã chép" : "Chép cmt"}</span>
-              </button>
-            </div>
-            <p className="text-xs text-slate-300 italic pl-1 select-text">
-              &quot;{seedingComment}&quot;
-            </p>
-          </div>
+      <div className="space-y-2">
+        {data.customerGreeting && (
+          <p className="text-xs sm:text-sm font-bold text-white break-words">{data.customerGreeting}</p>
         )}
-      </div>
-    </div>
-  );
-}
-
-// ==========================================
-// 2. COMPONENT: FANPAGE ADS & INBOX CARD
-// ==========================================
-function ChannelFanpageCard({
-  content,
-  onCopy,
-  isCopied,
-}: {
-  content: string;
-  onCopy: (text: string) => void;
-  isCopied: boolean;
-}) {
-  return (
-    <div className="bg-slate-950/80 border border-indigo-900/40 rounded-2xl overflow-hidden shadow-sm hover:border-indigo-700/60 transition-all">
-      {/* Header thẻ */}
-      <div className="px-3.5 sm:px-4 py-2.5 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="p-1.5 rounded-xl border border-indigo-500/40 bg-indigo-950/40 text-indigo-400 shrink-0">
-            <Megaphone size={15} />
-          </div>
-          <div className="min-w-0">
-            <h3 className="font-bold text-xs sm:text-sm text-white truncate">
-              Kênh 2: Bài Đăng Fanpage Facebook
-            </h3>
-            <p className="text-[10px] text-slate-400 truncate">
-              Tối ưu Click & Inbox · Giật tít mạnh mẽ · Thúc đẩy hành động mua ngay
-            </p>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => onCopy(content)}
-          className="text-xs font-bold px-2.5 py-1 rounded-lg bg-indigo-950/60 hover:bg-indigo-900/80 text-indigo-300 hover:text-white border border-indigo-700/60 transition-all flex items-center gap-1 cursor-pointer shrink-0 active:scale-95"
-        >
-          {isCopied ? <Check size={12} className="text-emerald-400 stroke-[3]" /> : <Copy size={12} />}
-          <span>{isCopied ? "Đã Chép!" : "Sao chép"}</span>
-        </button>
-      </div>
-
-      {/* Nội dung bài Fanpage */}
-      <div className="p-3.5 sm:p-4">
-        <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-800/80">
-          <FormattedText text={content} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ==========================================
-// 3. COMPONENT: CAROUSEL 5 SLIDES CARD
-// ==========================================
-function ChannelCarouselCard({
-  content,
-  onCopyAll,
-  isAllCopied,
-  onCopySlide,
-  copiedSlideKey,
-}: {
-  content: string;
-  onCopyAll: (text: string) => void;
-  isAllCopied: boolean;
-  onCopySlide: (text: string, num: number) => void;
-  copiedSlideKey: string | null;
-}) {
-  // Parse 5 slides
-  const slides = useMemo(() => {
-    const lines = content.split("\n");
-    const resultSlides: { num: number; label: string; text: string }[] = [];
-    let currentNum = 0;
-    let currentLabel = "";
-    let buffer: string[] = [];
-
-    const flush = () => {
-      if (currentNum > 0 && buffer.length > 0) {
-        resultSlides.push({
-          num: currentNum,
-          label: currentLabel || (currentNum === 1 ? "Bìa Giật Tít (Hook)" : currentNum === 5 ? "Kêu Gọi Lưu & Thả Tim" : `Slide ${currentNum}`),
-          text: buffer.join("\n").trim(),
-        });
-      }
-      buffer = [];
-    };
-
-    lines.forEach((l) => {
-      const tr = l.trim();
-      const match = tr.match(/^[-*•\s]*(?:Slide|Trang|Ảnh)\s*(\d+)[\s:()\-–]*(.*)/i);
-      if (match) {
-        flush();
-        currentNum = parseInt(match[1], 10);
-        const rest = match[2].replace(/^[:\-–\s]+/, "");
-        const labelMatch = rest.match(/^\(([^)]+)\)[:\s]*(.*)/);
-        if (labelMatch) {
-          currentLabel = labelMatch[1].trim();
-          if (labelMatch[2]) buffer.push(labelMatch[2]);
-        } else {
-          currentLabel = currentNum === 1 ? "Bìa Giật Tít (Hook)" : currentNum === 5 ? "Kêu Gọi Lưu & Thả Tim" : `Slide ${currentNum}`;
-          if (rest) buffer.push(rest);
-        }
-      } else {
-        if (currentNum > 0) {
-          buffer.push(l);
-        }
-      }
-    });
-
-    flush();
-    return resultSlides;
-  }, [content]);
-
-  return (
-    <div className="bg-slate-950/80 border border-pink-900/40 rounded-2xl overflow-hidden shadow-sm hover:border-pink-700/60 transition-all">
-      {/* Header thẻ */}
-      <div className="px-3.5 sm:px-4 py-2.5 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="p-1.5 rounded-xl border border-pink-500/40 bg-pink-950/40 text-pink-400 shrink-0">
-            <Images size={15} />
-          </div>
-          <div className="min-w-0">
-            <h3 className="font-bold text-xs sm:text-sm text-white truncate">
-              Kênh 3: Kịch Bản Chuỗi 5 Slide Carousel
-            </h3>
-            <p className="text-[10px] text-slate-400 truncate">
-              Dành cho Lemon8 / Facebook Album / Instagram · Giữ chân người xem lướt slide
-            </p>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => onCopyAll(content)}
-          className="text-xs font-bold px-2.5 py-1 rounded-lg bg-pink-950/60 hover:bg-pink-900/80 text-pink-300 hover:text-white border border-pink-700/60 transition-all flex items-center gap-1 cursor-pointer shrink-0 active:scale-95"
-        >
-          {isAllCopied ? <Check size={12} className="text-emerald-400 stroke-[3]" /> : <Copy size={12} />}
-          <span>{isAllCopied ? "Đã Chép!" : "Sao chép 5 Slide"}</span>
-        </button>
-      </div>
-
-      {/* Danh sách 5 slide hiển thị thẻ riêng */}
-      <div className="p-3.5 sm:p-4 space-y-2.5">
-        {slides.length >= 2 ? (
-          <div className="grid grid-cols-1 sm:grid-cols-5 gap-2.5">
-            {slides.map((s) => {
-              const isSlideCopied = copiedSlideKey === `carousel_slide_${s.num}`;
-              const isCover = s.num === 1;
-              const isEnd = s.num === 5;
-
-              return (
-                <div
-                  key={s.num}
-                  className={`p-3 rounded-xl border flex flex-col justify-between transition-all ${
-                    isCover
-                      ? "bg-amber-950/30 border-amber-500/40"
-                      : isEnd
-                      ? "bg-pink-950/30 border-pink-500/40"
-                      : "bg-slate-900/80 border-slate-800 hover:border-slate-700"
-                  }`}
-                >
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between gap-1">
-                      <span
-                        className={`text-[10px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider ${
-                          isCover
-                            ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
-                            : isEnd
-                            ? "bg-pink-500/20 text-pink-300 border border-pink-500/30"
-                            : "bg-slate-800 text-slate-300 border border-slate-700"
-                        }`}
-                      >
-                        Slide {s.num}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => onCopySlide(`Slide ${s.num}: ${s.text}`, s.num)}
-                        className="text-[10px] p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
-                        title={`Sao chép Slide ${s.num}`}
-                      >
-                        {isSlideCopied ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
-                      </button>
-                    </div>
-
-                    <div className="text-[11px] font-bold text-white leading-tight">
-                      {s.label}
-                    </div>
-
-                    <div className="text-xs text-slate-300 leading-relaxed whitespace-pre-wrap select-text">
-                      {s.text}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        ) : (
-          <div className="p-3 rounded-xl bg-slate-900/70 border border-slate-800/80">
-            <FormattedText text={content} />
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-// ==========================================
-// 4. COMPONENT: REVIEW SEO BLOG CARD
-// ==========================================
-function ChannelBlogCard({
-  content,
-  onCopy,
-  isCopied,
-}: {
-  content: string;
-  onCopy: (text: string) => void;
-  isCopied: boolean;
-}) {
-  return (
-    <div className="bg-slate-950/80 border border-emerald-900/40 rounded-2xl overflow-hidden shadow-sm hover:border-emerald-700/60 transition-all">
-      {/* Header thẻ */}
-      <div className="px-3.5 sm:px-4 py-2.5 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="p-1.5 rounded-xl border border-emerald-500/40 bg-emerald-950/40 text-emerald-400 shrink-0">
-            <FileText size={15} />
-          </div>
-          <div className="min-w-0">
-            <h3 className="font-bold text-xs sm:text-sm text-white truncate">
-              Kênh 4: Bài Viết Review Chuẩn SEO
-            </h3>
-            <p className="text-[10px] text-slate-400 truncate">
-              Website / Blog Affiliate · Lên Top Google tìm kiếm · Bảng Ưu & Nhược điểm
-            </p>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => onCopy(content)}
-          className="text-xs font-bold px-2.5 py-1 rounded-lg bg-emerald-950/60 hover:bg-emerald-900/80 text-emerald-300 hover:text-white border border-emerald-700/60 transition-all flex items-center gap-1 cursor-pointer shrink-0 active:scale-95"
-        >
-          {isCopied ? <Check size={12} className="text-emerald-400 stroke-[3]" /> : <Copy size={12} />}
-          <span>{isCopied ? "Đã Chép!" : "Sao chép"}</span>
-        </button>
-      </div>
-
-      {/* Nội dung bài SEO */}
-      <div className="p-3.5 sm:p-4">
-        <div className="p-3.5 rounded-xl bg-slate-900/70 border border-slate-800/80">
-          <FormattedText text={content} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ==========================================
-// 5. COMPONENT: ZALO OA CHAT PREVIEW CARD
-// ==========================================
-function ChannelZaloCard({
-  content,
-  productName,
-  onCopy,
-  isCopied,
-}: {
-  content: string;
-  productName?: string;
-  onCopy: (text: string) => void;
-  isCopied: boolean;
-}) {
-  return (
-    <div className="bg-slate-950/80 border border-cyan-900/40 rounded-2xl overflow-hidden shadow-sm hover:border-cyan-700/60 transition-all">
-      {/* Header thẻ */}
-      <div className="px-3.5 sm:px-4 py-2.5 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2 min-w-0">
-          <div className="p-1.5 rounded-xl border border-cyan-500/40 bg-cyan-950/40 text-cyan-400 shrink-0">
-            <MessageCircle size={15} />
-          </div>
-          <div className="min-w-0">
-            <h3 className="font-bold text-xs sm:text-sm text-white truncate">
-              Kênh 5: Tin Nhắn Zalo OA / CSKH
-            </h3>
-            <p className="text-[10px] text-slate-400 truncate">
-              Gửi deal bí mật cho khách cũ · Xưng hô thân tình Em - Anh/Chị · Chốt đơn 1-1
-            </p>
-          </div>
-        </div>
-
-        <button
-          type="button"
-          onClick={() => onCopy(content)}
-          className="text-xs font-bold px-2.5 py-1 rounded-lg bg-cyan-950/60 hover:bg-cyan-900/80 text-cyan-300 hover:text-white border border-cyan-700/60 transition-all flex items-center gap-1 cursor-pointer shrink-0 active:scale-95"
-        >
-          {isCopied ? <Check size={12} className="text-emerald-400 stroke-[3]" /> : <Copy size={12} />}
-          <span>{isCopied ? "Đã Chép!" : "Sao chép"}</span>
-        </button>
-      </div>
-
-      {/* Mô phỏng khung chat Zalo OA chuyên nghiệp */}
-      <div className="p-3.5 sm:p-4">
-        <div className="max-w-xl mx-auto rounded-2xl border border-slate-800 bg-slate-900/90 overflow-hidden shadow-md">
-          {/* Header thanh Chat Zalo */}
-          <div className="px-3 py-2 bg-cyan-950/50 border-b border-cyan-900/40 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-full bg-cyan-500 flex items-center justify-center font-bold text-slate-950 text-xs shadow-xs">
-                Zalo
-              </div>
-              <div>
-                <div className="text-xs font-bold text-white flex items-center gap-1">
-                  <span>{productName ? `${productName.slice(0, 24)}...` : "Tư Vấn Bán Hàng"}</span>
-                  <BadgeCheck size={13} className="text-cyan-400 inline" />
-                </div>
-                <div className="text-[10px] text-cyan-300/80">Zalo Official Account · Trực tuyến</div>
-              </div>
-            </div>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 font-semibold border border-cyan-500/30">
-              Deal Riêng
-            </span>
-          </div>
-
-          {/* Bong bóng tin nhắn Chat */}
-          <div className="p-3.5 space-y-2">
-            <div className="bg-slate-800/90 border border-slate-700/70 rounded-2xl rounded-tl-xs p-3 text-xs text-slate-200 leading-relaxed select-text shadow-sm">
-              <FormattedText text={content} />
-            </div>
-            <div className="text-[10px] text-slate-500 text-right pr-1">
-              Vừa xong · Đã gửi
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ==========================================
-// HELPER: RENDER MARKDOWN CLEANLY (NO RAW **)
-// ==========================================
-function FormattedText({ text }: { text: string }) {
-  if (!text) return null;
-
-  const lines = text.split("\n");
-
-  return (
-    <div className="space-y-2 select-text font-sans">
-      {lines.map((line, idx) => {
-        const trimmed = line.trim();
-        if (!trimmed) {
-          return <div key={idx} className="h-1.5" />;
-        }
-
-        // Heading (### hoặc ##)
-        if (trimmed.startsWith("###") || trimmed.startsWith("##")) {
-          const headingText = trimmed.replace(/^#+\s*/, "").replace(/\*+/g, "");
-          return (
-            <h4
-              key={idx}
-              className="text-xs sm:text-sm font-bold text-pink-300 pt-1.5 pb-0.5 border-b border-slate-800/80"
-            >
-              {headingText}
-            </h4>
-          );
-        }
-
-        // Bullet point: - hoặc * hoặc •
-        const isBullet = trimmed.startsWith("- ") || trimmed.startsWith("* ") || trimmed.startsWith("• ");
-        const contentText = isBullet ? trimmed.replace(/^[-*•]\s*/, "") : trimmed;
-
-        // Parse **bold** parts inside line
-        const parts = contentText.split(/(\*\*[^*]+\*\*)/g);
-
-        return (
-          <p
-            key={idx}
-            className={`text-xs leading-relaxed text-slate-200 ${
-              isBullet
-                ? "pl-3.5 relative before:content-['•'] before:absolute before:left-0 before:text-pink-400 before:font-bold"
-                : ""
-            }`}
-          >
-            {parts.map((part, pIdx) => {
-              if (part.startsWith("**") && part.endsWith("**")) {
-                return (
-                  <strong key={pIdx} className="text-white font-semibold">
-                    {part.slice(2, -2)}
-                  </strong>
-                );
-              }
-              return <span key={pIdx}>{part}</span>;
-            })}
+        {data.videoValueRecap && (
+          <p className="text-xs text-slate-200 leading-relaxed pl-2.5 border-l-2 border-slate-700 select-text break-words">
+            {data.videoValueRecap}
           </p>
-        );
-      })}
+        )}
+        {data.exclusiveDeal && (
+          <div className="bg-slate-900 rounded-lg p-2.5 border border-slate-800 text-xs text-white font-semibold flex items-center gap-2">
+            <Tag size={13} className="text-white shrink-0" />
+            <span className="break-words">{data.exclusiveDeal}</span>
+          </div>
+        )}
+        {data.ctaText && (
+          <p className="text-xs font-bold text-white break-words">{data.ctaText}</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ==========================================
+// 6. THẺ TUÂN THỦ CHÍNH SÁCH TỐI GIẢN (TIÊU ĐỀ FULL TRÊN MOBILE)
+// ==========================================
+function SimplePolicyCard({
+  data,
+  onCopy,
+  isCopied,
+}: {
+  data: VideoRepurposerData["policyCompliance"];
+  onCopy: (text: string) => void;
+  isCopied: boolean;
+}) {
+  const tipsText = data.channelTips?.join("\n") || "";
+
+  return (
+    <div className="space-y-3 bg-slate-950 rounded-xl border border-slate-800 p-3 sm:p-3.5">
+      {/* Header thẻ: Hiển thị full 100% không bị cắt ngắn */}
+      <div className="flex items-start justify-between pb-2 border-b border-slate-800/80 gap-2">
+        <div className="flex items-start gap-2 min-w-0 flex-1">
+          <ShieldCheck size={14} className="text-white shrink-0 mt-0.5" />
+          <h3 className="font-bold text-xs sm:text-sm text-white uppercase tracking-wider leading-snug break-words">
+            Tuân Thủ Chính Sách Sàn &amp; Mẹo Phân Phối
+          </h3>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => onCopy(tipsText)}
+          title="Sao chép mẹo"
+          className="shrink-0 p-1.5 rounded-lg bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 transition-all cursor-pointer active:scale-95"
+        >
+          {isCopied ? <Check size={13} className="text-emerald-400" /> : <Copy size={13} />}
+        </button>
+      </div>
+
+      <div className="space-y-2.5">
+        <div className="flex items-center justify-between p-2.5 rounded-lg bg-slate-900 border border-slate-800">
+          <span className="text-xs text-slate-300">Điểm an toàn sàn TMĐT:</span>
+          <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-black text-emerald-400 border border-slate-800">
+            {data?.safeScore || 96}% Chuẩn Sàn
+          </span>
+        </div>
+
+        {data?.bannedWordsAvoided && data.bannedWordsAvoided.length > 0 && (
+          <div className="space-y-1">
+            <span className="text-[11px] text-slate-400">Từ cấm sàn đã né tránh:</span>
+            <div className="flex flex-wrap gap-1">
+              {data.bannedWordsAvoided.map((word, idx) => (
+                <span
+                  key={idx}
+                  className="text-[10px] px-2 py-0.5 rounded bg-slate-900 text-slate-300 border border-slate-800"
+                >
+                  ✓ {word}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {data?.channelTips && data.channelTips.length > 0 && (
+          <div className="space-y-1 pt-1 border-t border-slate-900">
+            <span className="text-[11px] text-slate-400">Mẹo phân phối đa kênh:</span>
+            <ul className="space-y-1 text-xs text-slate-300">
+              {data.channelTips.map((tip, idx) => (
+                <li key={idx} className="flex items-start gap-1.5">
+                  <span className="text-white font-bold">•</span>
+                  <span className="break-words">{tip}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

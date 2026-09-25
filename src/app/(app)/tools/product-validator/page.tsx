@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   ArrowLeft,
   Sparkles,
@@ -14,6 +14,7 @@ import {
   ShieldAlert,
   HelpCircle,
   Crown,
+  XCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { useToolGate } from "@/hooks/useToolGate";
@@ -36,14 +37,11 @@ const SOURCES = [
   { id: "dropship", name: "Dropshipping / Khác" },
 ];
 
-const SAMPLE_DATA = {
-  productName: "Đèn ngủ hoàng hôn LED RGB đổi 16 màu kèm loa Bluetooth",
-  costPrice: "68.000đ",
-  targetPrice: "189.000đ",
-  platform: "all",
-  source: "1688",
-  notes: "Hàng hot trend Douyin, kích thước đóng gói 15x15x20cm, nặng 380g, có phụ kiện cáp sạc USB và remote.",
-};
+import {
+  SAMPLE_PRODUCT_VALIDATOR_INPUT,
+  SAMPLE_PRODUCT_VALIDATOR_DATA,
+  buildOfflineProductValidatorData,
+} from "@/lib/product-validator/contract";
 
 export default function ProductValidatorPage() {
   const { checkAccess, GateModals } = useToolGate();
@@ -51,8 +49,27 @@ export default function ProductValidatorPage() {
 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState("");
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [mobileTab, setMobileTab] = useState<"form" | "result">("form");
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isSubmittingRef = useRef(false);
+
+  // Dọn dẹp timer và abort request khi component unmount
+  useEffect(() => {
+    return () => {
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      if (abortControllerRef.current) abortControllerRef.current.abort();
+    };
+  }, []);
+
+  const handleCancel = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+  };
 
   // Form states
   const [productName, setProductName] = useState("");
@@ -63,12 +80,14 @@ export default function ProductValidatorPage() {
   const [notes, setNotes] = useState("");
 
   const handleUseSample = () => {
-    setProductName(SAMPLE_DATA.productName);
-    setCostPrice(SAMPLE_DATA.costPrice);
-    setTargetPrice(SAMPLE_DATA.targetPrice);
-    setPlatform(SAMPLE_DATA.platform);
-    setSource(SAMPLE_DATA.source);
-    setNotes(SAMPLE_DATA.notes);
+    setProductName(SAMPLE_PRODUCT_VALIDATOR_INPUT.productName);
+    setCostPrice(SAMPLE_PRODUCT_VALIDATOR_INPUT.costPrice || "");
+    setTargetPrice(SAMPLE_PRODUCT_VALIDATOR_INPUT.targetPrice || "");
+    setPlatform(PLATFORMS[0].id);
+    setSource(SOURCES[0].id);
+    setNotes(SAMPLE_PRODUCT_VALIDATOR_INPUT.notes || "");
+    setResult(JSON.stringify(SAMPLE_PRODUCT_VALIDATOR_DATA));
+    setIsOfflineMode(false);
     setMobileTab("result");
   };
 
@@ -80,9 +99,11 @@ export default function ProductValidatorPage() {
     setSource(SOURCES[0].id);
     setNotes("");
     setResult("");
+    setIsOfflineMode(false);
   };
 
   const handleGenerate = async () => {
+    if (isSubmittingRef.current) return;
     const hasAccess = await checkAccess("product-validator", false);
     if (!hasAccess) return;
 
@@ -91,17 +112,53 @@ export default function ProductValidatorPage() {
       return;
     }
 
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    isSubmittingRef.current = true;
     setLoading(true);
+    setElapsedSeconds(0);
     setResult("");
+    setIsOfflineMode(false);
     setMobileTab("result");
+
+    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    timerIntervalRef.current = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
 
     const selectedPlatform = PLATFORMS.find((p) => p.id === platform)?.name || platform;
     const selectedSource = SOURCES.find((s) => s.id === source)?.name || source;
+
+    // Timeout chủ động 50s (ngắn hơn 60s của Reverse Proxy để không bao giờ bị văng 502)
+    const timeoutId = setTimeout(() => {
+      if (abortControllerRef.current === controller) {
+        controller.abort();
+        const offlineData = buildOfflineProductValidatorData({
+          productName: productName.trim(),
+          costPrice: costPrice.trim(),
+          targetPrice: targetPrice.trim(),
+          platform: selectedPlatform,
+          source: selectedSource,
+          notes: notes.trim(),
+        });
+        setResult(JSON.stringify(offlineData));
+        setIsOfflineMode(true);
+        showWarning(
+          "Yêu cầu AI quá thời gian phản hồi (50s). Đã kích hoạt Báo Cáo Thẩm Định Dự Phòng 2026!",
+          "Chế Độ Dự Phòng"
+        );
+      }
+    }, 50000);
 
     try {
       const response = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           tool: "product-validator",
           inputs: {
@@ -115,27 +172,69 @@ export default function ProductValidatorPage() {
         }),
       });
 
-      const data = await response.json();
+      // Đọc response dạng text để bẫy trang HTML lỗi 502/504
+      const rawText = await response.text();
+      let data: any = null;
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        data = null;
+      }
 
-      if (!response.ok || !data.success) {
-        showAiError(data);
+      if (!response.ok || !data || !data.success) {
+        const offlineData = buildOfflineProductValidatorData({
+          productName: productName.trim(),
+          costPrice: costPrice.trim(),
+          targetPrice: targetPrice.trim(),
+          platform: selectedPlatform,
+          source: selectedSource,
+          notes: notes.trim(),
+        });
+        setResult(JSON.stringify(offlineData));
+        setIsOfflineMode(true);
+        showWarning(
+          data?.error || "Máy chủ AI phản hồi chậm hoặc đang bảo trì (502). Đã kích hoạt Báo Cáo Thẩm Định Dự Phòng 2026!",
+          "Chế Độ Dự Phòng"
+        );
         return;
       }
 
       setResult(data.data);
+      setIsOfflineMode(Boolean(data.isOfflineFallback));
       setRefreshTrigger((prev) => prev + 1);
-    } catch {
-      showAiError({
-        code: "NETWORK_ERROR",
-        error: "Không thể kết nối đến hệ thống AI. Vui lòng kiểm tra lại mạng hoặc thử lại sau.",
+    } catch (error: any) {
+      if (error?.name === "AbortError" || controller.signal.aborted) {
+        showWarning("Đã dừng quá trình xử lý theo yêu cầu của bạn.", "Đã Hủy");
+        return;
+      }
+      const offlineData = buildOfflineProductValidatorData({
+        productName: productName.trim(),
+        costPrice: costPrice.trim(),
+        targetPrice: targetPrice.trim(),
+        platform: selectedPlatform,
+        source: selectedSource,
+        notes: notes.trim(),
       });
+      setResult(JSON.stringify(offlineData));
+      setIsOfflineMode(true);
+      showWarning(
+        "Không thể kết nối đến máy chủ AI (sự cố mạng/502). Đã kích hoạt Báo Cáo Thẩm Định Dự Phòng 2026!",
+        "Chế Độ Dự Phòng"
+      );
     } finally {
+      clearTimeout(timeoutId);
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+      abortControllerRef.current = null;
+      isSubmittingRef.current = false;
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-7xl w-full mx-auto flex-1 flex flex-col min-h-0 h-full lg:overflow-hidden">
+    <div className="max-w-7xl w-full mx-auto lg:flex-1 flex flex-col lg:min-h-0 lg:h-full lg:overflow-hidden pb-3">
       {/* Modals kiểm tra quyền truy cập */}
       <GateModals />
 
@@ -357,36 +456,55 @@ export default function ProductValidatorPage() {
               </div>
 
               {/* Nút hành động */}
-              <button
-                type="button"
-                disabled={loading}
-                onClick={handleGenerate}
-                className={`w-full py-3 px-4 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer ${loading
-                  ? "bg-slate-400 cursor-not-allowed"
-                  : "bg-gradient-to-r from-amber-600 via-orange-600 to-amber-600 hover:from-amber-500 hover:to-orange-500 hover:shadow-amber-500/25 active:scale-[0.99]"
-                  }`}
-              >
-                {loading ? (
-                  <>
-                    <Sparkles size={16} className="animate-spin" /> Đang Thẩm Định Tiềm Năng & Rủi Ro...
-                  </>
-                ) : (
-                  <>
-                    <BarChart3 size={16} /> Bắt Đầu Thẩm Định Sản Phẩm Ngay
-                  </>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={handleGenerate}
+                  className={`flex-1 py-3 px-4 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer ${loading
+                    ? "bg-slate-700 text-slate-300 cursor-not-allowed"
+                    : "bg-gradient-to-r from-amber-600 via-orange-600 to-amber-600 hover:from-amber-500 hover:to-orange-500 hover:shadow-amber-500/25 active:scale-[0.99]"
+                    }`}
+                >
+                  {loading ? (
+                    <>
+                      <Sparkles size={16} className="animate-spin text-white" />
+                      <span>Đang Thẩm Định ({elapsedSeconds}s)...</span>
+                    </>
+                  ) : (
+                    <>
+                      <BarChart3 size={16} /> Bắt Đầu Thẩm Định Sản Phẩm Ngay
+                    </>
+                  )}
+                </button>
+
+                {loading && (
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    className="px-3.5 py-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 shrink-0"
+                    title="Hủy yêu cầu"
+                  >
+                    <XCircle size={16} />
+                    <span>Hủy</span>
+                  </button>
                 )}
-              </button>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Cột phải: Kết quả trực quan */}
-        <div className={`${mobileTab === "result" ? "flex" : "hidden lg:flex"} lg:col-span-7 flex-col min-h-0 lg:h-full lg:overflow-hidden`}>
-
+        {/* Cột phải: Kết quả trực quan (Chữ trắng nền đen, cuộn cả trang trên Mobile) */}
+        <div className={`${mobileTab === "result" ? "flex" : "hidden lg:flex"} lg:col-span-7 flex-col w-full lg:min-h-0 lg:h-full lg:overflow-hidden pb-20 lg:pb-0`}>
           <ProductValidatorOutput
             result={result}
             loading={loading}
             productName={productName}
+            elapsedSeconds={elapsedSeconds}
+            onCancel={handleCancel}
+            onUseSample={handleUseSample}
+            isOfflineMode={isOfflineMode}
+            onRetryWithAi={handleGenerate}
           />
         </div>
       </div>

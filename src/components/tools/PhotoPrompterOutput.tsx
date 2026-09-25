@@ -4,242 +4,103 @@ import { useState, useMemo } from "react";
 import {
   Copy,
   Check,
-  Sparkles,
   Download,
   Camera,
   Layers,
-  Sliders,
   FileText,
   FileSpreadsheet,
   Ban,
   Lightbulb,
-  Maximize2,
-  Aperture,
-  CheckCircle2,
-  Sparkle,
-  Eye,
   LayoutList,
+  Aperture,
+  Flame,
 } from "lucide-react";
 import * as XLSX from "xlsx";
-import { TextShimmerWave } from "@/components/loading-ui/text-shimmer-wave";
-
-export interface StudioPromptItem {
-  index: number;
-  rawHeader: string;
-  title: string;
-  promptCode: string;
-  intention: string;
-  aspectRatio: string;
-  lensInfo?: string;
-  versionInfo?: string;
-}
-
-export interface PhotographerTipItem {
-  title: string;
-  content: string;
-}
-
-export interface ParsedPhotoPrompterData {
-  prompts: StudioPromptItem[];
-  negativePrompt: string;
-  tips: PhotographerTipItem[];
-  raw: string;
-}
+import { ToolLoadingState } from "@/components/tools/ToolLoadingState";
+import {
+  PhotoPrompterData,
+  parsePhotoPrompterOutput,
+} from "@/lib/photo-prompter/contract";
 
 interface PhotoPrompterOutputProps {
   result: string;
   loading: boolean;
   productName: string;
   onUseSample?: () => void;
+  elapsedSeconds?: number;
+  onCancel?: () => void;
+  productImage?: string | null;
+  isOfflineMode?: boolean;
+  onRetryWithAi?: () => void;
 }
 
-function cleanQuotesAndBrackets(str: string): string {
-  if (!str) return "";
-  let s = str.trim();
-  s = s.replace(/^\*\*|\*\*$/g, "").trim();
-  s = s.replace(/^\[|\]$/g, "").trim();
-  s = s.replace(/^["“'«]|["”'»]$/g, "").trim();
-  return s.trim();
-}
-
-export function parsePhotoPrompterOutput(text: string): ParsedPhotoPrompterData | null {
-  if (!text) return null;
-
-  const findSection = (keywords: string[], nextKeywords: string[] = []) => {
-    let bestStart = -1;
-    let headerLen = 0;
-    for (const kw of keywords) {
-      const match = text.match(new RegExp(`^[ \\t]*(?:##|#)\\s*[^\\n]*?${kw}[^\\n]*$`, "im"));
-      if (match && match.index !== undefined) {
-        bestStart = match.index;
-        headerLen = match[0].length;
-        break;
-      }
-    }
-    if (bestStart === -1) return "";
-
-    const contentStart = text.slice(bestStart + headerLen);
-    let endIdx = contentStart.length;
-
-    for (const nextKw of nextKeywords) {
-      const nextMatch = contentStart.match(new RegExp(`^[ \\t]*(?:---|##|#)\\s*[^\\n]*?${nextKw}`, "im"));
-      if (nextMatch && nextMatch.index !== undefined && nextMatch.index < endIdx) {
-        endIdx = nextMatch.index;
-      }
-    }
-    return contentStart.slice(0, endIdx).trim();
-  };
-
-  const s1 = findSection(
-    ["TOP 5 BỘ PROMPT", "BỘ PROMPT", "PROMPT TIẾNG ANH"],
-    ["BỘ CÂU LỆNH LOẠI TRỪ", "NEGATIVE PROMPT", "MẸO THỰC CHIẾN"]
-  );
-  const s2 = findSection(["BỘ CÂU LỆNH LOẠI TRỪ", "NEGATIVE PROMPT"], ["MẸO THỰC CHIẾN", "MẸO"]);
-  const s3 = findSection(["MẸO THỰC CHIẾN", "MẸO"], []);
-
-  // 1. Phân tích 5 Prompts
-  const prompts: StudioPromptItem[] = [];
-  if (s1) {
-    const promptBlocks = s1.split(/(?=###\s*)/g).filter((chunk) => chunk.trim().startsWith("###"));
-
-    promptBlocks.forEach((chunk, idx) => {
-      const headerMatch = chunk.match(/^###\s*([^\n]+)/);
-      const rawHeader = headerMatch ? headerMatch[1].trim() : `Prompt ${idx + 1}`;
-
-      let title = rawHeader.replace(/^[🌟🔍💃☕✨📸📷\s]+/, "");
-
-      // Trích xuất mã code trong ```...```
-      const codeMatch = chunk.match(/```(?:[a-zA-Z]*\n)?([\s\S]*?)```/);
-      const promptCode = codeMatch ? codeMatch[1].trim() : "";
-
-      // Trích xuất Ý đồ nhiếp ảnh
-      let intention = "";
-      const lines = chunk.split("\n");
-      for (const line of lines) {
-        const stripped = line.replace(/^[-*•]\s+/, "").trim();
-        let m = stripped.match(/^\*\*([^*:]+?)(?::\*\*|\*\*:)\s*([\s\S]+)$/);
-        if (!m) {
-          m = stripped.match(/^\*\*([^*]+?)\*\*\s*[:\-]\s*([\s\S]+)$/);
-        }
-        if (!m) {
-          m = stripped.match(/^([^:]+?)\s*:\s*([\s\S]+)$/);
-        }
-        if (m && /ý đồ|ghi chú|mô tả/i.test(m[1])) {
-          intention = cleanQuotesAndBrackets(m[2]);
-          break;
-        }
-      }
-
-      // Trích xuất Aspect Ratio nếu có (--ar 1:1, --ar 3:4, v.v.)
-      const arMatch = promptCode.match(/--ar\s+([0-9:]+)/i);
-      const aspectRatio = arMatch ? arMatch[1] : "1:1";
-
-      // Trích xuất thông số Lens nếu có
-      const lensMatch = promptCode.match(/(\b\d+mm\b(?:\s+(?:prime|macro))?(?:\s+lens)?(?:\s+f\/[0-9.]+)?)/i);
-      const lensInfo = lensMatch ? lensMatch[1].trim() : "";
-
-      const verMatch = promptCode.match(/--v\s+([0-9.]+)/i);
-      const versionInfo = verMatch ? `v${verMatch[1]}` : "";
-
-      prompts.push({
-        index: idx + 1,
-        rawHeader,
-        title,
-        promptCode,
-        intention,
-        aspectRatio,
-        lensInfo,
-        versionInfo,
-      });
-    });
-  }
-
-  // 2. Negative Prompt
-  let negativePrompt = "";
-  if (s2) {
-    const negMatch = s2.match(/```(?:[a-zA-Z]*\n)?([\s\S]*?)```/);
-    if (negMatch) {
-      negativePrompt = negMatch[1].trim();
-    } else {
-      negativePrompt = s2.replace(/^\*\([^\)]+\)\*\s*/, "").replace(/^[-*•]\s*/, "").trim();
-    }
-  }
-
-  // 3. Mẹo thực chiến
-  const tips: PhotographerTipItem[] = [];
-  if (s3) {
-    const lines = s3.split("\n");
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith("#") || trimmed === "---") continue;
-      const strippedBullet = trimmed.replace(/^[-*•]\s+/, "");
-
-      let m = strippedBullet.match(/^\*\*([^*:]+?)(?::\*\*|\*\*:)\s*([\s\S]+)$/);
-      if (!m) {
-        m = strippedBullet.match(/^\*\*([^*]+?)\*\*\s*[:\-]\s*([\s\S]+)$/);
-      }
-      if (!m) {
-        m = strippedBullet.match(/^([^:]+?)\s*:\s*([\s\S]+)$/);
-      }
-
-      if (m && /mẹo|lưu ý|bước|tip/i.test(m[1])) {
-        tips.push({
-          title: m[1].replace(/^\*\*|\*\*$/g, "").trim(),
-          content: cleanQuotesAndBrackets(m[2]),
-        });
-      } else if (strippedBullet.length > 5) {
-        tips.push({
-          title: `Mẹo ${tips.length + 1}`,
-          content: cleanQuotesAndBrackets(strippedBullet),
-        });
-      }
-    }
-  }
-
-  return {
-    prompts,
-    negativePrompt,
-    tips,
-    raw: text,
-  };
-}
+const PHOTO_STAGES = [
+  { upToSeconds: 4, text: "Đang phân tích chất liệu, màu sắc & phom dáng sản phẩm..." },
+  { upToSeconds: 10, text: "Tạo cấu trúc Image Prompting (--iw 2.0) khóa chuẩn ảnh thật..." },
+  { upToSeconds: 20, text: "Thiết kế 5 góc chụp Studio: Hero, Mẫu Á Đông, Macro, Flatlay, UGC..." },
+  { upToSeconds: 35, text: "Tối ưu câu lệnh loại trừ (Negative Prompt) chống biến dạng..." },
+  { upToSeconds: 60, text: "Hoàn thiện thông số render chuẩn Midjourney v6.1 & Flux.1..." },
+];
 
 export function PhotoPrompterOutput({
   result,
   loading,
   productName,
   onUseSample,
+  elapsedSeconds = 0,
+  onCancel,
+  productImage,
+  isOfflineMode,
+  onRetryWithAi,
 }: PhotoPrompterOutputProps) {
-  const [activeTab, setActiveTab] = useState<"all" | "p1" | "p2" | "p3" | "p4" | "p5" | "negative">("all");
   const [viewMode, setViewMode] = useState<"interactive" | "raw">("interactive");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<"all" | "p1" | "p2" | "p3" | "p4" | "p5" | "negative">("all");
+  const [promptModes, setPromptModes] = useState<Record<number, "imagePrompt" | "textOnly">>({
+    1: "imagePrompt",
+    2: "imagePrompt",
+    3: "imagePrompt",
+    4: "imagePrompt",
+    5: "imagePrompt",
+  });
 
-  const parsed = useMemo(() => {
-    return parsePhotoPrompterOutput(result);
-  }, [result]);
+  const parsed: PhotoPrompterData | null = useMemo(() => {
+    if (!result) return null;
+    return parsePhotoPrompterOutput(result, { productName, imageBase64: productImage });
+  }, [result, productName, productImage]);
 
   const showToast = (msg: string) => {
     setToastMessage(msg);
-    setTimeout(() => setToastMessage(null), 2000);
+    setTimeout(() => {
+      setToastMessage(null);
+    }, 1800);
   };
 
-  const handleCopy = (text: string, key: string, label: string = "Đã sao chép!") => {
+  const handleCopy = (text: string, key: string, message = "Đã sao chép!") => {
     if (!text) return;
     navigator.clipboard.writeText(text);
     setCopiedKey(key);
-    showToast(label);
+    showToast(message);
     setTimeout(() => {
       setCopiedKey((prev) => (prev === key ? null : prev));
     }, 1800);
   };
 
+  const togglePromptMode = (index: number, mode: "imagePrompt" | "textOnly") => {
+    setPromptModes((prev) => ({ ...prev, [index]: mode }));
+  };
+
   const handleCopyAllPrompts = () => {
     if (!parsed || parsed.prompts.length === 0) return;
     const text = parsed.prompts
-      .map((p) => `### ${p.title}\n${p.promptCode}\n\nÝ đồ: ${p.intention}`)
+      .map((p) => {
+        const mode = promptModes[p.index] || "imagePrompt";
+        const code = mode === "imagePrompt" ? p.imagePromptEn : p.promptEn;
+        return `### ${p.title}\n${code}\n\nÝ đồ: ${p.vietnameseSummary}\nThông số: ${p.cameraAndLighting}`;
+      })
       .join("\n\n---\n\n");
-    handleCopy(text, "prompts_all", "Đã sao chép toàn bộ 5 Prompt!");
+    handleCopy(text, "prompts_all", "Đã chép toàn bộ 5 Prompt!");
   };
 
   const handleExportExcel = () => {
@@ -247,40 +108,37 @@ export function PhotoPrompterOutput({
     try {
       const wb = XLSX.utils.book_new();
 
-      // Sheet 1: 5 Prompts
       const promptRows = parsed.prompts.map((p) => ({
         STT: p.index,
-        "Góc Chụp & Tên Prompt": p.title,
-        "Tỷ Lệ (--ar)": p.aspectRatio,
-        "Ống Kính (Lens)": p.lensInfo || "Studio Prime",
-        "Prompt Tiếng Anh (Ready to Copy)": p.promptCode,
-        "Ý Đồ Nhiếp Ảnh": p.intention,
+        "Góc Chụp": p.title,
+        "Cú Pháp Ảnh Thật (--iw 2.0)": p.imagePromptEn,
+        "Prompt Text": p.promptEn,
+        "Tỷ Lệ": p.aspectRatio,
+        "Ống Kính & Ánh Sáng": p.cameraAndLighting,
+        "Ý Đồ": p.vietnameseSummary,
       }));
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(promptRows), "Prompts_Studio");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(promptRows), "Prompts");
 
-      // Sheet 2: Negative Prompt & Mẹo
       const negRows = [
         {
           "Hạng Mục": "Negative Prompt",
-          "Nội Dung": parsed.negativePrompt,
-          "Hướng Dẫn": "Dán vào ô Negative Prompt hoặc thêm tham số --no",
+          "Nội Dung": parsed.negativePrompt.standardNegative,
+          "Ý Nghĩa": parsed.negativePrompt.vietnameseMeaning,
         },
       ];
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(negRows), "Negative_Prompt");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(negRows), "Negative");
 
-      const tipRows = parsed.tips.map((t, idx) => ({
+      const tipRows = parsed.workflowTips.map((t, idx) => ({
         STT: idx + 1,
-        "Tiêu Đề Mẹo": t.title,
-        "Nội Dung Hướng Dẫn Thực Chiến": t.content,
+        "Mẹo Thực Chiến": t.title,
+        "Chi Tiết": t.content,
       }));
-      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(tipRows), "Meo_NhiepAnh");
+      XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(tipRows), "Meo");
 
-      const safeName = (productName || "studio-photo").toLowerCase().replace(/[^a-z0-9]/g, "-").slice(0, 30);
-      const fileName = `prompt-studio-8k-${safeName}-${Date.now()}.xlsx`;
-      XLSX.writeFile(wb, fileName);
-      showToast("Đã xuất file Excel Prompts Studio!");
-    } catch (err) {
-      console.error("Lỗi xuất Excel:", err);
+      const safeName = (productName || "studio").toLowerCase().replace(/[^a-z0-9]/g, "-").slice(0, 30);
+      XLSX.writeFile(wb, `prompt-studio-${safeName}-${Date.now()}.xlsx`);
+      showToast("Đã xuất file Excel!");
+    } catch {
       showToast("Không thể xuất file Excel.");
     }
   };
@@ -291,80 +149,63 @@ export function PhotoPrompterOutput({
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    const safeName = (productName || "studio-photo").toLowerCase().replace(/[^a-z0-9]/g, "-").slice(0, 30);
-    a.download = `prompt-studio-8k-${safeName}-${Date.now()}.txt`;
+    const safeName = (productName || "studio").toLowerCase().replace(/[^a-z0-9]/g, "-").slice(0, 30);
+    a.download = `prompt-studio-${safeName}-${Date.now()}.txt`;
     a.click();
     URL.revokeObjectURL(url);
     showToast("Đã tải tệp .txt!");
   };
 
-  const getPromptBadgeColor = (idx: number) => {
-    switch (idx) {
-      case 1:
-        return "bg-amber-500/15 text-amber-300 border-amber-500/30";
-      case 2:
-        return "bg-blue-500/15 text-blue-300 border-blue-500/30";
-      case 3:
-        return "bg-rose-500/15 text-rose-300 border-rose-500/30";
-      case 4:
-        return "bg-emerald-500/15 text-emerald-300 border-emerald-500/30";
-      case 5:
-        return "bg-purple-500/15 text-purple-300 border-purple-500/30";
-      default:
-        return "bg-slate-500/15 text-slate-300 border-slate-500/30";
-    }
-  };
-
   return (
-    <div className="bg-slate-900 rounded-2xl shadow-xl h-full flex flex-col min-h-0 relative overflow-hidden border border-slate-800">
+    <div className="bg-black text-white rounded-2xl shadow-2xl flex flex-col min-h-0 relative border border-zinc-800 lg:h-full lg:overflow-hidden">
       {/* Toast mini thông báo sao chép */}
       {toastMessage && (
-        <div className="absolute top-12 left-1/2 -translate-x-1/2 z-50 px-3.5 py-1.5 rounded-full bg-slate-950/95 text-purple-400 text-xs font-semibold shadow-xl border border-purple-500/30 flex items-center gap-1.5 animate-in fade-in slide-in-from-top-2 duration-150 backdrop-blur-md">
-          <Check size={13} className="stroke-[2.5]" />
+        <div className="absolute top-12 left-1/2 -translate-x-1/2 z-50 px-3.5 py-1.5 rounded-full bg-zinc-900 text-white text-xs font-semibold shadow-2xl border border-zinc-700 flex items-center gap-1.5 animate-in fade-in slide-in-from-top-2 duration-150">
+          <Check size={13} className="text-emerald-400 stroke-[3]" />
           <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* Header thanh công cụ tối giản - Cố định 1 hàng ngang */}
-      <div className="px-3 sm:px-4 py-2 sm:py-2.5 border-b border-slate-800 flex items-center justify-between gap-1.5 sm:gap-2 relative z-10 bg-slate-900/95 backdrop-blur-md shrink-0 flex-nowrap">
-        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 shrink">
-          <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center bg-purple-500/15 text-purple-400 border border-purple-500/25 shrink-0 shadow-2xs">
+      {/* Header Toolbar: Tối Giản, Chữ Trắng Nền Đen */}
+      <div className="px-3 sm:px-4 py-2 sm:py-2.5 border-b border-zinc-800 flex items-center justify-between gap-2 relative z-10 bg-black shrink-0">
+        <div className="flex items-center gap-2 min-w-0">
+          <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg flex items-center justify-center bg-zinc-900 text-white border border-zinc-800 shrink-0">
             <Camera size={13} className="sm:w-[15px] sm:h-[15px]" />
           </div>
           <h2 className="font-bold text-white text-xs sm:text-sm truncate">
-            Bộ Prompt Studio (8K)
+            Prompt Studio 8K
           </h2>
         </div>
 
-        {/* Nút hành động - Cố định 1 hàng ngang */}
+        {/* Nút thao tác Toolbar */}
         {result && !loading && (
-          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0 flex-nowrap">
-            {/* Chế độ xem: Trực quan vs Gốc */}
-            <div className="bg-slate-800/80 p-0.5 rounded-lg border border-slate-700/60 flex items-center shrink-0">
+          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+            {/* View Mode Toggle */}
+            <div className="bg-zinc-900 p-0.5 rounded-lg border border-zinc-800 flex items-center shrink-0">
               <button
                 type="button"
                 onClick={() => setViewMode("interactive")}
-                title="Dạng giao diện trực quan"
+                title="Giao diện thẻ trực quan"
                 className={`p-1 sm:px-2 sm:py-1 rounded text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
                   viewMode === "interactive"
-                    ? "bg-purple-600 text-white shadow-xs"
-                    : "text-slate-400 hover:text-white"
+                    ? "bg-white text-black shadow-xs"
+                    : "text-zinc-400 hover:text-white"
                 }`}
               >
-                <LayoutList size={12} className="sm:w-[13px] sm:h-[13px]" />
-                <span className="hidden md:inline">Trực quan</span>
+                <LayoutList size={12} />
+                <span className="hidden md:inline">Thẻ</span>
               </button>
               <button
                 type="button"
                 onClick={() => setViewMode("raw")}
-                title="Dạng văn bản markdown gốc"
+                title="Dạng JSON / Raw gốc"
                 className={`p-1 sm:px-2 sm:py-1 rounded text-xs font-bold flex items-center gap-1 transition-all cursor-pointer ${
                   viewMode === "raw"
-                    ? "bg-purple-600 text-white shadow-xs"
-                    : "text-slate-400 hover:text-white"
+                    ? "bg-white text-black shadow-xs"
+                    : "text-zinc-400 hover:text-white"
                 }`}
               >
-                <FileText size={12} className="sm:w-[13px] sm:h-[13px]" />
+                <FileText size={12} />
                 <span className="hidden md:inline">Gốc</span>
               </button>
             </div>
@@ -374,57 +215,75 @@ export function PhotoPrompterOutput({
               type="button"
               onClick={handleExportExcel}
               title="Xuất file Excel (.xlsx)"
-              className="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 text-[11px] sm:text-xs font-bold px-1.5 sm:px-2.5 py-1 sm:py-1.5 rounded-lg transition-all flex items-center gap-1 cursor-pointer active:scale-95 shadow-xs shrink-0"
+              className="w-8 h-8 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-center transition-colors cursor-pointer shrink-0"
+              aria-label="Xuất file Excel"
             >
-              <FileSpreadsheet size={12} className="text-emerald-400 sm:w-[13px] sm:h-[13px]" />
-              <span className="hidden xs:inline">Excel</span>
+              <FileSpreadsheet size={13} className="text-emerald-400" />
             </button>
 
-            {/* Nút Tải .txt: Chỉ hiện trên sm+ */}
+            {/* Tải tệp .txt */}
             <button
               type="button"
               onClick={handleDownloadTxt}
-              title="Tải file .txt"
-              className="hidden sm:flex p-1 sm:p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg border border-slate-700 transition-colors cursor-pointer shrink-0"
+              title="Tải tệp .txt"
+              className="hidden sm:flex w-8 h-8 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 items-center justify-center transition-colors cursor-pointer shrink-0"
+              aria-label="Tải file text"
             >
-              <Download size={12} className="sm:w-3.5 sm:h-3.5" />
+              <Download size={13} />
             </button>
 
-            {/* Nút Sao chép tất cả */}
+            {/* Sao chép toàn bộ: Icon-only Nổi Bật */}
             <button
               type="button"
-              onClick={() => handleCopy(result, "all", "Đã sao chép toàn bộ bộ prompt!")}
-              className="bg-gradient-to-r from-purple-600 to-violet-600 hover:from-purple-500 hover:to-violet-500 text-white text-[11px] sm:text-xs font-bold px-2 sm:px-2.5 py-1 sm:py-1.5 rounded-lg transition-all shadow-md shadow-purple-950/40 flex items-center gap-1 cursor-pointer active:scale-95 shrink-0"
+              onClick={handleCopyAllPrompts}
+              title={copiedKey === "prompts_all" ? "Đã chép tất cả" : "Sao chép tất cả"}
+              className="w-8 h-8 rounded-lg bg-white hover:bg-zinc-200 text-black flex items-center justify-center transition-all active:scale-95 cursor-pointer shrink-0 shadow-sm"
+              aria-label="Sao chép toàn bộ"
             >
-              {copiedKey === "all" ? (
-                <>
-                  <Check size={12} className="stroke-[3]" />
-                  <span>Đã chép</span>
-                </>
+              {copiedKey === "prompts_all" ? (
+                <Check size={14} className="stroke-[3]" />
               ) : (
-                <>
-                  <Copy size={12} />
-                  <span>Chép hết</span>
-                </>
+                <Copy size={14} />
               )}
             </button>
           </div>
         )}
       </div>
 
-      {/* Tabs Phân Loại Danh Mục Đầu Ra (Pinned Sub-Tabs) - Cố định bên dưới toolbar */}
+      {/* Thông báo Chế độ Dự Phòng Offline Blueprint */}
+      {isOfflineMode && result && !loading && (
+        <div className="px-3 sm:px-4 py-2 bg-zinc-950 border-b border-zinc-800 flex items-center justify-between gap-2 text-xs text-zinc-300 shrink-0">
+          <div className="flex items-center gap-1.5 truncate">
+            <span className="text-amber-400 font-bold">⚡</span>
+            <span className="truncate">
+              Bộ prompt dự phòng chuẩn sàn TMĐT (Lượt dùng AI chưa bị trừ).
+            </span>
+          </div>
+          {onRetryWithAi && (
+            <button
+              type="button"
+              onClick={onRetryWithAi}
+              className="px-2 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 text-white border border-zinc-700 font-medium text-[11px] shrink-0 transition-colors cursor-pointer flex items-center gap-1"
+            >
+              Thử lại AI
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Tabs Phân Loại Gọn Gàng - Nền Đen Chữ Trắng */}
       {result && viewMode === "interactive" && !loading && (
-        <div className="px-2.5 sm:px-4 py-1.5 sm:py-2 border-b border-slate-800 bg-slate-950/70 flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar sm:custom-scrollbar shrink-0 relative z-10">
+        <div className="px-3 sm:px-4 py-2 border-b border-zinc-800 bg-zinc-950 flex items-center gap-1.5 overflow-x-auto no-scrollbar shrink-0">
           <button
             type="button"
             onClick={() => setActiveTab("all")}
-            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shrink-0 active:scale-95 ${
+            className={`px-3 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1 cursor-pointer shrink-0 active:scale-95 ${
               activeTab === "all"
-                ? "bg-slate-800 text-purple-300 border border-purple-500/40 shadow-xs"
-                : "text-slate-400 hover:text-slate-200"
+                ? "bg-white text-black font-bold shadow-xs"
+                : "bg-zinc-900/80 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 font-medium"
             }`}
           >
-            <Layers size={12} className="sm:w-[13px] sm:h-[13px]" />
+            <Layers size={12} />
             <span>Tất Cả ({parsed?.prompts.length || 5})</span>
           </button>
           {parsed?.prompts.map((p) => (
@@ -432,59 +291,54 @@ export function PhotoPrompterOutput({
               key={p.index}
               type="button"
               onClick={() => setActiveTab(`p${p.index}` as any)}
-              className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shrink-0 active:scale-95 ${
+              className={`px-3 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1 cursor-pointer shrink-0 active:scale-95 ${
                 activeTab === `p${p.index}`
-                  ? "bg-slate-800 text-purple-300 border border-purple-500/40 shadow-xs"
-                  : "text-slate-400 hover:text-purple-200"
+                  ? "bg-white text-black font-bold shadow-xs"
+                  : "bg-zinc-900/80 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 font-medium"
               }`}
             >
               <span>P{p.index}</span>
               <span className="text-[10px] opacity-75 hidden xs:inline">
-                {p.index === 1 ? "Toàn cảnh" : p.index === 2 ? "Macro" : p.index === 3 ? "Lookbook" : p.index === 4 ? "Lifestyle" : "Editorial"}
+                {p.index === 1 ? "Hero" : p.index === 2 ? "Mẫu Á" : p.index === 3 ? "Macro" : p.index === 4 ? "Flatlay" : "UGC"}
               </span>
             </button>
           ))}
           <button
             type="button"
             onClick={() => setActiveTab("negative")}
-            className={`px-2.5 sm:px-3 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer shrink-0 active:scale-95 ${
+            className={`px-3 py-1.5 rounded-lg text-xs transition-all flex items-center gap-1 cursor-pointer shrink-0 active:scale-95 ${
               activeTab === "negative"
-                ? "bg-slate-800 text-rose-300 border border-rose-500/40 shadow-xs"
-                : "text-slate-400 hover:text-rose-200"
+                ? "bg-white text-black font-bold shadow-xs"
+                : "bg-zinc-900/80 hover:bg-zinc-800 text-zinc-400 hover:text-white border border-zinc-800 font-medium"
             }`}
           >
-            <Ban size={12} className="sm:w-[13px] sm:h-[13px]" />
-            <span>Negative &amp; Mẹo</span>
+            <Ban size={12} />
+            <span>Negative</span>
           </button>
         </div>
       )}
 
-      {/* Vùng hiển thị kết quả (cuộn độc lập) */}
-      <div className="flex-1 min-h-0 p-3 sm:p-5 overflow-y-auto custom-scrollbar relative z-10 pb-24 lg:pb-4 space-y-4 sm:space-y-5">
+      {/* Vùng Cuộn Nội Dung Toàn Trang Mobile Mượt Mà */}
+      <div className="flex-1 min-h-0 p-3 sm:p-4 lg:overflow-y-auto custom-scrollbar relative z-10 space-y-3 sm:space-y-4 pb-20 lg:pb-4 bg-black">
         {loading ? (
-          <div className="h-full min-h-[360px] flex flex-col items-center justify-center text-center p-6 space-y-3">
-            <div className="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-purple-400">
-              <Sparkles size={22} className="animate-spin text-purple-400 duration-1000" />
-            </div>
-            <div className="space-y-1">
-              <div className="font-bold text-sm text-white">
-                <TextShimmerWave>AI Đang Thiết Kế Bộ Prompt Studio 8K...</TextShimmerWave>
-              </div>
-              <p className="text-xs text-slate-400 max-w-sm">
-                Đang căn chỉnh tiêu cự ống kính, ánh sáng studio, bố cục thương mại và tối ưu tham số render...
-              </p>
-            </div>
-          </div>
+          <ToolLoadingState
+            elapsedSeconds={elapsedSeconds}
+            onCancel={onCancel}
+            title="Đang tạo 5 bộ Prompt Studio chuẩn sàn..."
+            stages={PHOTO_STAGES}
+            accentColor="purple"
+            minHeightClass="min-h-[360px]"
+          />
         ) : result && parsed ? (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {viewMode === "raw" ? (
               <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs text-slate-400">
-                  <span>Dữ liệu Markdown gốc:</span>
+                <div className="flex items-center justify-between text-xs text-zinc-400">
+                  <span>Dữ liệu gốc:</span>
                   <button
                     type="button"
-                    onClick={() => handleCopy(result, "rawText", "Đã sao chép Markdown!")}
-                    className="hover:text-purple-400 flex items-center gap-1 cursor-pointer font-medium"
+                    onClick={() => handleCopy(result, "rawText", "Đã sao chép nội dung gốc!")}
+                    className="hover:text-white flex items-center gap-1 cursor-pointer font-medium"
                   >
                     <Copy size={12} /> Sao chép
                   </button>
@@ -492,232 +346,218 @@ export function PhotoPrompterOutput({
                 <textarea
                   readOnly
                   value={result}
-                  className="w-full h-[500px] bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-xs font-mono text-slate-300 leading-relaxed resize-none focus:outline-hidden custom-scrollbar"
+                  className="w-full h-[520px] bg-zinc-950 border border-zinc-800 rounded-xl p-3 text-xs font-mono text-zinc-200 leading-relaxed resize-none focus:outline-hidden custom-scrollbar"
                 />
               </div>
             ) : (
-              <div className="space-y-4">
-                {/* ========================================================================= */}
-                {/* 1. TOP 5 BỘ PROMPT TIẾNG ANH CHUẨN STUDIO THƯƠNG MẠI                      */}
-                {/* ========================================================================= */}
-                {activeTab !== "negative" && (
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between pb-1 border-b border-slate-800/80">
-                      <div className="flex items-center gap-2">
-                        <Camera size={14} className="text-purple-400" />
-                        <h3 className="font-bold text-white text-xs sm:text-sm uppercase tracking-wider">
-                          1. Top 5 Bộ Prompt Tiếng Anh Chuẩn Studio Thương Mại
-                        </h3>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={handleCopyAllPrompts}
-                        className="px-2 py-0.5 rounded text-[11px] font-semibold bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/80 transition flex items-center gap-1 cursor-pointer"
-                      >
-                        {copiedKey === "prompts_all" ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
-                        <span>Sao chép</span>
-                      </button>
-                    </div>
+              <div className="space-y-3">
+                {/* 1. DANH SÁCH PROMPT: TỐI GIẢN, NÚT SAO CHÉP ICON-ONLY BÊN PHẢI CÙNG HÀNG */}
+                {activeTab !== "negative" &&
+                  parsed.prompts
+                    .filter((p) => activeTab === "all" || activeTab === `p${p.index}`)
+                    .map((prompt) => {
+                      const currentMode = promptModes[prompt.index] || "imagePrompt";
+                      const activeCodeToCopy =
+                        currentMode === "imagePrompt" ? prompt.imagePromptEn : prompt.promptEn;
 
-                    <div className="space-y-3">
-                      {parsed.prompts
-                        .filter((p) => activeTab === "all" || activeTab === `p${p.index}`)
-                        .map((prompt) => (
-                          <div
-                            key={prompt.index}
-                            className="bg-slate-900/80 rounded-xl border border-slate-800 hover:border-purple-500/40 p-3.5 sm:p-4 space-y-3 transition-all"
-                          >
-                            {/* Tiêu đề & Thông số */}
-                            <div className="flex items-center justify-between gap-2 flex-wrap">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <span className={`text-[11px] font-black px-2 py-0.5 rounded-md border ${getPromptBadgeColor(prompt.index)}`}>
-                                  P{prompt.index}
-                                </span>
-                                <h4 className="text-xs sm:text-sm font-bold text-white">
+                      return (
+                        <div
+                          key={prompt.index}
+                          className="bg-zinc-950 rounded-xl border border-zinc-800/90 p-3 sm:p-3.5 space-y-2 transition-colors hover:border-zinc-700"
+                        >
+                          {/* Hàng Tiêu Đề: Tiêu đề bên trái tự động xuống dòng, Nút Sao Chép Icon-Only bên phải cùng hàng */}
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex items-start gap-2 min-w-0 flex-1">
+                              <span className="text-[11px] font-black px-1.5 py-0.5 rounded bg-zinc-900 text-white border border-zinc-800 shrink-0 font-mono mt-0.5">
+                                P{prompt.index}
+                              </span>
+                              <div className="min-w-0 flex-1">
+                                <h3 className="text-xs sm:text-sm font-bold text-white leading-snug break-words">
                                   {prompt.title}
-                                </h4>
-                                {prompt.aspectRatio && (
-                                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700/80">
-                                    --ar {prompt.aspectRatio}
-                                  </span>
-                                )}
-                                {prompt.lensInfo && (
-                                  <span className="text-[10px] font-medium px-2 py-0.5 rounded bg-purple-950/40 text-purple-300 border border-purple-500/30 hidden sm:inline-block">
-                                    {prompt.lensInfo}
-                                  </span>
-                                )}
-                              </div>
-
-                              <button
-                                type="button"
-                                onClick={() => handleCopy(prompt.promptCode, `p_${prompt.index}`, `Đã chép Prompt ${prompt.index}!`)}
-                                className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-purple-600 hover:bg-purple-500 text-white transition flex items-center gap-1.5 cursor-pointer shadow-xs"
-                              >
-                                {copiedKey === `p_${prompt.index}` ? (
-                                  <>
-                                    <Check size={12} className="stroke-[3]" /> Đã sao chép
-                                  </>
-                                ) : (
-                                  <>
-                                    <Copy size={12} /> Sao chép Prompt
-                                  </>
-                                )}
-                              </button>
-                            </div>
-
-                            {/* Khối Mã Lệnh Prompt Tiếng Anh (Ready to Copy) */}
-                            <div className="space-y-1">
-                              <div className="flex items-center justify-between text-[11px] text-slate-400 font-medium">
-                                <span className="flex items-center gap-1">
-                                  <Sliders size={12} className="text-purple-400" />
-                                  English Prompt (Dán trực tiếp vào Midjourney / Flux / Fooocus):
-                                </span>
-                              </div>
-                              <div
-                                onClick={() => handleCopy(prompt.promptCode, `p_${prompt.index}`, `Đã chép Prompt ${prompt.index}!`)}
-                                className="bg-slate-950 rounded-xl p-3 sm:p-3.5 border border-slate-800 hover:border-purple-500/50 transition text-xs font-mono text-purple-200/90 leading-relaxed break-words select-text cursor-pointer group relative"
-                                title="Bấm để sao chép nhanh"
-                              >
-                                {prompt.promptCode}
-                                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition text-[10px] text-slate-400 bg-slate-900/90 px-1.5 py-0.5 rounded border border-slate-700 pointer-events-none">
-                                  Bấm để copy
-                                </div>
+                                  {prompt.aspectRatio && (
+                                    <span className="ml-1.5 text-[10px] font-mono px-1.5 py-0.5 rounded bg-zinc-900 text-zinc-400 border border-zinc-800 inline-block align-middle font-normal">
+                                      {prompt.aspectRatio}
+                                    </span>
+                                  )}
+                                </h3>
                               </div>
                             </div>
 
-                            {/* Ý đồ nhiếp ảnh */}
-                            {prompt.intention && (
-                              <div className="bg-slate-950/50 rounded-lg p-2.5 border border-slate-800/80 flex items-start gap-2 text-xs">
-                                <Eye size={14} className="text-purple-400 mt-0.5 shrink-0" />
-                                <div className="leading-relaxed text-slate-300 break-words select-text">
-                                  <span className="font-bold text-slate-200 mr-1.5">Ý đồ nhiếp ảnh:</span>
-                                  {prompt.intention}
-                                </div>
-                              </div>
-                            )}
+                            {/* Nút Sao Chép Icon-Only Cùng Hàng Tiêu Đề */}
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleCopy(
+                                  activeCodeToCopy,
+                                  `p_${prompt.index}`,
+                                  `Đã chép Prompt ${prompt.index}!`
+                                )
+                              }
+                              className="w-8 h-8 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-center transition-colors cursor-pointer shrink-0 active:scale-95"
+                              title={`Sao chép Prompt ${prompt.index}`}
+                              aria-label={`Sao chép Prompt ${prompt.index}`}
+                            >
+                              {copiedKey === `p_${prompt.index}` ? (
+                                <Check size={14} className="text-emerald-400 stroke-[3]" />
+                              ) : (
+                                <Copy size={14} />
+                              )}
+                            </button>
                           </div>
-                        ))}
-                    </div>
-                  </div>
-                )}
 
-                {/* ========================================================================= */}
-                {/* 2. BỘ CÂU LỆNH LOẠI TRỪ (NEGATIVE PROMPT)                                 */}
-                {/* ========================================================================= */}
+                          {/* Mode Toggle: Cú pháp Ảnh Thật (--iw 2.0) vs Text Thuần */}
+                          <div className="flex items-center gap-1.5 text-xs">
+                            <button
+                              type="button"
+                              onClick={() => togglePromptMode(prompt.index, "imagePrompt")}
+                              className={`px-2 py-0.5 rounded text-[11px] font-bold flex items-center gap-1 transition-colors cursor-pointer ${
+                                currentMode === "imagePrompt"
+                                  ? "bg-white text-black"
+                                  : "bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800"
+                              }`}
+                            >
+                              <Flame size={11} className={currentMode === "imagePrompt" ? "text-amber-600" : "text-zinc-500"} />
+                              <span>Ảnh Thật (--iw 2.0)</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => togglePromptMode(prompt.index, "textOnly")}
+                              className={`px-2 py-0.5 rounded text-[11px] font-medium transition-colors cursor-pointer ${
+                                currentMode === "textOnly"
+                                  ? "bg-white text-black font-bold"
+                                  : "bg-zinc-900 text-zinc-400 hover:text-white border border-zinc-800"
+                              }`}
+                            >
+                              Text Thuần
+                            </button>
+                          </div>
+
+                          {/* Khối Mã Prompt Sẵn Sàng Sao Chép */}
+                          <div className="relative">
+                            <pre className="p-2.5 sm:p-3 bg-black rounded-lg border border-zinc-800 text-xs font-mono text-zinc-100 leading-relaxed overflow-x-auto whitespace-pre-wrap break-words select-all custom-scrollbar">
+                              {activeCodeToCopy}
+                            </pre>
+                          </div>
+
+                          {/* Thông số kỹ thuật & Ý đồ rút gọn - Xuống dòng tự nhiên */}
+                          {(prompt.cameraAndLighting || prompt.vietnameseSummary) && (
+                            <div className="text-[11px] text-zinc-400 flex flex-wrap items-center gap-x-3 gap-y-1 pt-0.5 leading-snug">
+                              {prompt.cameraAndLighting && (
+                                <span className="flex items-center gap-1 break-words">
+                                  <Aperture size={11} className="text-zinc-500 shrink-0" />
+                                  <span>{prompt.cameraAndLighting}</span>
+                                </span>
+                              )}
+                              {prompt.vietnameseSummary && (
+                                <span className="text-zinc-300 break-words">
+                                  • {prompt.vietnameseSummary}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+
+                {/* 2. BỘ CÂU LỆNH LOẠI TRỪ (NEGATIVE PROMPT) */}
                 {(activeTab === "all" || activeTab === "negative") && parsed.negativePrompt && (
-                  <div className="rounded-xl border border-rose-500/20 bg-slate-950/60 p-3.5 space-y-2.5">
-                    <div className="flex items-center justify-between pb-1.5 border-b border-slate-800/80">
-                      <div className="flex items-center gap-2">
-                        <Ban size={14} className="text-rose-400" />
-                        <h3 className="font-bold text-white text-xs sm:text-sm uppercase tracking-wider">
-                          2. Bộ Câu Lệnh Loại Trừ (Negative Prompt)
+                  <div className="bg-zinc-950 rounded-xl border border-zinc-800/90 p-3 sm:p-3.5 space-y-2">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex items-start gap-2 min-w-0 flex-1">
+                        <div className="w-5 h-5 rounded flex items-center justify-center bg-zinc-900 text-zinc-400 shrink-0 mt-0.5">
+                          <Ban size={12} />
+                        </div>
+                        <h3 className="text-xs sm:text-sm font-bold text-white leading-snug break-words">
+                          Negative Prompt (Câu Lệnh Loại Trừ)
                         </h3>
                       </div>
+
+                      {/* Nút Sao Chép Icon-Only */}
                       <button
                         type="button"
-                        onClick={() => handleCopy(parsed.negativePrompt, "negative_prompt", "Đã chép Negative Prompt!")}
-                        className="px-2.5 py-1 rounded-md text-xs font-semibold bg-rose-600/90 hover:bg-rose-500 text-white transition flex items-center gap-1 cursor-pointer shadow-xs"
+                        onClick={() =>
+                          handleCopy(
+                            parsed.negativePrompt.standardNegative,
+                            "negative_prompt",
+                            "Đã chép Negative Prompt!"
+                          )
+                        }
+                        className="w-8 h-8 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 flex items-center justify-center transition-colors cursor-pointer shrink-0 active:scale-95"
+                        title="Sao chép Negative Prompt"
+                        aria-label="Sao chép Negative Prompt"
                       >
                         {copiedKey === "negative_prompt" ? (
-                          <>
-                            <Check size={11} className="stroke-[3]" /> Đã chép
-                          </>
+                          <Check size={14} className="text-emerald-400 stroke-[3]" />
                         ) : (
-                          <>
-                            <Copy size={11} /> Sao chép
-                          </>
+                          <Copy size={14} />
                         )}
                       </button>
                     </div>
 
-                    <p className="text-[11px] text-slate-400">
-                      Dán đoạn này vào ô <b>Negative Prompt</b> hoặc thêm cú pháp <code>--no [từ khóa]</code> trong Midjourney để ảnh không bị lỗi thừa ngón, biến dạng hay mờ nhoè:
-                    </p>
+                    <pre className="p-2.5 sm:p-3 bg-black rounded-lg border border-zinc-800 text-xs font-mono text-zinc-300 leading-relaxed overflow-x-auto whitespace-pre-wrap break-words select-all custom-scrollbar">
+                      {parsed.negativePrompt.standardNegative}
+                    </pre>
 
-                    <div
-                      onClick={() => handleCopy(parsed.negativePrompt, "negative_prompt", "Đã chép Negative Prompt!")}
-                      className="bg-slate-950 rounded-lg p-3 border border-rose-500/30 text-xs font-mono text-rose-200/90 leading-relaxed select-text cursor-pointer hover:border-rose-400 transition"
-                      title="Bấm để sao chép"
-                    >
-                      {parsed.negativePrompt}
-                    </div>
+                    {parsed.negativePrompt.vietnameseMeaning && (
+                      <p className="text-[11px] text-zinc-400 leading-relaxed">
+                        {parsed.negativePrompt.vietnameseMeaning}
+                      </p>
+                    )}
                   </div>
                 )}
 
-                {/* ========================================================================= */}
-                {/* 3. MẸO THỰC CHIẾN TỪ NHIẾP ẢNH GIA AI                                     */}
-                {/* ========================================================================= */}
-                {(activeTab === "all" || activeTab === "negative") && parsed.tips.length > 0 && (
-                  <div className="rounded-xl border border-slate-800 bg-slate-950/60 p-3.5 space-y-3">
-                    <div className="flex items-center justify-between pb-1.5 border-b border-slate-800/80">
+                {/* 3. MẸO THỰC CHIẾN TỐI GIẢN */}
+                {(activeTab === "all" || activeTab === "negative") &&
+                  parsed.workflowTips &&
+                  parsed.workflowTips.length > 0 && (
+                    <div className="bg-zinc-950 rounded-xl border border-zinc-800/90 p-3 sm:p-3.5 space-y-2">
                       <div className="flex items-center gap-2">
-                        <Lightbulb size={14} className="text-amber-400" />
-                        <h3 className="font-bold text-white text-xs sm:text-sm uppercase tracking-wider">
-                          3. Mẹo Thực Chiến Từ Nhiếp Ảnh Gia AI
+                        <Lightbulb size={13} className="text-zinc-400" />
+                        <h3 className="text-xs sm:text-sm font-bold text-white">
+                          Mẹo Chụp Ảnh &amp; Inpaint Sản Phẩm Thật
                         </h3>
                       </div>
-                    </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-                      {parsed.tips.map((tip, idx) => (
-                        <div
-                          key={idx}
-                          className="bg-slate-900/70 rounded-xl border border-slate-800/80 p-3 space-y-1.5 hover:border-amber-500/30 transition-all flex flex-col justify-between"
-                        >
-                          <div className="space-y-1.5">
-                            <span className="text-xs font-bold text-amber-300 flex items-center gap-1">
-                              <Lightbulb size={13} className="text-amber-400 shrink-0" />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {parsed.workflowTips.map((tip, idx) => (
+                          <div
+                            key={idx}
+                            className="bg-black p-2.5 rounded-lg border border-zinc-800/80 space-y-0.5"
+                          >
+                            <h4 className="text-[11px] font-bold text-white">
                               {tip.title}
-                            </span>
-                            <p className="text-xs text-slate-300 leading-relaxed break-words select-text">
+                            </h4>
+                            <p className="text-[11px] text-zinc-400 leading-snug">
                               {tip.content}
                             </p>
                           </div>
-
-                          <div className="pt-2 mt-1 border-t border-slate-800/60 flex justify-end">
-                            <button
-                              type="button"
-                              onClick={() => handleCopy(`${tip.title}: ${tip.content}`, `tip-${idx}`, `Đã chép ${tip.title}!`)}
-                              className="text-[11px] text-slate-400 hover:text-amber-300 flex items-center gap-1 transition cursor-pointer font-medium"
-                            >
-                              {copiedKey === `tip-${idx}` ? (
-                                <>
-                                  <Check size={11} className="text-emerald-400" /> Đã chép
-                                </>
-                              ) : (
-                                <>
-                                  <Copy size={11} /> Chép mẹo
-                                </>
-                              )}
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
               </div>
             )}
           </div>
         ) : (
-          <div className="h-full min-h-[340px] flex flex-col items-center justify-center text-center p-6 text-slate-500 space-y-3">
-            <div className="w-14 h-14 rounded-2xl bg-slate-800/60 border border-slate-700/50 flex items-center justify-center text-purple-400 shadow-inner">
-              <Camera size={24} />
+          <div className="h-full min-h-[300px] flex flex-col items-center justify-center text-center p-6 text-zinc-500 space-y-2.5">
+            <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400">
+              <Camera size={22} />
             </div>
-            <div className="space-y-1 max-w-sm">
-              <p className="font-semibold text-slate-200 text-sm">Chưa Có Dữ Liệu Prompt Studio</p>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Nhập tên sản phẩm &amp; chọn góc chụp studio bên trái, sau đó bấm &ldquo;Tạo Bộ Prompt Studio Chuẩn Xưởng Ngay&rdquo;.
+            <div className="max-w-xs space-y-1">
+              <h3 className="text-sm font-bold text-white">
+                Chưa Có Bộ Prompt
+              </h3>
+              <p className="text-xs text-zinc-400">
+                Tải ảnh hoặc nhập sản phẩm bên trái để AI tạo 5 góc chụp Studio &amp; Người mẫu.
               </p>
             </div>
             {onUseSample && (
               <button
                 type="button"
                 onClick={onUseSample}
-                className="mt-1 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-800 hover:bg-slate-700 text-purple-400 hover:text-purple-300 border border-purple-500/30 transition-all flex items-center gap-1.5 cursor-pointer"
+                className="mt-1 px-3 py-1.5 rounded-xl border border-zinc-700 bg-zinc-900 hover:bg-zinc-800 text-white text-xs font-semibold transition-colors cursor-pointer"
               >
-                <Sparkle size={13} />
-                <span>Thử dữ liệu mẫu để xem giao diện</span>
+                Dùng Dữ Liệu Mẫu
               </button>
             )}
           </div>
@@ -726,5 +566,3 @@ export function PhotoPrompterOutput({
     </div>
   );
 }
-
-export default PhotoPrompterOutput;

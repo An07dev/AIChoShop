@@ -61,7 +61,7 @@ interface SePayConfigManagerProps {
     syntaxPrefix: string;
     autoActivate: boolean;
   };
-
+  showHeader?: boolean;
 }
 
 const POPULAR_BANKS = [
@@ -81,6 +81,7 @@ const POPULAR_BANKS = [
 
 export function SePayConfigManager({
   initialConfig,
+  showHeader = false,
 }: SePayConfigManagerProps) {
   const [config, setConfig] = useState(initialConfig);
   const [showApiKey, setShowApiKey] = useState(false);
@@ -123,7 +124,7 @@ export function SePayConfigManager({
   // Simulator State
   const [simQuery, setSimQuery] = useState("");
   const [simAmount, setSimAmount] = useState(200000);
-  const [simResult, setSimResult] = useState<{success:boolean;message?:string;error?:string}|null>(null);
+  const [simResult, setSimResult] = useState<{ success: boolean; message?: string; error?: string } | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
 
   // Xử lý lưu cấu hình
@@ -173,7 +174,7 @@ export function SePayConfigManager({
   };
 
   return (
-    <div className="space-y-6 pb-12 max-w-6xl mx-auto">
+    <div className="space-y-6 w-full">
       {/* Toast Notification */}
       {toast && (
         <div
@@ -191,18 +192,20 @@ export function SePayConfigManager({
         </div>
       )}
 
-      {/* ── TIÊU ĐỀ TRANG CỔNG SEPAY & WEBHOOK ─────────────────────────────── */}
-      <AdminPageHeader
-        title="Cổng Thanh Toán SePay & Lịch Sử Nạp VIP"
-        subtitle="Cấu hình tài khoản ngân hàng nhận tiền, kiểm tra Webhook nạp VIP tự động và tra cứu giao dịch chuyển khoản."
-        icon={CreditCard}
-        iconGradient="from-blue-600 to-cyan-600"
-        badge={
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs">
-            Tự Động 24/7
-          </span>
-        }
-      />
+      {/* ── TIÊU ĐỀ TRANG CỔNG SEPAY & WEBHOOK (NẾU BẬT) ─────────────────────────── */}
+      {showHeader && (
+        <AdminPageHeader
+          title="Cổng Thanh Toán SePay & Lịch Sử Nạp VIP"
+          subtitle="Cấu hình tài khoản ngân hàng nhận tiền, kiểm tra Webhook nạp VIP tự động và tra cứu giao dịch chuyển khoản."
+          icon={CreditCard}
+          iconGradient="from-blue-600 to-cyan-600"
+          badge={
+            <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 shadow-2xs">
+              Tự Động 24/7
+            </span>
+          }
+        />
+      )}
 
       {/* Webhook URL Bar (Gọn gàng, thanh lịch) */}
       <div className="bg-white rounded-2xl p-4 md:p-5 border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-3">

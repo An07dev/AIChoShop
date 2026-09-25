@@ -18,6 +18,7 @@ interface AiUsageBadgeProps {
   tool?: string;
   refreshTrigger?: number;
   onSelectOutput?: (output: string) => void;
+  showHistory?: boolean;
   className?: string;
   historyOnly?: boolean;
 }
@@ -26,6 +27,7 @@ export function AiUsageBadge({
   tool,
   refreshTrigger = 0,
   onSelectOutput,
+  showHistory = true,
   className = "",
   historyOnly = false,
 }: AiUsageBadgeProps) {
@@ -95,20 +97,22 @@ export function AiUsageBadge({
   return (
     <>
       {historyOnly ? (
-        <button
-          type="button"
-          onClick={() => setIsOpen(true)}
-          className="inline-flex items-center gap-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 px-3 py-1 rounded-full text-xs font-bold text-slate-700 dark:text-slate-200 transition-all cursor-pointer shadow-2xs active:scale-95 whitespace-nowrap"
-          title="Xem các nội dung bạn đã tạo trước đây"
-        >
-          <Clock size={13} className="text-blue-500 shrink-0" />
-          <span>Lịch sử</span>
-          {filteredActivities.length > 0 && (
-            <span className="px-1.5 py-0.2 rounded-full bg-blue-50 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 text-[10px] font-black">
-              {filteredActivities.length}
-            </span>
-          )}
-        </button>
+        showHistory && (
+          <button
+            type="button"
+            onClick={() => setIsOpen(true)}
+            className="inline-flex items-center gap-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 px-3 py-1 rounded-full text-xs font-bold text-slate-700 dark:text-slate-200 transition-all cursor-pointer shadow-2xs active:scale-95 whitespace-nowrap"
+            title="Xem các nội dung bạn đã tạo trước đây"
+          >
+            <Clock size={13} className="text-blue-500 shrink-0" />
+            <span>Lịch sử</span>
+            {filteredActivities.length > 0 && (
+              <span className="px-1.5 py-0.2 rounded-full bg-blue-50 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 text-[10px] font-black">
+                {filteredActivities.length}
+              </span>
+            )}
+          </button>
+        )
       ) : (
         <div className={`flex items-center gap-1.5 sm:gap-2 shrink-0 ${className}`}>
           {/* Badge Lượt Dùng Hôm Nay */}
@@ -145,20 +149,22 @@ export function AiUsageBadge({
           </div>
 
           {/* Nút Xem Nội Dung Đã Tạo Gần Đây */}
-          <button
-            type="button"
-            onClick={() => setIsOpen(true)}
-            className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 px-2.5 sm:px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 transition-all cursor-pointer shadow-xs active:scale-95 text-center whitespace-nowrap"
-            title="Xem các nội dung bạn đã tạo trước đây"
-          >
-            <Clock size={13} className="text-blue-500 shrink-0" />
-            <span>Lịch sử</span>
-            {filteredActivities.length > 0 && (
-              <span className="ml-0.5 px-1.5 py-0.2 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 text-[10px] font-black">
-                {filteredActivities.length}
-              </span>
-            )}
-          </button>
+          {showHistory && (
+            <button
+              type="button"
+              onClick={() => setIsOpen(true)}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700/80 border border-slate-200 dark:border-slate-700 px-2.5 sm:px-3 py-2 rounded-xl text-xs font-bold text-slate-700 dark:text-slate-200 transition-all cursor-pointer shadow-xs active:scale-95 text-center whitespace-nowrap"
+              title="Xem các nội dung bạn đã tạo trước đây"
+            >
+              <Clock size={13} className="text-blue-500 shrink-0" />
+              <span>Lịch sử</span>
+              {filteredActivities.length > 0 && (
+                <span className="ml-0.5 px-1.5 py-0.2 rounded-full bg-blue-100 dark:bg-blue-900/60 text-blue-700 dark:text-blue-300 text-[10px] font-black">
+                  {filteredActivities.length}
+                </span>
+              )}
+            </button>
+          )}
         </div>
       )}
 

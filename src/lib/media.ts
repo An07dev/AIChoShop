@@ -4,7 +4,7 @@ export function mediaName(value: string) {
   return /^[a-zA-Z0-9_-][a-zA-Z0-9_.-]{0,220}\.(mp4|webm|mov|m4v|ogg|mkv)$/.test(value) && !value.includes("..");
 }
 export function privateMediaRoot() {
-  const root = path.resolve(process.env.MEDIA_ROOT || path.join(process.cwd(), ".data", "media"));
+  const root = path.resolve(/*turbopackIgnore: true*/ process.env.MEDIA_ROOT || path.join(process.cwd(), ".data", "media"));
   const publicRoot = path.resolve(process.cwd(), "public");
   const relative = path.relative(publicRoot, root);
   if (!relative || (!relative.startsWith("..") && !path.isAbsolute(relative))) throw new Error("MEDIA_ROOT must be outside public");

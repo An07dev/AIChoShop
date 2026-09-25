@@ -1,6 +1,53 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import React, { useState, useMemo, useRef, useEffect, Component, type ReactNode } from "react";
+
+// ==========================================
+// HÀM SAO CHÉP AN TOÀN 2 TẦNG (CLIPBOARD RESILIENCE)
+// ==========================================
+async function safeCopyToClipboard(text: string): Promise<boolean> {
+  if (!text) return false;
+  // Tầng 1: Clipboard API hiện đại
+  if (typeof navigator !== "undefined" && navigator.clipboard && navigator.clipboard.writeText) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      // Fallback sang Tầng 2
+    }
+  }
+  // Tầng 2: Fallback qua textarea ẩn và document.execCommand
+  try {
+    const textarea = document.createElement("textarea");
+    textarea.value = text;
+    textarea.style.position = "fixed";
+    textarea.style.top = "-9999px";
+    textarea.style.left = "-9999px";
+    textarea.style.opacity = "0";
+    document.body.appendChild(textarea);
+    textarea.focus();
+    textarea.select();
+    const success = document.execCommand("copy");
+    document.body.removeChild(textarea);
+    return success;
+  } catch {
+    return false;
+  }
+}
+
+// ==========================================
+// HÀM CHUẨN HÓA TÊN FILE AN TOÀN TRÊN MỌI HỆ ĐIỀU HÀNH
+// ==========================================
+function sanitizeFilename(name: string, fallback: string): string {
+  const clean = (name || fallback)
+    .toLowerCase()
+    .replace(/[\/\\:*?"<>|]+/g, "-")
+    .replace(/\s+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 40);
+  return clean || fallback;
+}
 import {
   Copy,
   Check,
@@ -14,17 +61,25 @@ import {
   CheckCircle2,
   AlertTriangle,
   FileSpreadsheet,
-  Send,
-  ExternalLink,
-  ChevronRight,
   ShieldCheck,
-  Tag,
-  Gift,
-  ArrowRight,
   FileText,
+  Bell,
+  Users,
+  Maximize2,
+  Minimize2,
+  X,
+  Gift,
 } from "lucide-react";
 import * as XLSX from "xlsx";
-import { TextShimmerWave } from "@/components/loading-ui/text-shimmer-wave";
+import { ToolLoadingState } from "@/components/tools/ToolLoadingState";
+import {
+  parseChatBroadcastResult,
+  formatChatBroadcastMarkdownText,
+  type ChatBroadcastData,
+  type ShopeeBroadcastMessage,
+  type ZaloMessageItem,
+  type BroadcastStrategy,
+} from "@/lib/chat-broadcast/contract";
 
 interface ChatBroadcastOutputProps {
   result: string;
@@ -33,191 +88,88 @@ interface ChatBroadcastOutputProps {
   channel?: string;
   scenario?: string;
   onUseSample?: () => void;
+  elapsedSeconds?: number;
+  onCancel?: () => void;
 }
 
-export interface MessageItem {
-  id: string;
-  channel: "shopee" | "zalo";
-  rawTitle: string;
-  sampleNumber: string;
-  angle: string;
-  content: string;
-  charCount: number;
-  wordCount: number;
-}
+const BROADCAST_STAGES = [
+  { upToSeconds: 4, text: "💬 Phân tích chân dung khách hàng & kịch bản remarketing..." },
+  { upToSeconds: 12, text: "🛍️ Soạn tin nhắn Shopee Broadcast chuẩn < 350 ký tự..." },
+  { upToSeconds: 25, text: "📱 Thiết kế tin nhắn Zalo OA tương tác 1:1 đắc nhân tâm..." },
+  { upToSeconds: 45, text: "🎁 Lồng ghép voucher ưu đãi & lời kêu gọi hành động (CTA)..." },
+  { upToSeconds: 80, text: "✨ Hoàn thiện khung giờ vàng & checklist an toàn sàn..." },
+];
 
-export function parseChatBroadcast(text: string): {
-  shopee: MessageItem[];
-  zalo: MessageItem[];
-  advice: string;
-  adviceBullets: string[];
-  raw: string;
-} {
-  if (!text) {
-    return { shopee: [], zalo: [], advice: "", adviceBullets: [], raw: "" };
-  }
-
-  const lines = text.split("\n");
-
-  const findHeaderLineIdx = (keywords: string[]) => {
-    let charOffset = 0;
-    for (const line of lines) {
-      const trimmed = line.trim().toLowerCase();
-      if (trimmed.startsWith("#")) {
-        for (const kw of keywords) {
-          if (trimmed.includes(kw.toLowerCase())) {
-            return charOffset;
-          }
-        }
-      }
-      charOffset += line.length + 1;
-    }
-    return -1;
-  };
-
-  const shopeeIdx = findHeaderLineIdx(["shopee chat broadcast", "kịch bản shopee", "shopee"]);
-  const zaloIdx = findHeaderLineIdx(["zalo oa", "kịch bản zalo", "zalo cá nhân", "zalo"]);
-  const adviceIdx = findHeaderLineIdx(["lời khuyên", "khung giờ vàng", "lưu ý", "chuyên gia"]);
-
-  const sections = [
-    { type: "shopee", idx: shopeeIdx },
-    { type: "zalo", idx: zaloIdx },
-    { type: "advice", idx: adviceIdx },
-  ]
-    .filter((s) => s.idx !== -1)
-    .sort((a, b) => a.idx - b.idx);
-
-  let shopeeRaw = "";
-  let zaloRaw = "";
-  let adviceRaw = "";
-
-  for (let i = 0; i < sections.length; i++) {
-    const cur = sections[i];
-    const nextIdx = i < sections.length - 1 ? sections[i + 1].idx : text.length;
-    const content = text.slice(cur.idx, nextIdx).trim();
-    if (cur.type === "shopee") shopeeRaw = content;
-    if (cur.type === "zalo") zaloRaw = content;
-    if (cur.type === "advice") adviceRaw = content;
-  }
-
-  const parseVariants = (raw: string, channelType: "shopee" | "zalo"): MessageItem[] => {
-    if (!raw) return [];
-
-    const withoutHeader = raw.replace(/^##[^\n]*\n?/i, "").trim();
-    const parts = withoutHeader.split(/(?=###\s+)/i);
-    const items: MessageItem[] = [];
-    let count = 1;
-
-    for (const part of parts) {
-      const trimmed = part.trim();
-      if (!trimmed || !trimmed.startsWith("###")) continue;
-
-      const firstLineEnd = trimmed.indexOf("\n");
-      const titleLine = firstLineEnd !== -1 ? trimmed.slice(0, firstLineEnd) : trimmed;
-      const body = firstLineEnd !== -1 ? trimmed.slice(firstLineEnd).trim() : "";
-
-      const cleanTitle = titleLine
-        .replace(/^###\s*/, "")
-        .replace(/[:：]\s*$/, "")
-        .trim();
-
-      const parenMatch = cleanTitle.match(/(.*?)\((.*?)\)/);
-      const sampleNumber = parenMatch ? parenMatch[1].trim() : `Mẫu ${count}`;
-      const angle = parenMatch
-        ? parenMatch[2].trim()
-        : channelType === "shopee"
-        ? "Trực diện & Cấp bách"
-        : "Thân tình 1:1";
-
-      let cleanContent = body.trim();
-      cleanContent = cleanContent.replace(/^\*\*/, "").replace(/\*\*$/, "").trim();
-      cleanContent = cleanContent.replace(/^["'“]/, "").replace(/["'”]$/, "").trim();
-
-      if (cleanContent) {
-        items.push({
-          id: `${channelType}-${count++}`,
-          channel: channelType,
-          rawTitle: cleanTitle,
-          sampleNumber,
-          angle,
-          content: cleanContent,
-          charCount: cleanContent.length,
-          wordCount: cleanContent.split(/\s+/).filter(Boolean).length,
-        });
-      }
-    }
-    return items;
-  };
-
-  const shopee = parseVariants(shopeeRaw, "shopee");
-  const zalo = parseVariants(zaloRaw, "zalo");
-
-  // Parse advice bullets
-  const adviceBullets: string[] = [];
-  if (adviceRaw) {
-    const adviceLines = adviceRaw.split("\n");
-    for (const l of adviceLines) {
-      const trimmed = l.trim();
-      if (trimmed.startsWith("-") || trimmed.startsWith("*")) {
-        const bulletText = trimmed
-          .replace(/^[-*]\s*/, "")
-          .replace(/^\*\*/, "")
-          .replace(/\*\*$/, "")
-          .trim();
-        if (bulletText) adviceBullets.push(bulletText);
-      }
-    }
-  }
-
-  return {
-    shopee,
-    zalo,
-    advice: adviceRaw,
-    adviceBullets,
-    raw: text,
-  };
-}
-
-export function ChatBroadcastOutput({
+function ChatBroadcastOutputInner({
   result,
   loading,
   shopName,
-  channel = "both",
-  scenario = "loyalty_voucher",
   onUseSample,
+  elapsedSeconds = 0,
+  onCancel,
 }: ChatBroadcastOutputProps) {
+  const [activeTab, setActiveTab] = useState<"all" | "shopee" | "zalo" | "strategy">("all");
+  const [viewMode, setViewMode] = useState<"visual" | "raw">("visual");
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [copiedAll, setCopiedAll] = useState(false);
-  const [copiedSnippet, setCopiedSnippet] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<"chat" | "compact">("chat");
-  const [activeTab, setActiveTab] = useState<"all" | "shopee" | "zalo" | "advice">("all");
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const parsed = useMemo(() => parseChatBroadcast(result), [result]);
+  // Phân giải dữ liệu qua resilient parser 4 tầng
+  const data: ChatBroadcastData = useMemo(() => parseChatBroadcastResult(result), [result]);
 
-  const totalVariants = parsed.shopee.length + parsed.zalo.length;
+  // Chuyển đổi sang văn bản Markdown sạch đẹp
+  const markdownText = useMemo(() => {
+    if (!result) return "";
+    return formatChatBroadcastMarkdownText(data);
+  }, [result, data]);
 
-  const handleCopyAll = () => {
-    if (!result) return;
-    navigator.clipboard.writeText(result);
-    setCopiedAll(true);
-    setTimeout(() => setCopiedAll(false), 2000);
+  // Tự động cuộn lên đầu khi chuyển sang tab Markdown
+  useEffect(() => {
+    if (viewMode === "raw" && textareaRef.current) {
+      textareaRef.current.scrollTop = 0;
+    }
+  }, [viewMode, markdownText]);
+
+  // Phím tắt ESC để đóng toàn màn hình
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isFullscreen]);
+
+  const totalVariants = (data.shopeeMessages?.length || 0) + (data.zaloMessages?.length || 0);
+
+  const handleCopySnippet = async (text: string, key: string) => {
+    if (!text) return;
+    const ok = await safeCopyToClipboard(text);
+    if (ok) {
+      setCopiedKey(key);
+      setTimeout(() => setCopiedKey(null), 2000);
+    }
   };
 
-  const handleCopyText = (text: string, key: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedSnippet(key);
-    setTimeout(() => setCopiedSnippet(null), 2000);
+  const handleCopyAll = async () => {
+    if (!markdownText) return;
+    const ok = await safeCopyToClipboard(markdownText);
+    if (ok) {
+      setCopiedAll(true);
+      setTimeout(() => setCopiedAll(false), 2000);
+    }
   };
 
   const handleDownloadTxt = () => {
-    if (!result) return;
-    const blob = new Blob([result], { type: "text/plain;charset=utf-8" });
+    if (!markdownText) return;
+    const safeName = sanitizeFilename(shopName, "broadcast");
+    const blob = new Blob([markdownText], { type: "text/plain;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `kich-ban-broadcast-${(shopName || "shop")
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, "-")
-      .slice(0, 30)}.txt`;
+    a.download = `chat-broadcast-${safeName}.txt`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -228,515 +180,505 @@ export function ChatBroadcastOutput({
     const rows: any[] = [];
     let stt = 1;
 
-    parsed.shopee.forEach((item) => {
+    data.shopeeMessages?.forEach((item) => {
       rows.push({
         STT: stt++,
-        "Nền Tảng": "Shopee Chat Broadcast",
+        "Nền Tảng": "Shopee Broadcast",
         "Mẫu Tin": item.sampleNumber,
         "Góc Tiếp Cận": item.angle,
+        "Tệp Mục Tiêu": item.targetAudience,
+        "Thông Báo Đẩy (Hook)": item.notificationHook,
         "Nội Dung Tin Nhắn": item.content,
         "Số Ký Tự": item.charCount,
-        "Quy Chuẩn Sàn": item.charCount <= 350 ? "✓ Đạt chuẩn (<350)" : "⚠️ Vượt 350 ký tự",
-        "Gợi Ý Gửi Tin": "Gửi vào 12h-13h hoặc 19h-20h (Kèm voucher có hạn 24h)",
+        "Chuẩn Sàn": item.isSafeLength ? "✓ Đạt chuẩn (< 350 kt)" : "⚠️ Vượt 350 kt",
+        "Nút CTA": item.callToAction,
+        "Khung Giờ": data.strategy?.goldenHours?.shopee || "11h30 - 13h00 & 19h30 - 21h00",
       });
     });
 
-    parsed.zalo.forEach((item) => {
+    data.zaloMessages?.forEach((item) => {
       rows.push({
         STT: stt++,
         "Nền Tảng": "Zalo OA & 1:1",
         "Mẫu Tin": item.sampleNumber,
         "Góc Tiếp Cận": item.angle,
-        "Nội Dung Tin Nhắn": item.content,
+        "Tệp Mục Tiêu": "Khách cũ thân thiết",
+        "Thông Báo Đẩy (Hook)": item.greeting,
+        "Nội Dung Tin Nhắn": item.fullContent,
         "Số Ký Tự": item.charCount,
-        "Quy Chuẩn Sàn": "✓ Chuẩn CSKH 1:1 Thân tình",
-        "Gợi Ý Gửi Tin": "Hỏi thăm khách trước khi tặng voucher để tăng tương tác",
+        "Chuẩn Sàn": "✓ Chuẩn CSKH 1:1",
+        "Nút CTA": item.callToAction,
+        "Khung Giờ": data.strategy?.goldenHours?.zalo || "09h00 - 10h30 & 14h30 - 16h00",
       });
     });
 
     const worksheet = XLSX.utils.json_to_sheet(rows);
     worksheet["!cols"] = [
       { wch: 6 },
-      { wch: 22 },
+      { wch: 18 },
       { wch: 10 },
-      { wch: 30 },
-      { wch: 75 },
+      { wch: 24 },
+      { wch: 26 },
+      { wch: 32 },
+      { wch: 65 },
       { wch: 10 },
-      { wch: 22 },
-      { wch: 45 },
+      { wch: 20 },
+      { wch: 26 },
+      { wch: 35 },
     ];
 
+    const safeName = sanitizeFilename(shopName, "broadcast");
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "ChatBroadcast");
-
-    const now = new Date();
-    const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, "0")}${String(
-      now.getDate()
-    ).padStart(2, "0")}`;
-    XLSX.writeFile(workbook, `AIChoShop_Broadcast_${dateStr}.xlsx`);
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Broadcast");
+    XLSX.writeFile(workbook, `AIChoShop_Broadcast_${safeName}_${Date.now()}.xlsx`);
   };
 
-  const wordCount = result ? result.trim().split(/\s+/).filter(Boolean).length : 0;
-  const charCount = result ? result.length : 0;
-
   return (
-    <div className="bg-slate-900 rounded-2xl shadow-xl h-full flex flex-col relative overflow-hidden border border-slate-800">
-      {/* Hiệu ứng nền mờ gradient */}
-      <div className="absolute top-0 right-0 p-36 bg-orange-500/10 rounded-full blur-[110px] pointer-events-none" />
-      <div className="absolute bottom-0 left-0 p-36 bg-blue-500/10 rounded-full blur-[110px] pointer-events-none" />
-
-      {/* Header thanh công cụ - Luôn giữ đúng 1 dòng trên mobile */}
-      <div className="px-2.5 sm:px-4 py-2 sm:py-2.5 border-b border-slate-800 flex items-center justify-between gap-1 sm:gap-2 relative z-10 bg-slate-900/90 backdrop-blur-md shrink-0">
-        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-          <div className="p-1 sm:p-1.5 rounded-lg bg-gradient-to-tr from-orange-500/20 to-emerald-500/20 text-emerald-400 border border-emerald-500/30 shrink-0">
-            <MessageSquare size={14} className="sm:w-[15px] sm:h-[15px]" />
+    <div className="bg-black rounded-2xl shadow-2xl flex flex-col min-h-0 lg:h-full relative lg:overflow-hidden border border-slate-800 text-white w-full max-w-full">
+      {/* 1. HEADER THANH CÔNG CỤ TỐI GIẢN (CHỮ TRẮNG NỀN ĐEN + ICON) */}
+      <div className="sticky top-0 z-20 bg-black/95 backdrop-blur-md border-b border-slate-800 px-3 sm:px-4 py-2 flex flex-col gap-1.5 shrink-0">
+        {/* Hàng 1: Tiêu đề + Các nút thao tác */}
+        <div className="flex items-center justify-between gap-1.5 sm:gap-2">
+          {/* Trái: Icon + Tiêu đề */}
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+            <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-slate-900 border border-slate-800 flex items-center justify-center text-white shrink-0">
+              <MessageSquare size={13} className="text-white sm:w-3.5 sm:h-3.5" />
+            </div>
+            <h2 className="font-bold text-xs sm:text-sm text-white tracking-wide uppercase shrink-0 whitespace-nowrap">
+              <span className="hidden sm:inline">Tin Nhắn Chat Broadcast</span>
+              <span className="sm:hidden">Broadcast</span>
+            </h2>
+            {totalVariants > 0 && (
+              <span className="hidden sm:inline-flex text-[10px] font-mono px-1.5 py-0.5 rounded-full bg-slate-900 text-slate-300 border border-slate-800 shrink-0">
+                {totalVariants} mẫu
+              </span>
+            )}
           </div>
-          <h2 className="font-bold text-white text-xs sm:text-sm leading-none truncate whitespace-nowrap">
-            Kịch Bản Broadcast
-          </h2>
-          {totalVariants > 0 && (
-            <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hidden md:inline-block shrink-0">
-              {totalVariants} Kịch Bản
-            </span>
-          )}
-          {shopName && (
-            <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 truncate max-w-[120px] hidden lg:inline-block shrink-0">
-              {shopName}
-            </span>
+
+          {/* Phải: Nhóm nút thao tác icon-only / mini */}
+          {result && !loading && (
+            <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
+              {/* Nút Sao Chép Tất Cả (Icon-only) */}
+              <button
+                type="button"
+                onClick={handleCopyAll}
+                title={copiedAll ? "Đã sao chép toàn bộ" : "Sao chép toàn bộ"}
+                className={`w-7 h-7 rounded-lg text-xs font-bold transition-all flex items-center justify-center cursor-pointer active:scale-95 shadow-xs shrink-0 ${copiedAll
+                    ? "bg-emerald-500 text-white"
+                    : "bg-white text-black hover:bg-slate-200"
+                  }`}
+              >
+                {copiedAll ? <Check size={13} className="stroke-[3]" /> : <Copy size={13} />}
+              </button>
+
+              {/* Nút Xuất Excel */}
+              <button
+                type="button"
+                onClick={handleExportExcel}
+                title="Xuất bảng tính Excel (.xlsx)"
+                className="w-7 h-7 sm:w-auto sm:px-2 sm:py-1 rounded-lg text-xs font-medium bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95 shrink-0"
+              >
+                <FileSpreadsheet size={13} />
+                <span className="hidden sm:inline">Excel</span>
+              </button>
+
+              {/* Nút Tải TXT */}
+              <button
+                type="button"
+                onClick={handleDownloadTxt}
+                title="Tải về file TXT"
+                className="w-7 h-7 sm:w-auto sm:px-2 sm:py-1 rounded-lg text-xs font-medium bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 transition-all flex items-center justify-center gap-1 cursor-pointer active:scale-95 shrink-0"
+              >
+                <Download size={13} />
+                <span className="hidden sm:inline">TXT</span>
+              </button>
+
+              {/* Chuyển đổi Xem: Thẻ / Markdown */}
+              <div className="bg-slate-900 p-0.5 rounded-lg border border-slate-800 flex items-center gap-0.5 shrink-0 ml-0.5">
+                <button
+                  type="button"
+                  onClick={() => setViewMode("visual")}
+                  className={`px-2 py-0.5 sm:px-2.5 sm:py-0.5 rounded text-[11px] font-semibold transition-all cursor-pointer ${viewMode === "visual"
+                      ? "bg-white text-black font-bold shadow-xs"
+                      : "text-slate-400 hover:text-white"
+                    }`}
+                >
+                  Thẻ
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setViewMode("raw")}
+                  className={`px-2 py-0.5 sm:px-2.5 sm:py-0.5 rounded text-[11px] font-semibold transition-all cursor-pointer ${viewMode === "raw"
+                      ? "bg-white text-black font-bold shadow-xs"
+                      : "text-slate-400 hover:text-white"
+                    }`}
+                >
+                  <span className="sm:hidden">MD</span>
+                  <span className="hidden sm:inline">Markdown</span>
+                </button>
+              </div>
+            </div>
           )}
         </div>
 
-        {/* Nút hành động - 1 hàng duy nhất trên mobile */}
-        {result && !loading && (
-          <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-            {/* Chế độ xem: icon-only trên mobile */}
-            <div className="bg-slate-800/90 p-0.5 rounded-lg border border-slate-700/70 flex items-center">
+        {/* Hàng 2: Thanh Tab Lọc Phân Kênh (Chỉ hiện khi ở chế độ visual và đã có kết quả) */}
+        {result && !loading && viewMode === "visual" && (
+          <div className="flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar pt-0.5 border-t border-slate-900">
+            <button
+              type="button"
+              onClick={() => setActiveTab("all")}
+              className={`px-2 sm:px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1 shrink-0 ${activeTab === "all"
+                  ? "bg-white text-black font-bold"
+                  : "bg-slate-900 text-slate-400 hover:text-white border border-slate-800"
+                }`}
+            >
+              <Layers size={11} />
+              <span>Tất Cả</span>
+              {totalVariants > 0 && (
+                <span className="text-[9px] px-1 py-0.2 rounded font-mono bg-black/20 text-inherit">
+                  {totalVariants}
+                </span>
+              )}
+            </button>
+
+            {(data.shopeeMessages?.length || 0) > 0 && (
               <button
                 type="button"
-                onClick={() => setViewMode("chat")}
-                title="Mô phỏng Chat"
-                className={`p-1 sm:px-2.5 sm:py-1 rounded text-[11px] font-semibold transition-all cursor-pointer flex items-center gap-1 ${
-                  viewMode === "chat"
-                    ? "bg-emerald-600 text-white font-bold shadow-xs"
-                    : "text-slate-400 hover:text-white"
-                }`}
+                onClick={() => setActiveTab("shopee")}
+                className={`px-2 sm:px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1 shrink-0 ${activeTab === "shopee"
+                    ? "bg-white text-black font-bold"
+                    : "bg-slate-900 text-slate-400 hover:text-white border border-slate-800"
+                  }`}
               >
-                <MessageSquare size={12} />
-                <span className="hidden md:inline">Mô phỏng Chat</span>
+                <ShoppingBag size={11} />
+                <span>Shopee ({data.shopeeMessages.length})</span>
               </button>
+            )}
+
+            {(data.zaloMessages?.length || 0) > 0 && (
               <button
                 type="button"
-                onClick={() => setViewMode("compact")}
-                title="Văn bản"
-                className={`p-1 sm:px-2.5 sm:py-1 rounded text-[11px] font-semibold transition-all cursor-pointer flex items-center gap-1 ${
-                  viewMode === "compact"
-                    ? "bg-emerald-600 text-white font-bold shadow-xs"
-                    : "text-slate-400 hover:text-white"
-                }`}
+                onClick={() => setActiveTab("zalo")}
+                className={`px-2 sm:px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1 shrink-0 ${activeTab === "zalo"
+                    ? "bg-white text-black font-bold"
+                    : "bg-slate-900 text-slate-400 hover:text-white border border-slate-800"
+                  }`}
               >
-                <FileText size={12} />
-                <span className="hidden md:inline">Văn bản</span>
+                <MessageCircle size={11} />
+                <span>Zalo OA ({data.zaloMessages.length})</span>
               </button>
-            </div>
+            )}
 
-            {/* Xuất Excel */}
-            <button
-              type="button"
-              onClick={handleExportExcel}
-              title="Xuất kịch bản ra Excel (.xlsx)"
-              className="bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 text-[11px] sm:text-xs font-bold px-1.5 sm:px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer active:scale-95 shadow-xs"
-            >
-              <FileSpreadsheet size={12} className="text-emerald-400" />
-              <span>Excel</span>
-            </button>
-
-            {/* Tải txt: ẩn trên mobile, hiện trên sm+ */}
-            <button
-              type="button"
-              onClick={handleDownloadTxt}
-              title="Tải file text (.txt)"
-              className="hidden sm:flex p-1 sm:p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-lg border border-slate-700 transition-colors cursor-pointer"
-            >
-              <Download size={12} />
-            </button>
-
-            {/* Sao chép tất cả */}
-            <button
-              type="button"
-              onClick={handleCopyAll}
-              className="bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-[11px] sm:text-xs font-bold px-2 sm:px-2.5 py-1 rounded-lg transition-all shadow-md shadow-emerald-500/20 flex items-center gap-1 cursor-pointer active:scale-95"
-            >
-              {copiedAll ? <Check size={12} className="stroke-[3]" /> : <Copy size={12} />}
-              <span>{copiedAll ? "Đã chép" : "Chép hết"}</span>
-            </button>
+            {data.strategy && (
+              <button
+                type="button"
+                onClick={() => setActiveTab("strategy")}
+                className={`px-2 sm:px-2.5 py-1 rounded-md text-[11px] font-semibold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1 shrink-0 ${activeTab === "strategy"
+                    ? "bg-white text-black font-bold"
+                    : "bg-slate-900 text-slate-400 hover:text-white border border-slate-800"
+                  }`}
+              >
+                <Clock size={11} />
+                <span>Chiến Lược</span>
+              </button>
+            )}
           </div>
         )}
       </div>
 
-      {/* Tabs Phân Kênh (Shopee / Zalo / Tips) - Tinh chỉnh gọn gàng cho mobile */}
-      {result && !loading && (
-        <div className="px-2.5 sm:px-4 py-1.5 sm:py-2 border-b border-slate-800 bg-slate-950/70 flex items-center gap-1 sm:gap-1.5 overflow-x-auto no-scrollbar sm:custom-scrollbar shrink-0 relative z-10">
-          <button
-            type="button"
-            onClick={() => setActiveTab("all")}
-            className={`px-2 sm:px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 sm:gap-1.5 cursor-pointer shrink-0 active:scale-95 ${
-              activeTab === "all"
-                ? "bg-slate-800 text-white border border-slate-700 shadow-xs"
-                : "text-slate-400 hover:text-slate-200"
-            }`}
-          >
-            <Layers size={12} className="sm:w-[13px] sm:h-[13px]" />
-            <span>Tất Cả</span>
-            {totalVariants > 0 && (
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-slate-700/80 font-mono">
-                {totalVariants}
-              </span>
-            )}
-          </button>
-
-          {parsed.shopee.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setActiveTab("shopee")}
-              className={`px-2 sm:px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 sm:gap-1.5 cursor-pointer shrink-0 active:scale-95 ${
-                activeTab === "shopee"
-                  ? "bg-orange-500/20 text-orange-300 border border-orange-500/40 shadow-xs"
-                  : "text-slate-400 hover:text-orange-400"
-              }`}
-            >
-              <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-orange-500" />
-              <span className="sm:hidden">Shopee</span>
-              <span className="hidden sm:inline">Shopee Broadcast</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-orange-500/20 font-mono text-orange-300">
-                {parsed.shopee.length}
-              </span>
-            </button>
-          )}
-
-          {parsed.zalo.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setActiveTab("zalo")}
-              className={`px-2 sm:px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 sm:gap-1.5 cursor-pointer shrink-0 active:scale-95 ${
-                activeTab === "zalo"
-                  ? "bg-blue-500/20 text-blue-300 border border-blue-500/40 shadow-xs"
-                  : "text-slate-400 hover:text-blue-400"
-              }`}
-            >
-              <div className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-blue-500" />
-              <span className="sm:hidden">Zalo OA</span>
-              <span className="hidden sm:inline">Zalo OA & 1:1</span>
-              <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-blue-500/20 font-mono text-blue-300">
-                {parsed.zalo.length}
-              </span>
-            </button>
-          )}
-
-          {parsed.advice && (
-            <button
-              type="button"
-              onClick={() => setActiveTab("advice")}
-              className={`px-2 sm:px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 sm:gap-1.5 cursor-pointer shrink-0 active:scale-95 ${
-                activeTab === "advice"
-                  ? "bg-amber-500/20 text-amber-300 border border-amber-500/40 shadow-xs"
-                  : "text-slate-400 hover:text-amber-300"
-              }`}
-            >
-              <Clock size={12} className="text-amber-400 sm:w-[13px] sm:h-[13px]" />
-              <span className="sm:hidden">Tips Giờ Vàng</span>
-              <span className="hidden sm:inline">Khung Giờ & Tips</span>
-            </button>
-          )}
-        </div>
-      )}
-
-      {/* Vùng hiển thị nội dung: Chỉ cuộn nội bộ tại đây */}
-      <div className="flex-1 min-h-0 p-3 sm:p-5 overflow-y-auto custom-scrollbar relative z-10 pb-28 lg:pb-4">
+      {/* 2. VÙNG NỘI DUNG CHÍNH (CHỮ TRẮNG NỀN ĐEN TỐI GIẢN) */}
+      <div
+        className={`lg:flex-1 lg:min-h-0 p-3 sm:p-4 flex flex-col ${viewMode === "raw" ? "min-h-[420px] lg:h-full lg:overflow-hidden" : "lg:overflow-y-auto custom-scrollbar pb-16 lg:pb-3"
+          }`}
+      >
         {loading ? (
-          <div className="h-full min-h-[360px] flex flex-col items-center justify-center text-center p-6 space-y-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-orange-500/20 to-emerald-500/20 border border-orange-500/30 flex items-center justify-center text-orange-400 shadow-lg shadow-orange-500/10">
-              <Sparkles size={26} className="animate-spin text-emerald-400 duration-1000" />
-            </div>
-            <div className="space-y-1.5">
-              <div className="font-bold text-base text-white">
-                <TextShimmerWave>AI Đang Soạn Tin Nhắn Kéo Khách Cũ...</TextShimmerWave>
+          <ToolLoadingState
+            elapsedSeconds={elapsedSeconds}
+            onCancel={onCancel}
+            title="Đang Soạn Kịch Bản Broadcast Chuẩn Sàn..."
+            stages={BROADCAST_STAGES}
+            accentColor="emerald"
+            minHeightClass="min-h-[320px]"
+          />
+        ) : result ? (
+          viewMode === "raw" ? (
+            /* CHẾ ĐỘ XEM MARKDOWN THUẦN (FULL CHIỀU CAO + MODAL TOÀN MÀN HÌNH) */
+            <div className="flex-1 flex flex-col h-full min-h-0 relative">
+              <div className="flex items-center justify-between pb-2 text-[11px] text-slate-400 shrink-0">
+                <span className="font-mono">Văn bản Markdown sạch · 100% không dính ký tự JSON</span>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setIsFullscreen(true)}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-900 border border-slate-800 transition cursor-pointer"
+                    title="Mở toàn màn hình (Phím tắt: Esc để thoát)"
+                  >
+                    <Maximize2 size={13} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCopyAll}
+                    title={copiedAll ? "Đã sao chép toàn bộ" : "Sao chép toàn bộ"}
+                    className={`p-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center cursor-pointer active:scale-95 ${copiedAll
+                        ? "bg-emerald-500 text-white"
+                        : "bg-white text-black hover:bg-slate-200"
+                      }`}
+                  >
+                    {copiedAll ? <Check size={13} className="stroke-[3]" /> : <Copy size={13} />}
+                  </button>
+                </div>
               </div>
-              <p className="text-xs text-slate-400 max-w-sm">
-                Đang xây dựng kịch bản đắc nhân tâm chuẩn Shopee &lt; 350 ký tự và Zalo OA thân tình...
+
+              <textarea
+                ref={textareaRef}
+                readOnly
+                value={markdownText}
+                className="w-full flex-1 h-full min-h-[320px] lg:min-h-0 p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 text-xs sm:text-[13px] font-mono leading-relaxed resize-none focus:outline-hidden custom-scrollbar"
+              />
+            </div>
+          ) : (
+            /* CHẾ ĐỘ XEM THẺ TRỰC QUAN (VISUAL CARDS TỐI GIẢN) */
+            <div className="space-y-4">
+              {/* 1. DANH SÁCH SHOPEE BROADCAST */}
+              {(activeTab === "all" || activeTab === "shopee") && (data.shopeeMessages?.length || 0) > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between pb-1 border-b border-slate-900">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-white uppercase tracking-wider">
+                      <ShoppingBag size={13} />
+                      <span>Shopee Chat Broadcast</span>
+                      <span className="text-[10px] font-normal text-slate-400 lowercase">(&lt; 350 ký tự)</span>
+                    </div>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      {data.shopeeMessages.length} mẫu
+                    </span>
+                  </div>
+
+                  <div className="grid gap-3">
+                    {data.shopeeMessages.map((item) => (
+                      <ShopeeItemCard
+                        key={item.id}
+                        item={item}
+                        isCopied={copiedKey === item.id}
+                        isHookCopied={copiedKey === `${item.id}-hook`}
+                        onCopy={() => handleCopySnippet(item.content, item.id)}
+                        onCopyHook={() => handleCopySnippet(item.notificationHook, `${item.id}-hook`)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 2. DANH SÁCH ZALO OA */}
+              {(activeTab === "all" || activeTab === "zalo") && (data.zaloMessages?.length || 0) > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between pb-1 border-b border-slate-900">
+                    <div className="flex items-center gap-1.5 text-xs font-bold text-white uppercase tracking-wider">
+                      <MessageCircle size={13} />
+                      <span>Zalo OA & CSKH 1:1</span>
+                      <span className="text-[10px] font-normal text-slate-400 lowercase">(thân tình)</span>
+                    </div>
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      {data.zaloMessages.length} mẫu
+                    </span>
+                  </div>
+
+                  <div className="grid gap-3">
+                    {data.zaloMessages.map((item) => (
+                      <ZaloItemCard
+                        key={item.id}
+                        item={item}
+                        isCopied={copiedKey === item.id}
+                        onCopy={() => handleCopySnippet(item.fullContent, item.id)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* 3. CHIẾN LƯỢC & KHUNG GIỜ VÀNG */}
+              {(activeTab === "all" || activeTab === "strategy") && data.strategy && (
+                <StrategySection strategy={data.strategy} />
+              )}
+            </div>
+          )
+        ) : (
+          /* TRẠNG THÁI RỖNG (EMPTY STATE) */
+          <div className="h-full min-h-[300px] flex flex-col items-center justify-center text-center p-6 space-y-3">
+            <div className="w-12 h-12 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-400">
+              <MessageSquare size={22} />
+            </div>
+            <div className="space-y-1 max-w-xs">
+              <h3 className="text-sm font-bold text-white">Chưa Có Kịch Bản Chat</h3>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Nhập thông tin sản phẩm và ưu đãi ở cột bên trái để AI soạn tin nhắn chuẩn sàn.
               </p>
             </div>
-          </div>
-        ) : result ? (
-          <div className="space-y-4 sm:space-y-6">
-            {/* Thanh tóm tắt nhanh */}
-            <div className="flex items-center justify-between gap-2 pb-2 sm:pb-2.5 border-b border-slate-800 text-[11px] text-slate-400">
-              <div className="flex items-center gap-2 sm:gap-3">
-                <span>
-                  Kịch bản: <strong className="text-white font-mono">{totalVariants}</strong>
-                </span>
-                <span>•</span>
-                <span>
-                  Tổng: <strong className="text-white font-mono">{charCount}</strong> ký tự
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 text-emerald-400 font-medium shrink-0">
-                <ShieldCheck size={13} />
-                <span className="hidden sm:inline">Né phạt thuật toán SPAM · 100% tỷ lệ phản hồi</span>
-                <span className="sm:hidden">Chuẩn né SPAM</span>
-              </div>
-            </div>
-
-            {/* 1. KỊCH BẢN SHOPEE */}
-            {(activeTab === "all" || activeTab === "shopee") && parsed.shopee.length > 0 && (
-              <div className="space-y-2.5 sm:space-y-4">
-                <div className="flex items-center justify-between pb-1.5 sm:pb-2 border-b border-orange-500/30">
-                  <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-                    <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-lg bg-orange-500/20 text-orange-400 flex items-center justify-center shrink-0">
-                      <ShoppingBag size={13} className="sm:w-[14px] sm:h-[14px]" />
-                    </div>
-                    <h3 className="text-xs sm:text-sm font-black text-orange-400 uppercase tracking-wider truncate">
-                      Shopee Broadcast
-                    </h3>
-                    <span className="text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-orange-500/10 text-orange-300 border border-orange-500/30 shrink-0">
-                      &lt; 350 Ký Tự
-                    </span>
-                  </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 shrink-0">
-                    {parsed.shopee.length} mẫu
-                  </span>
-                </div>
-
-                <div className="grid gap-2.5 sm:gap-4">
-                  {parsed.shopee.map((item) => (
-                    <ShopeeMessageCard
-                      key={item.id}
-                      item={item}
-                      shopName={shopName}
-                      viewMode={viewMode}
-                      isCopied={copiedSnippet === item.id}
-                      onCopy={() => handleCopyText(item.content, item.id)}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* 2. KỊCH BẢN ZALO */}
-            {(activeTab === "all" || activeTab === "zalo") && parsed.zalo.length > 0 && (
-              <div className="space-y-2.5 sm:space-y-4">
-                <div className="flex items-center justify-between pb-1.5 sm:pb-2 border-b border-blue-500/30">
-                  <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-                    <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
-                      <MessageCircle size={13} className="sm:w-[14px] sm:h-[14px]" />
-                    </div>
-                    <h3 className="text-xs sm:text-sm font-black text-blue-400 uppercase tracking-wider truncate">
-                      Zalo OA & 1:1
-                    </h3>
-                    <span className="text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-300 border border-blue-500/30 shrink-0">
-                      CSKH Thân Tình
-                    </span>
-                  </div>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700 shrink-0">
-                    {parsed.zalo.length} mẫu
-                  </span>
-                </div>
-
-                <div className="grid gap-2.5 sm:gap-4">
-                  {parsed.zalo.map((item) => (
-                    <ZaloMessageCard
-                      key={item.id}
-                      item={item}
-                      shopName={shopName}
-                      viewMode={viewMode}
-                      isCopied={copiedSnippet === item.id}
-                      onCopy={() => handleCopyText(item.content, item.id)}
-                    />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* 3. LỜI KHUYÊN & KHUNG GIỜ VÀNG */}
-            {(activeTab === "all" || activeTab === "advice") && parsed.advice && (
-              <AdviceStrategyCard
-                advice={parsed.advice}
-                bullets={parsed.adviceBullets}
-              />
-            )}
-          </div>
-        ) : (
-          /* Empty State */
-          <div className="h-full min-h-[360px] flex flex-col items-center justify-center text-center p-6 space-y-3">
-            <div className="w-14 h-14 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-400 mb-1 shadow-lg shadow-orange-500/10">
-              <MessageSquare size={28} />
-            </div>
-            <h3 className="text-base font-bold text-slate-200">
-              Chưa Có Kịch Bản Chat Remarketing
-            </h3>
-            <p className="text-xs text-slate-400 max-w-sm leading-relaxed">
-              Chọn kênh gửi, nhập tên shop và ưu đãi ở cột bên trái rồi nhấn{" "}
-              <strong className="text-emerald-400">&quot;Soạn Tin Nhắn Kéo Khách Cũ&quot;</strong> để tạo ngay 6 kịch bản chuyển đổi cao.
-            </p>
             {onUseSample && (
               <button
                 type="button"
                 onClick={onUseSample}
-                className="mt-1 inline-flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 px-4 py-2 text-xs font-bold text-slate-950 shadow-md shadow-emerald-500/20 cursor-pointer transition-all active:scale-95"
+                className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-black text-xs font-bold hover:bg-slate-200 transition cursor-pointer active:scale-95"
               >
-                <Sparkles size={14} /> Chạy thử với dữ liệu mẫu (Demo)
+                <Sparkles size={13} /> Dữ Liệu Mẫu
               </button>
             )}
           </div>
         )}
       </div>
+
+      {/* 3. MODAL TOÀN MÀN HÌNH CHO MARKDOWN */}
+      {isFullscreen && (
+        <div className="fixed inset-0 z-50 bg-black/95 backdrop-blur-md flex flex-col p-3 sm:p-6 animate-in fade-in duration-200">
+          <div className="flex items-center justify-between pb-3 border-b border-slate-800 shrink-0">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded bg-slate-900 border border-slate-800 flex items-center justify-center text-white">
+                <FileText size={13} />
+              </div>
+              <span className="font-bold text-sm text-white">Toàn Màn Hình: Tin Nhắn Chat Broadcast</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleCopyAll}
+                title={copiedAll ? "Đã sao chép toàn bộ" : "Sao chép toàn bộ"}
+                className={`p-1.5 rounded-lg text-xs font-bold transition flex items-center justify-center cursor-pointer active:scale-95 ${copiedAll
+                    ? "bg-emerald-500 text-white"
+                    : "bg-white text-black hover:bg-slate-200"
+                  }`}
+              >
+                {copiedAll ? <Check size={13} className="stroke-[3]" /> : <Copy size={13} />}
+              </button>
+              <button
+                type="button"
+                onClick={() => setIsFullscreen(false)}
+                className="p-1 rounded text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+                title="Đóng (Esc)"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          </div>
+          <div className="flex-1 min-h-0 pt-3">
+            <textarea
+              readOnly
+              value={markdownText}
+              className="w-full h-full p-4 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 text-sm font-mono leading-relaxed resize-none focus:outline-hidden custom-scrollbar"
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
 // ==========================================
-// CARD: SHOPEE MESSAGE ITEM
+// THẺ ITEM: SHOPEE BROADCAST (TỐI GIẢN CHỮ TRẮNG NỀN ĐEN)
 // ==========================================
-interface MessageCardProps {
-  item: MessageItem;
-  shopName: string;
-  viewMode: "chat" | "compact";
+function ShopeeItemCard({
+  item,
+  isCopied,
+  isHookCopied,
+  onCopy,
+  onCopyHook,
+}: {
+  item: ShopeeBroadcastMessage;
   isCopied: boolean;
+  isHookCopied: boolean;
   onCopy: () => void;
-}
-
-function ShopeeMessageCard({ item, shopName, viewMode, isCopied, onCopy }: MessageCardProps) {
+  onCopyHook: () => void;
+}) {
   const isOver = item.charCount > 350;
 
   return (
-    <div className="bg-slate-950/80 border border-slate-800 hover:border-orange-500/40 rounded-2xl overflow-hidden shadow-xs transition-all">
-      {/* Header Thẻ - Luôn 1 dòng trên mobile */}
-      <div className="px-2.5 sm:px-4 py-2 sm:py-2.5 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between gap-1.5 sm:gap-2">
-        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-          <span className="w-2 h-2 rounded-full bg-orange-500 shadow-xs shrink-0" />
-          <span className="text-xs font-bold text-white shrink-0">{item.sampleNumber}</span>
-          <span className="text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-md bg-orange-500/15 text-orange-300 border border-orange-500/30 truncate max-w-[95px] sm:max-w-none">
-            {item.angle}
-          </span>
-        </div>
+    <div className="p-3 sm:p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2.5">
+      {/* Header Thẻ: 2 tầng chuẩn responsive chống vỡ tràn viền trên mobile */}
+      <div className="space-y-2 pb-2.5 border-b border-slate-900">
+        {/* TẦNG 1: [Mẫu 1] + [✓ 274/350] bên trái <=======> [Nút Copy] bên phải */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="px-2 py-0.5 rounded-md bg-white text-black text-xs font-black shrink-0 tracking-wide">
+              {item.sampleNumber}
+            </span>
+            <span
+              className={`text-[10px] font-mono px-2 py-0.5 rounded-md border flex items-center gap-1 shrink-0 ${isOver
+                  ? "bg-rose-950/40 text-rose-300 border-rose-800"
+                  : "bg-slate-900 text-slate-300 border-slate-800"
+                }`}
+            >
+              {isOver ? (
+                <AlertTriangle size={10} className="text-rose-400" />
+              ) : (
+                <CheckCircle2 size={10} className="text-emerald-400" />
+              )}
+              <span>{item.charCount}/350</span>
+            </span>
+          </div>
 
-        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-          {/* Badge đếm ký tự chuẩn sàn 350 */}
-          <span
-            className={`text-[10px] font-mono font-bold px-1.5 sm:px-2 py-0.5 rounded-md border flex items-center gap-1 ${
-              isOver
-                ? "bg-rose-500/20 text-rose-300 border-rose-500/40"
-                : "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
-            }`}
-            title={
-              isOver
-                ? "Vượt quá 350 ký tự - Tin nhắn sẽ bị Shopee ẩn nút 'Xem thêm'"
-                : "Chuẩn Shopee - Hiển thị 100% trọn vẹn trên popup chat"
-            }
-          >
-            {isOver ? <AlertTriangle size={10} /> : <CheckCircle2 size={10} />}
-            <span className="sm:hidden">{item.charCount} kt</span>
-            <span className="hidden sm:inline">{item.charCount} / 350 ký tự</span>
-          </span>
-
-          {/* Nút sao chép */}
           <button
             type="button"
             onClick={onCopy}
-            className={`text-[11px] sm:text-xs px-2 sm:px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer font-bold active:scale-95 ${
-              isCopied
-                ? "bg-emerald-500 text-slate-950 font-black shadow-xs"
-                : "bg-orange-500/20 hover:bg-orange-500/30 text-orange-300 hover:text-orange-200 border border-orange-500/40"
-            }`}
+            title={isCopied ? "Đã sao chép tin nhắn" : "Sao chép tin nhắn Shopee"}
+            className={`w-7 h-7 rounded-md transition-all flex items-center justify-center cursor-pointer active:scale-90 shrink-0 ${isCopied
+                ? "bg-emerald-500 text-white shadow-xs"
+                : "bg-white text-black hover:bg-slate-200"
+              }`}
           >
-            {isCopied ? <Check size={11} className="stroke-[3]" /> : <Copy size={11} />}
-            <span className="sm:hidden">{isCopied ? "Đã chép" : "Chép"}</span>
-            <span className="hidden sm:inline">{isCopied ? "Đã Chép!" : "Sao chép"}</span>
+            {isCopied ? <Check size={12} className="stroke-[3]" /> : <Copy size={12} />}
           </button>
+        </div>
+
+        {/* TẦNG 2: [Góc tiếp cận] + [Tệp khách hàng] - Tự xuống dòng mượt mà nếu màn hình hẹp */}
+        <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+          <span className="font-semibold text-slate-200 bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800 flex items-center gap-1">
+            <Sparkles size={10} className="text-amber-400 shrink-0" />
+            <span>{item.angle}</span>
+          </span>
+          {item.targetAudience && (
+            <span className="text-slate-400 bg-slate-900/60 px-2 py-0.5 rounded-md border border-slate-900 flex items-center gap-1">
+              <Users size={10} className="text-slate-400 shrink-0" />
+              <span className="text-slate-300 font-medium truncate">{item.targetAudience}</span>
+            </span>
+          )}
         </div>
       </div>
 
-      {/* Nội dung tin nhắn: Tối ưu riêng biệt cho Mobile và Desktop */}
-      {viewMode === "chat" ? (
-        <>
-          {/* 1. GIAO DIỆN MOBILE RIÊNG BIỆT (sm:hidden) - Gọn gàng, không bị thụt lề bởi avatar, đọc thoải mái */}
-          <div className="sm:hidden p-3 bg-slate-950/90 space-y-2">
-            {/* Thanh thông tin shop siêu gọn */}
-            <div className="flex items-center justify-between text-[11px] text-slate-400 pb-1.5 border-b border-slate-800/60">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center text-white text-[9px] font-black shrink-0">
-                  {shopName ? shopName.slice(0, 1).toUpperCase() : "S"}
-                </div>
-                <span className="text-orange-300 font-bold text-xs truncate max-w-[150px]">
-                  {shopName || "Gian Hàng Shopee"}
-                </span>
-                <span className="text-[8px] px-1 py-0.2 rounded bg-orange-500/20 text-orange-300 font-bold shrink-0">
-                  OFFICIAL
-                </span>
-              </div>
-              <span className="text-[10px] text-slate-500 shrink-0">Vừa xong</span>
+      {/* Thông Báo Đẩy (Hook Màn Hình Khóa): Hiển thị gọn gàng */}
+      {item.notificationHook && (
+        <div className="p-2.5 rounded-xl bg-slate-900/70 border border-slate-800/90 flex items-start justify-between gap-2.5 hover:border-slate-700/80 transition-colors">
+          <div className="flex items-start gap-2 min-w-0 flex-1">
+            <div className="w-5 h-5 rounded bg-slate-800 border border-slate-700/80 flex items-center justify-center shrink-0 mt-0.5 text-amber-400">
+              <Bell size={10} />
             </div>
-
-            {/* Khung nội dung text chính */}
-            <p className="text-[12.5px] text-slate-100 leading-relaxed whitespace-pre-line font-sans select-text pt-0.5">
-              {item.content}
-            </p>
-
-            {/* Giả lập nút hành động Shopee gọn gàng */}
-            <div className="pt-2 border-t border-slate-800/70 flex items-center justify-between">
-              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-orange-500/15 text-orange-300 text-[10px] font-bold border border-orange-500/30">
-                <ShoppingBag size={10} />
-                <span>[🛒 Nút Giỏ Hàng Ưu Đãi]</span>
-              </div>
-              <button
-                type="button"
-                onClick={onCopy}
-                className="text-[10px] text-orange-400 hover:text-orange-300 font-bold active:scale-95 cursor-pointer"
-              >
-                Chép tin nhắn →
-              </button>
+            <div className="min-w-0 flex-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block font-mono">
+                Thông Báo Đẩy (Màn Hình Khóa)
+              </span>
+              <p className="text-xs text-white font-medium break-words leading-relaxed mt-0.5">
+                {item.notificationHook}
+              </p>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={onCopyHook}
+            title={isHookCopied ? "Đã sao chép hook" : "Sao chép dòng thông báo đẩy"}
+            className="w-6 h-6 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white border border-slate-700/60 transition flex items-center justify-center cursor-pointer shrink-0 mt-0.5 active:scale-90"
+          >
+            {isHookCopied ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
+          </button>
+        </div>
+      )}
 
-          {/* 2. GIAO DIỆN DESKTOP (hidden sm:block) - Đầy đủ mô phỏng chat sàn */}
-          <div className="hidden sm:block p-4 bg-slate-950/90 space-y-2.5">
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-orange-600 to-amber-500 flex items-center justify-center text-white text-xs font-black shrink-0 shadow-md border border-orange-400/40">
-                {shopName ? shopName.slice(0, 1).toUpperCase() : "S"}
-              </div>
+      {/* Nội Dung Tin Nhắn Chat */}
+      <div className="p-3 sm:p-3.5 rounded-xl bg-slate-900 border border-slate-800 text-xs sm:text-[13px] text-slate-100 leading-relaxed whitespace-pre-line select-text font-normal">
+        {item.content}
+      </div>
 
-              <div className="space-y-1.5 flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-200 truncate">
-                    {shopName || "Gian Hàng Shopee"}
-                  </span>
-                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-orange-500/20 text-orange-300 border border-orange-500/30 font-bold">
-                    OFFICIAL
-                  </span>
-                  <span className="text-[10px] text-slate-500 ml-auto">Vừa xong</span>
-                </div>
-
-                {/* Bong bóng tin nhắn Shopee */}
-                <div className="rounded-2xl rounded-tl-xs p-3.5 bg-slate-900 border border-orange-500/30 text-xs text-slate-100 leading-relaxed shadow-sm space-y-2">
-                  <p className="whitespace-pre-line font-sans select-text">{item.content}</p>
-
-                  {/* Giả lập nút hành động Shopee */}
-                  <div className="pt-2 border-t border-slate-800/80 flex items-center">
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-orange-500/20 text-orange-300 text-[11px] font-bold border border-orange-500/40">
-                      <ShoppingBag size={11} />
-                      <span>[🛒 Bấm Vào Giỏ Hàng & Nhận Ưu Đãi]</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-      ) : (
-        /* GIAO DIỆN COMPACT TEXT */
-        <div className="p-3 sm:p-4 bg-slate-950/60">
-          <p className="text-[12px] sm:text-xs text-slate-200 leading-relaxed whitespace-pre-wrap font-sans select-text">
-            {item.content}
-          </p>
+      {/* Nút Kêu Gọi CTA */}
+      {item.callToAction && (
+        <div className="flex items-center gap-1.5 text-[11px] text-slate-400 pt-0.5">
+          <span className="font-mono text-[10px] uppercase font-bold text-slate-400 shrink-0">Nút CTA:</span>
+          <span className="text-slate-200 font-medium break-words">{item.callToAction}</span>
         </div>
       )}
     </div>
@@ -744,126 +686,68 @@ function ShopeeMessageCard({ item, shopName, viewMode, isCopied, onCopy }: Messa
 }
 
 // ==========================================
-// CARD: ZALO MESSAGE ITEM
+// THẺ ITEM: ZALO OA (TỐI GIẢN CHỮ TRẮNG NỀN ĐEN)
 // ==========================================
-function ZaloMessageCard({ item, shopName, viewMode, isCopied, onCopy }: MessageCardProps) {
+function ZaloItemCard({
+  item,
+  isCopied,
+  onCopy,
+}: {
+  item: ZaloMessageItem;
+  isCopied: boolean;
+  onCopy: () => void;
+}) {
   return (
-    <div className="bg-slate-950/80 border border-slate-800 hover:border-blue-500/40 rounded-2xl overflow-hidden shadow-xs transition-all">
-      {/* Header Thẻ - Luôn 1 dòng trên mobile */}
-      <div className="px-2.5 sm:px-4 py-2 sm:py-2.5 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between gap-1.5 sm:gap-2">
-        <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
-          <span className="w-2 h-2 rounded-full bg-blue-500 shadow-xs shrink-0" />
-          <span className="text-xs font-bold text-white shrink-0">{item.sampleNumber}</span>
-          <span className="text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-md bg-blue-500/15 text-blue-300 border border-blue-500/30 truncate max-w-[95px] sm:max-w-none">
-            {item.angle}
-          </span>
-        </div>
+    <div className="p-3 sm:p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2.5">
+      {/* Header Thẻ: 2 tầng chuẩn responsive chống vỡ tràn viền trên mobile */}
+      <div className="space-y-2 pb-2.5 border-b border-slate-900">
+        {/* TẦNG 1: [Mẫu 1] + [Độ dài ký tự] bên trái <=======> [Nút Copy] bên phải */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="px-2 py-0.5 rounded-md bg-white text-black text-xs font-black shrink-0 tracking-wide">
+              {item.sampleNumber}
+            </span>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-md border border-slate-800 bg-slate-900 text-slate-300 flex items-center gap-1 shrink-0">
+              <CheckCircle2 size={10} className="text-emerald-400" />
+              <span>{item.charCount} kt</span>
+            </span>
+          </div>
 
-        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-          <span className="text-[10px] font-mono text-slate-400 bg-slate-800/90 px-1.5 sm:px-2 py-0.5 rounded-md border border-slate-700">
-            <span className="sm:hidden">{item.charCount} kt</span>
-            <span className="hidden sm:inline">{item.charCount} ký tự</span>
-          </span>
-
-          {/* Nút sao chép */}
           <button
             type="button"
             onClick={onCopy}
-            className={`text-[11px] sm:text-xs px-2 sm:px-2.5 py-1 rounded-lg transition-all flex items-center gap-1 cursor-pointer font-bold active:scale-95 ${
-              isCopied
-                ? "bg-emerald-500 text-slate-950 font-black shadow-xs"
-                : "bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 hover:text-blue-200 border border-blue-500/40"
-            }`}
+            title={isCopied ? "Đã sao chép tin nhắn" : "Sao chép tin nhắn Zalo"}
+            className={`w-7 h-7 rounded-md transition-all flex items-center justify-center cursor-pointer active:scale-90 shrink-0 ${isCopied
+                ? "bg-emerald-500 text-white shadow-xs"
+                : "bg-white text-black hover:bg-slate-200"
+              }`}
           >
-            {isCopied ? <Check size={11} className="stroke-[3]" /> : <Copy size={11} />}
-            <span className="sm:hidden">{isCopied ? "Đã chép" : "Chép"}</span>
-            <span className="hidden sm:inline">{isCopied ? "Đã Chép!" : "Sao chép"}</span>
+            {isCopied ? <Check size={12} className="stroke-[3]" /> : <Copy size={12} />}
           </button>
+        </div>
+
+        {/* TẦNG 2: [Góc tiếp cận] */}
+        <div className="flex items-center gap-1.5 text-[11px]">
+          <span className="font-semibold text-slate-200 bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800 flex items-center gap-1">
+            <Sparkles size={10} className="text-blue-400 shrink-0" />
+            <span>{item.angle}</span>
+          </span>
         </div>
       </div>
 
-      {/* Nội dung tin nhắn: Tối ưu riêng biệt cho Mobile và Desktop */}
-      {viewMode === "chat" ? (
-        <>
-          {/* 1. GIAO DIỆN MOBILE RIÊNG BIỆT (sm:hidden) - Gọn gàng, bề ngang rộng rãi, dễ đọc */}
-          <div className="sm:hidden p-3 bg-slate-950/90 space-y-2">
-            {/* Thanh thông tin CSKH siêu gọn */}
-            <div className="flex items-center justify-between text-[11px] text-slate-400 pb-1.5 border-b border-slate-800/60">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <div className="w-4 h-4 rounded-full bg-gradient-to-tr from-blue-600 to-cyan-500 flex items-center justify-center text-white text-[9px] font-black shrink-0">
-                  {shopName ? shopName.slice(0, 1).toUpperCase() : "Z"}
-                </div>
-                <span className="text-blue-300 font-bold text-xs truncate max-w-[150px]">
-                  {shopName || "Chăm Sóc Khách Hàng"}
-                </span>
-                <span className="text-[8px] px-1 py-0.2 rounded bg-blue-500/20 text-blue-300 font-bold shrink-0">
-                  ZALO OA
-                </span>
-              </div>
-              <span className="text-[10px] text-slate-500 shrink-0">Vừa xong</span>
-            </div>
+      {/* Nội Dung Tin Nhắn Hoàn Chỉnh */}
+      <div className="p-3 sm:p-3.5 rounded-xl bg-slate-900 border border-slate-800 text-xs sm:text-[13px] text-slate-100 leading-relaxed whitespace-pre-line select-text">
+        {item.fullContent}
+      </div>
 
-            {/* Khung nội dung text chính */}
-            <p className="text-[12.5px] text-slate-100 leading-relaxed whitespace-pre-line font-sans select-text pt-0.5">
-              {item.content}
-            </p>
-
-            {/* Giả lập nút hành động Zalo gọn gàng */}
-            <div className="pt-2 border-t border-slate-800/70 flex items-center justify-between">
-              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-500/15 text-blue-300 text-[10px] font-bold border border-blue-500/30">
-                <Gift size={10} />
-                <span>[🎁 Mã Ưu Đãi / Phản Hồi Shop]</span>
-              </div>
-              <button
-                type="button"
-                onClick={onCopy}
-                className="text-[10px] text-blue-400 hover:text-blue-300 font-bold active:scale-95 cursor-pointer"
-              >
-                Chép tin nhắn →
-              </button>
-            </div>
+      {/* Quà Tặng / Ưu Đãi Độc Quyền nếu có */}
+      {item.giftOffer && (
+        <div className="p-2.5 rounded-lg bg-slate-900/60 border border-slate-800/80 flex items-start gap-2 text-[11px]">
+          <Gift size={13} className="text-amber-400 shrink-0 mt-0.5" />
+          <div className="min-w-0 flex-1">
+            <span className="text-[10px] font-bold text-slate-400 uppercase font-mono block">Ưu Đãi / Quà Tặng:</span>
+            <span className="text-slate-200 leading-snug">{item.giftOffer}</span>
           </div>
-
-          {/* 2. GIAO DIỆN DESKTOP (hidden sm:block) - Đầy đủ mô phỏng Zalo OA */}
-          <div className="hidden sm:block p-4 bg-slate-950/90 space-y-2.5">
-            <div className="flex items-start gap-3">
-              <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-blue-600 to-cyan-500 flex items-center justify-center text-white text-xs font-black shrink-0 shadow-md border border-blue-400/40">
-                {shopName ? shopName.slice(0, 1).toUpperCase() : "Z"}
-              </div>
-
-              <div className="space-y-1.5 flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-slate-200 truncate">
-                    {shopName || "Chăm Sóc Khách Hàng"}
-                  </span>
-                  <span className="text-[9px] px-1.5 py-0.2 rounded bg-blue-500/20 text-blue-300 border border-blue-500/30 font-bold">
-                    ZALO OA
-                  </span>
-                  <span className="text-[10px] text-slate-500 ml-auto">Vừa xong</span>
-                </div>
-
-                {/* Bong bóng tin nhắn Zalo */}
-                <div className="rounded-2xl rounded-tl-xs p-3.5 bg-slate-900 border border-blue-500/30 text-xs text-slate-100 leading-relaxed shadow-sm space-y-2">
-                  <p className="whitespace-pre-line font-sans select-text">{item.content}</p>
-
-                  {/* Giả lập nút hành động Zalo */}
-                  <div className="pt-2 border-t border-slate-800/80 flex items-center">
-                    <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-blue-500/20 text-blue-300 text-[11px] font-bold border border-blue-500/40">
-                      <Gift size={11} />
-                      <span>[🎁 Nhận Mã Ưu Đãi / Phản Hồi Cho Shop]</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </>
-      ) : (
-        /* GIAO DIỆN COMPACT TEXT */
-        <div className="p-3 sm:p-4 bg-slate-950/60">
-          <p className="text-[12px] sm:text-xs text-slate-200 leading-relaxed whitespace-pre-wrap font-sans select-text">
-            {item.content}
-          </p>
         </div>
       )}
     </div>
@@ -871,77 +755,124 @@ function ZaloMessageCard({ item, shopName, viewMode, isCopied, onCopy }: Message
 }
 
 // ==========================================
-// CARD: LỜI KHUYÊN & CHIẾN LƯỢC GỬI TIN
+// KHỐI CHIẾN LƯỢC & KHUNG GIỜ VÀNG (TỐI GIẢN)
 // ==========================================
-function AdviceStrategyCard({ advice, bullets }: { advice: string; bullets: string[] }) {
+function StrategySection({ strategy }: { strategy: BroadcastStrategy }) {
   return (
-    <div className="rounded-2xl border border-amber-500/40 bg-gradient-to-b from-amber-950/30 to-slate-950 p-3 sm:p-5 space-y-2.5 sm:space-y-4 shadow-sm">
-      <div className="flex items-center justify-between gap-2 border-b border-amber-500/20 pb-2">
-        <div className="flex items-center gap-1.5 sm:gap-2 text-amber-300 font-bold text-xs sm:text-sm min-w-0">
-          <div className="w-5 h-5 sm:w-7 sm:h-7 rounded-lg sm:rounded-xl bg-amber-500/20 border border-amber-500/40 flex items-center justify-center text-amber-400 shrink-0">
-            <Clock size={12} className="sm:w-[14px] sm:h-[14px]" />
-          </div>
-          <span className="truncate">Chiến Lược & Khung Giờ Vàng</span>
-        </div>
-        <span className="text-[9px] sm:text-[10px] font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/40 shrink-0">
-          Tối Ưu Tỷ Lệ Mở
-        </span>
-      </div>
-
-      {/* 3 Thẻ Trực Quan */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-3">
-        {/* Khung giờ vàng */}
-        <div className="p-2.5 sm:p-3.5 rounded-xl bg-slate-900/90 border border-amber-500/20 space-y-0.5 sm:space-y-1">
-          <div className="text-amber-400 font-bold text-xs flex items-center gap-1.5">
-            <Clock size={11} className="sm:w-[12px] sm:h-[12px]" />
-            <span>Khung Giờ Vàng Gửi Tin</span>
-          </div>
-          <p className="text-[11px] sm:text-xs text-slate-300 leading-relaxed">
-            <strong className="text-amber-300">12:00 - 14:00</strong> (Trưa) &{" "}
-            <strong className="text-amber-300">18:00 - 20:00</strong> (Tối chốt đơn).
-          </p>
-        </div>
-
-        {/* Tần suất */}
-        <div className="p-2.5 sm:p-3.5 rounded-xl bg-slate-900/90 border border-amber-500/20 space-y-0.5 sm:space-y-1">
-          <div className="text-amber-400 font-bold text-xs flex items-center gap-1.5">
-            <ShieldCheck size={11} className="sm:w-[12px] sm:h-[12px]" />
-            <span>Tần Suất An Toàn</span>
-          </div>
-          <p className="text-[11px] sm:text-xs text-slate-300 leading-relaxed">
-            Gửi <strong className="text-amber-300">1 - 2 lần / tuần</strong> để tránh bị khách block hoặc dính SPAM.
-          </p>
-        </div>
-
-        {/* Mẹo tăng mở tin */}
-        <div className="p-2.5 sm:p-3.5 rounded-xl bg-slate-900/90 border border-amber-500/20 space-y-0.5 sm:space-y-1">
-          <div className="text-amber-400 font-bold text-xs flex items-center gap-1.5">
-            <Tag size={11} className="sm:w-[12px] sm:h-[12px]" />
-            <span>Mẹo Chốt Đơn 24 Giờ</span>
-          </div>
-          <p className="text-[11px] sm:text-xs text-slate-300 leading-relaxed">
-            Đặt mã ưu đãi ngay câu đầu. Giới hạn 24h để tạo độ cấp bách kích thích bấm mua ngay.
-          </p>
+    <div className="p-3.5 sm:p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-3">
+      <div className="flex items-center justify-between pb-1.5 border-b border-slate-900">
+        <div className="flex items-center gap-1.5 text-xs font-bold text-white uppercase tracking-wider">
+          <Clock size={13} />
+          <span>Chiến Lược Gửi Tin & Khung Giờ Vàng</span>
         </div>
       </div>
 
-      {/* Chi tiết nguyên văn nếu có thêm nội dung */}
-      {bullets.length > 0 ? (
-        <div className="pt-2 border-t border-slate-800/80 space-y-1 sm:space-y-1.5">
-          {bullets.map((b, idx) => (
-            <div key={idx} className="flex items-start gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-slate-300 select-text">
-              <span className="text-amber-400 font-bold shrink-0">•</span>
-              <span className="leading-relaxed">{b}</span>
-            </div>
+      {/* 3 Thẻ Nhỏ Khung Giờ Vàng */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 space-y-0.5">
+          <span className="text-[10px] text-slate-400 uppercase font-mono block">Shopee:</span>
+          <p className="text-xs font-bold text-white">{strategy.goldenHours?.shopee || "11h30 - 13h00 & 19h30 - 21h00"}</p>
+        </div>
+        <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 space-y-0.5">
+          <span className="text-[10px] text-slate-400 uppercase font-mono block">Zalo OA:</span>
+          <p className="text-xs font-bold text-white">{strategy.goldenHours?.zalo || "09h00 - 10h30 & 14h30 - 16h00"}</p>
+        </div>
+        <div className="p-2.5 rounded-lg bg-slate-900 border border-slate-800 space-y-0.5">
+          <span className="text-[10px] text-slate-400 uppercase font-mono block">Thời Điểm:</span>
+          <p className="text-xs font-bold text-white">{strategy.goldenHours?.bestDays || "Thứ 5, 6 & Mega Sale"}</p>
+        </div>
+      </div>
+
+      {/* Checklist Chống Khóa Sàn */}
+      {strategy.antiSpamChecklist && strategy.antiSpamChecklist.length > 0 && (
+        <div className="space-y-1.5 pt-1">
+          <span className="text-[10px] text-slate-400 uppercase font-mono flex items-center gap-1">
+            <ShieldCheck size={11} className="text-emerald-400" />
+            <span>Checklist Né Phạt Sàn:</span>
+          </span>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+            {strategy.antiSpamChecklist.map((rule, idx) => (
+              <div key={idx} className="p-2 rounded bg-slate-900/60 border border-slate-800/80 text-[11px] text-slate-300 flex items-start gap-1.5">
+                <span className="text-emerald-400 font-bold shrink-0">✓</span>
+                <span className="leading-relaxed">{rule}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Tần Suất Gửi */}
+      {strategy.frequencyRules && strategy.frequencyRules.length > 0 && (
+        <div className="space-y-1 pt-1 border-t border-slate-900">
+          <span className="text-[10px] text-slate-400 uppercase font-mono block">Tần Suất Khuyến Nghị:</span>
+          {strategy.frequencyRules.map((r, idx) => (
+            <p key={idx} className="text-[11px] text-slate-300 leading-relaxed flex items-start gap-1">
+              <span className="text-slate-500">•</span>
+              <span>{r}</span>
+            </p>
           ))}
         </div>
-      ) : (
-        advice && (
-          <div className="text-[11px] sm:text-xs text-slate-300 whitespace-pre-line leading-relaxed font-sans pl-1 select-text">
-            {advice}
-          </div>
-        )
       )}
     </div>
+  );
+}
+
+// ==========================================
+// REACT ERROR BOUNDARY CỤC BỘ (CHỐNG CRASH TOÀN TRANG)
+// ==========================================
+class ChatBroadcastErrorBoundary extends Component<
+  { children: ReactNode; onUseSample?: () => void },
+  { hasError: boolean }
+> {
+  constructor(props: { children: ReactNode; onUseSample?: () => void }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: any, info: any) {
+    console.error("ChatBroadcastOutput render error:", error, info);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-6 rounded-2xl bg-black border border-slate-800 text-center space-y-3 my-4">
+          <div className="w-12 h-12 rounded-xl bg-slate-900 border border-slate-800 flex items-center justify-center text-rose-400 mx-auto">
+            <AlertTriangle size={24} />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-sm font-bold text-white">Không Thể Hiển Thị Giao Diện Kịch Bản</h3>
+            <p className="text-xs text-slate-400 max-w-sm mx-auto leading-relaxed">
+              Đã xảy ra sự cố định dạng dữ liệu phản hồi từ AI. Bạn có thể khôi phục lại dữ liệu mẫu hoặc thử lại.
+            </p>
+          </div>
+          {this.props.onUseSample && (
+            <button
+              type="button"
+              onClick={() => {
+                this.setState({ hasError: false });
+                this.props.onUseSample?.();
+              }}
+              className="px-3.5 py-1.5 rounded-lg bg-white text-black text-xs font-bold hover:bg-slate-200 transition cursor-pointer"
+            >
+              Khôi Phục Dữ Liệu Mẫu
+            </button>
+          )}
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+export function ChatBroadcastOutput(props: ChatBroadcastOutputProps) {
+  return (
+    <ChatBroadcastErrorBoundary onUseSample={props.onUseSample}>
+      <ChatBroadcastOutputInner {...props} />
+    </ChatBroadcastErrorBoundary>
   );
 }

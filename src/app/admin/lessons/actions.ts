@@ -179,43 +179,42 @@ export async function updateLesson(
   });
 }
 
-// Danh sách 25 bài học mẫu chuẩn của Masterclass (biến nội bộ, không export)
-const DEFAULT_LESSONS_DATA = [
-
+// Danh sách 25 bài học mẫu chuẩn của Masterclass kèm link video mẫu thực tế
+const DEFAULT_LESSONS_DATA: { title: string; isVIP: boolean; videoUrl?: string }[] = [
   // PHẦN 1
-  { title: "Phần 1 - Bài 1: Sự chuyển dịch quyền lực: Khi AI hiểu khách hàng hơn Seller", isVIP: false },
-  { title: "Phần 1 - Bài 2: Dùng AI quét hàng ngàn Review tìm 'Huyệt tâm lý'", isVIP: true },
-  { title: "Phần 1 - Bài 3: Phân tích Trend TikTok bằng AI để đón đầu sóng sản phẩm", isVIP: false },
-  { title: "Phần 1 - Bài 4: Tự động hóa chiến lược Định Giá (Markup)", isVIP: true },
+  { title: "Phần 1 - Bài 1: Sự chuyển dịch quyền lực: Khi AI hiểu khách hàng hơn Seller", isVIP: false, videoUrl: "https://www.youtube.com/watch?v=ScMzIvxBSi4" },
+  { title: "Phần 1 - Bài 2: Dùng AI quét hàng ngàn Review tìm 'Huyệt tâm lý'", isVIP: true, videoUrl: "https://www.youtube.com/watch?v=aircAruvnKk" },
+  { title: "Phần 1 - Bài 3: Phân tích Trend TikTok bằng AI để đón đầu sóng sản phẩm", isVIP: false, videoUrl: "https://vimeo.com/76979871" },
+  { title: "Phần 1 - Bài 4: Tự động hóa chiến lược Định Giá (Markup)", isVIP: true, videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4" },
 
   // PHẦN 2
-  { title: "Phần 2 - Bài 5: Định luật 'Ăn đề xuất' thuật toán Video", isVIP: false },
-  { title: "Phần 2 - Bài 6: Công thức mồi câu (Hook) khiến khách không thể lướt qua", isVIP: true },
-  { title: "Phần 2 - Bài 7: AI Voice & Clone Giọng nói truyền cảm không cần micro", isVIP: true },
-  { title: "Phần 2 - Bài 8: Công nghệ AI Avatar: Sản xuất hàng chục video không cần diễn viên", isVIP: true },
-  { title: "Phần 2 - Bài 9: Cấu trúc kịch bản Livestream giữ chân người xem", isVIP: false },
+  { title: "Phần 2 - Bài 5: Định luật 'Ăn đề xuất' thuật toán Video", isVIP: false, videoUrl: "https://www.youtube.com/watch?v=kJQP7kiw5Fk" },
+  { title: "Phần 2 - Bài 6: Công thức mồi câu (Hook) khiến khách không thể lướt qua", isVIP: true, videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" },
+  { title: "Phần 2 - Bài 7: AI Voice & Clone Giọng nói truyền cảm không cần micro", isVIP: true, videoUrl: "https://www.youtube.com/watch?v=ScMzIvxBSi4" },
+  { title: "Phần 2 - Bài 8: Công nghệ AI Avatar: Sản xuất hàng chục video không cần diễn viên", isVIP: true, videoUrl: "https://www.youtube.com/watch?v=aircAruvnKk" },
+  { title: "Phần 2 - Bài 9: Cấu trúc kịch bản Livestream giữ chân người xem", isVIP: false, videoUrl: "https://www.youtube.com/watch?v=kJQP7kiw5Fk" },
 
   // PHẦN 3
-  { title: "Phần 3 - Bài 10: Tầm quan trọng của Visual trong tỷ lệ Click (CTR)", isVIP: false },
-  { title: "Phần 3 - Bài 11: Midjourney/Stable Diffusion: Tạo ảnh chuẩn Studio", isVIP: true },
-  { title: "Phần 3 - Bài 12: Tự động xóa nền, chèn phông, thêm bóng đổ siêu thực", isVIP: true },
-  { title: "Phần 3 - Bài 13: Bản chất SEO: Máy học của Shopee đọc sản phẩm ra sao?", isVIP: false },
-  { title: "Phần 3 - Bài 14: Xây dựng ma trận Tiêu Đề, Mô Tả chuẩn SEO bằng AI", isVIP: true },
+  { title: "Phần 3 - Bài 10: Tầm quan trọng của Visual trong tỷ lệ Click (CTR)", isVIP: false, videoUrl: "https://vimeo.com/76979871" },
+  { title: "Phần 3 - Bài 11: Midjourney/Stable Diffusion: Tạo ảnh chuẩn Studio", isVIP: true, videoUrl: "https://www.youtube.com/watch?v=aircAruvnKk" },
+  { title: "Phần 3 - Bài 12: Tự động xóa nền, chèn phông, thêm bóng đổ siêu thực", isVIP: true, videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4" },
+  { title: "Phần 3 - Bài 13: Bản chất SEO: Máy học của Shopee đọc sản phẩm ra sao?", isVIP: false, videoUrl: "https://www.youtube.com/watch?v=ScMzIvxBSi4" },
+  { title: "Phần 3 - Bài 14: Xây dựng ma trận Tiêu Đề, Mô Tả chuẩn SEO bằng AI", isVIP: true, videoUrl: "https://www.youtube.com/watch?v=kJQP7kiw5Fk" },
 
   // PHẦN 4
-  { title: "Phần 4 - Bài 15: Bức tranh tối ưu nhân sự: AI thay thế 3 nhân viên CSKH", isVIP: false },
-  { title: "Phần 4 - Bài 16: Setup Chatbot AI 'Có não' chốt sale 24/7", isVIP: true },
-  { title: "Phần 4 - Bài 17: 'Bẻ lái' đánh giá 1 sao: Viết phản hồi xoa dịu khách", isVIP: true },
-  { title: "Phần 4 - Bài 18: Hiểu rõ nguyên tắc phạt/Khóa Shop của Bot sàn", isVIP: false },
-  { title: "Phần 4 - Bài 19: Tool AI Kháng Nghị: Viết đơn tỷ lệ gỡ gậy 99%", isVIP: true },
+  { title: "Phần 4 - Bài 15: Bức tranh tối ưu nhân sự: AI thay thế 3 nhân viên CSKH", isVIP: false, videoUrl: "https://vimeo.com/76979871" },
+  { title: "Phần 4 - Bài 16: Setup Chatbot AI 'Có não' chốt sale 24/7", isVIP: true, videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" },
+  { title: "Phần 4 - Bài 17: 'Bẻ lái' đánh giá 1 sao: Viết phản hồi xoa dịu khách", isVIP: true, videoUrl: "https://www.youtube.com/watch?v=ScMzIvxBSi4" },
+  { title: "Phần 4 - Bài 18: Hiểu rõ nguyên tắc phạt/Khóa Shop của Bot sàn", isVIP: false, videoUrl: "https://www.youtube.com/watch?v=aircAruvnKk" },
+  { title: "Phần 4 - Bài 19: Tool AI Kháng Nghị: Viết đơn tỷ lệ gỡ gậy 99%", isVIP: true, videoUrl: "https://www.youtube.com/watch?v=kJQP7kiw5Fk" },
 
   // PHẦN 5
-  { title: "Phần 5 - Bài 20: Chạy Ads 'mù' và cái kết đốt tiền", isVIP: false },
-  { title: "Phần 5 - Bài 21: A/B Testing thần tốc: Sinh hàng trăm biến thể Ad Copy", isVIP: true },
-  { title: "Phần 5 - Bài 22: KOC/KOL Affiliate: Phễu phân phối quyền lực nhất", isVIP: false },
-  { title: "Phần 5 - Bài 23: Quét và đánh giá tệp Follower của KOC: Né tệp rác ảo", isVIP: true },
-  { title: "Phần 5 - Bài 24: Lên kế hoạch tài chính Book KOC tự động", isVIP: true },
-  { title: "Phần 5 - Bài 25: Tổng kết khóa học & Trao chứng nhận", isVIP: false },
+  { title: "Phần 5 - Bài 20: Chạy Ads 'mù' và cái kết đốt tiền", isVIP: false, videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/ForBiggerBlazes.mp4" },
+  { title: "Phần 5 - Bài 21: A/B Testing thần tốc: Sinh hàng trăm biến thể Ad Copy", isVIP: true, videoUrl: "https://www.youtube.com/watch?v=ScMzIvxBSi4" },
+  { title: "Phần 5 - Bài 22: KOC/KOL Affiliate: Phễu phân phối quyền lực nhất", isVIP: false, videoUrl: "https://vimeo.com/76979871" },
+  { title: "Phần 5 - Bài 23: Quét và đánh giá tệp Follower của KOC: Né tệp rác ảo", isVIP: true, videoUrl: "https://www.youtube.com/watch?v=aircAruvnKk" },
+  { title: "Phần 5 - Bài 24: Lên kế hoạch tài chính Book KOC tự động", isVIP: true, videoUrl: "https://www.youtube.com/watch?v=kJQP7kiw5Fk" },
+  { title: "Phần 5 - Bài 25: Tổng kết khóa học & Trao chứng nhận", isVIP: false, videoUrl: "https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" },
 ];
 
 // Khôi phục lại các bài học đã xóa nhầm
@@ -236,7 +235,7 @@ export async function restoreDefaultLessons() {
 
     const existingLessons = await prisma.lesson.findMany({
       where: { courseId: course.id },
-      select: { id: true, title: true, order: true },
+      select: { id: true, title: true, order: true, videoUrl: true },
     });
 
     const existingMap = new Map(
@@ -251,20 +250,24 @@ export async function restoreDefaultLessons() {
       const moduleName = def.title.match(/^(Phần \d+)/i)?.[1] || "Phần 1";
 
       if (match) {
-        // Cập nhật lại số thứ tự và moduleName cho chuẩn xác
+        // Cập nhật lại số thứ tự, moduleName và gắn link video mẫu nếu bài hiện tại chưa có video
         await auditedWrite(admin.id, "LESSON_UPDATED", tx => tx.lesson.update({
           where: { id: match.id },
-          data: { order: i + 1, moduleName },
+          data: {
+            order: i + 1,
+            moduleName,
+            ...(match.videoUrl ? {} : def.videoUrl ? { videoUrl: def.videoUrl } : {}),
+          },
         }));
       } else {
-        // Tạo lại bài học bị xóa
+        // Tạo lại bài học bị xóa kèm link video mẫu
         await auditedWrite(admin.id, "LESSON_CREATED", tx => tx.lesson.create({
           data: {
             courseId: course.id,
             title: def.title,
             moduleName,
             content: null,
-            videoUrl: null,
+            videoUrl: def.videoUrl || null,
             isVIP: def.isVIP,
             status: "DRAFT",
             order: i + 1,

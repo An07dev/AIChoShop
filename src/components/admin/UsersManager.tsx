@@ -556,12 +556,12 @@ export function UsersManager({
           <table className="w-full text-left border-collapse">
             <thead className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200 shadow-2xs">
               <tr className="bg-slate-50 border-b border-slate-200 text-xs text-slate-600 uppercase tracking-wider">
-                <th className="p-3.5 sm:p-4 font-bold bg-slate-50 sticky top-0 min-w-[220px]">Người Dùng</th>
-                <th className="p-3.5 sm:p-4 font-bold text-center bg-slate-50 sticky top-0 min-w-[150px]">Gói & Thời Hạn VIP</th>
-                <th className="p-3.5 sm:p-4 font-bold text-center bg-slate-50 sticky top-0 min-w-[120px]">Trạng Thái</th>
-                <th className="p-3.5 sm:p-4 font-bold text-center bg-slate-50 sticky top-0 min-w-[140px]">Lượt Free</th>
-                <th className="p-3.5 sm:p-4 font-bold bg-slate-50 sticky top-0 min-w-[120px]">Ngày Tạo</th>
-                <th className="p-3.5 sm:p-4 font-bold text-center bg-slate-50 sticky top-0 min-w-[160px]">Hành động</th>
+                <th className="px-3.5 py-3 font-bold bg-slate-50 sticky top-0 whitespace-nowrap">Người Dùng</th>
+                <th className="px-3.5 py-3 font-bold text-center bg-slate-50 sticky top-0 whitespace-nowrap">Gói VIP & Hạn</th>
+                <th className="px-3.5 py-3 font-bold text-center bg-slate-50 sticky top-0 whitespace-nowrap">Trạng Thái</th>
+                <th className="px-3.5 py-3 font-bold text-center bg-slate-50 sticky top-0 whitespace-nowrap">Lượt Free</th>
+                <th className="px-3.5 py-3 font-bold bg-slate-50 sticky top-0 whitespace-nowrap">Ngày Tạo</th>
+                <th className="px-3.5 py-3 font-bold text-center bg-slate-50 sticky top-0 whitespace-nowrap">Thao Tác</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-sm">
@@ -585,11 +585,11 @@ export function UsersManager({
                         }`}
                     >
                       {/* Cột 1: Thông tin User */}
-                      <td className="p-4">
-                        <div className="flex items-center gap-3">
+                      <td className="px-3.5 py-2.5">
+                        <div className="flex items-center gap-2.5">
                           <div
-                            className={`w-10 h-10 rounded-xl flex items-center justify-center font-bold text-sm shrink-0 ${user.isVIP
-                              ? "bg-gradient-to-br from-amber-400 to-yellow-500 text-white shadow-md shadow-amber-500/20"
+                            className={`w-9 h-9 rounded-xl flex items-center justify-center font-bold text-xs shrink-0 ${user.isVIP
+                              ? "bg-gradient-to-br from-amber-400 to-yellow-500 text-white shadow-xs"
                               : user.isLocked
                                 ? "bg-rose-100 text-rose-700"
                                 : "bg-slate-100 text-slate-700"
@@ -598,20 +598,20 @@ export function UsersManager({
                             {initials}
                           </div>
                           <div className="min-w-0">
-                            <div className="flex items-center gap-1.5 font-bold text-slate-900">
-                              <span className="truncate">{user.name || "Chưa đặt tên"}</span>
+                            <div className="flex items-center gap-1.5 font-bold text-slate-900 text-xs">
+                              <span className="truncate max-w-[140px] sm:max-w-[170px]">{user.name || "Chưa đặt tên"}</span>
                               {user.role === "ADMIN" && (
-                                <span className="bg-purple-100 text-purple-700 text-[10px] font-black px-1.5 py-0.2 rounded border border-purple-200">
+                                <span className="bg-purple-100 text-purple-700 text-[10px] font-black px-1.5 py-0.2 rounded border border-purple-200 shrink-0">
                                   ADMIN
                                 </span>
                               )}
                             </div>
-                            <div className="text-xs text-slate-500 flex items-center gap-1 font-mono truncate">
+                            <div className="text-[11px] text-slate-500 flex items-center gap-1 font-mono truncate max-w-[160px] sm:max-w-[190px]">
                               <Mail size={11} className="text-slate-400 shrink-0" />
                               <span className="truncate">{user.email}</span>
                             </div>
                             {user.phone && (
-                              <div className="text-[11px] text-slate-400 flex items-center gap-1 font-mono mt-0.5">
+                              <div className="text-[10px] text-slate-400 flex items-center gap-1 font-mono mt-0.5 whitespace-nowrap">
                                 <Phone size={10} className="text-slate-400 shrink-0" />
                                 <span>{user.phone}</span>
                               </div>
@@ -621,30 +621,30 @@ export function UsersManager({
                       </td>
 
                       {/* Cột 2: Cấp độ VIP & Thời Hạn */}
-                      <td className="p-4 text-center">
+                      <td className="px-3.5 py-2.5 text-center whitespace-nowrap">
                         <div
                           onClick={() => {
                             setVipModalUser(user);
                             setCustomVipDate("");
                           }}
-                          className="inline-flex flex-col items-center cursor-pointer group"
+                          className="inline-flex flex-col items-center cursor-pointer group whitespace-nowrap"
                           title="Bấm để xem và điều chỉnh thời hạn VIP"
                         >
                           {vipInfo.badgeType === "lifetime" && (
                             <>
-                              <span className="inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-yellow-500 text-white px-3 py-1 rounded-full text-xs font-black shadow-sm shadow-amber-500/30 tracking-wide group-hover:scale-105 transition-transform">
-                                <Crown size={13} className="fill-white" /> VIP Trọn Đời
+                              <span className="inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-yellow-500 text-white px-2.5 py-0.5 rounded-full text-xs font-black shadow-xs tracking-wide group-hover:scale-105 transition-transform whitespace-nowrap">
+                                <Crown size={12} className="fill-white" /> VIP Trọn Đời
                               </span>
-                              <span className="text-[10px] text-amber-600 font-bold mt-1">Vĩnh viễn</span>
+                              <span className="text-[10px] text-amber-600 font-bold mt-0.5 block whitespace-nowrap">Vĩnh viễn</span>
                             </>
                           )}
 
                           {vipInfo.badgeType === "active" && (
                             <>
-                              <span className="inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white px-3 py-1 rounded-full text-xs font-black shadow-sm shadow-amber-500/30 tracking-wide group-hover:scale-105 transition-transform">
-                                <Crown size={13} className="fill-white" /> Còn {vipInfo.daysLeft} ngày
+                              <span className="inline-flex items-center gap-1.5 bg-gradient-to-r from-amber-500 to-amber-600 text-white px-2.5 py-0.5 rounded-full text-xs font-black shadow-xs tracking-wide group-hover:scale-105 transition-transform whitespace-nowrap">
+                                <Crown size={12} className="fill-white" /> Còn {vipInfo.daysLeft} ngày
                               </span>
-                              <span className="text-[10px] text-slate-500 font-medium flex items-center gap-1 mt-1">
+                              <span className="text-[10px] text-slate-500 font-medium flex items-center justify-center gap-1 mt-0.5 whitespace-nowrap">
                                 <CalendarClock size={11} className="text-slate-400" />
                                 {user.vipExpiresAt &&
                                   new Date(user.vipExpiresAt).toLocaleDateString("vi-VN", {
@@ -658,19 +658,19 @@ export function UsersManager({
 
                           {vipInfo.badgeType === "expired" && (
                             <>
-                              <span className="inline-flex items-center gap-1 bg-rose-100 text-rose-700 border border-rose-200 px-2.5 py-1 rounded-full text-xs font-bold group-hover:scale-105 transition-transform">
-                                <Clock size={12} /> Hết hạn VIP
+                              <span className="inline-flex items-center gap-1 bg-rose-100 text-rose-700 border border-rose-200 px-2.5 py-0.5 rounded-full text-xs font-bold group-hover:scale-105 transition-transform whitespace-nowrap">
+                                <Clock size={11} /> Hết hạn VIP
                               </span>
-                              <span className="text-[10px] text-slate-400 mt-1">Đã hạ về Free</span>
+                              <span className="text-[10px] text-slate-400 mt-0.5 block whitespace-nowrap">Đã về Free</span>
                             </>
                           )}
 
                           {vipInfo.badgeType === "free" && (
                             <>
-                              <span className="inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-600 px-2.5 py-1 rounded-full text-xs font-semibold group-hover:scale-105 transition-transform">
+                              <span className="inline-flex items-center gap-1 bg-slate-100 hover:bg-slate-200 text-slate-600 px-2.5 py-0.5 rounded-full text-xs font-semibold group-hover:scale-105 transition-transform whitespace-nowrap">
                                 Tài khoản FREE
                               </span>
-                              <span className="text-[10px] text-blue-600 font-semibold mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <span className="text-[10px] text-blue-600 font-semibold mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
                                 + Cấp hạn VIP
                               </span>
                             </>
@@ -679,73 +679,72 @@ export function UsersManager({
                       </td>
 
                       {/* Cột 3: Trạng thái tài khoản */}
-                      <td className="p-4 text-center">
+                      <td className="px-3.5 py-2.5 text-center whitespace-nowrap">
                         {user.isLocked ? (
-                          <span className="inline-flex items-center gap-1 bg-rose-100 text-rose-700 border border-rose-200 px-2.5 py-1 rounded-full text-xs font-bold">
-                            <Lock size={12} /> ĐÃ KHÓA
+                          <span className="inline-flex items-center gap-1 bg-rose-100 text-rose-700 border border-rose-200 px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap">
+                            <Lock size={12} /> Đã khóa
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 border border-emerald-200 px-2.5 py-1 rounded-full text-xs font-bold">
+                          <span className="inline-flex items-center gap-1 bg-emerald-100 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full text-xs font-bold whitespace-nowrap">
                             <CheckCircle2 size={12} /> Hoạt động
                           </span>
                         )}
                       </td>
 
                       {/* Cột 4: Số Lượt Free Còn Lại */}
-                      <td className="p-4 text-center">
+                      <td className="px-3.5 py-2.5 text-center whitespace-nowrap">
                         {user.isVIP ? (
                           <span
-                            className="inline-flex items-center gap-1 text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-lg border border-amber-200/80 shadow-2xs"
+                            className="inline-flex items-center gap-1 text-xs font-bold text-amber-700 bg-amber-50 px-2.5 py-0.5 rounded-lg border border-amber-200/80 shadow-2xs whitespace-nowrap"
                             title="VIP không giới hạn lượt dùng AI mỗi ngày"
                           >
                             <Crown size={12} className="text-amber-500 fill-amber-500" />
                             Không giới hạn
                           </span>
                         ) : (
-                          <div className="inline-flex items-center gap-1.5">
+                          <div className="inline-flex items-center justify-center whitespace-nowrap">
                             <button
                               type="button"
                               onClick={openGlobalFreeModal}
-                              className="group inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-slate-50 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-900 px-2.5 py-1 rounded-lg border border-slate-200 transition-all cursor-pointer shadow-2xs"
+                              className="group inline-flex items-center gap-1.5 text-xs font-bold text-slate-700 bg-slate-50 hover:bg-amber-50 hover:border-amber-300 hover:text-amber-900 px-2 py-0.5 rounded-lg border border-slate-200 transition-all cursor-pointer shadow-2xs whitespace-nowrap"
                               title="Bấm để cài đặt số lượt Free chung cho toàn bộ tài khoản FREE"
                             >
-                              <Zap size={13} className="text-amber-500 fill-amber-500 group-hover:scale-110 transition-transform" />
+                              <Zap size={12} className="text-amber-500 fill-amber-500" />
                               <span className="font-mono">
                                 Còn <strong className={user.remainingFree === 0 ? "text-rose-600" : "text-emerald-700"}>{user.remainingFree ?? globalFreeLimit}</strong>/{user.dailyFreeLimit ?? globalFreeLimit}
                               </span>
-                              <Pencil size={11} className="text-slate-400 group-hover:text-amber-600 opacity-60 group-hover:opacity-100" />
+                              <Pencil size={10} className="text-slate-400 group-hover:text-amber-600 opacity-60" />
                             </button>
                           </div>
                         )}
                       </td>
 
                       {/* Cột 5: Quyền & Ngày Tạo */}
-                      <td className="p-4 text-xs text-slate-500">
-                        <div className="flex items-center gap-1 font-medium text-slate-700">
-                          <Calendar size={12} className="text-slate-400" />
-                          {new Date(user.createdAt).toLocaleDateString("vi-VN", {
+                      <td className="px-3.5 py-2.5 text-xs text-slate-500 whitespace-nowrap">
+                        <div className="flex items-center gap-1 font-medium text-slate-700 whitespace-nowrap">
+                          <Calendar size={11} className="text-slate-400 shrink-0" />
+                          <span>{new Date(user.createdAt).toLocaleDateString("vi-VN", {
                             day: "2-digit",
                             month: "2-digit",
                             year: "numeric",
-                          })}
+                          })}</span>
                         </div>
-                        <div className="text-[10px] text-slate-400 mt-0.5">
+                        <div className="text-[10px] text-slate-400 mt-0.5 font-mono whitespace-nowrap">
                           ID: {user.id.slice(0, 8)}...
                         </div>
                       </td>
 
                       {/* Cột 6: Bộ nút Thao tác Quản trị */}
-                      <td className="p-4 text-center">
-                        <div className="flex items-center justify-center gap-1.5 flex-wrap">
-
+                      <td className="px-3.5 py-2.5 text-center whitespace-nowrap">
+                        <div className="inline-flex items-center justify-center gap-1 flex-nowrap shrink-0 whitespace-nowrap">
                           {/* Nút Quản Lý Thời Hạn VIP */}
                           <button
                             onClick={() => openVipModal(user)}
                             disabled={isPending}
                             title="Quản lý và gia hạn thời hạn VIP"
-                            className="p-1.5 rounded-lg text-amber-600 hover:text-amber-700 hover:bg-amber-50 transition-colors cursor-pointer border border-amber-200 active:scale-95"
+                            className="p-1.5 rounded-lg text-amber-600 hover:text-amber-700 hover:bg-amber-50 transition-colors cursor-pointer border border-amber-200 active:scale-95 shrink-0"
                           >
-                            <CalendarClock size={15} />
+                            <CalendarClock size={14} />
                           </button>
 
                           {/* Nút Chuyển VIP / Hạ VIP */}
@@ -765,12 +764,12 @@ export function UsersManager({
                             }}
                             disabled={isPending}
                             title={user.isVIP ? "Hạ về tài khoản FREE" : "Chọn gói VIP để nâng cấp"}
-                            className={`text-xs font-bold px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1 cursor-pointer active:scale-95 shadow-sm ${user.isVIP
+                            className={`text-xs font-bold px-2 py-1 rounded-lg transition-all inline-flex items-center gap-1 cursor-pointer active:scale-95 shadow-xs whitespace-nowrap shrink-0 ${user.isVIP
                               ? "bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200"
                               : "bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-600 hover:to-yellow-600 text-white shadow-amber-500/20"
                               }`}
                           >
-                            <Crown size={13} className={user.isVIP ? "text-slate-500" : "fill-white"} />
+                            <Crown size={12} className={user.isVIP ? "text-slate-500" : "fill-white"} />
                             <span>{user.isVIP ? "Hạ FREE" : "Lên VIP"}</span>
                           </button>
 
@@ -779,12 +778,12 @@ export function UsersManager({
                             onClick={() => handleToggleLock(user)}
                             disabled={isPending}
                             title={user.isLocked ? "Mở khóa tài khoản" : "Khóa tài khoản này"}
-                            className={`text-xs font-bold px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1 cursor-pointer active:scale-95 ${user.isLocked
-                              ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm"
+                            className={`text-xs font-bold px-2 py-1 rounded-lg transition-all inline-flex items-center gap-1 cursor-pointer active:scale-95 whitespace-nowrap shrink-0 ${user.isLocked
+                              ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs"
                               : "bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200"
                               }`}
                           >
-                            {user.isLocked ? <Unlock size={13} /> : <Lock size={13} />}
+                            {user.isLocked ? <Unlock size={12} /> : <Lock size={12} />}
                             <span>{user.isLocked ? "Mở Khóa" : "Khóa TK"}</span>
                           </button>
 
@@ -796,18 +795,18 @@ export function UsersManager({
                               setResetPasswordUser(user);
                             }}
                             title="Đặt lại mật khẩu mới"
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer border border-transparent hover:border-blue-200"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer border border-transparent hover:border-blue-200 shrink-0"
                           >
-                            <Key size={15} />
+                            <Key size={14} />
                           </button>
 
                           {/* Nút Xóa User */}
                           <button
                             onClick={() => handleDeleteUser(user)}
                             title="Xóa tài khoản vĩnh viễn"
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer border border-transparent hover:border-rose-200"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer border border-transparent hover:border-rose-200 shrink-0"
                           >
-                            <Trash2 size={15} />
+                            <Trash2 size={14} />
                           </button>
                         </div>
                       </td>

@@ -21,10 +21,14 @@ export async function seoIdentity() {
     ? await prisma.$queryRaw<{ id: string }[]>`SELECT "id" FROM "SeoUsage" WHERE "id" = ${`anon:${hashToken(visitor)}`}` : [];
   if (!known.length) {
     visitor = randomBytes(32).toString("hex");
-    await prisma.$executeRaw`INSERT INTO "SeoUsage" ("id") VALUES (${`anon:${hashToken(visitor)}`})`;
-    store.set("seo_visitor", visitor, { httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", path: "/", maxAge: 365 * 24 * 3600 });
-    // Establish the identity before any paid request; simultaneous first POSTs cannot each get a free call.
-    throw new SeoError("VISITOR_INITIALIZED", "Đã khởi tạo lượt dùng thử.", 409);
+    await prisma.$executeRaw`INSERT INTO "SeoUsage" ("id") VALUES (${`anon:${hashToken(visitor)}`}) ON CONFLICT ("id") DO NOTHING`;
+    store.set("seo_visitor", visitor, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 365 * 24 * 3600,
+    });
   }
   return { id: `anon:${hashToken(visitor!)}`, anonymous: true };
 }

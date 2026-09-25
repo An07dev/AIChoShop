@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   ArrowLeft,
   Sparkles,
@@ -13,6 +13,7 @@ import {
   Award,
   HelpCircle,
   Crown,
+  XCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { useToolGate } from "@/hooks/useToolGate";
@@ -20,6 +21,12 @@ import { CompetitorMinerOutput } from "@/components/tools/CompetitorMinerOutput"
 import { useToast } from "@/context/ToastContext";
 import { AiUsageBadge } from "@/components/tools/AiUsageBadge";
 import { MobileToolTabs } from "@/components/tools/MobileToolTabs";
+
+import {
+  SAMPLE_COMPETITOR_MINER_INPUT,
+  SAMPLE_COMPETITOR_MINER_RESULT,
+  buildOfflineCompetitorMinerData,
+} from "@/lib/competitor-miner/contract";
 
 const CATEGORIES = [
   "Thời Trang & Phụ Kiện",
@@ -31,53 +38,6 @@ const CATEGORIES = [
   "Ngành hàng khác",
 ];
 
-const SAMPLE_DATA = {
-  productName: "Áo Thun Cotton Compact 280gsm Dày Dặn Form Rộng",
-  category: "Thời Trang & Phụ Kiện",
-  competitorReviews: `1. "Vải mỏng tanh như vải mùng, giặt 2 nước là cổ áo dão ngoét chảy xệ như cái bao tải, xù lông lởm chởm."
-2. "Đóng gói bọc nilon mỏng dính bị rách thủng lỗ chỗ, áo dính vết bẩn. Nhắn tin khiếu nại thì shop đổ lỗi do shipper rồi im re không thèm giải quyết."
-3. "Hình trên video một đằng hàng nhận một nẻo, màu đen xỉn pha nilon mặc bí bách ngứa ngáy phát điên."`,
-  shopStrength: "Vải sợi bông Compact 100% dệt dày 280gsm không dão xù, cổ dệt sợi co giãn kép, đóng gói hộp carton cứng nắp gài + túi zip mờ, bảo hành 1 đổi 1 tận nhà trong 30 ngày.",
-};
-
-const SAMPLE_OUTPUT = `## 🔍 1. BÓC TÁCH 3 TỬ HUYỆT LỚN NHẤT CỦA ĐỐI THỦ
-
-- **Tử huyệt 1 (Lỗi sản phẩm / Chất liệu):** Áo thun của đối thủ có vải mỏng, dễ bị xù lông và chảy xệ sau khi giặt, gây mất thẩm mỹ và cảm giác không thoải mái cho khách hàng.
-- **Tử huyệt 2 (Đóng gói / Giao hàng / Phụ kiện):** Hộp carton đóng gói của đối thủ quá mỏng, dễ bị rách và thiếu phụ kiện như túi zip mờ bảo vệ sản phẩm.
-- **Tử huyệt 3 (Dịch vụ CSKH / Bảo hành):** Đối thủ thường từ chối trách nhiệm và không giải quyết triệt để khi khách hàng khiếu nại, gây mất lòng tin và sự bất tiện cho khách hàng.
-
----
-
-## 💎 2. ĐỊNH VỊ VŨ KHÍ USP ĐỘC QUYỀN CHO SHOP BẠN
-
-- **Tuyên ngôn định vị đập tan nỗi sợ:** "Chất liệu dày dặn, không xù lông, form áo rộng rãi thoải mái, bảo hành 1 đổi 1 tận nhà trong 30 ngày."
-
-- **Bảng so sánh hơn hẳn (Shop Bạn vs Đối Thủ Thị Trường):**
-
-| Tiêu chí | Đối thủ trên thị trường | Sản phẩm của Shop Bạn (Vượt trội) |
-| :--- | :--- | :--- |
-| **Chất liệu / Hoàn thiện** | Vải mỏng, dễ bị xù lông | Vải Cotton Compact 100% dệt dày 280gsm không xù lông, cổ áo dệt sợi co giãn kép |
-| **Quy cách đóng gói** | Hộp carton sơ sài, dễ vỡ | Hộp carton cứng nắp gài, túi zip mờ bảo vệ sản phẩm |
-| **Chính sách bảo hành** | Trốn tránh, đổ lỗi | Đổi mới 100% tận nhà trong 24h |
-
----
-
-## 🎬 3. BỘ CÂU HOOK & KỊCH BẢN "DÌM HÀNG VĂN MINH"
-
-- **Hook 1 (Góc Cảnh Báo):** "Bạn có chắc chắn muốn mua áo thun từ một shop không chịu trách nhiệm, khiến bạn mất thời gian và tiền bạc không?"
-- **Hook 2 (Góc Đồng Cảm Thực Tế):** "Hãy tưởng tượng, bạn giặt áo thun và phát hiện cổ áo chảy xệ, bị xù lông, mất công sửa chữa ngay tại nhà?"
-- **Hook 3 (Góc Vạch Trần Sự Thật):** "Hãy chọn shop chúng tôi, nơi bạn luôn được bảo hành 1 đổi 1 tận nhà trong 30 ngày, không còn lo lắng về các vấn đề chất lượng và dịch vụ."
-
-- **Đoạn mô tả sản phẩm "Đá xéo đối thủ tinh tế":** "Áo thun Cotton Compact 280gsm của chúng tôi không chỉ mang lại cảm giác thoải mái, form áo rông rãi, mà còn được bảo hành 1 đổi 1 tận nhà trong 30 ngày. Với chất liệu dày dặn 100% Cotton, áo thun của bạn sẽ không bao giờ bị xù lông hay chảy xệ sau khi giặt. Đảm bảo bạn sẽ hài lòng với sản phẩm của chúng tôi, không cần phải lo lắng về những vấn đề thường gặp ở các shop khác."
-
----
-
-## 🛡️ 4. LỜI KHUYÊN PHÒNG THỦ CHO SHOP BẠN
-
-- **Lưu ý 1:** Tuân thủ quy trình kiểm duyệt chất liệu và hoàn thiện sản phẩm để đảm bảo chất lượng vải luôn chuẩn xác.
-- **Lưu ý 2:** Đảm bảo quy trình đóng gói sản phẩm được thực hiện cẩn thận, sử dụng hộp carton và túi zip mờ để bảo vệ sản phẩm.
-- **Lưu ý 3:** Đào tạo đội ngũ CSKH để họ có thể giải quyết các vấn đề của khách hàng một cách nhanh chóng và hiệu quả, đảm bảo khách hàng luôn hài lòng.`;
-
 export default function CompetitorMinerPage() {
   const { checkAccess, GateModals } = useToolGate();
   const { showAiError, showWarning } = useToast();
@@ -86,6 +46,24 @@ export default function CompetitorMinerPage() {
   const [result, setResult] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [mobileTab, setMobileTab] = useState<"form" | "result">("form");
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Dọn dẹp timer và abort request khi component unmount
+  useEffect(() => {
+    return () => {
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      if (abortControllerRef.current) abortControllerRef.current.abort();
+    };
+  }, []);
+
+  const handleCancel = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+  };
 
   // Form states
   const [productName, setProductName] = useState("");
@@ -94,11 +72,12 @@ export default function CompetitorMinerPage() {
   const [shopStrength, setShopStrength] = useState("");
 
   const handleUseSample = () => {
-    setProductName(SAMPLE_DATA.productName);
-    setCategory(SAMPLE_DATA.category);
-    setCompetitorReviews(SAMPLE_DATA.competitorReviews);
-    setShopStrength(SAMPLE_DATA.shopStrength);
-    setResult(SAMPLE_OUTPUT);
+    setProductName(SAMPLE_COMPETITOR_MINER_INPUT.productName);
+    setCategory(SAMPLE_COMPETITOR_MINER_INPUT.category || CATEGORIES[0]);
+    setCompetitorReviews(SAMPLE_COMPETITOR_MINER_INPUT.competitorReviews);
+    setShopStrength(SAMPLE_COMPETITOR_MINER_INPUT.shopStrength || "");
+    setResult(SAMPLE_COMPETITOR_MINER_RESULT);
+    setIsOfflineMode(false);
     setMobileTab("result");
   };
 
@@ -108,6 +87,7 @@ export default function CompetitorMinerPage() {
     setCompetitorReviews("");
     setShopStrength("");
     setResult("");
+    setIsOfflineMode(false);
   };
 
   const handleGenerate = async () => {
@@ -123,14 +103,37 @@ export default function CompetitorMinerPage() {
       return;
     }
 
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setLoading(true);
+    setElapsedSeconds(0);
     setResult("");
     setMobileTab("result");
+
+    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    timerIntervalRef.current = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+
+    const timeoutId = setTimeout(() => {
+      if (abortControllerRef.current === controller) {
+        controller.abort();
+        showAiError({
+          code: "TIMEOUT",
+          error: "Yêu cầu đã quá thời gian phản hồi (120s). Vui lòng thử lại sau.",
+        });
+      }
+    }, 120000);
 
     try {
       const response = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           tool: "competitor-miner",
           inputs: {
@@ -145,24 +148,56 @@ export default function CompetitorMinerPage() {
       const data = await response.json();
 
       if (!response.ok || !data.success) {
-        showAiError(data);
+        // Tự động kích hoạt Offline Blueprint dự phòng khi AI 502/503/timeout
+        const offlineData = buildOfflineCompetitorMinerData({
+          productName: productName.trim(),
+          category,
+          competitorReviews: competitorReviews.trim(),
+          shopStrength: shopStrength.trim(),
+        });
+        setResult(JSON.stringify(offlineData));
+        setIsOfflineMode(true);
+        showWarning(
+          data?.error || "Máy chủ AI phản hồi chậm hoặc đang bảo trì (502). Đã kích hoạt Bản phân tích đối thủ dự phòng 2026!",
+          "Chế Độ Dự Phòng"
+        );
         return;
       }
 
       setResult(data.data);
+      setIsOfflineMode(Boolean(data.isOfflineFallback));
       setRefreshTrigger((prev) => prev + 1);
-    } catch {
-      showAiError({
-        code: "NETWORK_ERROR",
-        error: "Không thể kết nối đến hệ thống AI. Vui lòng kiểm tra lại mạng hoặc thử lại sau.",
+    } catch (error: any) {
+      if (error?.name === "AbortError" || controller.signal.aborted) {
+        showWarning("Đã dừng quá trình xử lý theo yêu cầu của bạn.", "Đã Hủy");
+        return;
+      }
+      // Tự động phục hồi khi mất kết nối mạng
+      const offlineData = buildOfflineCompetitorMinerData({
+        productName: productName.trim(),
+        category,
+        competitorReviews: competitorReviews.trim(),
+        shopStrength: shopStrength.trim(),
       });
+      setResult(JSON.stringify(offlineData));
+      setIsOfflineMode(true);
+      showWarning(
+        "Không thể kết nối đến máy chủ AI (sự cố mạng). Đã kích hoạt Bản phân tích đối thủ dự phòng 2026!",
+        "Chế Độ Dự Phòng"
+      );
     } finally {
+      clearTimeout(timeoutId);
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+      abortControllerRef.current = null;
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-7xl w-full mx-auto flex-1 flex flex-col min-h-0 h-full lg:overflow-hidden">
+    <div className="max-w-7xl w-full mx-auto lg:flex-1 flex flex-col lg:min-h-0 lg:h-full lg:overflow-hidden pb-3">
       {/* Modals kiểm tra quyền truy cập */}
       <GateModals />
 
@@ -259,10 +294,10 @@ export default function CompetitorMinerPage() {
       />
 
       {/* Bố cục Form & Kết quả (Cuộn độc lập trên Desktop, Chuyển tab trên Mobile) */}
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:overflow-hidden items-stretch">
+      <div className="lg:flex-1 lg:min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:overflow-hidden items-start lg:items-stretch">
         {/* Cột trái: Form nhập liệu */}
-        <div className={`${mobileTab === "form" ? "flex" : "hidden lg:flex"} lg:col-span-5 flex-col min-h-0 lg:h-full lg:overflow-hidden`}>
-          <div className="h-full overflow-y-auto custom-scrollbar space-y-4 lg:pr-1.5 pb-24 lg:pb-2">
+        <div className={`${mobileTab === "form" ? "flex" : "hidden lg:flex"} lg:col-span-5 flex-col w-full lg:min-h-0 lg:h-full lg:overflow-hidden`}>
+          <div className="lg:h-full lg:overflow-y-auto custom-scrollbar space-y-4 lg:pr-1.5 pb-24 lg:pb-2">
             <div className="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-5">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
                 <div className="flex items-center gap-2">
@@ -362,37 +397,55 @@ export default function CompetitorMinerPage() {
               </div>
 
               {/* Nút hành động */}
-              <button
-                type="button"
-                disabled={loading}
-                onClick={handleGenerate}
-                className={`w-full py-3 px-4 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer ${
-                  loading
-                    ? "bg-slate-400 cursor-not-allowed"
-                    : "bg-gradient-to-r from-rose-600 via-red-600 to-rose-600 hover:from-rose-500 hover:to-red-500 hover:shadow-rose-500/25 active:scale-[0.99]"
-                }`}
-              >
-                {loading ? (
-                  <>
-                    <Sparkles size={16} className="animate-spin" /> Đang Săn Tử Huyệt & Tìm USP...
-                  </>
-                ) : (
-                  <>
-                    <Target size={16} /> Đọc Vị Đối Thủ & Tìm USP Ngay
-                  </>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={handleGenerate}
+                  className={`flex-1 py-3 px-4 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer ${
+                    loading
+                      ? "bg-slate-700 text-slate-300 cursor-not-allowed"
+                      : "bg-gradient-to-r from-rose-600 via-red-600 to-rose-600 hover:from-rose-500 hover:to-red-500 hover:shadow-rose-500/25 active:scale-[0.99]"
+                  }`}
+                >
+                  {loading ? (
+                    <>
+                      <Sparkles size={16} className="animate-spin text-white" />
+                      <span>Đang Săn Tử Huyệt ({elapsedSeconds}s)...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Target size={16} /> Đọc Vị Đối Thủ & Tìm USP Ngay
+                    </>
+                  )}
+                </button>
+
+                {loading && (
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    className="px-3.5 py-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 shrink-0"
+                    title="Hủy yêu cầu"
+                  >
+                    <XCircle size={16} />
+                    <span>Hủy</span>
+                  </button>
                 )}
-              </button>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Cột phải: Kết quả trực quan */}
-        <div className={`${mobileTab === "result" ? "flex" : "hidden lg:flex"} lg:col-span-7 flex-col min-h-0 lg:h-full lg:overflow-hidden`}>
+        {/* Cột phải: Kết quả trực quan (Chữ trắng nền đen, cuộn cả trang trên Mobile) */}
+        <div className={`${mobileTab === "result" ? "flex" : "hidden lg:flex"} lg:col-span-7 flex-col w-full lg:min-h-0 lg:h-full lg:overflow-hidden pb-20 lg:pb-0`}>
           <CompetitorMinerOutput
             result={result}
             loading={loading}
             productName={productName}
             onUseSample={handleUseSample}
+            elapsedSeconds={elapsedSeconds}
+            onCancel={handleCancel}
+            isOfflineMode={isOfflineMode}
           />
         </div>
       </div>

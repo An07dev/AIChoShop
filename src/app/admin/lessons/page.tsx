@@ -34,7 +34,7 @@ export default async function AdminLessons() {
     createdAt: l.createdAt ? l.createdAt.toISOString() : new Date().toISOString(),
   }));
   return (
-    <div className="flex-1 flex flex-col min-h-0">
+    <div className="w-full lg:w-[70%] mx-auto pb-12">
       <LessonsManager
         key={courses.map(course => `${course.id}:${course.title}`).join("|")}
         initialLessons={serializedLessons}

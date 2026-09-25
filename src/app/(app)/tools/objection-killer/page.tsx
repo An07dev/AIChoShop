@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   ArrowLeft,
   Sparkles,
@@ -13,6 +13,7 @@ import {
   Tag,
   ShieldCheck,
   Crown,
+  XCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { useToolGate } from "@/hooks/useToolGate";
@@ -20,6 +21,7 @@ import { ObjectionKillerOutput } from "@/components/tools/ObjectionKillerOutput"
 import { useToast } from "@/context/ToastContext";
 import { AiUsageBadge } from "@/components/tools/AiUsageBadge";
 import { MobileToolTabs } from "@/components/tools/MobileToolTabs";
+import { buildOfflineObjectionKillerData } from "@/lib/objection-killer/contract";
 
 const COMMON_OBJECTIONS = [
   "Giá đắt quá / Shop khác bán rẻ hơn nhiều",
@@ -36,53 +38,7 @@ const SAMPLE_DATA = {
   flexibleOffer: "Tặng kèm kẹp gắp inox 304 + voucher giảm 40k nếu chốt ngay phiên chat, bảo hành 12 tháng 1 đổi 1 tại nhà.",
 };
 
-const SAMPLE_OUTPUT = `## 🧠 1. GIẢI MÃ TÂM LÝ ẨN SAU LỜI TỪ CHỐI
-- **Nỗi sợ thực sự của khách:** Khách lo ngại mua phải sản phẩm đắt mà không xứng đáng hoặc hàng giả, kém chất lượng. Họ cũng quan ngại so sánh giá với shop khác, lo lắng mua không phải là lựa chọn tốt nhất.
-- **Sai lầm nhân viên thường mắc:** Đơn giản chỉ ra giá thấp hơn của shop kia mà không chứng minh được giá trị vượt trội của sản phẩm, khiến khách cảm thấy bị ép mua.
-
----
-
-## 💬 2. BA PHƯƠNG ÁN PHẢN HỒI BẺ GÃY TỪ CHỐI TỨC THÌ
-### 💎 Phương Án 1: Đánh Vào Giá Trị Vượt Trội (Value Focus - Khuyên Dùng)
-- **Mẫu tin nhắn:** 
-  \`\`\`markdown
-  Anh/chị ơi, em hiểu hoàn toàn tâm lý của Anh/Chị. Nồi chiên không dầu điện tử 6L của shop chúng em không chỉ chất lượng vượt trội hơn so với nhiều sản phẩm cùng loại mà còn bền gấp đôi. Với mức giá 890k, em đảm bảo rằng Anh/Chị sẽ hài lòng với quyết định mua hàng của mình. 
-  \`\`\`
-- **Thời điểm áp dụng:** Dành cho khách chê đắt nhưng thực sự thích sản phẩm.
-
-### ⚡ Phương Án 2: Tung Deal Khan Hiếm 15 Phút (Urgency & Exclusive Offer)
-- **Mẫu tin nhắn:** 
-  \`\`\`markdown
-  Anh/chị, em có một ưu đãi đặc biệt chỉ trong 15 phút nữa. Nếu Anh/chị đặt hàng ngay bây giờ, em sẽ tặng kèm kẹp gắp inox 304 và voucher giảm 40k cho Anh/chị. Chỉ còn 15 phút nữa, đừng bỏ lỡ cơ hội tiết kiệm 40k nhé!
-  \`\`\`
-- **Thời điểm áp dụng:** Dành cho khách đòi 'suy nghĩ thêm' hoặc so sánh giá.
-
-### 🛡️ Phương Án 3: Đảo Ngược Rủi Ro Tuyệt Đối (Zero-Risk Reversal)
-- **Mẫu tin nhắn:** 
-  \`\`\`markdown
-  Anh/chị ơi, em rất hiểu Anh/chị lo lắng về chất lượng. Shop chúng em cam kết bảo hành 12 tháng 1 đổi 1 tại nhà, đồng thời chịu 100% phí ship nếu Anh/chị không hài lòng. Em xin đảm bảo, Anh/chị sẽ không phải lo lắng về bất kỳ rủi ro nào.
-  \`\`\`
-- **Thời điểm áp dụng:** Dành cho khách sợ hàng không giống ảnh hoặc sợ bị lừa.
-
----
-
-## 🚀 3. KỸ THUẬT "CÂU HỎI MỞ" BUỘC KHÁCH PHẢI TRẢ LỜI
-- **Câu hỏi lựa chọn 1:** 
-  \`\`\`markdown
-  Em có thể giúp Anh/chị chọn màu sắc và kích thước phù hợp không? Điều này sẽ giúp Anh/chị quyết định nhanh hơn.
-  \`\`\`
-- **Câu hỏi lựa chọn 2:** 
-  \`\`\`markdown
-  Em có thể gửi thêm địa chỉ nhận hàng cho em, để em kịp thời gửi hàng cho Anh/chị?
-  \`\`\`
-
----
-
-## ⏱️ 4. NGUYÊN TẮC VÀNG KHI TRỰC CHAT SÀN
-- **3 mẹo giúp tỷ lệ chốt đơn (Conversion Rate) trên khung chat tăng từ 15% lên 40%:**
-  1. **Luôn đồng cảm và tạo sự tin tưởng:** Đồng cảm với khách hàng để làm giảm sự đề phòng và tạo cảm giác an tâm.
-  2. **Cung cấp thông tin chi tiết và minh bạch:** Giải thích rõ về giá trị sản phẩm, ưu đãi và cam kết bảo hành để khách hàng hiểu rõ.
-  3. **Đặt câu hỏi mở:** Hỏi khách hàng về nhu cầu và mong muốn để gợi ý họ đưa ra quyết định, thay vì để họ im lặng.`;
+const SAMPLE_OUTPUT = JSON.stringify(buildOfflineObjectionKillerData(SAMPLE_DATA));
 
 export default function ObjectionKillerPage() {
   const { checkAccess, GateModals } = useToolGate();
@@ -90,8 +46,26 @@ export default function ObjectionKillerPage() {
 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState("");
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [mobileTab, setMobileTab] = useState<"form" | "result">("form");
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Dọn dẹp timer và abort request khi component unmount
+  useEffect(() => {
+    return () => {
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      if (abortControllerRef.current) abortControllerRef.current.abort();
+    };
+  }, []);
+
+  const handleCancel = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+  };
 
   // Form states
   const [productName, setProductName] = useState("");
@@ -105,6 +79,7 @@ export default function ObjectionKillerPage() {
     setCustomerObjection(SAMPLE_DATA.customerObjection);
     setFlexibleOffer(SAMPLE_DATA.flexibleOffer);
     setResult(SAMPLE_OUTPUT);
+    setIsOfflineMode(false);
     setMobileTab("result");
   };
 
@@ -114,6 +89,7 @@ export default function ObjectionKillerPage() {
     setCustomerObjection("");
     setFlexibleOffer("");
     setResult("");
+    setIsOfflineMode(false);
   };
 
   const handleSelectCommonObjection = (text: string) => {
@@ -133,14 +109,37 @@ export default function ObjectionKillerPage() {
       return;
     }
 
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
     setLoading(true);
+    setElapsedSeconds(0);
     setResult("");
     setMobileTab("result");
+
+    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    timerIntervalRef.current = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+
+    const timeoutId = setTimeout(() => {
+      if (abortControllerRef.current === controller) {
+        controller.abort();
+        showAiError({
+          code: "TIMEOUT",
+          error: "Yêu cầu đã quá thời gian phản hồi (120s). Vui lòng thử lại sau.",
+        });
+      }
+    }, 120000);
 
     try {
       const response = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           tool: "objection-killer",
           inputs: {
@@ -159,14 +158,37 @@ export default function ObjectionKillerPage() {
         return;
       }
 
+      setIsOfflineMode(Boolean(data.isOfflineFallback));
+      if (data.isOfflineFallback && data.message) {
+        showWarning(data.message, "Chế Độ Dự Phòng");
+      }
       setResult(data.data);
       setRefreshTrigger((prev) => prev + 1);
-    } catch {
-      showAiError({
-        code: "NETWORK_ERROR",
-        error: "Không thể kết nối đến hệ thống AI. Vui lòng kiểm tra lại mạng hoặc thử lại sau.",
+    } catch (error: any) {
+      if (error?.name === "AbortError" || controller.signal.aborted) {
+        showWarning("Đã dừng quá trình xử lý theo yêu cầu của bạn.", "Đã Hủy");
+        return;
+      }
+      // Zero-Fail Client Fallback: Nếu mạng mất kết nối hoặc timeout
+      const fallbackData = buildOfflineObjectionKillerData({
+        productName: productName.trim(),
+        price: price.trim(),
+        customerObjection: customerObjection.trim(),
+        flexibleOffer: flexibleOffer.trim(),
       });
+      setResult(JSON.stringify(fallbackData));
+      setIsOfflineMode(true);
+      showWarning(
+        "Mạng kết nối AI gián đoạn. Đã tự động kích hoạt bộ kịch bản bẻ gãy từ chối dự phòng chuẩn sàn TMĐT (lượt dùng chưa bị trừ).",
+        "Chế Độ Dự Phòng"
+      );
     } finally {
+      clearTimeout(timeoutId);
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+      abortControllerRef.current = null;
       setLoading(false);
     }
   };
@@ -269,9 +291,9 @@ export default function ObjectionKillerPage() {
       />
 
       {/* Bố cục Form & Kết quả (Cuộn độc lập) */}
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:overflow-hidden items-stretch">
+      <div className="flex-1 min-h-0 w-full min-w-0 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:overflow-hidden items-stretch">
         {/* Cột trái: Form nhập liệu */}
-        <div className={`${mobileTab === "form" ? "flex" : "hidden lg:flex"} lg:col-span-5 flex-col min-h-0 lg:h-full lg:overflow-hidden`}>
+        <div className={`${mobileTab === "form" ? "flex" : "hidden lg:flex"} lg:col-span-5 flex-col w-full min-w-0 min-h-0 lg:h-full lg:overflow-hidden`}>
           <div className="h-full overflow-y-auto custom-scrollbar space-y-4 lg:pr-1.5 pb-24 lg:pb-2">
             <div className="bg-white dark:bg-slate-900 p-5 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-5">
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -376,37 +398,59 @@ export default function ObjectionKillerPage() {
               </div>
 
               {/* Nút hành động */}
-              <button
-                type="button"
-                disabled={loading}
-                onClick={handleGenerate}
-                className={`w-full py-3 px-4 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer ${
-                  loading
-                    ? "bg-slate-400 cursor-not-allowed"
-                    : "bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 hover:shadow-emerald-500/25 active:scale-[0.99]"
-                }`}
-              >
-                {loading ? (
-                  <>
-                    <Sparkles size={16} className="animate-spin" /> Đang Soạn Kịch Bản Bẻ Gãy Từ Chối...
-                  </>
-                ) : (
-                  <>
-                    <Zap size={16} /> Bẻ Gãy Từ Chối & Lên Kịch Bản Chốt Ngay
-                  </>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={handleGenerate}
+                  className={`flex-1 py-3 px-4 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer ${
+                    loading
+                      ? "bg-slate-700 text-slate-300 cursor-not-allowed"
+                      : "bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 hover:shadow-emerald-500/25 active:scale-[0.99]"
+                  }`}
+                >
+                  {loading ? (
+                    <>
+                      <Sparkles size={16} className="animate-spin text-white" />
+                      <span>Đang Soạn Kịch Bản ({elapsedSeconds}s)...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Zap size={16} /> Bẻ Gãy Từ Chối & Lên Kịch Bản Chốt Ngay
+                    </>
+                  )}
+                </button>
+
+                {loading && (
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    className="px-3.5 py-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 shrink-0"
+                    title="Hủy yêu cầu"
+                  >
+                    <XCircle size={16} />
+                    <span>Hủy</span>
+                  </button>
                 )}
-              </button>
+              </div>
             </div>
           </div>
         </div>
 
         {/* Cột phải: Kết quả trực quan */}
-        <div className={`${mobileTab === "result" ? "flex" : "hidden lg:flex"} lg:col-span-7 flex-col min-h-0 lg:h-full lg:overflow-hidden`}>
+        <div className={`${mobileTab === "result" ? "flex" : "hidden lg:flex"} lg:col-span-7 flex-col w-full min-w-0 lg:min-h-0 lg:h-full lg:overflow-hidden pb-16 lg:pb-0`}>
           <ObjectionKillerOutput
             result={result}
             loading={loading}
             productName={productName}
+            customerObjection={customerObjection}
+            price={price}
+            flexibleOffer={flexibleOffer}
             onUseSample={handleUseSample}
+            elapsedSeconds={elapsedSeconds}
+            onCancel={handleCancel}
+            isOfflineMode={isOfflineMode}
+            onRetryWithAi={handleGenerate}
           />
         </div>
       </div>

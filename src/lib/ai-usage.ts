@@ -80,7 +80,12 @@ export async function getAiUsageStats(userId: string, filterTool?: string) {
  * Lưu bản ghi sử dụng AI vào Database
  */
 export async function recordAiUsage(params: {
-  userId: string; tool: string; input?: unknown; output?: string;
+  userId: string;
+  tool: string;
+  toolName?: string;
+  action?: string;
+  input?: unknown;
+  output?: string;
 }) {
   try {
     const toolName = params.toolName || TOOL_NAMES[params.tool] || params.tool;

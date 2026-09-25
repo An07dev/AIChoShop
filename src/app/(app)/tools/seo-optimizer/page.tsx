@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import {
   ArrowLeft,
@@ -12,6 +12,7 @@ import {
   Clock,
   Send,
   Megaphone,
+  XCircle,
 } from "lucide-react";
 import { useToolGate } from "@/hooks/useToolGate";
 import { AuthModal } from "@/components/auth/AuthModal";
@@ -52,13 +53,92 @@ const SAMPLE_DATA: SeoInputs = {
 };
 
 const SAMPLE_OUTPUT: SeoResult = {
+  seoScore: {
+    score: 98,
+    grade: "XUẤT SẮC",
+    checklist: [
+      { item: "Từ khóa chính 'áo polo nam' nằm trọn trong 40 ký tự đầu", passed: true },
+      { item: "Độ dài tiêu đề đạt chuẩn thuật toán Shopee (100 - 120 ký tự)", passed: true },
+      { item: "Mô tả AIDA đầy đủ 4 tầng chuyển đổi (Hook -> USP -> Size -> Cam kết)", passed: true },
+      { item: "Kiểm duyệt an toàn 100%: Không chứa từ cấm sàn", passed: true },
+    ],
+    safetyPassed: true,
+  },
   titles: [
     "Áo polo nam ngắn tay cổ bẻ vải cá sấu gai cao cấp cotton 100% co giãn 4 chiều",
-    "Áo polo nam công sở lịch lãm chất cá sấu gai tổ ong thấm hút mồ hôi bo cổ bền đẹp",
+    "🔥 Áo polo nam công sở lịch lãm chất cá sấu gai tổ ong thấm hút mồ hôi bo cổ bền đẹp",
     "Áo thun có cổ nam basic phong cách trẻ trung năng động vải cá sấu không bai dão",
     "Áo phông nam cổ bẻ cao cấp form chuẩn size M đến XXL tôn dáng nam tính",
     "Áo polo nam ngắn tay vải cotton cá sấu gai co giãn 4 chiều mềm mát chính hãng",
   ],
+  richTitles: [
+    {
+      id: 1,
+      style: "SEO Thuật Toán (Search-Driven)",
+      tag: "Đẩy Top Sàn",
+      title: "Áo polo nam ngắn tay cổ bẻ vải cá sấu gai cao cấp cotton 100% co giãn 4 chiều",
+      charCount: "Áo polo nam ngắn tay cổ bẻ vải cá sấu gai cao cấp cotton 100% co giãn 4 chiều".length,
+      hookKeywords: "áo polo nam, cá sấu gai",
+      targetAudience: "Khách gõ tìm kiếm tự nhiên trên sàn",
+    },
+    {
+      id: 2,
+      style: "Kéo Click CTR (Impulse/Curiosity)",
+      tag: "Tăng CTR",
+      title: "🔥 Áo polo nam công sở lịch lãm chất cá sấu gai tổ ong thấm hút mồ hôi bo cổ bền đẹp",
+      charCount: "🔥 Áo polo nam công sở lịch lãm chất cá sấu gai tổ ong thấm hút mồ hôi bo cổ bền đẹp".length,
+      hookKeywords: "áo polo nam công sở lịch lãm",
+      targetAudience: "Khách lướt feed, mua theo cảm xúc & deal hời",
+    },
+    {
+      id: 3,
+      style: "Đấu Thầu Quảng Cáo (High Ads Quality)",
+      tag: "Chuẩn Ads",
+      title: "Áo thun có cổ nam basic phong cách trẻ trung năng động vải cá sấu không bai dão",
+      charCount: "Áo thun có cổ nam basic phong cách trẻ trung năng động vải cá sấu không bai dão".length,
+      hookKeywords: "áo thun có cổ nam basic",
+      targetAudience: "Khách tìm kiếm từ khóa ngách chạy Ads",
+    },
+    {
+      id: 4,
+      style: "Đột Phá USP (Lợi Thế Độc Quyền)",
+      tag: "Độc Quyền",
+      title: "Áo phông nam cổ bẻ cao cấp form chuẩn size M đến XXL tôn dáng nam tính",
+      charCount: "Áo phông nam cổ bẻ cao cấp form chuẩn size M đến XXL tôn dáng nam tính".length,
+      hookKeywords: "form chuẩn tôn dáng nam tính",
+      targetAudience: "Khách quan tâm form dáng & chất lượng vải",
+    },
+    {
+      id: 5,
+      style: "Toàn Diện & Chốt Đơn (Conversion Master)",
+      tag: "Chốt Đơn",
+      title: "Áo polo nam ngắn tay vải cotton cá sấu gai co giãn 4 chiều mềm mát chính hãng",
+      charCount: "Áo polo nam ngắn tay vải cotton cá sấu gai co giãn 4 chiều mềm mát chính hãng".length,
+      hookKeywords: "cotton cá sấu co giãn 4 chiều chính hãng",
+      targetAudience: "Khách xem xét kỹ thông số trước khi bấm mua",
+    },
+  ],
+  descriptionAida: {
+    attentionHook: "Bạn đang tìm kiếm một chiếc áo polo nam lịch lãm, vừa vặn tôn dáng nhưng vẫn thoáng mát tuyệt đối suốt ngày dài làm việc?",
+    uspStory: "Chất liệu cotton cá sấu gai tổ ong 100% tự nhiên dệt dày dặn, co giãn 4 chiều linh hoạt và thấm hút mồ hôi vượt trội. Điểm nhấn bo cổ dệt nguyên khối cao cấp không bao giờ bị bai dão hay cong vênh sau nhiều lần giặt máy.",
+    featureBullets: [
+      { feature: "Vải cá sấu gai tổ ong cao cấp", benefit: "Mềm mát, thoáng khí tối đa, không xù lông" },
+      { feature: "Form Regular Fit hiện đại", benefit: "Tôn dáng nam tính, che khuyết điểm bụng cực tốt" },
+      { feature: "Đường may 4 kim tinh xảo", benefit: "Độ bền vượt bậc, giữ phom áo nguyên bản dài lâu" },
+    ],
+    sizeAndSpecs: [
+      "Size M: 50 - 60kg (Chiều cao 1m60 - 1m68)",
+      "Size L: 60 - 70kg (Chiều cao 1m68 - 1m75)",
+      "Size XL: 70 - 80kg (Chiều cao 1m75 - 1m80)",
+      "Size XXL: 80 - 90kg (Chiều cao 1m80 - 1m85)",
+    ],
+    commitments: [
+      "Cam kết 100% hình ảnh thực tế và chất lượng chuẩn như mô tả",
+      "Hỗ trợ đổi size miễn phí tận nhà trong 7 ngày nếu không vừa",
+      "Khách hàng được đồng kiểm tra hàng thoải mái trước khi thanh toán",
+    ],
+    ctaCloser: "👉 BẤM [MUA NGAY] ĐỂ NHẬN VOUCHER GIẢM GIÁ VÀ QUÀ TẶNG BẢO HÀNH ĐẶC BIỆT HÔM NAY!",
+  },
   descriptions: [
     {
       title: "✨ ĐIỂM NHẤN ĐẶC QUYỀN (USP)",
@@ -81,6 +161,22 @@ const SAMPLE_OUTPUT: SeoResult = {
         "Hỗ trợ đổi trả miễn phí trong 7 ngày nếu không vừa size hoặc lỗi từ nhà sản xuất. Khách hàng được đồng kiểm tra hàng trước khi nhận.",
     },
   ],
+  keywordMatrix: {
+    coreKeywords: ["áo polo nam", "áo thun có cổ", "áo phông nam cổ bẻ"],
+    longtailKeywords: ["áo polo nam vải cá sấu gai", "áo polo nam co giãn 4 chiều", "áo polo nam công sở lịch lãm"],
+    hashtags: [
+      "#aopolonam",
+      "#aothuncoco",
+      "#aophongnam",
+      "#aopolocasau",
+      "#aopolobasic",
+      "#thoitrangnam",
+      "#aopolocongso",
+      "#aonamngantay",
+      "#aocobe",
+      "#aopolocaocap",
+    ],
+  },
   hashtags: [
     "#aopolonam",
     "#aothuncoco",
@@ -108,7 +204,7 @@ const USP_TAGS = [
 
 export default function SeoOptimizerPage() {
   const { checkAccess, GateModals } = useToolGate();
-  const { showAiError, showWarning } = useToast();
+  const { showAiError, showWarning, showSuccess } = useToast();
 
   const [inputs, setInputs] = useState<SeoInputs>({ ...EMPTY });
   const [snapshot, setSnapshot] = useState<SeoSnapshot | null>(null);
@@ -117,6 +213,21 @@ export default function SeoOptimizerPage() {
   const [remaining, setRemaining] = useState<number | null | undefined>();
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [mobileTab, setMobileTab] = useState<"form" | "result">("form");
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
+  const abortRef = useRef<AbortController | null>(null);
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      abortRef.current?.abort();
+    };
+  }, []);
+
+  const handleCancel = () => {
+    abortRef.current?.abort();
+  };
 
   const [userQuota, setUserQuota] = useState<{
     isLogged: boolean;
@@ -151,8 +262,23 @@ export default function SeoOptimizerPage() {
   };
 
   const handleResetForm = () => {
+    abortRef.current?.abort();
     setInputs({ ...EMPTY });
     setSnapshot(null);
+  };
+
+  const handleRestoreFromHistory = (savedOutput: string) => {
+    try {
+      const parsed = parseSeoResult(savedOutput, inputs.platform, inputs);
+      setSnapshot({
+        inputs: { ...inputs },
+        output: parsed,
+      });
+      setMobileTab("result");
+      showSuccess("Đã tải lại kết quả SEO từ lịch sử!");
+    } catch {
+      // ignore
+    }
   };
 
   const handleAddUspTag = (tag: string) => {
@@ -183,13 +309,36 @@ export default function SeoOptimizerPage() {
       return;
     }
 
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
     setLoading(true);
     setMobileTab("result");
+    setElapsedSeconds(0);
+
+    // Bộ đếm thời gian thực
+    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    timerIntervalRef.current = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+
+    // Timeout bảo vệ tối đa 60 giây
+    const timeoutId = setTimeout(() => {
+      if (abortRef.current === controller) {
+        controller.abort();
+        showAiError({
+          code: "TIMEOUT",
+          error: "Yêu cầu đã quá thời gian phản hồi (120s). Vui lòng thử lại hoặc giảm bớt độ dài nội dung.",
+        });
+      }
+    }, 120000);
 
     try {
       const res = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           tool: "seo-optimizer",
           inputs: {
@@ -205,9 +354,34 @@ export default function SeoOptimizerPage() {
         }),
       });
 
-      const json = await res.json();
+      let json: any;
+      try {
+        const text = await res.text();
+        try {
+          json = JSON.parse(text);
+        } catch {
+          json = {
+            success: false,
+            code: res.status === 504 ? "TIMEOUT" : "SERVER_ERROR",
+            error:
+              res.status === 504
+                ? "Dịch vụ AI đang xử lý quá lâu hoặc hết hạn mức chờ (504 Gateway Timeout). Lượt dùng chưa bị trừ, vui lòng thử lại."
+                : `Máy chủ tạm thời bận hoặc phản hồi mã lỗi ${res.status}. Vui lòng thử lại sau ít phút.`,
+          };
+        }
+      } catch {
+        json = {
+          success: false,
+          code: "NETWORK_ERROR",
+          error: "Không thể kết nối đến máy chủ. Vui lòng kiểm tra lại kết nối mạng.",
+        };
+      }
 
       if (!res.ok || !json.success) {
+        if (json.code === "REQUEST_ABORTED") {
+          showWarning("Đã hủy tối ưu SEO theo yêu cầu của bạn.", "Đã Hủy");
+          return;
+        }
         showAiError(json);
         if (json.loginRequired) {
           setLoginOpen(true);
@@ -225,19 +399,29 @@ export default function SeoOptimizerPage() {
       if (typeof json.remaining === "number") {
         setRemaining(json.remaining);
       }
-    } catch (cause) {
+    } catch (cause: any) {
+      if (cause?.name === "AbortError" || controller.signal.aborted) {
+        showWarning("Đã dừng quá trình tối ưu SEO.", "Đã Hủy");
+        return;
+      }
       showAiError(
         cause instanceof Error
           ? { code: "SERVER_ERROR", error: cause.message }
           : { code: "NETWORK_ERROR", error: "Không thể kết nối máy chủ. Vui lòng thử lại sau." }
       );
     } finally {
+      clearTimeout(timeoutId);
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+      abortRef.current = null;
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-7xl w-full mx-auto flex-1 flex flex-col min-h-0 lg:h-full lg:overflow-hidden">
+    <div className="max-w-7xl w-full mx-auto w-full flex flex-col lg:flex-1 lg:min-h-0 lg:h-full lg:overflow-hidden">
       {/* Modals chặn quyền & đăng nhập */}
       <GateModals />
       <AuthModal isOpen={loginOpen} onClose={() => setLoginOpen(false)} initialTab="login" />
@@ -257,7 +441,12 @@ export default function SeoOptimizerPage() {
               <Sparkles size={10} className="text-emerald-600 dark:text-emerald-400" />
               FREE
             </span>
-            <AiUsageBadge tool="seo-optimizer" refreshTrigger={refreshTrigger} historyOnly />
+            <AiUsageBadge
+              tool="seo-optimizer"
+              refreshTrigger={refreshTrigger}
+              onSelectOutput={handleRestoreFromHistory}
+              historyOnly
+            />
           </div>
         </div>
 
@@ -306,7 +495,11 @@ export default function SeoOptimizerPage() {
 
           {/* Quick Action Buttons (Desktop ONLY - Preserved exactly as original) */}
           <div className="hidden md:flex items-center gap-2 shrink-0">
-            <AiUsageBadge tool="seo-optimizer" refreshTrigger={refreshTrigger} />
+            <AiUsageBadge
+              tool="seo-optimizer"
+              refreshTrigger={refreshTrigger}
+              onSelectOutput={handleRestoreFromHistory}
+            />
             <button
               type="button"
               onClick={handleUseSample}
@@ -334,11 +527,11 @@ export default function SeoOptimizerPage() {
         resultLabel="Tiêu Đề & Listing"
       />
 
-      {/* Grid 2 Cột: Cuộn độc lập trên Desktop, Chuyển tab trên Mobile */}
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:overflow-hidden items-stretch">
+      {/* Grid 2 Cột: Cuộn tự nhiên cả trang trên Mobile, Cuộn độc lập trên Desktop */}
+      <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-5 lg:flex-1 lg:min-h-0 lg:overflow-hidden items-stretch">
         {/* CỘT TRÁI: FORM NHẬP LIỆU */}
-        <div className={`${mobileTab === "form" ? "flex" : "hidden lg:flex"} lg:col-span-5 flex-col min-h-0 lg:h-full lg:overflow-hidden`}>
-          <div className="lg:h-full lg:overflow-y-auto custom-scrollbar space-y-4 lg:pr-1.5 pb-20 lg:pb-2">
+        <div className={`${mobileTab === "form" ? "flex" : "hidden lg:flex"} lg:col-span-5 flex-col w-full lg:min-h-0 lg:h-full lg:overflow-hidden`}>
+          <div className="w-full lg:h-full lg:overflow-y-auto custom-scrollbar space-y-4 lg:pr-1.5 pb-24 lg:pb-2">
             <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-4 sm:p-5 shadow-xs space-y-4">
               {/* 1. SÀN THƯƠNG MẠI ĐIỆN TỬ */}
               <div>
@@ -534,23 +727,35 @@ export default function SeoOptimizerPage() {
                 />
               </div>
 
-              {/* Nút Submit */}
-              <button
-                type="button"
-                onClick={handleGenerate}
-                disabled={loading}
-                className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 text-white font-bold text-sm shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99]"
-              >
-                {loading ? (
-                  <>
-                    <Sparkles size={16} className="animate-spin" /> Đang Tối Ưu SEO Chuẩn Sàn...
-                  </>
-                ) : (
-                  <>
-                    <Send size={16} /> Tối Ưu SEO ({inputs.platform === "shopee" ? "Shopee" : "TikTok Shop"})
-                  </>
+              {/* Nút Submit & Hủy yêu cầu */}
+              <div className="space-y-2">
+                <button
+                  type="button"
+                  onClick={handleGenerate}
+                  disabled={loading}
+                  className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 text-white font-bold text-sm shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99]"
+                >
+                  {loading ? (
+                    <>
+                      <Sparkles size={16} className="animate-spin" /> Đang Tối Ưu SEO ({elapsedSeconds}s)...
+                    </>
+                  ) : (
+                    <>
+                      <Send size={16} /> Tối Ưu SEO ({inputs.platform === "shopee" ? "Shopee" : "TikTok Shop"})
+                    </>
+                  )}
+                </button>
+
+                {loading && (
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    className="w-full py-2 px-3 rounded-xl bg-slate-900 hover:bg-rose-950/40 text-slate-400 hover:text-rose-300 border border-slate-800 hover:border-rose-900/60 font-semibold text-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-xs active:scale-98"
+                  >
+                    <XCircle size={14} className="text-rose-400" /> Hủy Quá Trình Tạo
+                  </button>
                 )}
-              </button>
+              </div>
 
               {/* Thông tin quota tài khoản */}
               <p aria-live="polite" className="text-[10px] text-center text-slate-400">
@@ -577,10 +782,12 @@ export default function SeoOptimizerPage() {
         </div>
 
         {/* CỘT PHẢI: KẾT QUẢ HIỂN THỊ */}
-        <div className={`${mobileTab === "result" ? "flex" : "hidden lg:flex"} lg:col-span-7 flex-col min-h-0 lg:h-full lg:overflow-hidden pb-16 lg:pb-0`}>
+        <div className={`${mobileTab === "result" ? "flex" : "hidden lg:flex"} lg:col-span-7 flex-col w-full lg:min-h-0 lg:h-full lg:overflow-hidden pb-24 lg:pb-0`}>
           <SeoOptimizerOutput
             snapshot={snapshot}
             loading={loading}
+            elapsedSeconds={elapsedSeconds}
+            onCancel={handleCancel}
             onUseSample={handleUseSample}
           />
         </div>
@@ -588,7 +795,7 @@ export default function SeoOptimizerPage() {
 
       {/* Mobile Floating Sticky Action Bar (chỉ hiện khi ở tab form trên mobile) */}
       {mobileTab === "form" && (
-        <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 z-40 lg:hidden shadow-lg">
+        <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 z-40 lg:hidden shadow-lg space-y-2">
           <button
             type="button"
             onClick={handleGenerate}
@@ -597,7 +804,7 @@ export default function SeoOptimizerPage() {
           >
             {loading ? (
               <>
-                <Sparkles size={16} className="animate-spin" /> Đang Tối Ưu SEO Chuẩn Sàn...
+                <Sparkles size={16} className="animate-spin" /> Đang Tối Ưu SEO ({elapsedSeconds}s)...
               </>
             ) : (
               <>
@@ -605,6 +812,16 @@ export default function SeoOptimizerPage() {
               </>
             )}
           </button>
+
+          {loading && (
+            <button
+              type="button"
+              onClick={handleCancel}
+              className="w-full py-2 px-3 rounded-xl bg-slate-900 text-rose-400 border border-slate-800 font-semibold text-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-98"
+            >
+              <XCircle size={14} /> Hủy Yêu Cầu
+            </button>
+          )}
         </div>
       )}
     </div>

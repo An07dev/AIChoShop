@@ -40,8 +40,39 @@ export function AccountHistoryProvider({ owner, children }: { owner: string | nu
   if (blocked) return <section role="alert" className="m-6 rounded-2xl border border-amber-300 bg-amber-50 p-6 text-slate-900"><h2 className="font-bold">Cần xác minh lại tài khoản</h2><p className="my-3">{notice || "Bạn đã đăng xuất hoặc đổi tài khoản ở cửa sổ khác. Nội dung cũ đã được ẩn để tránh dùng nhầm dữ liệu."}</p><button className="rounded-lg bg-blue-600 p-3 text-white" onClick={() => window.location.reload()}>Tải lại trang</button></section>;
   return <Context.Provider value={{ storage, owner: identity, ready, fetch: historyFetch }}><div key={identity} className="contents">{notice && <div role="alert" className="m-3 rounded-lg bg-amber-50 p-3 text-amber-900">{notice}</div>}{children}</div></Context.Provider>;
 }
+const fallbackValue = {
+  storage: {
+    getItem: (tool: string) => {
+      if (typeof window === "undefined") return "[]";
+      try {
+        return sessionStorage.getItem(`aichoshop:history:v2:guest:${tool}`) || "[]";
+      } catch {
+        return "[]";
+      }
+    },
+    setItem: (tool: string, text: string) => {
+      if (typeof window === "undefined") return;
+      try {
+        sessionStorage.setItem(`aichoshop:history:v2:guest:${tool}`, text);
+      } catch {}
+    },
+    removeItem: (tool: string) => {
+      if (typeof window === "undefined") return;
+      try {
+        sessionStorage.removeItem(`aichoshop:history:v2:guest:${tool}`);
+      } catch {}
+    },
+  },
+  owner: "guest",
+  ready: true,
+  fetch: (input: RequestInfo | URL, init?: RequestInit) => fetch(input, init),
+};
+
 export function useAccountStorage() {
   const value = useContext(Context);
-  if (!value) throw Error("Thiếu ngữ cảnh lịch sử tài khoản.");
+  if (!value) {
+    return fallbackValue;
+  }
   return value;
 }
+

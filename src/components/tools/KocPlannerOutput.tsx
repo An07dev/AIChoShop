@@ -19,14 +19,24 @@ import {
   Award,
   BookOpen,
 } from "lucide-react";
-import { TextShimmerWave } from "@/components/loading-ui/text-shimmer-wave";
+import { ToolLoadingState } from "@/components/tools/ToolLoadingState";
 
 interface KocPlannerOutputProps {
   result: string;
   loading: boolean;
   category: string;
   budget: string;
+  elapsedSeconds?: number;
+  onCancel?: () => void;
 }
+
+const KOC_STAGES = [
+  { upToSeconds: 4, text: "Đang phân tích ngành hàng & cấu trúc ngân sách mục tiêu..." },
+  { upToSeconds: 10, text: "Xác định tỷ lệ phân bổ tối ưu: Booking, Spark Ads & Hàng mẫu..." },
+  { upToSeconds: 20, text: "Lên chân dung tiêu chí tuyển chọn KOC (Nano/Micro) chuyển đổi cao..." },
+  { upToSeconds: 35, text: "Soạn thảo kịch bản brief nội dung, hook mở đầu & góc review..." },
+  { upToSeconds: 60, text: "Đóng gói bảng kế hoạch KOC tổng thể & hợp đồng ràng buộc..." },
+];
 
 interface ParsedSection {
   id: number;
@@ -40,6 +50,8 @@ export function KocPlannerOutput({
   loading,
   category,
   budget,
+  elapsedSeconds = 0,
+  onCancel,
 }: KocPlannerOutputProps) {
   const [copied, setCopied] = useState(false);
   const [copiedSectionId, setCopiedSectionId] = useState<number | null>(null);
@@ -303,11 +315,14 @@ export function KocPlannerOutput({
 
         {/* Trạng thái đang tải (Loading) */}
         {loading && (
-          <div className="h-full min-h-[220px] flex items-center justify-center">
-            <TextShimmerWave className="text-xl font-medium text-blue-500">
-              AI Thinking
-            </TextShimmerWave>
-          </div>
+          <ToolLoadingState
+            elapsedSeconds={elapsedSeconds}
+            onCancel={onCancel}
+            title="AI Đang Lên Kế Hoạch KOC Chuẩn Sàn..."
+            stages={KOC_STAGES}
+            accentColor="indigo"
+            minHeightClass="min-h-[280px]"
+          />
         )}
 
         {/* Kết quả khi đã sinh xong */}

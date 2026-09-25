@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   ArrowLeft,
   Sparkles,
@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   Send,
   Crown,
+  XCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { useToolGate } from "@/hooks/useToolGate";
@@ -23,6 +24,11 @@ import { AntiReturnNudgeOutput } from "@/components/tools/AntiReturnNudgeOutput"
 import { useToast } from "@/context/ToastContext";
 import { AiUsageBadge } from "@/components/tools/AiUsageBadge";
 import { MobileToolTabs } from "@/components/tools/MobileToolTabs";
+import {
+  SAMPLE_ANTI_RETURN_INPUT,
+  SAMPLE_ANTI_RETURN_DATA,
+  buildOfflineAntiReturnNudgeData,
+} from "@/lib/anti-return-nudge/contract";
 
 const SCENARIOS = [
   {
@@ -52,89 +58,32 @@ const SCENARIOS = [
   },
 ];
 
-const SAMPLE_DATA = {
-  shopName: "Aicho Tech Store",
-  productName: "Tai nghe Bluetooth chống ồn chủ động ANC AichoPods Pro",
-  codAmount: "450.000",
-  scenario: "delivery_failed_1",
-  customerReason: "Shipper báo gọi 2 cuộc khách không nhấc máy, bưu cục chuẩn bị chuyển hoàn",
-  compensationOffer: "Tặng kèm 01 Cáp sạc bọc dù chống đứt trị giá 50k trong kiện hàng, hỗ trợ hẹn shipper giao lại theo giờ khách rảnh",
-};
-
-const SAMPLE_OUTPUT = `## 💬 1. KỊCH BẢN TIN NHẮN CHAT SÀN (SHOPEE / TIKTOK SHOP)
-
-### 📱 Mẫu 1: Ngắn Gọn & Hiển Thị Hoàn Hảo (Dưới 350 ký tự)
-**[Tin nhắn gửi trực tiếp qua khung chat sàn cho khách hàng]**
-
-Chào [Tên Khách Hàng],  
-Xin chào bạn! Đây là [Tên Shop] - Aicho Tech Store. Đơn hàng của bạn [Mã Đơn] đang được giao đi, với sản phẩm [Tai nghe Bluetooth chống ồn chủ động ANC AichoPods Pro] trị giá 450k. 
-Để đảm bảo bạn nhận được hàng đúng cách, chúng tôi sẽ tặng kèm 1 cáp sạc bọc dù chống đứt trị giá 50k trong kiện hàng này. 
-Hãy mở máy và nhận hàng khi shipper liên lạc. Nếu bạn không nghe máy, xin vui lòng liên hệ shop để đổi giờ giao hàng thuận tiện.
-Cảm ơn bạn đã tin tưởng Aicho Tech Store. 🙏
-
----
-
-### 🎁 Mẫu 2: Đánh Vào Quyền Lợi & Tạo Trách Nhiệm (Kèm Quà Tặng / Cam Kết)
-**[Tin nhắn gửi trực tiếp qua khung chat sàn cho khách hàng]**
-
-Chào [Tên Khách Hàng],  
-Xin chào bạn! Đây là [Tên Shop] - Aicho Tech Store. Đơn hàng của bạn [Mã Đơn] đang được giao đi, với sản phẩm [Tai nghe Bluetooth chống ồn chủ động ANC AichoPods Pro] trị giá 450k. 
-Để phục vụ khách hàng tốt hơn, chúng tôi đã chuẩn bị món quà bất ngờ là 1 cáp sạc bọc dù chống đứt trị giá 50k bên trong gói hàng. 
-Đây là món quà đặc biệt của shop dành riêng cho bạn. 
-Hãy mở máy và nhận hàng khi shipper liên lạc. Nếu bạn không nghe máy, xin vui lòng liên hệ shop để đổi giờ giao hàng thuận tiện.
-Cảm ơn bạn đã tin tưởng Aicho Tech Store. 🙏
-
----
-
-## 📞 2. KỊCH BẢN GỌI ĐIỆN THOẠI / SMS TRỰC TIẾP
-
-### 🎙️ Lời Thoại Cuộc Gọi (Kịch bản 45 giây)
-- **Lời mở đầu:** "Chào [Tên Khách Hàng], đây là [Tên Nhân Viên CSKH] từ Aicho Tech Store."
-- **Xử lý tình huống:** "Xin lỗi, shipper đã liên hệ 2 lần nhưng khách không nhấc máy. Shop sẵn sàng hỗ trợ đổi giờ giao hàng thuận tiện cho bạn. Nếu bạn có thời gian, vui lòng mở máy nhận hàng. 
-Nếu không thể mở máy, bạn có thể liên hệ shop vào [Số Điện Thoại Shop] để đổi thời gian giao hàng. 
-Hãy nhớ kiểm tra kỹ sản phẩm trước khi nhận và phản hồi ngay nếu có bất kỳ vấn đề nào."
-- **Chốt hẹn giao hàng:** "Hãy hẹn shipper giao hàng vào [Thời Gian Dự Kiến] để đảm bảo bạn nhận được hàng đúng lúc. Cảm ơn bạn đã tin tưởng [Tên Shop]!"
-
-### 📩 Mẫu SMS / Zalo Nhắn Tin Nhanh (Dưới 160 ký tự)
-**[Mẫu tin nhắn SMS ngắn gọn thông báo kiện hàng quan trọng đang trên đường tới, xin phép nhờ khách chú ý cuộc gọi của shipper]**
-
-Chào [Tên Khách Hàng],  
-Đơn hàng [Mã Đơn] trị giá 450k đang trên đường tới. Shipper liên lạc 2 lần nhưng khách không nhấc máy. 
-Vui lòng mở máy nhận hàng hoặc liên hệ shop để đổi giờ giao hàng. 
-Cảm ơn bạn đã tin tưởng Aicho Tech Store! 🙏
-
----
-
-## 🛡️ 3. KẾ HOẠCH HÀNH ĐỘNG DỰ PHÒNG TRÊN SELLER CENTER (PLAN B)
-
-### Thao tác trên hệ thống sàn:
-1. Truy cập Seller Center trên sàn Shopee/TikTok Shop.
-2. Tìm đơn hàng [Mã Đơn].
-3. Hoãn hoàn hàng (nếu có) hoặc yêu cầu giao lại lần 2, lần 3.
-4. Cập nhật trạng thái đơn hàng và ghi chú về việc giao lại.
-
-### Phối hợp với Shipper / Bưu cục:
-1. Liên hệ tổng đài vận chuyển hoặc bưu cục phát để thông báo về tình huống.
-2. Yêu cầu hỗ trợ giao lại hàng vào thời gian thuận lợi cho khách.
-3. Đưa ra đề xuất về việc đổi địa chỉ nhận hoặc thời gian giao hàng.
-
----
-
-## 🧠 4. BÍ QUYẾT TÂM LÝ HỌC CHỐNG BOM HÀNG TỪ CHUYÊN GIA
-
-### 3 Mẹo tâm lý học thực chiến giúp tỷ lệ nhận hàng tăng vọt 20-30%
-1. **Tạo cảm giác chờ đợi háo hức:** Đưa ra các thông tin chi tiết về sản phẩm, ưu đãi kèm theo, và nhấn mạnh việc khách hàng đang chờ đợi một món quà đặc biệt. Điều này giúp tăng sự quan tâm và mong chờ từ khách hàng.
-2. **Kỹ thuật ràng buộc cam kết nhỏ:** Yêu cầu khách hàng xác nhận thời gian giao hàng hoặc để lại số điện thoại để nhận hàng. Việc ràng buộc khách hàng bằng một cam kết nhỏ như vậy làm tăng khả năng họ thực hiện cam kết.
-3. **Nhắc nhở văn minh về công sức người lao động:** Trong các tin nhắn hoặc lời thoại, nhấn mạnh về công sức và tâm huyết của đội ngũ shipper và nhân viên vận chuyển. Điều này tạo ra một cảm giác trách nhiệm và sự trân trọng từ phía khách hàng.`;
-
 export default function AntiReturnNudgePage() {
   const { checkAccess, GateModals } = useToolGate();
   const { showAiError, showWarning } = useToast();
 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState("");
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [mobileTab, setMobileTab] = useState<"form" | "result">("form");
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const isSubmittingRef = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      if (abortControllerRef.current) abortControllerRef.current.abort();
+    };
+  }, []);
+
+  const handleCancel = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+  };
 
   // Form states
   const [shopName, setShopName] = useState("");
@@ -145,13 +94,14 @@ export default function AntiReturnNudgePage() {
   const [compensationOffer, setCompensationOffer] = useState("");
 
   const handleUseSample = () => {
-    setShopName(SAMPLE_DATA.shopName);
-    setProductName(SAMPLE_DATA.productName);
-    setCodAmount(SAMPLE_DATA.codAmount);
-    setScenario(SAMPLE_DATA.scenario);
-    setCustomerReason(SAMPLE_DATA.customerReason);
-    setCompensationOffer(SAMPLE_DATA.compensationOffer);
-    setResult(SAMPLE_OUTPUT);
+    setShopName(SAMPLE_ANTI_RETURN_INPUT.shopName);
+    setProductName(SAMPLE_ANTI_RETURN_INPUT.productName);
+    setCodAmount(SAMPLE_ANTI_RETURN_INPUT.codAmount || "");
+    setScenario(SAMPLE_ANTI_RETURN_INPUT.scenario);
+    setCustomerReason(SAMPLE_ANTI_RETURN_INPUT.customerReason || "");
+    setCompensationOffer(SAMPLE_ANTI_RETURN_INPUT.compensationOffer || "");
+    setResult(JSON.stringify(SAMPLE_ANTI_RETURN_DATA));
+    setIsOfflineMode(false);
     setMobileTab("result");
   };
 
@@ -163,9 +113,11 @@ export default function AntiReturnNudgePage() {
     setCustomerReason("");
     setCompensationOffer("");
     setResult("");
+    setIsOfflineMode(false);
   };
 
   const handleGenerate = async () => {
+    if (isSubmittingRef.current) return;
     const hasAccess = await checkAccess("anti-return-nudge", false);
     if (!hasAccess) return;
 
@@ -178,14 +130,48 @@ export default function AntiReturnNudgePage() {
       return;
     }
 
+    if (abortControllerRef.current) abortControllerRef.current.abort();
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+
+    isSubmittingRef.current = true;
     setLoading(true);
+    setElapsedSeconds(0);
     setResult("");
+    setIsOfflineMode(false);
     setMobileTab("result");
+
+    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    timerIntervalRef.current = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+
+    // Timeout chủ động 50s (ngắn hơn 60s của Reverse Proxy để không bao giờ bị văng 502)
+    const timeoutId = setTimeout(() => {
+      if (abortControllerRef.current === controller) {
+        controller.abort();
+        const offlineData = buildOfflineAntiReturnNudgeData({
+          shopName: shopName.trim(),
+          productName: productName.trim(),
+          codAmount: codAmount.trim(),
+          scenario,
+          customerReason: customerReason.trim(),
+          compensationOffer: compensationOffer.trim(),
+        });
+        setResult(JSON.stringify(offlineData));
+        setIsOfflineMode(true);
+        showWarning(
+          "Yêu cầu AI quá thời gian chờ (50s). Đã kích hoạt Bộ Kịch Bản Cứu Đơn Dự Phòng chuẩn sàn 2026!",
+          "Chế Độ Dự Phòng"
+        );
+      }
+    }, 50000);
 
     try {
       const response = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           tool: "anti-return-nudge",
           inputs: {
@@ -199,27 +185,71 @@ export default function AntiReturnNudgePage() {
         }),
       });
 
-      const data = await response.json();
+      // Đọc response dạng text để bẫy trang HTML lỗi 502/504 từ Nginx/Cloudflare/Vercel
+      const rawText = await response.text();
+      let data: any = null;
+      try {
+        data = JSON.parse(rawText);
+      } catch {
+        data = null;
+      }
 
-      if (!response.ok || !data.success) {
-        showAiError(data);
+      if (!response.ok || !data || !data.success) {
+        // Tự động fallback sang Offline Blueprint thay vì hiện lỗi 502 và làm trắng màn hình
+        const offlineData = buildOfflineAntiReturnNudgeData({
+          shopName: shopName.trim(),
+          productName: productName.trim(),
+          codAmount: codAmount.trim(),
+          scenario,
+          customerReason: customerReason.trim(),
+          compensationOffer: compensationOffer.trim(),
+        });
+        setResult(JSON.stringify(offlineData));
+        setIsOfflineMode(true);
+        showWarning(
+          data?.error || "Máy chủ AI phản hồi chậm hoặc đang bảo trì (502). Đã kích hoạt Bộ Kịch Bản Cứu Đơn Dự Phòng 2026!",
+          "Chế Độ Dự Phòng"
+        );
         return;
       }
 
       setResult(data.data);
+      setIsOfflineMode(Boolean(data.isOfflineFallback));
       setRefreshTrigger((prev) => prev + 1);
-    } catch {
-      showAiError({
-        code: "NETWORK_ERROR",
-        error: "Không thể kết nối đến hệ thống AI. Vui lòng kiểm tra lại mạng hoặc thử lại sau.",
+    } catch (error: any) {
+      if (error?.name === "AbortError" || controller.signal.aborted) {
+        showWarning("Đã dừng quá trình tạo kịch bản theo yêu cầu của bạn.", "Đã Hủy");
+        return;
+      }
+      // Khi mất mạng hoặc Reverse Proxy ngắt kết nối
+      const offlineData = buildOfflineAntiReturnNudgeData({
+        shopName: shopName.trim(),
+        productName: productName.trim(),
+        codAmount: codAmount.trim(),
+        scenario,
+        customerReason: customerReason.trim(),
+        compensationOffer: compensationOffer.trim(),
       });
+      setResult(JSON.stringify(offlineData));
+      setIsOfflineMode(true);
+      showWarning(
+        "Không thể kết nối đến máy chủ AI (sự cố mạng/502). Đã kích hoạt Bộ Kịch Bản Cứu Đơn Dự Phòng 2026!",
+        "Chế Độ Dự Phòng"
+      );
     } finally {
+      clearTimeout(timeoutId);
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+      abortControllerRef.current = null;
+      isSubmittingRef.current = false;
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-7xl w-full mx-auto flex-1 flex flex-col min-h-0 h-full lg:overflow-hidden">
+    <div className="max-w-7xl w-full mx-auto lg:flex-1 flex flex-col lg:min-h-0 lg:h-full lg:overflow-hidden pb-3">
       {/* Modals kiểm tra quyền truy cập */}
       <GateModals />
 
@@ -315,11 +345,11 @@ export default function AntiReturnNudgePage() {
         resultLabel="Kịch Bản Cứu Đơn"
       />
 
-      {/* Bố cục Form & Kết quả (Cuộn độc lập trên Desktop, Chuyển tab trên Mobile) */}
-      <div className="flex-1 min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:overflow-hidden items-stretch">
+      {/* Bố cục Form & Kết quả (Cuộn độc lập trên Desktop, Chuyển tab & Cuộn cả trang trên Mobile) */}
+      <div className="lg:flex-1 lg:min-h-0 grid grid-cols-1 lg:grid-cols-12 gap-5 lg:overflow-hidden items-start lg:items-stretch">
         {/* Cột trái: Form nhập liệu */}
-        <div className={`${mobileTab === "form" ? "flex" : "hidden lg:flex"} lg:col-span-5 flex-col min-h-0 lg:h-full lg:overflow-hidden`}>
-          <div className="h-full overflow-y-auto custom-scrollbar space-y-4 lg:pr-1.5 pb-24 lg:pb-2">
+        <div className={`${mobileTab === "form" ? "flex" : "hidden lg:flex"} lg:col-span-5 flex-col w-full lg:min-h-0 lg:h-full lg:overflow-hidden`}>
+          <div className="lg:h-full lg:overflow-y-auto custom-scrollbar space-y-4 lg:pr-1.5 pb-24 lg:pb-2">
             <div className="bg-white dark:bg-slate-900 p-4 sm:p-5 rounded-2xl border border-slate-200/90 dark:border-slate-800 shadow-xs space-y-4">
               {/* Header Khối Form */}
               <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
@@ -463,32 +493,47 @@ export default function AntiReturnNudgePage() {
                 />
               </div>
 
-              {/* Nút bấm Tạo Kịch Bản */}
-              <button
-                type="button"
-                disabled={loading}
-                onClick={handleGenerate}
-                className={`w-full py-3 px-4 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer ${loading
-                  ? "bg-slate-400 cursor-not-allowed"
-                  : "bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 hover:shadow-emerald-500/25 active:scale-[0.99]"
-                  }`}
-              >
-                {loading ? (
-                  <>
-                    <Sparkles size={16} className="animate-spin" /> Đang Lên Kịch Bản Cứu Đơn...
-                  </>
-                ) : (
-                  <>
-                    <PackageCheck size={16} /> Tạo Kịch Bản Chống Bom & Cứu Đơn
-                  </>
+              {/* Nút bấm Tạo Kịch Bản + Hủy */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  disabled={loading}
+                  onClick={handleGenerate}
+                  className={`flex-1 py-3 px-4 rounded-xl text-white font-bold text-sm flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer ${loading
+                    ? "bg-slate-400 cursor-not-allowed"
+                    : "bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-600 hover:from-emerald-500 hover:to-teal-500 hover:shadow-emerald-500/25 active:scale-[0.99]"
+                    }`}
+                >
+                  {loading ? (
+                    <>
+                      <Sparkles size={16} className="animate-spin text-white" />
+                      <span>Đang Lên Kịch Bản ({elapsedSeconds}s)...</span>
+                    </>
+                  ) : (
+                    <>
+                      <PackageCheck size={16} /> Tạo Kịch Bản Chống Bom &amp; Cứu Đơn
+                    </>
+                  )}
+                </button>
+
+                {loading && (
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    className="px-3.5 py-3 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 shrink-0"
+                    title="Hủy yêu cầu"
+                  >
+                    <XCircle size={16} />
+                    <span>Hủy</span>
+                  </button>
                 )}
-              </button>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Cột phải: Kết quả trực quan */}
-        <div className={`${mobileTab === "result" ? "flex" : "hidden lg:flex"} lg:col-span-7 flex-col min-h-0 lg:h-full lg:overflow-hidden`}>
+        {/* Cột phải: Kết quả trực quan (Chữ trắng nền đen, cuộn cả trang trên Mobile) */}
+        <div className={`${mobileTab === "result" ? "flex" : "hidden lg:flex"} lg:col-span-7 flex-col w-full lg:min-h-0 lg:h-full lg:overflow-hidden pb-20 lg:pb-0`}>
           <AntiReturnNudgeOutput
             result={result}
             loading={loading}
@@ -496,6 +541,10 @@ export default function AntiReturnNudgePage() {
             productName={productName}
             scenario={scenario}
             onUseSample={handleUseSample}
+            elapsedSeconds={elapsedSeconds}
+            onCancel={handleCancel}
+            isOfflineMode={isOfflineMode}
+            onRetryWithAi={handleGenerate}
           />
         </div>
       </div>

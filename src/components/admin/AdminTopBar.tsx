@@ -13,6 +13,8 @@ const ROUTE_TITLES: Record<string, { title: string; category: string }> = {
   "/admin/vip-plans": { title: "Cấu hình Gói VIP & Bảng giá", category: "Gói cước" },
   "/admin/pricing-fees": { title: "Biểu phí bán hàng sàn TMĐT", category: "Dữ liệu" },
   "/admin/sepay": { title: "Cổng SePay & Webhook nạp VIP", category: "Thanh toán" },
+  "/admin/usage": { title: "Lịch sử sử dụng công cụ AI", category: "Giám sát & Dữ liệu" },
+  "/admin/privacy": { title: "Bảo trì dữ liệu & Lưu trữ 90 ngày", category: "Bảo mật & Quyền riêng tư" },
   "/admin/settings": { title: "Cài đặt hệ thống & OpenAI Key", category: "Hệ thống" },
 };
 

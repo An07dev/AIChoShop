@@ -519,46 +519,47 @@ export default function KocPlanner({ feeOverrides, feeLoadWarning = false }: { f
   useEffect(() => {
     if (!historyReady) return;
     queueMicrotask(() => {
-    try {
-      const stored = JSON.parse(historyStorage.getItem(STORAGE_KEY) ?? "[]") as SavedPlan[];
-      setSavedPlans(
-        Array.isArray(stored)
-          ? stored.map((item) => ({ ...item, input: migrateInput(item.input as LegacyKocInput) }))
-          : []
-      );
-    } catch {
-      setSavedPlans([]);
-    }
-    setSavedProducts(readPricingHistory(localStorage).filter((item) => item.input.platform === "tiktok"));
+      try {
+        const stored = JSON.parse(historyStorage.getItem(STORAGE_KEY) ?? "[]") as SavedPlan[];
+        setSavedPlans(
+          Array.isArray(stored)
+            ? stored.map((item) => ({ ...item, input: migrateInput(item.input as LegacyKocInput) }))
+            : []
+        );
+      } catch {
+        setSavedPlans([]);
+      }
+      setSavedProducts(readPricingHistory(historyStorage).filter((item) => item.input.platform === "tiktok"));
 
-    // Tự động đồng bộ lịch sử từ Server (/api/ai/usage)
-    fetch("/api/ai/usage?tool=koc-planner")
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.recentActivities && Array.isArray(data.recentActivities)) {
-          const serverPlans: SavedPlan[] = [];
-          for (const act of data.recentActivities) {
-            if (act.input?.snapshot && act.input.snapshot.id && act.input.snapshot.input && act.input.snapshot.result) {
-              serverPlans.push(act.input.snapshot);
+      // Tự động đồng bộ lịch sử từ Server (/api/ai/usage)
+      fetch("/api/ai/usage?tool=koc-planner")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.recentActivities && Array.isArray(data.recentActivities)) {
+            const serverPlans: SavedPlan[] = [];
+            for (const act of data.recentActivities) {
+              if (act.input?.snapshot && act.input.snapshot.id && act.input.snapshot.input && act.input.snapshot.result) {
+                serverPlans.push(act.input.snapshot);
+              }
+            }
+            if (serverPlans.length > 0) {
+              setSavedPlans((current) => {
+                const existingIds = new Set(current.map((p) => p.id));
+                const merged = [...current];
+                for (const sp of serverPlans) {
+                  if (!existingIds.has(sp.id)) {
+                    merged.push(sp);
+                    existingIds.add(sp.id);
+                  }
+                }
+                return merged;
+              });
             }
           }
-          if (serverPlans.length > 0) {
-            setSavedPlans((current) => {
-              const existingIds = new Set(current.map((p) => p.id));
-              const merged = [...current];
-              for (const sp of serverPlans) {
-                if (!existingIds.has(sp.id)) {
-                  merged.push(sp);
-                  existingIds.add(sp.id);
-                }
-              }
-              return merged;
-            });
-          }
-        }
-      })
-      .catch(() => { });
-  }, []);
+        })
+        .catch(() => { });
+    });
+  }, [historyStorage, historyReady]);
 
   const changeShopType = (next: ShopType) => {
     setShopType(next);

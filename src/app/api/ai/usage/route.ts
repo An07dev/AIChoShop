@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSessionUser } from "@/lib/auth/session";
+import { getSessionUser, getSessionUserId } from "@/lib/auth/session";
 import { readLimitedJson, RequestBodyError } from "@/lib/http/body";
 import { getAiUsageStats, recordAiUsage } from "@/lib/ai-usage";
 import { isAllowedOrigin } from "@/lib/http/origin";

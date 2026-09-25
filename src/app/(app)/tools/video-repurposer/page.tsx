@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   ArrowLeft,
   Sparkles,
@@ -16,6 +16,7 @@ import {
   Crown,
   ClipboardPaste,
   Trash2,
+  XCircle,
 } from "lucide-react";
 import Link from "next/link";
 import { useToolGate } from "@/hooks/useToolGate";
@@ -23,6 +24,7 @@ import { useToast } from "@/context/ToastContext";
 import VideoRepurposerOutput from "@/components/tools/VideoRepurposerOutput";
 import { AiUsageBadge } from "@/components/tools/AiUsageBadge";
 import { MobileToolTabs } from "@/components/tools/MobileToolTabs";
+import { SAMPLE_REPURPOSER_DATA } from "@/lib/video-repurposer/contract";
 
 const BRAND_TONES = [
   {
@@ -48,104 +50,87 @@ const BRAND_TONES = [
   },
 ];
 
-const SAMPLE_RESULT = `## 👥 ĐỊNH DẠNG 1: BÀI ĐĂNG FACEBOOK GROUP (Seeding / Tâm Sự Thực Tế)
-Mọi người trong nhóm có ai từng mua nồi chiên không dầu về xong cất góc bếp như em không? 😭
+const SAMPLE_RESULT = JSON.stringify(SAMPLE_REPURPOSER_DATA, null, 2);
 
-Hồi trước hí hửng mua con nồi cơ 1 triệu mấy về nướng đùi gà với sườn, chiên xong thịt nó khô đét, xác như rơm, ăn nghẹn cả họng. Em nản quá quẳng xó cả nửa năm.
-
-Đợt vừa rồi bà chị họ làm bên dinh dưỡng sang chơi, bả chỉ cho quả nồi chiên hơi nước 2 trong 1 Lock&Care 7L này. Ban đầu em cũng sợ bị lùa gà, nhưng bả bảo: "Mày nướng vừa nhiệt 200 độ mà nó phun sương nano liên tục thì nước ngọt trong thịt sao bốc hơi được!".
-
-Thế là em liều bấm bụng rước về. Thề với các bác hôm qua em nướng nguyên con gà ta 2.3kg:
-- Bên ngoài: Da vàng ươm màu cánh gián, giòn rụm kêu rôm rốp.
-- Bên trong: Xé ra khói nghi ngút, nước thịt ứa ra mọng sũng, mềm ngọt dã man!
-- Rửa ráy: Lòng nồi Ceramic 5 lớp, nướng xong ngâm nước ấm tráng nhẹ là sạch bong, không phải cọ toát mồ hôi.
-
-Có bác nào cũng đang xài dòng hơi nước này của Lock&Care chưa ạ? Cho em xin thêm vài công thức nướng thịt xiên với cá hồi với!
-
-*(Bác nào lười tìm mã thì em để link chính hãng săn sale dưới cmt nhé)*
-
----
-
-## 📢 ĐỊNH DẠNG 2: BÀI ĐĂNG FANPAGE FACEBOOK (Tối Ưu Click & Inbox)
-🚨 CẢNH BÁO: ĐỪNG MUA NỒI CHIÊN KHÔNG DẦU TRUYỀN THỐNG NỮA NẾU BẠN CHƯA BIẾT ĐIỀU NÀY! 🚨
-
-90% gia đình bỏ xó nồi chiên không dầu chỉ sau 1 tháng vì một lý do: THỊT NƯỚNG QUÁ KHÔ VÀ CỌ RỬA QUÁ MỆT!
-
-👉 GIẢI PHÁP ĐỘT PHÁ 2024: Nồi Chiên Không Dầu Hơi Nước Lock&Care 7L - Vừa Nướng Giòn Vừa Giữ Trọn Vị Mọng Nước!
-
-🔥 TẠI SAO NÊN ĐỔI NGAY SANG CÔNG NGHỆ HƠI NƯỚC NANO?
-- Công nghệ nướng kép Hydro-Air: Vừa đối lưu 200°C vừa phun sương nano, giúp da gà giòn rụm bên ngoài nhưng thịt bên trong mọng nước 100%.
-- Dung tích khủng 7 Lít: Nướng vừa vặn nguyên con gà 2.5kg hoặc 2 miếng sườn tảng cho cả nhà 4-6 người.
-- Lòng nồi Ceramic Nano 5 lớp: Chống dính tuyệt đối, không chứa PFOA độc hại, tráng nước là sạch trong 10 giây.
-- 8 Chế độ cài đặt sẵn: Chiên gà, sườn, khoai tây, hấp bánh bao, rã đông... chỉ bằng 1 nút chạm cảm ứng.
-
-🎁 ƯU ĐÃI ĐẶC QUYỀN DUY NHẤT HÔM NAY:
-- Giảm ngay 200.000đ khi đặt qua bài viết này
-- Tặng kèm khay hứng mỡ inox 304 + sách 50 công thức món ngon trị giá 350.000đ
-- Miễn phí vận chuyển toàn quốc + Bảo hành chính hãng 24 tháng (Lỗi 1 đổi 1 trong 30 ngày)
-
-👇 Bấm vào nút "GỬI TIN NHẮN" hoặc để lại "Nồi chiên" để nhận link ưu đãi chính hãng!
-
----
-
-## 📸 ĐỊNH DẠNG 3: KỊCH BẢN CHUỖI ẢNH CAROUSEL (Lemon8 / Facebook Album / Instagram)
-- Slide 1 (Bìa): 3 LÝ DO NỒI CHIÊN THƯỜNG BỊ BỎ XÓ & VÌ SAO MÌNH ĐỔI SANG NỒI CHIÊN HƠI NƯỚC?
-- Slide 2 (Nỗi đau): LÝ DO 1 - THỊT NƯỚNG KHÔNG BỊ KHÔ ĐÉT: Nhờ công nghệ phun sương nano liên tục ở nhiệt độ 200°C, khóa trọn nước ngọt bên trong miếng thịt.
-- Slide 3 (Dung tích): LÝ DO 2 - DUNG TÍCH 7L NƯỚNG NGUYÊN CON GÀ: Lòng nồi siêu rộng, nướng nguyên con gà 2.5kg vàng ruộm, không cần cắt nhỏ lỉnh kỉnh.
-- Slide 4 (Tiện ích): LÝ DO 3 - RỬA NỒI TRONG 10 GIÂY: Lớp chống dính Ceramic 5 lớp cao cấp, chỉ cần xả nước ấm là trôi sạch dầu mỡ.
-- Slide 5 (CTA & Save): TỔNG KẾT & MẸO SĂN SALE: Bí quyết nấu ăn healthy không ngấy mỡ. Nhấn ❤️ THẢ TIM và 🔖 LƯU LẠI bài viết này để khi cần mua mở ra xem ngay nhé!
-
----
-
-## 📝 ĐỊNH DẠNG 4: BÀI VIẾT REVIEW CHUẨN SEO (Website / Blog Affiliate)
-Tiêu đề: [Review Thực Tế] Nồi Chiên Không Dầu Hơi Nước Lock&Care 7L Có Tốt Không? Có Đáng Tiền Không?
-
-1. Nồi chiên không dầu hơi nước là gì?
-Khác với nồi chiên không dầu truyền thống dùng luồng khí nóng làm khô bề mặt thực phẩm, Lock&Care 7L tích hợp thêm van phun sương nano đối lưu. Cơ chế này giúp thực phẩm vừa đạt độ giòn ở lớp vỏ, vừa giữ lại tới 95% độ ẩm tự nhiên của thực phẩm.
-
-2. Đánh giá ưu điểm vượt trội (Pros):
-- Giữ ẩm hoàn hảo: Đùi gà, sườn nướng mọng nước, không bị xơ cứng.
-- An toàn sức khỏe: Giảm đến 90% lượng mỡ thừa so với chiên rán thông thường.
-- Dung tích thực tế 7L: Phù hợp cho gia đình từ 3 - 6 thành viên.
-- Chống dính bền bỉ: Men gốm Ceramic không bong tróc, an toàn cho trẻ nhỏ.
-
-3. Nhược điểm cần lưu ý (Cons):
-- Cần châm nước tinh khiết vào khay nước trước khi chọn chế độ nướng hơi nước.
-- Kích thước nồi tương đối lớn, cần góc bếp thoáng để đặt.
-
-4. Lời khuyên: Ai nên sở hữu chiếc nồi này?
-Nếu bạn là người yêu thích các món nướng nhưng ghét cảm giác thịt bị khô hoặc gia đình có người lớn tuổi, trẻ em cần ăn mềm thì Lock&Care 7L chắc chắn là khoản đầu tư xứng đáng nhất cho căn bếp năm nay.
-
----
-
-## 💬 ĐỊNH DẠNG 5: TIN NHẮN ZALO OA / CHĂM SÓC KHÁCH HÀNG
-Dạ em chào Anh/Chị! 🌿
-
-Hôm nay Lock&Care có một bất ngờ nhỏ dành riêng cho khách hàng thân thiết ạ. 
-
-Em gửi Anh/Chị video thực tế nướng nguyên con gà da giòn rụm, thịt mọng nước bằng chiếc Nồi chiên không dầu hơi nước 2 trong 1 Lock&Care 7L đang cực hot trên TikTok.
-
-🎁 Em xin gửi riêng Anh/Chị mã giảm giá độc quyền: [LOCKCARE200K] - Giảm ngay 200.000đ trực tiếp vào đơn hàng hôm nay, kèm quà tặng sách 50 công thức món ngon cho gia đình.
-
-Số lượng voucher ưu đãi có hạn trong 24h, Anh/Chị bấm vào link dưới đây để chọn màu và nhận ưu đãi nhé ạ:
-👉 https://lockcare.vn/deal-hoi-nuoc-7l
-
-Nếu cần em tư vấn thêm dung tích phù hợp với nhà mình, Anh/Chị cứ nhắn lại cho em bất kỳ lúc nào nhé!`;
+const DRAFT_STORAGE_KEY = "aichoshop_video_repurposer_draft_v1";
 
 export default function VideoRepurposerPage() {
   const { checkAccess, GateModals } = useToolGate();
-  const { showAiError, showWarning } = useToast();
+  const { showAiError, showWarning, showSuccess } = useToast();
 
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState("");
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [mobileTab, setMobileTab] = useState<"form" | "result">("form");
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const cancelReasonRef = useRef<"manual" | "timeout" | null>(null);
 
   // Form states
   const [videoScript, setVideoScript] = useState("");
   const [productName, setProductName] = useState("");
   const [callToAction, setCallToAction] = useState("");
   const [brandTone, setBrandTone] = useState("friendly");
+
+  // 1. Phục hồi bản nháp từ localStorage khi mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(DRAFT_STORAGE_KEY);
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.videoScript) setVideoScript(parsed.videoScript);
+        if (parsed.productName) setProductName(parsed.productName);
+        if (parsed.callToAction) setCallToAction(parsed.callToAction);
+        if (parsed.brandTone) setBrandTone(parsed.brandTone);
+        if (parsed.result) setResult(parsed.result);
+      }
+    } catch {
+      // Bỏ qua nếu môi trường không cho phép truy cập localStorage
+    }
+  }, []);
+
+  // 2. Tự động lưu bản nháp vào localStorage
+  useEffect(() => {
+    try {
+      if (videoScript || productName || callToAction || result) {
+        localStorage.setItem(
+          DRAFT_STORAGE_KEY,
+          JSON.stringify({
+            videoScript,
+            productName,
+            callToAction,
+            brandTone,
+            result,
+          })
+        );
+      }
+    } catch {
+      // QuotaExceeded hoặc Private mode
+    }
+  }, [videoScript, productName, callToAction, brandTone, result]);
+
+  useEffect(() => {
+    return () => {
+      if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      if (abortControllerRef.current) abortControllerRef.current.abort();
+    };
+  }, []);
+
+  const handleCancel = () => {
+    cancelReasonRef.current = "manual";
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+  };
+
+  // Nạp lại kết quả từ Lịch Sử hoạt động
+  const handleSelectHistoryOutput = (pastOutput: string) => {
+    if (!pastOutput) return;
+    setResult(pastOutput);
+    setMobileTab("result");
+    showSuccess("Đã tải lại kết quả từ lịch sử!", "Lịch Sử Hoạt Động");
+  };
 
   const [userQuota, setUserQuota] = useState<{
     isLogged: boolean;
@@ -194,17 +179,28 @@ export default function VideoRepurposerPage() {
     setMobileTab("result");
   };
 
-  // Xóa trắng form
+  // Xóa trắng form & dọn draft localStorage
   const handleResetForm = () => {
     setVideoScript("");
     setProductName("");
     setCallToAction("");
     setBrandTone("friendly");
     setResult("");
+    try {
+      localStorage.removeItem(DRAFT_STORAGE_KEY);
+    } catch {}
   };
 
   // Submit gọi AI
   const handleGenerate = async () => {
+    // Kiểm tra kết nối mạng
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      showAiError({
+        error: "Không có kết nối mạng Internet. Vui lòng kiểm tra lại đường truyền của bạn.",
+      });
+      return;
+    }
+
     const hasAccess = await checkAccess("video-repurposer", true); // VIP Tool
     if (!hasAccess) return;
 
@@ -212,19 +208,50 @@ export default function VideoRepurposerPage() {
       showWarning("Vui lòng dán lời thoại hoặc kịch bản video gốc!", "Thiếu Dữ Liệu");
       return;
     }
+
+    if (videoScript.trim().length < 20) {
+      showWarning("Kịch bản video quá ngắn (tối thiểu 20 ký tự) để AI có thể phân tích thành 5 kênh nội dung!", "Kịch Bản Quá Ngắn");
+      return;
+    }
+
     if (!productName.trim()) {
       showWarning("Vui lòng nhập tên sản phẩm / dịch vụ!", "Thiếu Dữ Liệu");
       return;
     }
 
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
+    cancelReasonRef.current = null;
+
     setLoading(true);
+    setElapsedSeconds(0);
     setResult("");
     setMobileTab("result");
+
+    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    timerIntervalRef.current = setInterval(() => {
+      setElapsedSeconds((prev) => prev + 1);
+    }, 1000);
+
+    const timeoutId = setTimeout(() => {
+      if (abortControllerRef.current === controller) {
+        cancelReasonRef.current = "timeout";
+        controller.abort();
+        showAiError({
+          code: "TIMEOUT",
+          error: "Yêu cầu chuyển đổi đa kênh đã quá thời gian phản hồi (120s). Vui lòng thử lại hoặc rút ngắn kịch bản video.",
+        });
+      }
+    }, 120000);
 
     try {
       const response = await fetch("/api/ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: controller.signal,
         body: JSON.stringify({
           tool: "video-repurposer",
           inputs: {
@@ -245,8 +272,21 @@ export default function VideoRepurposerPage() {
         showAiError(data, "Không thể chuyển đổi nội dung đa kênh");
       }
     } catch (err: any) {
+      if (err?.name === "AbortError" || controller.signal.aborted) {
+        // Chỉ thông báo Đã Hủy nếu người dùng chủ động bấm Hủy, tránh đè thông báo timeout
+        if (cancelReasonRef.current === "manual") {
+          showWarning("Đã dừng quá trình chuyển đổi nội dung theo yêu cầu của bạn.", "Đã Hủy");
+        }
+        return;
+      }
       showAiError({ error: err?.message || "Lỗi mạng hoặc kết nối máy chủ thất bại." });
     } finally {
+      clearTimeout(timeoutId);
+      if (timerIntervalRef.current) {
+        clearInterval(timerIntervalRef.current);
+        timerIntervalRef.current = null;
+      }
+      abortControllerRef.current = null;
       setLoading(false);
     }
   };
@@ -270,7 +310,12 @@ export default function VideoRepurposerPage() {
               <Crown size={10} className="text-amber-600 dark:text-amber-400" />
               VIP
             </span>
-            <AiUsageBadge tool="video-repurposer" refreshTrigger={refreshTrigger} historyOnly />
+            <AiUsageBadge
+              tool="video-repurposer"
+              refreshTrigger={refreshTrigger}
+              historyOnly
+              onSelectOutput={handleSelectHistoryOutput}
+            />
           </div>
         </div>
 
@@ -319,7 +364,11 @@ export default function VideoRepurposerPage() {
 
           {/* Quick Action Buttons (Desktop ONLY - Preserved exactly as original) */}
           <div className="hidden md:flex items-center gap-2 shrink-0">
-            <AiUsageBadge tool="video-repurposer" refreshTrigger={refreshTrigger} />
+            <AiUsageBadge
+              tool="video-repurposer"
+              refreshTrigger={refreshTrigger}
+              onSelectOutput={handleSelectHistoryOutput}
+            />
             <button
               type="button"
               onClick={handleUseSample}
@@ -527,23 +576,38 @@ export default function VideoRepurposerPage() {
                 </div>
               </div>
 
-              {/* Nút Submit */}
-              <button
-                type="button"
-                onClick={handleGenerate}
-                disabled={loading}
-                className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99]"
-              >
-                {loading ? (
-                  <>
-                    <Share2 size={16} className="animate-spin" /> Đang Chuyển Đổi 5 Kênh...
-                  </>
-                ) : (
-                  <>
-                    <Send size={16} /> Chuyển Đổi Sang 5 Định Dạng Kênh
-                  </>
+              {/* Nút Submit + Hủy */}
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleGenerate}
+                  disabled={loading}
+                  className="flex-1 py-3.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 text-white font-bold text-xs sm:text-sm shadow-md shadow-emerald-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.99]"
+                >
+                  {loading ? (
+                    <>
+                      <Share2 size={16} className="animate-spin text-white" />
+                      <span>Đang Chuyển Đổi ({elapsedSeconds}s)...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Send size={16} /> Chuyển Đổi Sang 5 Định Dạng Kênh
+                    </>
+                  )}
+                </button>
+
+                {loading && (
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    className="px-3.5 py-3.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 font-bold text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer active:scale-95 shrink-0"
+                    title="Hủy yêu cầu"
+                  >
+                    <XCircle size={16} />
+                    <span>Hủy</span>
+                  </button>
                 )}
-              </button>
+              </div>
 
               {/* Thông tin quota tài khoản */}
               <p aria-live="polite" className="text-[10px] text-center text-slate-400">
@@ -575,6 +639,8 @@ export default function VideoRepurposerPage() {
             brandTone={brandTone}
             callToAction={callToAction}
             onUseSample={handleUseSample}
+            elapsedSeconds={elapsedSeconds}
+            onCancel={handleCancel}
           />
         </div>
       </div>

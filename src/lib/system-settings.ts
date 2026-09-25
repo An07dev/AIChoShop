@@ -22,20 +22,36 @@ export const DEFAULT_SYSTEM_SETTINGS = {
     isOpenAiActive: false,
 };
 
+// Cache cấu hình hệ thống trong bộ nhớ 60s để tránh truy vấn Database liên tục trên mỗi yêu cầu AI
+let cachedSettings: { data: SystemSettingData; expiresAt: number } | null = null;
+const CACHE_TTL_MS = 60_000;
+
+export function invalidateSystemSettingsCache() {
+  cachedSettings = null;
+}
+
 /**
- * Lấy cấu hình hệ thống từ Database.
- * Chỉ đọc cấu hình. Việc mở một trang không tự tạo hoặc sửa dữ liệu.
+ * Lấy cấu hình hệ thống từ Database có bộ đệm bộ nhớ (In-memory Cache 60s).
+ * Tự động dùng bản cache dự phòng nếu Database gặp sự cố tạm thời (Zero-downtime resilience).
  */
-export async function getSystemSettings(): Promise<SystemSettingData> {
+export async function getSystemSettings(forceRefresh = false): Promise<SystemSettingData> {
+  const now = Date.now();
+  if (!forceRefresh && cachedSettings && cachedSettings.expiresAt > now) {
+    return cachedSettings.data;
+  }
+
   try {
     const setting = await prisma.systemSetting.findUnique({ where: { id: "default" } });
-    if (setting) return setting;
+    if (setting) {
+      cachedSettings = { data: setting, expiresAt: now + CACHE_TTL_MS };
+      return setting;
+    }
     const envKey = process.env.OPENAI_API_KEY?.trim().replace(/^["']|["']$/g, "") || null;
     const envModel = process.env.OPENAI_MODEL?.trim() || "gpt-4o-mini";
     const envStatus = process.env.OpenAIStatus?.trim().toLowerCase();
     const envIsOpenAi = envStatus === undefined ? true : envStatus === "true";
 
-    return {
+    const defaultData: SystemSettingData = {
       id: "default",
       openaiApiKey: envKey,
       openaiModel: envModel,
@@ -44,7 +60,14 @@ export async function getSystemSettings(): Promise<SystemSettingData> {
       createdAt: new Date(),
       updatedAt: new Date(),
     };
+    cachedSettings = { data: defaultData, expiresAt: now + CACHE_TTL_MS };
+    return defaultData;
   } catch (error) {
+    // Nếu DB chập chờn nhưng đã có bản cache trước đó -> tái sử dụng an toàn để không sập app
+    if (cachedSettings) {
+      console.warn("[SystemSettings] Lỗi đọc Database, sử dụng bản cache gần nhất:", error);
+      return cachedSettings.data;
+    }
     const failure = dataFailure(error, "read-system-settings");
     throw Object.assign(new Error(failure.message), { code: failure.code });
   }
@@ -52,7 +75,7 @@ export async function getSystemSettings(): Promise<SystemSettingData> {
 
 /**
  * Cập nhật cấu hình hệ thống
- * Ghi cấu hình và nhật ký trong cùng transaction.
+ * Ghi cấu hình và nhật ký trong cùng transaction, xóa cache bộ nhớ ngay lập tức.
  */
 export async function updateSystemSettings(data: {
   openaiApiKey?: string | null; openaiModel?: string; openaiBaseUrl?: string | null; isOpenAiActive?: boolean;
@@ -69,6 +92,7 @@ export async function updateSystemSettings(data: {
       keyChanged: !!data.openaiApiKey?.trim(), modelChanged: data.openaiModel !== undefined,
       endpointChanged: data.openaiBaseUrl !== undefined, isOpenAiActive: updated.isOpenAiActive,
     });
+    invalidateSystemSettingsCache();
     return updated;
   });
 }
