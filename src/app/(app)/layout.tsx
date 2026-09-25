@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { AccountHistoryProvider } from "@/context/AccountHistoryContext";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
@@ -89,7 +90,9 @@ export default async function AppLayout({
     <AccountHistoryProvider key={currentUser?.id ?? "guest"} owner={currentUser?.id ?? null}>
       <SidebarProvider>
         <div className="flex h-screen bg-slate-50 dark:bg-slate-950 overflow-hidden text-slate-900 dark:text-slate-100 transition-colors duration-200">
-          <Sidebar user={currentUser} dynamicModules={dynamicModules} courses={coursesList} />
+          <Suspense fallback={<aside className="w-64 min-h-0 shrink-0 hidden lg:flex flex-col sidebar-theme border-r z-20" style={{ borderColor: "var(--sidebar-border)" }} />}>
+            <Sidebar user={currentUser} dynamicModules={dynamicModules} courses={coursesList} />
+          </Suspense>
           <div className="flex-1 flex flex-col min-w-0 max-w-full h-full overflow-hidden relative">
             <Header user={currentUser} />
             <main className="flex-1 overflow-y-auto overflow-x-hidden p-3.5 sm:p-5 md:p-6 pb-6 flex flex-col min-h-0 min-w-0 max-w-full">

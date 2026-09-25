@@ -13,7 +13,7 @@ import {
   LogIn,
   X,
 } from 'lucide-react';
-import { useState, useEffect, useTransition } from 'react';
+import { useState, useEffect, useTransition, Suspense } from 'react';
 import { logoutUser } from '@/app/actions/auth';
 import { useSidebar } from '@/context/SidebarContext';
 
@@ -24,15 +24,17 @@ export interface SidebarCourseItem {
   firstLessonId?: string;
 }
 
-export function Sidebar({
-  user,
-  dynamicModules,
-  courses = [],
-}: {
+export interface SidebarProps {
   user: any;
   dynamicModules?: { name: string; count: number }[];
   courses?: SidebarCourseItem[];
-}) {
+}
+
+function SidebarContent({
+  user,
+  dynamicModules,
+  courses = [],
+}: SidebarProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentCourseId = searchParams.get('courseId');
@@ -360,4 +362,20 @@ export function Sidebar({
     </>
   );
 }
+
+export function Sidebar(props: SidebarProps) {
+  return (
+    <Suspense
+      fallback={
+        <aside
+          className="w-64 min-h-0 shrink-0 hidden lg:flex flex-col sidebar-theme border-r z-20"
+          style={{ borderColor: "var(--sidebar-border)" }}
+        />
+      }
+    >
+      <SidebarContent {...props} />
+    </Suspense>
+  );
+}
+
 export default Sidebar;
