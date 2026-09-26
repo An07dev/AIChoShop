@@ -39,7 +39,13 @@ export default async function ProfilePage() {
         select: { balance: true },
       },
       progress: {
-        where: { completed: true },
+        where: {
+          completed: true,
+          lesson: {
+            status: "PUBLISHED",
+            course: { status: "PUBLISHED" },
+          },
+        },
         select: {
           lessonId: true,
           updatedAt: true,
@@ -78,8 +84,15 @@ export default async function ProfilePage() {
 
   // Thống kê tổng số bài học, khóa học, danh sách gói VIP và cấu hình SePay từ database
   const [totalCourses, totalLessons, vipPlans, sePayConfig] = await Promise.all([
-    prisma.course.count(),
-    prisma.lesson.count(),
+    prisma.course.count({
+      where: { status: "PUBLISHED" },
+    }),
+    prisma.lesson.count({
+      where: {
+        status: "PUBLISHED",
+        course: { status: "PUBLISHED" },
+      },
+    }),
     getActiveVipPlans(),
     getSePayConfig(),
   ]);

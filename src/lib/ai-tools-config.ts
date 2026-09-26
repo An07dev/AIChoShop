@@ -16,9 +16,11 @@ export const AI_TOOLS = [
   "competitor-miner",
   "photo-prompter",
   "objection-killer",
+  "product-launchpad",
 ];
 
 export const TOOL_NAMES: Record<string, string> = {
+  "product-launchpad": "AI Ra Mắt Sản Phẩm (Launchpad)",
   "seo-optimizer": "AI Tối Ưu SEO",
   "script-writer": "AI Kịch Bản Video",
   "appeal-generator": "AI Kháng Nghị Vi Phạm",
@@ -152,6 +154,11 @@ export function summarizeAiAction(tool: string, value: unknown): string {
       return inputs?.productName
         ? `Bẻ gãy lời từ chối: "${inputs.productName.slice(0, 35)}"`
         : "Bẻ gãy lời từ chối & chốt đơn 1-1";
+
+    case "product-launchpad":
+      return inputs?.productName
+        ? `Chiến dịch ra mắt 5-in-1: "${inputs.productName.slice(0, 35)}"`
+        : "Chiến dịch ra mắt sản phẩm 5-in-1";
 
     default:
       return `Sử dụng công cụ ${TOOL_NAMES[tool] || tool}`;

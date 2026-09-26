@@ -163,11 +163,11 @@ export default function CoursesClient({
       {/* ── 1. HERO HEADER ──────────────────────────────────────────────────────── */}
       <div className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-slate-900 via-slate-950 to-slate-900 p-5 sm:p-8 md:p-10 text-white border border-slate-800 shadow-2xl">
         {/* Glow background effects adapting to theme */}
-        <div 
+        <div
           className="absolute top-0 right-0 w-96 h-96 rounded-full blur-3xl pointer-events-none -translate-y-1/2 translate-x-1/2 opacity-25"
           style={{ backgroundColor: "var(--brand-primary)" }}
         />
-        <div 
+        <div
           className="absolute bottom-0 left-1/3 w-80 h-80 rounded-full blur-3xl pointer-events-none opacity-20"
           style={{ backgroundColor: "var(--brand-primary)" }}
         />
@@ -176,7 +176,7 @@ export default function CoursesClient({
           <div className="max-w-2xl space-y-2 sm:space-y-3">
             <h1 className="text-2xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight">
               Tất Cả Khóa Học &{" "}
-              <span 
+              <span
                 className="bg-clip-text text-transparent font-black"
                 style={{ backgroundImage: "var(--brand-gradient)" }}
               >
@@ -226,7 +226,7 @@ export default function CoursesClient({
               className="w-full bg-brand hover:bg-brand-hover text-white text-xs sm:text-sm font-bold py-2.5 sm:py-3 px-4 rounded-xl transition-all shadow-md shadow-brand/25 flex items-center justify-center gap-2 group cursor-pointer"
             >
               <GraduationCap size={15} />
-              <span>Vào Trình Phát Video Học Tập</span>
+              <span>Trình Phát Video Học Tập</span>
               <ArrowRight size={13} className="group-hover:translate-x-1 transition-transform" />
             </Link>
           </div>

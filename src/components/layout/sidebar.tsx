@@ -24,8 +24,22 @@ export interface SidebarCourseItem {
   firstLessonId?: string;
 }
 
+export interface SidebarSubItem {
+  name: string;
+  href: string;
+  courseId?: string;
+  lessonId?: string;
+  badge?: string;
+}
+
 export interface SidebarProps {
-  user: any;
+  user: {
+    id?: string;
+    name?: string | null;
+    email?: string | null;
+    role?: string | null;
+    image?: string | null;
+  } | null | undefined;
   dynamicModules?: { name: string; count: number }[];
   courses?: SidebarCourseItem[];
 }
@@ -69,31 +83,32 @@ function SidebarContent({
   ];
 
   const journeySteps = [
-    { 
-      id: 1, 
-      name: 'Tổng quan', 
+    {
+      id: 1,
+      name: 'Tổng quan',
       desc: 'Báo cáo hiệu suất',
-      href: '/dashboard', 
-      icon: Home 
+      href: '/dashboard',
+      icon: Home
     },
-    { 
-      id: 2, 
-      name: 'Khóa học', 
-      desc: displayCourses.length > 0 
-        ? `${displayCourses.length} Khóa học thực chiến` 
+    {
+      id: 2,
+      name: 'Khóa học',
+      desc: displayCourses.length > 0
+        ? `${displayCourses.length} Khóa học thực chiến`
         : `${totalLessonsCount} Bài học thực chiến`,
-      href: '/courses', 
+      href: '/courses',
       icon: BookOpen,
       subItems: courseSubItems,
     },
-    { 
-      id: 3, 
-      name: 'Kho Công Cụ AI', 
-      desc: '19 Tools bứt phá doanh số',
-      href: '/tools', 
+    {
+      id: 3,
+      name: 'Kho Công Cụ AI',
+      desc: '20 Tools bứt phá doanh số',
+      href: '/tools',
       icon: Wrench,
       viewAllHref: '/tools',
       subItems: [
+        { name: '📂 Kho Lưu Trữ Đã Tạo', href: '/history' },
         { name: '1. Tính Giá Bán', href: '/tools/pricing-calculator' },
         { name: '2. Tính Thuế TMĐT', href: '/tools/tax-calculator' },
         { name: '3. AI Phân Tích Ảnh (Vision)', href: '/tools/vision-listing' },
@@ -112,28 +127,25 @@ function SidebarContent({
         { name: '16. AI Thẩm Định Sản Phẩm', href: '/tools/product-validator' },
         { name: '17. AI Đọc Vị Đối Thủ (USP)', href: '/tools/competitor-miner' },
         { name: '18. AI Prompt Studio Ảnh', href: '/tools/photo-prompter' },
-        { name: '19. AI Bẻ Gãy Từ Chối 1-1', href: '/tools/objection-killer' }
+        { name: '19. AI Bẻ Gãy Từ Chối 1-1', href: '/tools/objection-killer' },
+        { name: '20. AI Ra Mắt Sản Phẩm Mới', href: '/tools/product-launchpad' }
       ]
     },
-    { 
-      id: 4, 
-      name: 'Hồ sơ & VIP', 
+    {
+      id: 4,
+      name: 'Hồ sơ & VIP',
       desc: 'Quản lý tài khoản',
-      href: '/profile', 
-      icon: UserCircle 
+      href: '/profile',
+      icon: UserCircle
     },
   ];
 
   // Auto-expand the menu that matches the current route
   useEffect(() => {
-    const currentStep = journeySteps.find(step => {
-      if (step.id === 2) {
-        return pathname?.startsWith('/courses') || pathname?.startsWith('/learn');
-      }
-      return pathname?.startsWith(step.href) && step.href !== '/';
-    });
-    if (currentStep && currentStep.subItems) {
-      setExpandedId(currentStep.id);
+    if (pathname?.startsWith('/courses') || pathname?.startsWith('/learn')) {
+      queueMicrotask(() => setExpandedId(2));
+    } else if (pathname?.startsWith('/tools') || pathname?.startsWith('/history')) {
+      queueMicrotask(() => setExpandedId(3));
     }
   }, [pathname]);
 
@@ -152,7 +164,7 @@ function SidebarContent({
             onClick={() => isMobileView && closeMobile()}
             className="inline-block"
           >
-            <h1 
+            <h1
               className="text-2xl font-black bg-clip-text text-transparent"
               style={{ backgroundImage: "var(--brand-gradient)" }}
             >
@@ -176,7 +188,7 @@ function SidebarContent({
 
       <div className="flex-1 px-4 py-4 overflow-y-auto custom-scrollbar">
         <p className="text-[11px] font-bold text-[var(--sidebar-text-muted)] uppercase tracking-wider mb-4">Lộ trình khám phá</p>
-        
+
         <div className="relative">
           {/* Vertical Timeline Line */}
           <div className="absolute left-5 top-5 bottom-8 w-0.5" style={{ backgroundColor: "var(--sidebar-timeline-line)" }}></div>
@@ -189,7 +201,7 @@ function SidebarContent({
                 (step.id === 2 && (pathname?.startsWith('/courses') || pathname?.startsWith('/learn')));
               const isExpanded = expandedId === step.id;
               const hasSub = !!step.subItems;
-              
+
               return (
                 <div key={step.id} className="relative">
                   <Link
@@ -205,12 +217,11 @@ function SidebarContent({
                   >
                     {/* Timeline Node */}
                     <div className="relative z-10 flex flex-col items-center">
-                      <div 
-                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 border-4 ${
-                          isActive 
-                            ? 'bg-brand text-white shadow-[0_0_15px_var(--brand-ring)]' 
-                            : 'bg-white/80 dark:bg-slate-800/80 text-[var(--sidebar-text-muted)] group-hover:bg-brand-light group-hover:text-brand shadow-xs'
-                        }`}
+                      <div
+                        className={`w-10 h-10 rounded-full flex items-center justify-center transition-all duration-300 border-4 ${isActive
+                          ? 'bg-brand text-white shadow-[0_0_15px_var(--brand-ring)]'
+                          : 'bg-white/80 dark:bg-slate-800/80 text-[var(--sidebar-text-muted)] group-hover:bg-brand-light group-hover:text-brand shadow-xs'
+                          }`}
                         style={{ borderColor: "var(--sidebar-node-border)" }}
                       >
                         <Icon size={18} />
@@ -238,27 +249,26 @@ function SidebarContent({
                   {hasSub && (
                     <div className={`overflow-hidden transition-all duration-300 ${isExpanded ? 'max-h-[2400px] mt-2 opacity-100' : 'max-h-0 opacity-0'}`}>
                       <div className="pl-11 pr-1 space-y-1 pb-2">
-                        {step.subItems?.map((sub: any, i) => {
+                        {step.subItems?.map((sub: SidebarSubItem, i) => {
                           const isSubActive =
                             sub.href === '/courses'
                               ? pathname === '/courses' && !currentCourseId
                               : sub.lessonId
-                              ? pathname === '/learn' && (currentLessonId === sub.lessonId || currentCourseId === sub.courseId)
-                              : sub.courseId
-                              ? (pathname === '/learn' || pathname === '/courses') && currentCourseId === sub.courseId
-                              : pathname === sub.href;
+                                ? pathname === '/learn' && (currentLessonId === sub.lessonId || currentCourseId === sub.courseId)
+                                : sub.courseId
+                                  ? (pathname === '/learn' || pathname === '/courses') && currentCourseId === sub.courseId
+                                  : pathname === sub.href;
 
                           return (
-                            <Link 
-                              key={i} 
+                            <Link
+                              key={i}
                               href={sub.href}
                               title={sub.name}
                               onClick={() => isMobileView && closeMobile()}
-                              className={`flex items-center justify-between text-[12px] py-1.5 px-2.5 rounded-lg transition-colors group ${
-                                isSubActive
-                                  ? 'bg-white/90 dark:bg-brand-light text-brand font-bold border-l-2 border-brand pl-2 shadow-xs'
-                                  : 'text-[var(--sidebar-text-secondary)] hover:text-[var(--sidebar-text-primary)] hover:bg-[var(--sidebar-hover-bg)]'
-                              }`}
+                              className={`flex items-center justify-between text-[12px] py-1.5 px-2.5 rounded-lg transition-colors group ${isSubActive
+                                ? 'bg-white/90 dark:bg-brand-light text-brand font-bold border-l-2 border-brand pl-2 shadow-xs'
+                                : 'text-[var(--sidebar-text-secondary)] hover:text-[var(--sidebar-text-primary)] hover:bg-[var(--sidebar-hover-bg)]'
+                                }`}
                             >
                               <span className="truncate">{sub.name}</span>
                               {sub.badge && (
@@ -275,7 +285,7 @@ function SidebarContent({
                             onClick={() => isMobileView && closeMobile()}
                             className="block text-[11px] py-1.5 px-2.5 text-[var(--sidebar-text-muted)] hover:text-brand hover:bg-[var(--sidebar-hover-bg)] rounded-lg transition-colors italic mt-1 font-semibold"
                           >
-                            Xem toàn bộ 19 công cụ &rarr;
+                            Xem toàn bộ 20 công cụ &rarr;
                           </Link>
                         )}
                       </div>
@@ -292,11 +302,10 @@ function SidebarContent({
           <Link
             href="/settings"
             onClick={() => isMobileView && closeMobile()}
-            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${
-              pathname === '/settings'
-                ? 'bg-brand text-white font-semibold shadow-md shadow-brand/20'
-                : 'hover:bg-[var(--sidebar-hover-bg)] text-[var(--sidebar-text-secondary)] hover:text-[var(--sidebar-text-primary)]'
-            }`}
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-all ${pathname === '/settings'
+              ? 'bg-brand text-white font-semibold shadow-md shadow-brand/20'
+              : 'hover:bg-[var(--sidebar-hover-bg)] text-[var(--sidebar-text-secondary)] hover:text-[var(--sidebar-text-primary)]'
+              }`}
           >
             <Settings size={18} className={pathname === '/settings' ? 'text-white' : 'text-[var(--sidebar-text-muted)]'} />
             <span className="text-sm">Cài đặt hệ thống</span>
@@ -333,9 +342,8 @@ function SidebarContent({
     <>
       {/* 1. DESKTOP STATIC SIDEBAR (Visible on lg and larger) */}
       <aside
-        className={`hidden lg:flex w-72 xl:w-80 sidebar-theme border-r min-h-screen flex-col relative z-20 shrink-0 ${
-          pathname === '/tools/seo-optimizer' ? 'hidden lg:flex' : 'flex'
-        }`}
+        className={`hidden lg:flex w-72 xl:w-80 sidebar-theme border-r min-h-screen flex-col relative z-20 shrink-0 ${pathname === '/tools/seo-optimizer' ? 'hidden lg:flex' : 'flex'
+          }`}
       >
         {renderNavContent(false)}
       </aside>
@@ -343,18 +351,16 @@ function SidebarContent({
       {/* 2. MOBILE DRAWER OVERLAY & OFF-CANVAS (Visible on mobile screens) */}
       {/* Backdrop */}
       <div
-        className={`fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-40 lg:hidden transition-opacity duration-300 ${
-          isMobileOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
-        }`}
+        className={`fixed inset-0 bg-slate-950/70 backdrop-blur-xs z-40 lg:hidden transition-opacity duration-300 ${isMobileOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+          }`}
         onClick={closeMobile}
         aria-hidden="true"
       />
 
       {/* Sliding Mobile Drawer */}
       <aside
-        className={`fixed inset-y-0 left-0 w-80 max-w-[85vw] z-50 flex flex-col sidebar-theme shadow-2xl transition-transform duration-300 ease-in-out lg:hidden border-r ${
-          isMobileOpen ? "translate-x-0" : "-translate-x-full pointer-events-none"
-        }`}
+        className={`fixed inset-y-0 left-0 w-80 max-w-[85vw] z-50 flex flex-col sidebar-theme shadow-2xl transition-transform duration-300 ease-in-out lg:hidden border-r ${isMobileOpen ? "translate-x-0" : "-translate-x-full pointer-events-none"
+          }`}
         style={{ borderColor: "var(--sidebar-border)" }}
       >
         {renderNavContent(true)}

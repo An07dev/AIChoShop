@@ -17,11 +17,12 @@ import { REVIEW_REPLIER_SYSTEM_PROMPT, buildReviewReplierPrompt, cleanAndValidat
 import { APPEAL_GENERATOR_SYSTEM_PROMPT, buildAppealGeneratorPrompt, cleanAndValidateAppealOutput, buildOfflineAppealGeneratorData } from "@/lib/appeal-generator/contract";
 import { POLICY_CHECKER_SYSTEM_PROMPT, buildPolicyCheckerPrompt, cleanAndValidatePolicyOutput, buildOfflinePolicyData } from "@/lib/policy-checker/contract";
 import { UNBOXING_CARD_SYSTEM_PROMPT, buildUnboxingCardPrompt, cleanAndValidateUnboxingCardOutput, buildOfflineUnboxingCardData } from "@/lib/unboxing-card/contract";
-import { ANTI_RETURN_NUDGE_SYSTEM_PROMPT, buildAntiReturnNudgePrompt, cleanAndValidateAntiReturnNudgeOutput, buildOfflineAntiReturnNudgeData } from "@/lib/anti-return-nudge/contract";
-import { PRODUCT_VALIDATOR_SYSTEM_PROMPT, buildProductValidatorPrompt, cleanAndValidateProductValidatorOutput, buildOfflineProductValidatorData } from "@/lib/product-validator/contract";
+import { buildAntiReturnNudgePrompt, cleanAndValidateAntiReturnNudgeOutput, buildOfflineAntiReturnNudgeData } from "@/lib/anti-return-nudge/contract";
+import { buildProductValidatorPrompt, cleanAndValidateProductValidatorOutput, buildOfflineProductValidatorData } from "@/lib/product-validator/contract";
 import { buildCompetitorMinerPrompt, cleanAndValidateCompetitorMinerOutput, buildOfflineCompetitorMinerData } from "@/lib/competitor-miner/contract";
 import { PHOTO_PROMPTER_SYSTEM_PROMPT, generatePhotoPrompterUserPrompt, generatePhotoPrompterBlueprint, cleanAndValidatePhotoPrompterOutput } from "@/lib/photo-prompter/contract";
 import { OBJECTION_KILLER_SYSTEM_PROMPT, generateObjectionKillerUserPrompt, buildOfflineObjectionKillerData, cleanAndValidateObjectionKillerOutput } from "@/lib/objection-killer/contract";
+import { PRODUCT_LAUNCHPAD_SYSTEM_PROMPT, buildProductLaunchpadPrompt, cleanAndValidateLaunchpadOutput, buildOfflineProductLaunchpadData, type ProductLaunchpadInputs } from "@/lib/product-launchpad/contract";
 
 export const maxDuration = 180;
 export const dynamic = "force-dynamic";
@@ -340,6 +341,22 @@ Hãy điền các thuộc tính và mô tả thực tế của "${prodName}" t�
         break;
       }
 
+      case "product-launchpad": {
+        systemPrompt = PRODUCT_LAUNCHPAD_SYSTEM_PROMPT;
+        userPrompt = buildProductLaunchpadPrompt({
+          productName: inputs.productName || "Sản phẩm chiến lược",
+          category: inputs.category || "Tiêu dùng & Bán lẻ",
+          costPrice: inputs.costPrice || "",
+          sellingPrice: inputs.sellingPrice || "",
+          usp: inputs.usp || "Chất lượng vượt trội, thiết kế tiện dụng, giá tốt",
+          targetAudience: inputs.targetAudience || "",
+          platform: (inputs.platform as ProductLaunchpadInputs["platform"]) || "all",
+          tone: (inputs.tone as ProductLaunchpadInputs["tone"]) || "natural",
+          notes: inputs.notes || "",
+        });
+        break;
+      }
+
       default:
         return NextResponse.json({ success: false, error: "Công cụ không hợp lệ." }, { status: 400 });
     }
@@ -353,8 +370,9 @@ Hãy điền các thuộc tính và mô tả thực tế của "${prodName}" t�
       "product-validator",
       "competitor-miner",
       "photo-prompter",
-      "objection-killer"
-    ].includes(tool) ? 3500 : 2500;
+      "objection-killer",
+      "product-launchpad"
+    ].includes(tool) ? 4000 : 2500;
 
     let result;
     try {
@@ -363,11 +381,12 @@ Hãy điền các thuộc tính và mô tả thực tế của "${prodName}" t�
         userPrompt,
         imageBase64: (tool === "appeal-generator" || tool === "vision-listing" || tool === "photo-prompter") ? inputs.imageBase64 : undefined,
         tool,
-        maxTokens: tool === "objection-killer" ? 1800 : tool === "vision-listing" ? 3200 : tool === "title-spinner" ? 2800 : tool === "script-writer" ? 3800 : tool === "video-repurposer" ? 3200 : tool === "ad-copy" ? 3600 : tool === "chat-broadcast" ? 2200 : tool === "review-replier" ? 3200 : tool === "appeal-generator" ? 3400 : tool === "policy-checker" ? 3600 : tool === "unboxing-card" ? 3500 : tool === "anti-return-nudge" ? 3600 : tool === "product-validator" ? 3600 : tool === "competitor-miner" ? 3800 : tool === "photo-prompter" ? 3800 : maxTokens,
+        maxTokens: tool === "product-launchpad" ? 4000 : tool === "objection-killer" ? 1800 : tool === "vision-listing" ? 3200 : tool === "title-spinner" ? 2800 : tool === "script-writer" ? 3800 : tool === "video-repurposer" ? 3200 : tool === "ad-copy" ? 3600 : tool === "chat-broadcast" ? 2200 : tool === "review-replier" ? 3200 : tool === "appeal-generator" ? 3400 : tool === "policy-checker" ? 3600 : tool === "unboxing-card" ? 3500 : tool === "anti-return-nudge" ? 3600 : tool === "product-validator" ? 3600 : tool === "competitor-miner" ? 3800 : tool === "photo-prompter" ? 3800 : maxTokens,
         temperature: 0.7,
-        responseFormat: (tool === "vision-listing" || tool === "title-spinner" || tool === "ad-copy" || tool === "script-writer" || tool === "video-repurposer" || tool === "chat-broadcast" || tool === "review-replier" || tool === "appeal-generator" || tool === "policy-checker" || tool === "unboxing-card" || tool === "anti-return-nudge" || tool === "product-validator" || tool === "competitor-miner" || tool === "photo-prompter" || tool === "objection-killer") ? "json" : undefined,
+        responseFormat: (tool === "product-launchpad" || tool === "vision-listing" || tool === "title-spinner" || tool === "ad-copy" || tool === "script-writer" || tool === "video-repurposer" || tool === "chat-broadcast" || tool === "review-replier" || tool === "appeal-generator" || tool === "policy-checker" || tool === "unboxing-card" || tool === "anti-return-nudge" || tool === "product-validator" || tool === "competitor-miner" || tool === "photo-prompter" || tool === "objection-killer") ? "json" : undefined,
         abortSignal: req.signal,
       });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (aiError: any) {
       if (req.signal.aborted || aiError?.name === "AbortError" || aiError?.message?.includes("AbortError")) {
         throw aiError;
@@ -652,6 +671,33 @@ Hãy điền các thuộc tính và mô tả thực tế của "${prodName}" t�
         }, {
           headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },
         });
+      } else if (tool === "product-launchpad") {
+        console.warn("[AI Route] product-launchpad AI unavailable (502/503/timeout). Activating Server-side Offline Blueprint...", aiError?.message);
+        const offlineData = buildOfflineProductLaunchpadData({
+          productName: inputs.productName || "Sản phẩm chiến lược",
+          category: inputs.category || "Tiêu dùng & Bán lẻ",
+          costPrice: inputs.costPrice || "",
+          sellingPrice: inputs.sellingPrice || "",
+          usp: inputs.usp || "Chất lượng vượt trội, thiết kế tiện dụng, giá tốt",
+          targetAudience: inputs.targetAudience || "",
+          platform: (inputs.platform as ProductLaunchpadInputs["platform"]) || "all",
+          tone: (inputs.tone as ProductLaunchpadInputs["tone"]) || "natural",
+          notes: inputs.notes || "",
+        });
+        if (lease) {
+          await releaseAi(lease).catch(() => {});
+          lease = undefined;
+        }
+        return NextResponse.json({
+          success: true,
+          data: JSON.stringify(offlineData),
+          isOfflineFallback: true,
+          fallbackUsed: true,
+          provider: "offline-blueprint",
+          message: "Đã kích hoạt hồ sơ ra mắt sản phẩm 5-in-1 dự phòng chuẩn sàn TMĐT (lượt dùng chưa bị trừ).",
+        }, {
+          headers: { "Cache-Control": "no-store, no-cache, must-revalidate" },
+        });
       }
       throw aiError;
     }
@@ -728,6 +774,13 @@ Hãy điền các thuộc tính và mô tả thực tế của "${prodName}" t�
         finalOutput = cleanAndValidateObjectionKillerOutput(result.outputText, inputs as any);
       } catch (err) {
         console.warn("objection_killer_sanitize_warn", err);
+      }
+    } else if (tool === "product-launchpad") {
+      try {
+        const validated = cleanAndValidateLaunchpadOutput(result.outputText, inputs as unknown as ProductLaunchpadInputs);
+        finalOutput = JSON.stringify(validated);
+      } catch (err) {
+        console.warn("product_launchpad_sanitize_warn", err);
       }
     }
 
